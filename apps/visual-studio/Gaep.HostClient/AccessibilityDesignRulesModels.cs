@@ -1,0 +1,43 @@
+namespace Gaep.HostClient;
+
+public sealed record AccessibilityDesignRulesRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    int TargetCount,
+    int RuleCount,
+    int CheckCount,
+    int RepresentedRequirementCount,
+    string ReviewState);
+
+public sealed record AccessibilityDesignRulesProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    string ReviewState,
+    string CatalogCompletenessState,
+    IReadOnlyList<string> Reasons,
+    int TargetCount,
+    int RuleCount,
+    int CheckCount,
+    int ApplicableRuleCount,
+    int NotApplicableRuleCount,
+    int UnresolvedRuleCount,
+    int NotAssessedCheckCount,
+    int EvidenceRecordedCheckCount,
+    int HumanReviewedCheckCount,
+    int ContradictedCheckCount,
+    int RepresentedRequirementCount,
+    int UnresolvedRequirementCount,
+    int UnresolvedOwnershipCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    int UnresolvedQuestionCount,
+    AccessibilityDesignRulesRecordView? Candidate,
+    string SnapshotDigest);

@@ -562,6 +562,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += designSystemTokenContractButton
         actions.add(designSystemTokenContractButton)
 
+        val accessibilityDesignRulesButton = JButton("Inspect Accessibility Design Rules…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Rule procedures, evidence, requirements, Source, design, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Accessibility Design Rules",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Accessibility Design Rules", status, output, buttons) {
+                    controller.readAccessibilityDesignRules(initiativeId)
+                }
+            }
+        }
+        buttons += accessibilityDesignRulesButton
+        actions.add(accessibilityDesignRulesButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

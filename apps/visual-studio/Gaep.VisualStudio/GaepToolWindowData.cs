@@ -231,6 +231,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadScreenStateInventoryCommand = new AsyncCommand(LoadScreenStateInventoryAsync);
         LoadDesignRequirementsCommand = new AsyncCommand(LoadDesignRequirementsAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
+        LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -367,6 +368,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadAccessibilityDesignRulesCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -912,6 +916,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Design System and Token Contract candidate",
             (controller, _, token) => controller.ReadDesignSystemTokenContractAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadAccessibilityDesignRulesAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Accessibility Design Rules candidate",
+            (controller, _, token) => controller.ReadAccessibilityDesignRulesAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

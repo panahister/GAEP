@@ -72,6 +72,7 @@ internal static class Program
     private static readonly Guid ScreenStateInventoryId = Guid.Parse("67676767-6767-4767-8767-676767676767");
     private static readonly Guid DesignRequirementsId = Guid.Parse("68686868-6868-4868-8868-686868686868");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
+    private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -217,6 +218,9 @@ internal static class Program
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
+        var badAccessibilityDesignRulesSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-accessibility-design-rules-snapshot-binding");
+        var badAccessibilityDesignRulesSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-accessibility-design-rules-snapshot-digest");
+        var badAccessibilityDesignRulesSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-accessibility-design-rules-snapshot-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -362,6 +366,9 @@ internal static class Program
         Directory.CreateDirectory(badDesignSystemTokenContractSnapshotBindingRoot);
         Directory.CreateDirectory(badDesignSystemTokenContractSnapshotDigestRoot);
         Directory.CreateDirectory(badDesignSystemTokenContractSnapshotPrivateRoot);
+        Directory.CreateDirectory(badAccessibilityDesignRulesSnapshotBindingRoot);
+        Directory.CreateDirectory(badAccessibilityDesignRulesSnapshotDigestRoot);
+        Directory.CreateDirectory(badAccessibilityDesignRulesSnapshotPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -1882,6 +1889,49 @@ internal static class Program
                 "Design System and Token Contract rejects a projection rebound to a substituted Product revision");
         }
 
+        var accessibilityDesignRulesProjection = await client.ReadAccessibilityDesignRulesAsync(InitiativeId);
+        Check(accessibilityDesignRulesProjection.ProductId == product.Id &&
+              accessibilityDesignRulesProjection.ProductRevision == product.Revision &&
+              accessibilityDesignRulesProjection.ProductDigest == product.Digest &&
+              accessibilityDesignRulesProjection.InitiativeId == resolved.Id &&
+              accessibilityDesignRulesProjection.InitiativeRevision == resolved.Revision &&
+              accessibilityDesignRulesProjection.InitiativeDigest == resolved.Digest &&
+              accessibilityDesignRulesProjection.AssessmentState == "attention-required" &&
+              accessibilityDesignRulesProjection.ReviewState == "held" &&
+              accessibilityDesignRulesProjection.CatalogCompletenessState == "not-assessed" &&
+              accessibilityDesignRulesProjection.TargetCount == 12 &&
+              accessibilityDesignRulesProjection.RuleCount == 18 &&
+              accessibilityDesignRulesProjection.CheckCount == 24 &&
+              accessibilityDesignRulesProjection.HumanReviewedCheckCount == 17 &&
+              accessibilityDesignRulesProjection.Candidate?.RepresentedRequirementCount == 10,
+            "Typed Accessibility Design Rules preserves exact Product, Initiative, assessment, coverage, and privacy-safe inventory metadata");
+        var accessibilityDesignRulesOutput = await initiativeController.ReadAccessibilityDesignRulesAsync(InitiativeId);
+        Check(accessibilityDesignRulesOutput.Contains("GAEP governed Accessibility Design Rules candidate", StringComparison.Ordinal) &&
+              accessibilityDesignRulesOutput.Contains("12 targets · 18 rules · 24 checks", StringComparison.Ordinal) &&
+              accessibilityDesignRulesOutput.Contains("17 human-reviewed", StringComparison.Ordinal) &&
+              accessibilityDesignRulesOutput.Contains("no accessibility conformance", StringComparison.Ordinal) &&
+              !accessibilityDesignRulesOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !accessibilityDesignRulesOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !accessibilityDesignRulesOutput.Contains("ruleProcedure", StringComparison.Ordinal),
+            "Accessibility Design Rules workflow renders privacy-safe metadata with explicit no-conformance and no-authority boundaries");
+        foreach (var hostileRoot in new[] {
+                     badAccessibilityDesignRulesSnapshotDigestRoot, badAccessibilityDesignRulesSnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadAccessibilityDesignRulesAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Accessibility Design Rules rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badAccessibilityDesignRulesSnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadAccessibilityDesignRulesAsync(InitiativeId),
+                "Accessibility Design Rules rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3196,6 +3246,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-digest";
         var badDesignSystemTokenContractSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-private";
+        var badAccessibilityDesignRulesSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-accessibility-design-rules-snapshot-binding";
+        var badAccessibilityDesignRulesSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-accessibility-design-rules-snapshot-digest";
+        var badAccessibilityDesignRulesSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-accessibility-design-rules-snapshot-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3636,6 +3692,17 @@ internal static class Program
                         badDesignSystemTokenContractSnapshotBinding,
                         badDesignSystemTokenContractSnapshotDigest,
                         badDesignSystemTokenContractSnapshotPrivate);
+                    break;
+                case "design.accessibilityRules.snapshot":
+                    await HandleAccessibilityDesignRulesAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badAccessibilityDesignRulesSnapshotBinding,
+                        badAccessibilityDesignRulesSnapshotDigest,
+                        badAccessibilityDesignRulesSnapshotPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -6738,6 +6805,108 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["tokenCount"] = 49;
         if (includePrivateField) result["tokenValue"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleAccessibilityDesignRulesAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID ACCESSIBILITY DESIGN RULES");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-28T14:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('3', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = AccessibilityDesignRulesId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('4', 64)}",
+            ["state"] = "candidate",
+            ["targetCount"] = 12,
+            ["ruleCount"] = 18,
+            ["checkCount"] = 24,
+            ["representedRequirementCount"] = 10,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-28T14:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "accessibility-design-rules-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "accessibility-design-rules-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = AccessibilityDesignRulesId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["targetCount"] = 12,
+                ["ruleCount"] = 18,
+                ["checkCount"] = 24,
+                ["applicableRuleCount"] = 14,
+                ["notApplicableRuleCount"] = 2,
+                ["unresolvedRuleCount"] = 2,
+                ["notAssessedCheckCount"] = 4,
+                ["evidenceRecordedCheckCount"] = 3,
+                ["humanReviewedCheckCount"] = 17,
+                ["contradictedCheckCount"] = 1,
+                ["representedRequirementCount"] = 10,
+                ["unresolvedRequirementCount"] = 2,
+                ["unresolvedOwnershipCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedQuestionCount"] = 3,
+                ["catalogCompletenessState"] = "not-assessed",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more accessibility rules retain unresolved applicability or impact" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "accessibility-design-rules-status-is-observational-and-does-not-establish-accessibility-conformance-rule-or-check-validity-legal-compliance-ownership-design-approval-baseline-readiness-implementation-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-rule-procedures-evidence-requirement-source-design-or-personal-content-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "accessibility-design-rules-projection-is-read-only-and-does-not-establish-accessibility-conformance-rule-or-check-validity-legal-compliance-ownership-design-approval-baseline-readiness-implementation-write-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["ruleCount"] = 19;
+        if (includePrivateField) result["ruleProcedure"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

@@ -43,6 +43,7 @@ private val informationArchitectureId = UUID.fromString("66666666-6666-4666-8666
 private val screenStateInventoryId = UUID.fromString("67676767-6767-4767-8767-676767676767")
 private val designRequirementsId = UUID.fromString("68686868-6868-4868-8868-686868686868")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
+private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -256,6 +257,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.systemTokenContract.snapshot" -> handleDesignSystemTokenContract(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.accessibilityRules.snapshot" -> handleAccessibilityDesignRules(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3049,6 +3055,103 @@ private fun handleDesignSystemTokenContract(id: Long, params: JsonObject, worksp
         }
         workspacePath.endsWith("bad-design-system-token-contract-snapshot-private") -> {
             value.addProperty("tokenValue", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleAccessibilityDesignRules(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE ACCESSIBILITY DESIGN RULES PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-accessibility-design-rules-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-28T14:30:00.000Z"
+    val candidateDigest = "sha256:${"3".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "accessibility-design-rules-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "accessibility-design-rules-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", accessibilityDesignRulesId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("targetCount", 12)
+            addProperty("ruleCount", 18)
+            addProperty("checkCount", 24)
+            addProperty("applicableRuleCount", 14)
+            addProperty("notApplicableRuleCount", 2)
+            addProperty("unresolvedRuleCount", 2)
+            addProperty("notAssessedCheckCount", 4)
+            addProperty("evidenceRecordedCheckCount", 3)
+            addProperty("humanReviewedCheckCount", 17)
+            addProperty("contradictedCheckCount", 1)
+            addProperty("representedRequirementCount", 10)
+            addProperty("unresolvedRequirementCount", 2)
+            addProperty("unresolvedOwnershipCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedQuestionCount", 3)
+            addProperty("catalogCompletenessState", "not-assessed")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply {
+                add("One or more accessibility rules retain unresolved applicability or impact")
+            })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "accessibility-design-rules-status-is-observational-and-does-not-establish-accessibility-conformance-rule-or-check-validity-legal-compliance-ownership-design-approval-baseline-readiness-implementation-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", accessibilityDesignRulesId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"4".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("targetCount", 12)
+            addProperty("ruleCount", 18)
+            addProperty("checkCount", 24)
+            addProperty("representedRequirementCount", 10)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-28T14:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-digests-only-not-rule-procedures-evidence-requirement-source-design-or-personal-content-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "accessibility-design-rules-projection-is-read-only-and-does-not-establish-accessibility-conformance-rule-or-check-validity-legal-compliance-ownership-design-approval-baseline-readiness-implementation-write-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-accessibility-design-rules-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("ruleCount", 19)
+        }
+        workspacePath.endsWith("bad-accessibility-design-rules-snapshot-private") -> {
+            value.addProperty("ruleProcedure", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

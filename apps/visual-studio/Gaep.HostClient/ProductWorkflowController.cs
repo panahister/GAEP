@@ -1784,6 +1784,71 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadAccessibilityDesignRulesAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadAccessibilityDesignRulesAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Accessibility Design Rules were read. Refresh the exact records.");
+        }
+        return RenderAccessibilityDesignRules(projection);
+    }
+
+    public static string RenderAccessibilityDesignRules(AccessibilityDesignRulesProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Accessibility Design Rules candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine(
+                $"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState} · " +
+                $"catalog: {projection.CatalogCompletenessState}")
+            .AppendLine($"Inventory: {projection.TargetCount} targets · {projection.RuleCount} rules · {projection.CheckCount} checks")
+            .AppendLine(
+                $"Rule applicability: {projection.ApplicableRuleCount} applicable · {projection.NotApplicableRuleCount} not applicable · " +
+                $"{projection.UnresolvedRuleCount} unresolved")
+            .AppendLine(
+                $"Check evidence: {projection.HumanReviewedCheckCount} human-reviewed · " +
+                $"{projection.EvidenceRecordedCheckCount} evidence-recorded · {projection.NotAssessedCheckCount} not assessed · " +
+                $"{projection.ContradictedCheckCount} contradicted")
+            .AppendLine(
+                $"Requirement coverage: {projection.RepresentedRequirementCount} represented · " +
+                $"{projection.UnresolvedRequirementCount} unresolved")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedOwnershipCount} ownership · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Accessibility Design Rules candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate inventory: {candidate.TargetCount} targets · {candidate.RuleCount} rules · " +
+                    $"{candidate.CheckCount} checks · {candidate.RepresentedRequirementCount} represented requirements · " +
+                    candidate.ReviewState);
+        }
+        else output.AppendLine("Accessibility Design Rules candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and digests only; no accessibility conformance, " +
+                "rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, " +
+                "implementation, write, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

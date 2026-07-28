@@ -1567,6 +1567,54 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Accessibility Design Rules projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("accessibility-design-rules-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readAccessibilityDesignRules(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("not-assessed", projection.catalogCompletenessState)
+            assertEquals(12, projection.targetCount)
+            assertEquals(18, projection.ruleCount)
+            assertEquals(24, projection.checkCount)
+            assertEquals(17, projection.humanReviewedCheckCount)
+            assertEquals(10, projection.candidate?.representedRequirementCount)
+
+            val rendered = RiderProductController(client).readAccessibilityDesignRules(entryId)
+            assertTrue(rendered.contains("GAEP governed Accessibility Design Rules candidate"))
+            assertTrue(rendered.contains("12 targets · 18 rules · 24 checks"))
+            assertTrue(rendered.contains("17 human-reviewed"))
+            assertTrue(rendered.contains("no accessibility conformance"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("ruleProcedure"))
+        }
+
+        listOf(
+            "bad-accessibility-design-rules-snapshot-digest",
+            "bad-accessibility-design-rules-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readAccessibilityDesignRules(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-accessibility-design-rules-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readAccessibilityDesignRules(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))
