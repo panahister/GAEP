@@ -23,6 +23,7 @@ import {
   p5HandoffPackageSchema,
   designApplicabilitySchema,
   designPersonaRoleModelSchema,
+  userJourneyModelSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -149,6 +150,8 @@ const directoryNames = [
   "design-applicability-history",
   "design-persona-role-models",
   "design-persona-role-model-history",
+  "user-journey-models",
+  "user-journey-model-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -960,6 +963,8 @@ export class GaepRepository {
       ["design-applicability-history", /^design-applicability-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["design-persona-role-models", /^[0-9a-f-]+\.json$/i],
       ["design-persona-role-model-history", /^design-persona-role-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["user-journey-models", /^[0-9a-f-]+\.json$/i],
+      ["user-journey-model-history", /^user-journey-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1135,6 +1140,10 @@ export class GaepRepository {
     if (/^design-persona-role-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^design-persona-role-model-history\/design-persona-role-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, designPersonaRoleModelSchema)
+    }
+    if (/^user-journey-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^user-journey-model-history\/user-journey-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, userJourneyModelSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

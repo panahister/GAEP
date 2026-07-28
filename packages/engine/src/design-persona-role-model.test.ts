@@ -5,6 +5,7 @@ import { join } from "node:path"
 import {
   designParticipantCategoryValues,
   designRoleKindValues,
+  userJourneyPathKindValues,
   initiativeApplicabilitySubjectDefinitions,
   stakeholderCategoryValues,
   type BusinessUnderstanding,
@@ -12,6 +13,7 @@ import {
   type DesignApplicability,
   type DesignApplicabilityInput,
   type DesignPersonaRoleModelInput,
+  type DesignPersonaRoleModel,
   type ExactSourceReference,
   type Initiative,
   type InitiativeApplicabilityMatrixInput,
@@ -21,6 +23,7 @@ import {
   type SourceRecordInput,
   type StakeholderModel,
   type StakeholderModelInput,
+  type UserJourneyModelInput,
 } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -460,6 +463,128 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  function journeyStep(kind: typeof userJourneyPathKindValues[number]) {
+    return {
+      key: `${kind}-step`,
+      sequence: 1,
+      touchpointKey: "portal-review",
+      personaKeys: ["release-change-owner"],
+      objective: "Reach the bounded next state while preserving visible evidence, uncertainty, and authority boundaries.",
+      participantAction: "The participant reviews the exact visible candidate state and chooses a non-authorizing navigation action.",
+      expectedExperience: "The interface explains the current state, omissions, and recovery path without claiming approval or readiness.",
+      expectedSystemResponse: "The system renders exact candidate metadata and preserves the governed source records without mutation.",
+      evidenceCues: ["Exact candidate identity and unresolved gaps remain visible"],
+      accessibilityChecks: ["The step is keyboard operable and has a textual status alternative"],
+      privacyChecks: ["Only purpose-limited candidate metadata is displayed"],
+      sources: [reference()],
+    }
+  }
+
+  function journeyPath(kind: typeof userJourneyPathKindValues[number]) {
+    return {
+      key: `${kind}-path`,
+      kind,
+      title: `${kind} release review path`,
+      personaKeys: ["release-change-owner"],
+      entryConditions: ["The exact current Product and Initiative context is available"],
+      steps: [journeyStep(kind)],
+      exitConditions: ["The participant can identify the next bounded state or explicit stop condition"],
+      relatedPathKeys: kind === "failure" ? ["recovery-path"] : kind === "recovery" ? ["failure-path"] : [],
+      evidenceState: "human-reviewed" as const,
+      sources: [reference()],
+      reviewedBy: { kind: "human" as const, id: actorId },
+      reviewedAt: "2026-07-28T09:00:00.000Z",
+      validationState: "not-established" as const,
+    }
+  }
+
+  async function journeyInput(
+    personaRole: DesignPersonaRoleModel,
+    overrides: Partial<UserJourneyModelInput> = {},
+  ): Promise<UserJourneyModelInput> {
+    const exact = await exactContext()
+    return {
+      initiativeId: initiative.id,
+      context: exact,
+      informationClassification: "internal",
+      title: "Customer portal User Journey candidate",
+      designApplicability: {
+        recordId: applicability.id,
+        revision: applicability.revision,
+        digest: canonicalDigest(applicability),
+        membershipDigest: applicability.membershipDigest,
+      },
+      designPersonaRoleModel: {
+        recordId: personaRole.id,
+        revision: personaRole.revision,
+        digest: canonicalDigest(personaRole),
+        membershipDigest: personaRole.membershipDigest,
+      },
+      journeys: [{
+        key: "release-readiness-review",
+        title: "Release readiness review",
+        purpose: "Help a release change owner understand exact candidate readiness evidence and recovery choices without granting approval.",
+        designScopeKeys: ["client-application.customer-portal"],
+        personaKeys: ["release-change-owner"],
+        designRoleKeys: ["portal-product-designer"],
+        participantCategories: ["change-owner"],
+        jobStatements: ["Understand whether the release candidate can proceed to accountable human review"],
+        intendedOutcomeKeys: ["bounded-review-decision"],
+        entryConditions: ["A current governed readiness candidate exists for the exact Initiative"],
+        touchpoints: [{
+          key: "portal-review",
+          label: "Portal review surface",
+          channel: "ide",
+          purpose: "Present exact candidate identity, evidence gaps, and recovery navigation for the bounded review job.",
+          personaKeys: ["release-change-owner"],
+          participantCategories: ["change-owner"],
+          designScopeKeys: ["client-application.customer-portal"],
+          accessibilityConsiderations: ["Keyboard operation and a complete textual alternative are required"],
+          inclusionConsiderations: ["Do not assume prior knowledge of GAEP terminology"],
+          privacyAndDataUse: {
+            dataCategories: ["candidate-metadata"],
+            purpose: "Support the exact release-readiness review without monitoring individual productivity.",
+            minimization: "Show only record identity, status, counts, digests, gaps, and declared next-step guidance.",
+            retention: "Use the governed Product retention policy for candidate metadata.",
+            prohibitedUses: ["Individual productivity ranking is prohibited"],
+          },
+          fallback: "Provide the same bounded evidence and recovery instructions as a portable textual representation.",
+          sources: [reference()],
+          validationState: "not-established",
+        }],
+        paths: userJourneyPathKindValues.map(journeyPath),
+        successCriteria: ["The participant distinguishes candidate completeness from approval and identifies the next accountable review"],
+        failureIndicators: ["The participant cannot explain the stop condition or recovery path"],
+        accessibilityRequirements: ["All path states have keyboard and textual equivalents"],
+        inclusionRequirements: ["Language remains understandable without specialist GAEP vocabulary"],
+        burdenAndAttentionLimits: ["Only material deltas and unresolved gaps are foregrounded"],
+        contestability: {
+          path: "Challenge an incorrect journey, touchpoint, or authority assumption through an attributable review request.",
+          ownerPersonaKey: "release-change-owner",
+          escalation: "Hold design use and escalate unresolved evidence or authority disputes to the separate accountable Product authority.",
+          sources: [reference()],
+        },
+        sources: [reference()],
+        validationState: "not-established",
+      }],
+      scopeCoverage: [{
+        designScopeKey: "client-application.customer-portal",
+        status: "represented",
+        journeyKeys: ["release-readiness-review"],
+        rationale: "The exact customer portal design scope is represented by the evidence-linked release-readiness journey candidate.",
+        sources: [reference()],
+        approval: { state: "not-required", conditions: [] },
+      }],
+      unresolvedQuestions: [],
+      limitations: ["Journey observation, validation, design approval, readiness, implementation, and action authority are not established"],
+      reviewState: "ready-for-human-review",
+      journeyValidationState: "not-established",
+      designApprovalState: "not-established",
+      implementationAuthorityState: "not-established",
+      ...overrides,
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -599,5 +724,141 @@ describe("Design Persona and Role service", () => {
     const missingDesigner = await input()
     missingDesigner.designRoles = [] as never
     await expect(engine.designPersonaRoleModel.create(missingDesigner, actorId)).rejects.toThrow()
+  })
+
+  it("persists, assesses, projects, and revises exact User Journey guidance without behavioral, validation, or design authority", async () => {
+    const personaRole = await engine.designPersonaRoleModel.create(await input(), actorId)
+    const firstInput = await journeyInput(personaRole)
+    const candidate = await engine.userJourneyModel.create(firstInput, actorId)
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      journeys: [{ validationState: "not-established" }],
+      journeyValidationState: "not-established",
+      designApprovalState: "not-established",
+      implementationAuthorityState: "not-established",
+      authorityBoundary: expect.stringContaining("does-not-prove-observed-behavior"),
+    })
+    expect(await engine.userJourneyModel.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      journeyCount: 1,
+      touchpointCount: 1,
+      primaryPathCount: 1,
+      successPathCount: 1,
+      failurePathCount: 1,
+      recoveryPathCount: 1,
+      representedScopeCount: 1,
+      unresolvedScopeCount: 0,
+      weakEvidencePathCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      reviewState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.userJourneyModel.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: { id: candidate.id, revision: 1, journeyCount: 1, touchpointCount: 1 },
+      privacyBoundary: expect.stringContaining("not-journey-step-touchpoint-persona-source-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-prove-observed-behavior-validate-journeys"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Individual productivity ranking")
+    expect(JSON.stringify(projection)).not.toContain("pilot-change-owner")
+
+    const revisedInput = await journeyInput(personaRole, {
+      limitations: [
+        "Journey observation, validation, design approval, readiness, implementation, and action authority are not established",
+        "The candidate remains subject to independent accountable human review",
+      ].sort(),
+    })
+    const revised = await engine.userJourneyModel.revise(candidate.id, candidate.revision, revisedInput, actorId)
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.userJourneyModel.listHistory(candidate.id)).map((record) => record.revision)).toEqual([2, 1])
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "user-journey.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        journeyCount: 1,
+        touchpointCount: 1,
+        pathKindCounts: { failure: 1, primary: 1, recovery: 1, success: 1 },
+        scopeCoverageStatusCounts: { represented: 1 },
+        reviewState: "ready-for-human-review",
+        journeyValidationState: "not-established",
+        designApprovalState: "not-established",
+        implementationAuthorityState: "not-established",
+        readinessAuthorityState: "not-established",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("fails User Journeys closed on stale dependencies, unknown persona or scope links, and superseded Source evidence", async () => {
+    const personaRole = await engine.designPersonaRoleModel.create(await input(), actorId)
+    const stale = await journeyInput(personaRole, {
+      designPersonaRoleModel: {
+        recordId: personaRole.id, revision: personaRole.revision,
+        digest: digest("f"), membershipDigest: personaRole.membershipDigest,
+      },
+    })
+    await expect(engine.userJourneyModel.create(stale, actorId)).rejects.toThrow("exact current Design Persona and Role")
+
+    const unknownPersona = await journeyInput(personaRole)
+    unknownPersona.journeys[0]!.personaKeys = ["unknown-persona"]
+    unknownPersona.journeys[0]!.contestability.ownerPersonaKey = "unknown-persona"
+    unknownPersona.journeys[0]!.touchpoints[0]!.personaKeys = ["unknown-persona"]
+    for (const path of unknownPersona.journeys[0]!.paths) {
+      path.personaKeys = ["unknown-persona"]
+      path.steps[0]!.personaKeys = ["unknown-persona"]
+    }
+    await expect(engine.userJourneyModel.create(unknownPersona, actorId)).rejects.toThrow("reference personas")
+
+    const unknownScope = await journeyInput(personaRole)
+    unknownScope.journeys[0]!.designScopeKeys = ["client-application.unknown"]
+    unknownScope.journeys[0]!.touchpoints[0]!.designScopeKeys = ["client-application.unknown"]
+    unknownScope.scopeCoverage[0]!.designScopeKey = "client-application.unknown"
+    await expect(engine.userJourneyModel.create(unknownScope, actorId)).rejects.toThrow("scope keys")
+
+    const candidate = await engine.userJourneyModel.create(await journeyInput(personaRole), actorId)
+    await engine.sourceGovernance.reviseSource(source.id, source.revision, sourceInput({
+      revisionIdentity: { kind: "resource-revision", value: "GAEP-P2-03@2" },
+      contentDigest: digest("b"),
+    }), actorId)
+    expect(await engine.userJourneyModel.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "user-journey.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("requires exact represented User Journey coverage for every materially applicable design scope", async () => {
+    const personaRole = await engine.designPersonaRoleModel.create(await input(), actorId)
+    const unresolved = await journeyInput(personaRole, {
+      scopeCoverage: [{
+        designScopeKey: "client-application.customer-portal",
+        status: "unresolved",
+        journeyKeys: [],
+        rationale: "The hostile candidate leaves exact material journey coverage unresolved pending accountable review.",
+        sources: [reference()],
+        approval: { state: "pending", conditions: ["Accountable human journey review is required"] },
+      }],
+      reviewState: "held",
+    })
+    await expect(engine.userJourneyModel.create(unresolved, actorId)).rejects.toThrow("requires represented User Journey coverage")
   })
 })
