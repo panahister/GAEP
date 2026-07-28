@@ -2,7 +2,7 @@
 // Real macOS acceptance for VS Code, Kiro, and Rider. All state is isolated under temporary
 // user-data/config/system/plugin directories; normal IDE settings are never read or changed.
 import { execFileSync, spawn } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, isAbsolute, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -123,7 +123,10 @@ async function acceptRider(bundle, target, manifest) {
   try {
     execFileSync("unzip", ["-oq", artifact, "-d", plugins], { stdio: "pipe" })
     result.steps.push("isolated-install-passed")
-    const descriptor = execFileSync("unzip", ["-p", artifact, "*/META-INF/plugin.xml"], { encoding: "utf8" })
+    // JetBrains packages plugin.xml inside the plugin JAR, not at the outer ZIP level.
+    const pluginJar = findFile(plugins, (name) => name.endsWith(".jar"))
+    if (!pluginJar) throw new Error("Rider plugin JAR is missing")
+    const descriptor = execFileSync("unzip", ["-p", pluginJar, "META-INF/plugin.xml"], { encoding: "utf8" })
     if (!descriptor.includes("<id>dev.gaep.platform</id>")) throw new Error("Rider plugin identity is missing")
     result.steps.push("plugin-identity-passed")
     writeFileSync(properties, riderProperties(work), "utf8")
@@ -145,6 +148,19 @@ async function acceptRider(bundle, target, manifest) {
     rmSync(work, { recursive: true, force: true })
   }
   return result
+}
+
+function findFile(root, predicate) {
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const path = join(root, entry.name)
+    if (entry.isDirectory()) {
+      const nested = findFile(path, predicate)
+      if (nested) return nested
+    } else if (predicate(entry.name)) {
+      return path
+    }
+  }
+  return undefined
 }
 
 function waitForRiderPlugin(child, logPath, timeoutMs) {
