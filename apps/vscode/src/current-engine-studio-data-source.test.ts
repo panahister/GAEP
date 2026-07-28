@@ -34,6 +34,7 @@ import {
   type ResponsiveMultiPlatformTargetsProjection,
   type ManualFigmaExecutionPathProjection,
   type FigmaMcpCapabilityDiscoveryProjection,
+  type FigmaReadSnapshotProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2192,6 +2193,63 @@ function figmaMcpCapabilityDiscoveryProjection(): FigmaMcpCapabilityDiscoveryPro
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function figmaReadSnapshotProjection(): FigmaReadSnapshotProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "figma-read-snapshot-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "f8f8f8f8-f8f8-48f8-88f8-f8f8f8f8f8f8", revision: 2, digest: `sha256:${"a".repeat(64)}` as const },
+    fileCount: 2,
+    componentCount: 12,
+    variableCollectionCount: 3,
+    variableCount: 18,
+    sourceRecordedItemCount: 5,
+    humanReviewedItemCount: 25,
+    notAssessedItemCount: 5,
+    staleFileCount: 1,
+    unknownFreshnessFileCount: 1,
+    unresolvedTypeCount: 2,
+    unresolvedOwnershipCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    snapshotCompletenessState: "partial" as const,
+    provenanceState: "partial" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more source-recorded snapshot observations require human review"],
+    assessedAt: "2026-07-28T20:30:00.000Z",
+    authorityBoundary: "figma-read-snapshot-status-is-observational-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-authorize-write-validate-or-approve-design-establish-a-baseline-readiness-implementation-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "figma-read-snapshot-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"b".repeat(64)}` as const,
+      state: "candidate" as const,
+      fileCount: status.fileCount,
+      componentCount: status.componentCount,
+      variableCollectionCount: status.variableCollectionCount,
+      variableCount: status.variableCount,
+      reviewState: status.reviewState,
+      updatedAt: "2026-07-28T20:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-file-component-variable-names-external-identities-values-source-content-personal-content-secrets-credentials-or-permissions" as const,
+    authorityBoundary: "figma-read-snapshot-projection-is-read-only-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-authorize-write-validate-or-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2848,6 +2906,7 @@ interface HarnessOptions {
   responsiveMultiPlatformTargetsProjection?: ResponsiveMultiPlatformTargetsProjection
   manualFigmaExecutionPathProjection?: ManualFigmaExecutionPathProjection
   figmaMcpCapabilityDiscoveryProjection?: FigmaMcpCapabilityDiscoveryProjection
+  figmaReadSnapshotProjection?: FigmaReadSnapshotProjection
   commandResult?: unknown
 }
 
@@ -3103,6 +3162,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.figmaMcpCapabilityDiscoveryProjection ? {
       figmaMcpCapabilityDiscovery: {
         project: async () => options.figmaMcpCapabilityDiscoveryProjection!,
+      },
+    } : {}),
+    ...(options.figmaReadSnapshotProjection ? {
+      figmaReadSnapshot: {
+        project: async () => options.figmaReadSnapshotProjection!,
       },
     } : {}),
   }
@@ -3970,6 +4034,32 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private tool name|private schema|private permission|private limit|private version|private source content|private figma content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Figma Read Snapshot metadata on the native scope page", async () => {
+    const projection = figmaReadSnapshotProjection()
+    const { source } = harness({ figmaReadSnapshotProjection: projection })
+    const snapshot = await source.readSnapshot("scope")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "figma-read-snapshot")).toMatchObject({
+      id: "figma-read-snapshot",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          inventory: "2 files · 12 components · 3 variable collections · 18 variables",
+          evidence: "25 human-reviewed · 5 source-recorded · 5 not assessed",
+          freshness: "1 stale at capture · 1 unknown freshness · 2 unresolved variable types",
+          assessment: "attention-required · held · snapshot partial · provenance partial",
+          gaps: "1 ownership gaps · 3 questions · 0 stale bindings · 2 stale Source references",
+          boundary: "Candidate identities, counts, statuses, and digests only; no Figma file, component, collection, variable, external identity, value, Source, personal, secret, credential, or permission content and no Figma connection or call, credential request, permission grant, external completeness claim, write authority, design validation or approval, baseline, readiness, implementation, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private figma file|private component|private collection|private variable|private external identity|private value|private source content|customer@example\.com|api_key/iu,
     )
   })
 

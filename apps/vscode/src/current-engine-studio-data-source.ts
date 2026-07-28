@@ -62,6 +62,7 @@ import type {
   ResponsiveMultiPlatformTargetsProjection,
   ManualFigmaExecutionPathProjection,
   FigmaMcpCapabilityDiscoveryProjection,
+  FigmaReadSnapshotProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -255,6 +256,9 @@ export interface CurrentStudioEngineReader {
   figmaMcpCapabilityDiscovery?: {
     project(initiativeId: string): Promise<FigmaMcpCapabilityDiscoveryProjection>
   }
+  figmaReadSnapshot?: {
+    project(initiativeId: string): Promise<FigmaReadSnapshotProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -326,6 +330,7 @@ interface ObservedStudioState {
   responsiveMultiPlatformTargetsProjections: Map<string, ResponsiveMultiPlatformTargetsProjection>
   manualFigmaExecutionPathProjections: Map<string, ManualFigmaExecutionPathProjection>
   figmaMcpCapabilityDiscoveryProjections: Map<string, FigmaMcpCapabilityDiscoveryProjection>
+  figmaReadSnapshotProjections: Map<string, FigmaReadSnapshotProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2180,6 +2185,57 @@ function figmaMcpCapabilityDiscoveryTable(state: ObservedStudioState): StudioTab
   }
 }
 
+function figmaReadSnapshotTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.figmaReadSnapshotProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        inventory: `${status.fileCount} files · ${status.componentCount} components · ${status.variableCollectionCount} variable collections · ${status.variableCount} variables`,
+        evidence: `${status.humanReviewedItemCount} human-reviewed · ${status.sourceRecordedItemCount} source-recorded · ${status.notAssessedItemCount} not assessed`,
+        freshness: `${status.staleFileCount} stale at capture · ${status.unknownFreshnessFileCount} unknown freshness · ${status.unresolvedTypeCount} unresolved variable types`,
+        assessment: `${status.state} · ${status.reviewState} · snapshot ${status.snapshotCompletenessState} · provenance ${status.provenanceState}`,
+        gaps: `${status.unresolvedOwnershipCount} ownership gaps · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, counts, statuses, and digests only; no Figma file, component, collection, variable, external identity, value, Source, personal, secret, credential, or permission content and no Figma connection or call, credential request, permission grant, external completeness claim, write authority, design validation or approval, baseline, readiness, implementation, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "figma-read-snapshot",
+    title: "Governed Figma Read Snapshot Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "inventory", label: "Privacy-safe inventory" },
+      { key: "evidence", label: "Evidence state" },
+      { key: "freshness", label: "Freshness and type gaps" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Figma Read Snapshot candidate",
+        "Create a source-backed read-only candidate through the governed engine workflow. This view does not connect to or call Figma, request credentials, grant permissions, prove external completeness, authorize writes, validate or approve design, establish a baseline or readiness, or authorize implementation or action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2209,6 +2265,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     responsiveMultiPlatformTargetsTable(state),
     manualFigmaExecutionPathTable(state),
     figmaMcpCapabilityDiscoveryTable(state),
+    figmaReadSnapshotTable(state),
   )
   if (route === "architecture") {
     relatedRecords.push(
@@ -4862,6 +4919,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       responsiveMultiPlatformTargetsProjections: new Map(),
       manualFigmaExecutionPathProjections: new Map(),
       figmaMcpCapabilityDiscoveryProjections: new Map(),
+      figmaReadSnapshotProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -6368,6 +6426,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "figma-mcp-capability-discovery-unavailable",
           "Figma MCP Capability Discovery metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "scope" && engine.figmaReadSnapshot) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.figmaReadSnapshot!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.figmaReadSnapshotProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Figma Read Snapshot projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `figma-read-snapshot-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Figma Read Snapshot metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "figma-read-snapshot-unavailable",
+          "Figma Read Snapshot metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
