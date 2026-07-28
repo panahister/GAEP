@@ -1,6 +1,7 @@
 using System.IO;
 using Gaep.HostClient;
 using Microsoft.VisualStudio.Extensibility;
+using Microsoft.VisualStudio.ProjectSystem.Query;
 
 namespace Gaep.VisualStudio;
 

@@ -10,7 +10,7 @@ namespace Gaep.VisualStudio;
 [VisualStudioContribution]
 public sealed class GaepShowToolWindowCommand : Command
 {
-    public override CommandConfiguration CommandConfiguration => new("GAEP: Open Provider/Model")
+    public override CommandConfiguration CommandConfiguration => new("%Gaep.VisualStudio.OpenProviderModel.DisplayName%")
     {
         Placements = new[] { CommandPlacement.KnownPlacements.ExtensionsMenu },
         Icon = new(ImageMoniker.KnownValues.ToolWindow, IconSettings.IconAndText),

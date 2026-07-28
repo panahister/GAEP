@@ -37,9 +37,14 @@ public sealed class GaepToolWindow : ToolWindow
         return this.control;
     }
 
-    public override Task DisposeAsync()
+    protected override void Dispose(bool isDisposing)
     {
-        this.control?.Dispose();
-        return base.DisposeAsync();
+        if (isDisposing)
+        {
+            this.control?.Dispose();
+            this.control = null;
+        }
+
+        base.Dispose(isDisposing);
     }
 }
