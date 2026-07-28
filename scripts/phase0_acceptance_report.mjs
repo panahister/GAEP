@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260728T103228Z-phase-2-information-architecture-packages.json",
-  conformance: "evidence/ide-conformance/20260728T103228Z-phase-2-information-architecture.json",
+  packages: "evidence/local-packages/20260728T111535Z-phase-2-screen-state-inventory-packages.json",
+  conformance: "evidence/ide-conformance/20260728T111535Z-phase-2-screen-state-inventory.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    informationArchitecture
+    screenStateInventory
+      ? {
+          id: "phase-2-screen-state-inventory-closure",
+          state: "not-established",
+          basis: "the governed Screen and State Inventory candidate is implemented locally across the shared engine and four host projections; real Product research, attributable human screen/state/variant review, route and scope coverage validation, native-host interaction, interaction and accessibility validation, design approval, Design Baseline and Product Owner acceptance remain incomplete",
+        }
+      : informationArchitecture
       ? {
           id: "phase-2-information-architecture-closure",
           state: "not-established",
@@ -299,7 +305,16 @@ export async function buildPhase0AcceptanceReport({
   const informationArchitecture = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "information-architecture" && capability.state === "implemented"))
-  const gaps = knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture })
+  const screenStateInventory = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "screen-state-inventory" && capability.state === "implemented"))
+  const gaps = knownGaps(inputs, {
+    designApplicability,
+    designPersonasRoles,
+    userJourneys,
+    informationArchitecture,
+    screenStateInventory,
+  })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
     "gaep-claude-p0-p4-acceptance-receipt",
@@ -316,8 +331,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: informationArchitecture
+    phase: screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: screenStateInventory
+      ? "phase-2-screen-state-inventory-local"
+      : informationArchitecture
       ? "phase-2-information-architecture-local"
       : userJourneys
       ? "phase-2-user-journeys-local"
@@ -367,7 +384,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: informationArchitecture
+    claimBoundary: screenStateInventory
+      ? "This report binds the exact governed Screen and State Inventory candidate lifecycle, exact Product, Initiative and Information Architecture dependencies, bounded platform targets, screens, entry/default/degraded/failure/recovery states, variants, exact navigation-route and design-scope coverage, evidence, accessibility, privacy, data-use and fallback semantics, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not prove UI completeness, platform parity, state reachability, interaction quality or accessibility, validate every route or scope, approve a design or platform target, establish a Design Baseline, prove real Product research, grant implementation authority, or establish native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : informationArchitecture
       ? "This report binds the exact governed Information Architecture candidate lifecycle, exact Product, Initiative, Design Applicability, Design Personas and Roles and User Journeys dependencies, canonical cycle-free content hierarchy, routes, exact design-scope and journey-touchpoint coverage, findability, comprehension and accessibility evidence states, privacy and data-use constraints, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not prove findability, comprehension or accessibility, validate content, approve a design scope or design, establish a Design Baseline, prove real Product research, grant implementation authority, or establish native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : userJourneys
       ? "This report binds the exact governed User Journeys candidate lifecycle, exact Design Applicability and Design Personas and Roles dependencies, explicit primary, success, failure and recovery path structure, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not prove observed behavior, validate a journey, approve a scope exception or design, establish a Design Baseline, prove real Product research, grant implementation authority, or establish native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
