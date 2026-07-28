@@ -103,6 +103,7 @@ import { AccessibilityDesignRulesService } from "./accessibility-design-rules.js
 import { ResponsiveMultiPlatformTargetsService } from "./responsive-multi-platform-targets.js"
 import { ManualFigmaExecutionPathService } from "./manual-figma-execution-path.js"
 import { FigmaMcpCapabilityDiscoveryService } from "./figma-mcp-capability-discovery.js"
+import { FigmaReadSnapshotService } from "./figma-read-snapshot.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -295,6 +296,7 @@ export class GaepEngine {
   readonly responsiveMultiPlatformTargets: ResponsiveMultiPlatformTargetsService
   readonly manualFigmaExecutionPath: ManualFigmaExecutionPathService
   readonly figmaMcpCapabilityDiscovery: FigmaMcpCapabilityDiscoveryService
+  readonly figmaReadSnapshot: FigmaReadSnapshotService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -617,6 +619,15 @@ export class GaepEngine {
       this.designApplicability,
       this.manualFigmaExecutionPath,
     )
+    this.figmaReadSnapshot = new FigmaReadSnapshotService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
+      this.designApplicability,
+      this.designSystemTokenContract,
+      this.figmaMcpCapabilityDiscovery,
+    )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
       this.adapters.set(adapter.id, adapter)
@@ -710,7 +721,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues] = await Promise.all([
+      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues] = await Promise.all([
         this.productStudio.healthIssues(),
         this.sourceGovernance.healthIssues(),
         this.businessUnderstanding.healthIssues(),
@@ -745,6 +756,7 @@ export class GaepEngine {
         this.responsiveMultiPlatformTargets.healthIssues(),
         this.manualFigmaExecutionPath.healthIssues(),
         this.figmaMcpCapabilityDiscovery.healthIssues(),
+        this.figmaReadSnapshot.healthIssues(),
       ])
       domainIssues = [
         ...productIssues,
@@ -781,6 +793,7 @@ export class GaepEngine {
         ...responsiveMultiPlatformTargetsIssues,
         ...manualFigmaExecutionPathIssues,
         ...figmaMcpCapabilityDiscoveryIssues,
+        ...figmaReadSnapshotIssues,
       ]
     } catch (error) {
       domainIssues = [{

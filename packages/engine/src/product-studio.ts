@@ -22,6 +22,7 @@ import {
   responsiveMultiPlatformTargetsSchema,
   manualFigmaExecutionPathSchema,
   figmaMcpCapabilityDiscoverySchema,
+  figmaReadSnapshotSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -100,6 +101,7 @@ import {
   type ResponsiveMultiPlatformTargets,
   type ManualFigmaExecutionPath,
   type FigmaMcpCapabilityDiscovery,
+  type FigmaReadSnapshot,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2281,6 +2283,16 @@ export class ProductStudioService {
       /^figma-mcp-capability-discovery-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       figmaMcpCapabilityDiscoverySchema,
     )
+    const figmaReadSnapshots = await this.listRecords(
+      "figma-read-snapshots",
+      /^[0-9a-f-]+\.json$/i,
+      figmaReadSnapshotSchema,
+    )
+    const figmaReadSnapshotHistory = await this.listRecords(
+      "figma-read-snapshot-history",
+      /^figma-read-snapshot-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      figmaReadSnapshotSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2367,6 +2379,8 @@ export class ProductStudioService {
       ...manualFigmaExecutionPathHistory,
       ...figmaMcpCapabilityDiscoveries,
       ...figmaMcpCapabilityDiscoveryHistory,
+      ...figmaReadSnapshots,
+      ...figmaReadSnapshotHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2685,6 +2699,13 @@ export class ProductStudioService {
       "figma-mcp-capability-discovery-candidate",
       figmaMcpCapabilityDiscoveryHistory,
       (record) => `figma-mcp-capability-discovery-history/figma-mcp-capability-discovery-${record.id}-r${record.revision}.json`,
+    )
+    append("figma-read-snapshots", "figma-read-snapshot-candidate", figmaReadSnapshots)
+    append(
+      "figma-read-snapshot-history",
+      "figma-read-snapshot-candidate",
+      figmaReadSnapshotHistory,
+      (record) => `figma-read-snapshot-history/figma-read-snapshot-${record.id}-r${record.revision}.json`,
     )
     append(
       "candidates",
@@ -3152,6 +3173,14 @@ export class ProductStudioService {
           `figma-mcp-capability-discovery-history/figma-mcp-capability-discovery-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Figma MCP Capability Discovery history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("figma-read-snapshot-history/")) {
+        const record = validated as FigmaReadSnapshot
+        const expectedHistoryPath =
+          `figma-read-snapshot-history/figma-read-snapshot-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Figma Read Snapshot history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4286,7 +4315,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4318,7 +4347,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -7154,7 +7183,7 @@ export class ProductStudioService {
     const figmaMcpCapabilityDiscoveryHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("figma-mcp-capability-discovery-history/"))
       .map(([, record]) => figmaMcpCapabilityDiscoverySchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactFigmaMcpCapabilityDiscoveries = validateVersionedBusinessRecords(
       figmaMcpCapabilityDiscoveries,
       figmaMcpCapabilityDiscoveryHistory,
       "Figma MCP Capability Discovery",
@@ -7243,6 +7272,135 @@ export class ProductStudioService {
         })))
         if (candidate.observation.catalogDigest !== observedCatalogDigest) {
           throw new Error(`Import Figma MCP Capability Discovery ${candidate.id} observed catalog digest is invalid`)
+        }
+      }
+    }
+
+    const figmaReadSnapshots = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("figma-read-snapshots/"))
+      .map(([, record]) => figmaReadSnapshotSchema.parse(record))
+    const figmaReadSnapshotHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("figma-read-snapshot-history/"))
+      .map(([, record]) => figmaReadSnapshotSchema.parse(record))
+    validateVersionedBusinessRecords(
+      figmaReadSnapshots,
+      figmaReadSnapshotHistory,
+      "Figma Read Snapshot",
+    )
+    for (const candidate of [...figmaReadSnapshots, ...figmaReadSnapshotHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        designApplicability: candidate.designApplicability,
+        designSystemTokenContract: candidate.designSystemTokenContract,
+        figmaMcpCapabilityDiscovery: candidate.figmaMcpCapabilityDiscovery,
+        capture: candidate.capture,
+        files: candidate.files,
+        components: candidate.components,
+        variableCollections: candidate.variableCollections,
+        variables: candidate.variables,
+        snapshotCompletenessState: candidate.snapshotCompletenessState,
+        provenanceState: candidate.provenanceState,
+        ownership: candidate.ownership,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        figmaConnectionAuthorityState: candidate.figmaConnectionAuthorityState,
+        credentialAuthorityState: candidate.credentialAuthorityState,
+        permissionGrantState: candidate.permissionGrantState,
+        figmaWriteAuthorityState: candidate.figmaWriteAuthorityState,
+        externalCompletenessState: candidate.externalCompletenessState,
+        designValidityState: candidate.designValidityState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Figma Read Snapshot ${candidate.id} membership digest is invalid`)
+      }
+      const applicability = exactDesignApplicability.get(
+        `${candidate.designApplicability.recordId}:${candidate.designApplicability.revision}:${candidate.designApplicability.digest}`,
+      )
+      const designSystem = exactDesignSystemTokenContracts.get(
+        `${candidate.designSystemTokenContract.recordId}:${candidate.designSystemTokenContract.revision}:${candidate.designSystemTokenContract.digest}`,
+      )
+      const discovery = exactFigmaMcpCapabilityDiscoveries.get(
+        `${candidate.figmaMcpCapabilityDiscovery.recordId}:${candidate.figmaMcpCapabilityDiscovery.revision}:${candidate.figmaMcpCapabilityDiscovery.digest}`,
+      )
+      if (!applicability || applicability.initiativeId !== candidate.initiativeId ||
+          applicability.membershipDigest !== candidate.designApplicability.membershipDigest ||
+          !designSystem || designSystem.initiativeId !== candidate.initiativeId ||
+          designSystem.membershipDigest !== candidate.designSystemTokenContract.membershipDigest ||
+          !discovery || discovery.initiativeId !== candidate.initiativeId ||
+          discovery.membershipDigest !== candidate.figmaMcpCapabilityDiscovery.membershipDigest) {
+        throw new Error(`Import Figma Read Snapshot ${candidate.id} has an unresolved exact governed binding`)
+      }
+      const hasMaterialFigmaScope = applicability.scopes.some((scope) => {
+        const figma = scope.decisions.find((decision) => decision.aspect === "figma")
+        return figma && [
+          "already-satisfied",
+          "conditionally-required",
+          "optional",
+          "recommended",
+          "required",
+          "reused",
+        ].includes(figma.status) && scope.designSource.modes.some((mode) => mode === "figma-design" || mode === "figma-make")
+      })
+      if (!hasMaterialFigmaScope) {
+        throw new Error(`Import Figma Read Snapshot ${candidate.id} lacks exact material Figma applicability`)
+      }
+      const payloadDigest = canonicalDigest({
+        files: candidate.files,
+        components: candidate.components,
+        variableCollections: candidate.variableCollections,
+        variables: candidate.variables,
+      })
+      if (candidate.capture.payloadDigest !== payloadDigest) {
+        throw new Error(`Import Figma Read Snapshot ${candidate.id} payload digest is invalid`)
+      }
+      const receiptDigest = canonicalDigest({
+        mode: candidate.capture.mode,
+        requestedToolKeys: candidate.capture.requestedToolKeys,
+        readEffectState: candidate.capture.readEffectState,
+        payloadDigest: candidate.capture.payloadDigest,
+        capturedAt: candidate.capture.capturedAt,
+        evidence: candidate.capture.evidence,
+        sources: candidate.capture.sources,
+      })
+      if (candidate.capture.receiptDigest !== receiptDigest) {
+        throw new Error(`Import Figma Read Snapshot ${candidate.id} capture receipt digest is invalid`)
+      }
+      if (candidate.capture.mode !== "figma-mcp-read-receipt" && candidate.capture.requestedToolKeys.length > 0) {
+        throw new Error(`Import Figma Read Snapshot ${candidate.id} binds tool keys outside an MCP read receipt`)
+      }
+      if (candidate.capture.mode === "figma-mcp-read-receipt") {
+        const tools = new Map(discovery.tools.map((tool) => [tool.key, tool]))
+        const observedCapabilities = new Set<string>()
+        for (const key of candidate.capture.requestedToolKeys) {
+          const tool = tools.get(key)
+          if (!tool || tool.availabilityState !== "advertised" || tool.effectClass !== "figma-read" ||
+              !["read-content", "read-metadata", "read-variables"].includes(tool.capabilityClass) ||
+              tool.permissions.some((permission) => permission.accessClass === "write")) {
+            throw new Error(`Import Figma Read Snapshot ${candidate.id} binds a non-read or write-permission tool`)
+          }
+          observedCapabilities.add(tool.capabilityClass)
+        }
+        const requiredCapabilities = new Set(["read-metadata"])
+        if (candidate.components.length > 0) requiredCapabilities.add("read-content")
+        if (candidate.variableCollections.length > 0 || candidate.variables.length > 0) requiredCapabilities.add("read-variables")
+        if ([...requiredCapabilities].some((capability) => !observedCapabilities.has(capability))) {
+          throw new Error(`Import Figma Read Snapshot ${candidate.id} lacks exact read capability coverage`)
+        }
+      }
+      const fileByKey = new Map(candidate.files.map((file) => [file.key, file]))
+      for (const item of [...candidate.components, ...candidate.variableCollections, ...candidate.variables]) {
+        const file = fileByKey.get(item.fileKey)
+        if (!file || item.provenance.externalVersion !== file.provenance.externalVersion ||
+            item.provenance.observedAt !== file.provenance.observedAt) {
+          throw new Error(`Import Figma Read Snapshot ${candidate.id} child observation does not bind its exact file version`)
         }
       }
     }
@@ -8145,6 +8303,10 @@ export class ProductStudioService {
     if (/^figma-mcp-capability-discoveries\/[0-9a-f-]+\.json$/i.test(path) ||
         /^figma-mcp-capability-discovery-history\/figma-mcp-capability-discovery-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return figmaMcpCapabilityDiscoverySchema
+    }
+    if (/^figma-read-snapshots\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^figma-read-snapshot-history\/figma-read-snapshot-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return figmaReadSnapshotSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||

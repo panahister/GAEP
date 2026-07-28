@@ -32,6 +32,7 @@ import {
   responsiveMultiPlatformTargetsSchema,
   manualFigmaExecutionPathSchema,
   figmaMcpCapabilityDiscoverySchema,
+  figmaReadSnapshotSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -176,6 +177,8 @@ const directoryNames = [
   "manual-figma-execution-path-history",
   "figma-mcp-capability-discoveries",
   "figma-mcp-capability-discovery-history",
+  "figma-read-snapshots",
+  "figma-read-snapshot-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -1005,6 +1008,8 @@ export class GaepRepository {
       ["manual-figma-execution-path-history", /^manual-figma-execution-path-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["figma-mcp-capability-discoveries", /^[0-9a-f-]+\.json$/i],
       ["figma-mcp-capability-discovery-history", /^figma-mcp-capability-discovery-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["figma-read-snapshots", /^[0-9a-f-]+\.json$/i],
+      ["figma-read-snapshot-history", /^figma-read-snapshot-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1216,6 +1221,10 @@ export class GaepRepository {
     if (/^figma-mcp-capability-discoveries\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^figma-mcp-capability-discovery-history\/figma-mcp-capability-discovery-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, figmaMcpCapabilityDiscoverySchema)
+    }
+    if (/^figma-read-snapshots\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^figma-read-snapshot-history\/figma-read-snapshot-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, figmaReadSnapshotSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

@@ -25,6 +25,8 @@ import {
   type DesignPersonaRoleModel,
   type ExactSourceReference,
   type FigmaMcpCapabilityDiscoveryInput,
+  type FigmaMcpCapabilityDiscovery,
+  type FigmaReadSnapshotInput,
   type Initiative,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
@@ -1705,6 +1707,168 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  async function figmaReadCapabilityDiscovery(manualPath: ManualFigmaExecutionPath): Promise<FigmaMcpCapabilityDiscovery> {
+    const discoveryInput = await figmaMcpCapabilityDiscoveryInput(manualPath)
+    const metadataTool = discoveryInput.tools.find((tool) => tool.key === "read-file-metadata")!
+    const writeTool = discoveryInput.tools.find((tool) => tool.key === "write-design-node")!
+    discoveryInput.tools = [
+      {
+        ...metadataTool,
+        key: "read-file-content",
+        toolName: "read_file_content",
+        capabilityClass: "read-content" as const,
+        schemaDigest: digest("5"),
+        evidenceDigests: [digest("6")],
+        limitations: ["Advertised content-read availability is not live Figma compatibility or completeness evidence"],
+      },
+      metadataTool,
+      {
+        ...metadataTool,
+        key: "read-variables",
+        toolName: "read_variables",
+        capabilityClass: "read-variables" as const,
+        schemaDigest: digest("7"),
+        evidenceDigests: [digest("8")],
+        limitations: ["Advertised variable-read availability is not live Figma compatibility or completeness evidence"],
+      },
+      writeTool,
+    ].sort((left, right) => left.key.localeCompare(right.key))
+    discoveryInput.observation.catalogDigest = canonicalDigest(discoveryInput.tools.map((tool) => ({
+      key: tool.key,
+      toolName: tool.toolName,
+      capabilityClass: tool.capabilityClass,
+      effectClass: tool.effectClass,
+      availabilityState: tool.availabilityState,
+      versionState: tool.versionState,
+      version: tool.version,
+      schemaDigest: tool.schemaDigest,
+      permissions: tool.permissions,
+      limits: tool.limits,
+    })))
+    return engine.figmaMcpCapabilityDiscovery.create(discoveryInput, actorId)
+  }
+
+  async function figmaReadSnapshotInput(
+    designSystem: DesignSystemTokenContract,
+    discovery: FigmaMcpCapabilityDiscovery,
+    overrides: Partial<FigmaReadSnapshotInput> = {},
+  ): Promise<FigmaReadSnapshotInput> {
+    const evidence = {
+      state: "human-reviewed" as const,
+      evidenceDigests: [digest("9")],
+      reviewedBy: { kind: "human" as const, id: actorId },
+      reviewedAt: "2026-07-28T20:00:00.000Z",
+    }
+    const provenance = (externalObjectId: string, content: string) => ({
+      provider: "figma" as const,
+      externalObjectId,
+      externalVersion: "version-42",
+      observedAt: "2026-07-28T19:55:00.000Z",
+      contentDigest: digest(content),
+      evidence,
+      sources: [reference()],
+    })
+    const files = [{
+      key: "product-ui",
+      name: "Product UI",
+      provenance: provenance("figma-file-1", "a"),
+      lastModifiedAt: "2026-07-28T19:45:00.000Z",
+      freshnessState: "current-at-capture" as const,
+      accessState: "read-only-observation" as const,
+      limitations: ["Current at capture does not establish current external state after capture"],
+    }]
+    const components = [{
+      key: "button-primary",
+      fileKey: "product-ui",
+      nodeId: "12:34",
+      name: "Button Primary",
+      componentKind: "component" as const,
+      componentKey: "component-key-1",
+      descriptionDigest: digest("b"),
+      propertyDefinitionDigest: digest("c"),
+      provenance: provenance("12:34", "d"),
+      evidenceState: "human-reviewed" as const,
+      sources: [reference()],
+    }]
+    const variableCollections = [{
+      key: "brand-tokens",
+      fileKey: "product-ui",
+      collectionId: "collection-1",
+      name: "Brand Tokens",
+      modeKeys: ["dark", "light"],
+      variableKeys: ["brand-color"],
+      provenance: provenance("collection-1", "e"),
+      evidenceState: "human-reviewed" as const,
+      sources: [reference()],
+    }]
+    const variables = [{
+      key: "brand-color",
+      fileKey: "product-ui",
+      collectionKey: "brand-tokens",
+      variableId: "variable-1",
+      name: "Brand Color",
+      resolvedType: "color" as const,
+      modeValueDigests: [
+        { modeKey: "dark", valueDigest: digest("f") },
+        { modeKey: "light", valueDigest: digest("0") },
+      ],
+      descriptionDigest: digest("1"),
+      provenance: provenance("variable-1", "2"),
+      evidenceState: "human-reviewed" as const,
+      sources: [reference()],
+    }]
+    const payloadDigest = canonicalDigest({ files, components, variableCollections, variables })
+    const captureWithoutReceipt = {
+      mode: "figma-mcp-read-receipt" as const,
+      requestedToolKeys: ["read-file-content", "read-file-metadata", "read-variables"],
+      readEffectState: "read-only" as const,
+      payloadDigest,
+      capturedAt: "2026-07-28T19:55:00.000Z",
+      evidence,
+      sources: [reference()],
+    }
+    return {
+      initiativeId: initiative.id,
+      context: await exactContext(),
+      informationClassification: "internal",
+      title: "Customer portal Figma Read Snapshot candidate",
+      designApplicability: {
+        recordId: applicability.id, revision: applicability.revision,
+        digest: canonicalDigest(applicability), membershipDigest: applicability.membershipDigest,
+      },
+      designSystemTokenContract: {
+        recordId: designSystem.id, revision: designSystem.revision,
+        digest: canonicalDigest(designSystem), membershipDigest: designSystem.membershipDigest,
+      },
+      figmaMcpCapabilityDiscovery: {
+        recordId: discovery.id, revision: discovery.revision,
+        digest: canonicalDigest(discovery), membershipDigest: discovery.membershipDigest,
+      },
+      capture: { ...captureWithoutReceipt, receiptDigest: canonicalDigest(captureWithoutReceipt) },
+      files,
+      components,
+      variableCollections,
+      variables,
+      snapshotCompletenessState: "candidate-observation-complete",
+      provenanceState: "exact",
+      ownership: { state: "assigned-candidate", owner: { kind: "role", id: "design-integration-owner" } },
+      unresolvedQuestions: [],
+      limitations: ["The source-backed snapshot does not prove current external completeness, design validity, approval, baseline, readiness, or action authority"],
+      reviewState: "ready-for-human-review",
+      figmaConnectionAuthorityState: "not-granted",
+      credentialAuthorityState: "not-granted",
+      permissionGrantState: "not-granted",
+      figmaWriteAuthorityState: "not-granted",
+      externalCompletenessState: "not-established",
+      designValidityState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-granted",
+      ...overrides,
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -3332,6 +3496,207 @@ describe("Design Persona and Role service", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "figma-mcp-capability-discovery.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, and revises provenance-bound Figma read snapshots without exposing content or granting authority", async () => {
+    const { inventory, requirement, requirements, designSystem, accessibility, responsive } =
+      await createManualFigmaExecutionPathPrerequisites()
+    const manualPath = await engine.manualFigmaExecutionPath.create(
+      await manualFigmaExecutionPathInput(
+        inventory, requirement, requirements, designSystem, accessibility, responsive,
+      ),
+      actorId,
+    )
+    const discovery = await figmaReadCapabilityDiscovery(manualPath)
+    const candidate = await engine.figmaReadSnapshot.create(
+      await figmaReadSnapshotInput(designSystem, discovery),
+      actorId,
+    )
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      capture: {
+        mode: "figma-mcp-read-receipt",
+        requestedToolKeys: ["read-file-content", "read-file-metadata", "read-variables"],
+        readEffectState: "read-only",
+      },
+      files: [{ key: "product-ui", accessState: "read-only-observation", freshnessState: "current-at-capture" }],
+      components: [{ key: "button-primary", fileKey: "product-ui", evidenceState: "human-reviewed" }],
+      variableCollections: [{ key: "brand-tokens", fileKey: "product-ui", variableKeys: ["brand-color"] }],
+      variables: [{ key: "brand-color", collectionKey: "brand-tokens", resolvedType: "color" }],
+      figmaConnectionAuthorityState: "not-granted",
+      credentialAuthorityState: "not-granted",
+      permissionGrantState: "not-granted",
+      figmaWriteAuthorityState: "not-granted",
+      externalCompletenessState: "not-established",
+      designValidityState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-granted",
+      authorityBoundary: expect.stringContaining("does-not-itself-connect-to-or-call-figma"),
+    })
+    expect(await engine.figmaReadSnapshot.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      fileCount: 1,
+      componentCount: 1,
+      variableCollectionCount: 1,
+      variableCount: 1,
+      sourceRecordedItemCount: 0,
+      humanReviewedItemCount: 4,
+      notAssessedItemCount: 0,
+      staleFileCount: 0,
+      unknownFreshnessFileCount: 0,
+      unresolvedTypeCount: 0,
+      unresolvedOwnershipCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      snapshotCompletenessState: "candidate-observation-complete",
+      provenanceState: "exact",
+      reviewState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.figmaReadSnapshot.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: {
+        id: candidate.id,
+        revision: 1,
+        fileCount: 1,
+        componentCount: 1,
+        variableCollectionCount: 1,
+        variableCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-figma-file-component-variable-names-external-identities-values"),
+      authorityBoundary: expect.stringContaining("does-not-connect-to-or-call-figma"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Product UI")
+    expect(JSON.stringify(projection)).not.toContain("figma-file-1")
+    expect(JSON.stringify(projection)).not.toContain("Button Primary")
+    expect(JSON.stringify(projection)).not.toContain("Brand Color")
+
+    const revisedInput = await figmaReadSnapshotInput(designSystem, discovery, {
+      limitations: [
+        "The candidate remains subject to independent supported-host and live-adapter validation",
+        "The source-backed snapshot does not prove current external completeness, design validity, approval, baseline, readiness, or action authority",
+      ],
+    })
+    const revised = await engine.figmaReadSnapshot.revise(candidate.id, candidate.revision, revisedInput, actorId)
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.figmaReadSnapshot.listHistory(candidate.id)).map((record) => record.revision)).toEqual([2, 1])
+
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `figma-read-snapshots/${candidate.id}.json`,
+      `figma-read-snapshot-history/figma-read-snapshot-${candidate.id}-r1.json`,
+      `figma-read-snapshot-history/figma-read-snapshot-${candidate.id}-r2.json`,
+    ]))
+    await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({
+      status: "compatible",
+      importMutation: "not-performed",
+    })
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "figma-read-snapshot.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        designApplicability: revised.designApplicability,
+        designSystemTokenContract: revised.designSystemTokenContract,
+        figmaMcpCapabilityDiscovery: revised.figmaMcpCapabilityDiscovery,
+        captureMode: "figma-mcp-read-receipt",
+        requestedToolKeys: ["read-file-content", "read-file-metadata", "read-variables"],
+        readEffectState: "read-only",
+        receiptDigest: revised.capture.receiptDigest,
+        payloadDigest: revised.capture.payloadDigest,
+        captureEvidenceState: "human-reviewed",
+        fileCount: 1,
+        componentCount: 1,
+        variableCollectionCount: 1,
+        variableCount: 1,
+        snapshotCompletenessState: "candidate-observation-complete",
+        provenanceState: "exact",
+        ownershipState: "assigned-candidate",
+        reviewState: "ready-for-human-review",
+        figmaConnectionAuthorityState: "not-granted",
+        credentialAuthorityState: "not-granted",
+        permissionGrantState: "not-granted",
+        figmaWriteAuthorityState: "not-granted",
+        externalCompletenessState: "not-established",
+        designValidityState: "not-established",
+        designApprovalState: "not-established",
+        designBaselineState: "not-established",
+        readinessState: "not-established",
+        implementationAuthorityState: "not-granted",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+    expect(JSON.stringify(events.at(-1))).not.toContain("Product UI")
+    expect(JSON.stringify(events.at(-1))).not.toContain("figma-file-1")
+    expect(JSON.stringify(events.at(-1))).not.toContain("Button Primary")
+  })
+
+  it("fails Figma read snapshots closed on stale bindings, forged payloads, write tools, missing read capability coverage, or changed upstream records", async () => {
+    const { inventory, requirement, requirements, designSystem, accessibility, responsive } =
+      await createManualFigmaExecutionPathPrerequisites()
+    const manualPath = await engine.manualFigmaExecutionPath.create(
+      await manualFigmaExecutionPathInput(
+        inventory, requirement, requirements, designSystem, accessibility, responsive,
+      ),
+      actorId,
+    )
+    const discovery = await figmaReadCapabilityDiscovery(manualPath)
+
+    const staleDiscovery = await figmaReadSnapshotInput(designSystem, discovery)
+    staleDiscovery.figmaMcpCapabilityDiscovery.digest = digest("f")
+    await expect(engine.figmaReadSnapshot.create(staleDiscovery, actorId))
+      .rejects.toThrow("exact current figmaMcpCapabilityDiscovery")
+
+    const forgedPayload = await figmaReadSnapshotInput(designSystem, discovery)
+    forgedPayload.capture.payloadDigest = digest("e")
+    await expect(engine.figmaReadSnapshot.create(forgedPayload, actorId))
+      .rejects.toThrow("payload digest must bind")
+
+    const writeTool = await figmaReadSnapshotInput(designSystem, discovery)
+    writeTool.capture.requestedToolKeys = ["read-file-content", "read-file-metadata", "read-variables", "write-design-node"]
+    const { receiptDigest: _writeReceipt, ...writeReceipt } = writeTool.capture
+    writeTool.capture.receiptDigest = canonicalDigest(writeReceipt)
+    await expect(engine.figmaReadSnapshot.create(writeTool, actorId))
+      .rejects.toThrow("only exact advertised read tools")
+
+    const missingCoverage = await figmaReadSnapshotInput(designSystem, discovery)
+    missingCoverage.capture.requestedToolKeys = ["read-file-metadata"]
+    const { receiptDigest: _coverageReceipt, ...coverageReceipt } = missingCoverage.capture
+    missingCoverage.capture.receiptDigest = canonicalDigest(coverageReceipt)
+    await expect(engine.figmaReadSnapshot.create(missingCoverage, actorId))
+      .rejects.toThrow("must cover exact advertised metadata, content, and variable read capabilities")
+
+    const candidate = await engine.figmaReadSnapshot.create(
+      await figmaReadSnapshotInput(designSystem, discovery), actorId,
+    )
+    const applicabilityInput = designApplicabilityInput()
+    applicabilityInput.scopes[0]!.designSource.modes = ["figma-design", "figma-make", "repository-native"]
+    applicability = await engine.designApplicability.revise(
+      applicability.id, applicability.revision, applicabilityInput, actorId,
+    )
+    expect(await engine.figmaReadSnapshot.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "figma-read-snapshot.binding-review-required",
       severity: "warning",
     }))
   })
