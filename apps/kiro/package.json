@@ -84,6 +84,7 @@
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
     "onCommand:gaepKiro.manualFigmaExecutionPath.inspect",
+    "onCommand:gaepKiro.figmaMcpCapabilityDiscovery.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -297,6 +298,10 @@
       {
         "command": "gaepKiro.manualFigmaExecutionPath.inspect",
         "title": "GAEP for Kiro: Inspect Governed Manual Figma Execution Path Candidate"
+      },
+      {
+        "command": "gaepKiro.figmaMcpCapabilityDiscovery.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Figma MCP Capability Discovery Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

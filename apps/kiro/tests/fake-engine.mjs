@@ -60,6 +60,7 @@ const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
 const manualFigmaExecutionPathId = "65656565-6565-4565-8565-656565656565"
+const figmaMcpCapabilityDiscoveryId = "66666666-6666-4666-8666-666666666666"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -161,6 +162,8 @@ input.on("line", (line) => {
       return readResponsiveMultiPlatformTargets(id, request.params)
     case "design.manualFigmaExecutionPath.snapshot":
       return readManualFigmaExecutionPath(id, request.params)
+    case "design.figmaMcpCapabilityDiscovery.snapshot":
+      return readFigmaMcpCapabilityDiscovery(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2351,6 +2354,77 @@ function readManualFigmaExecutionPath(id, params) {
   if (workspacePath.endsWith("bad-manual-figma-execution-path-snapshot-digest")) value.candidate.scopeCount = 4
   if (workspacePath.endsWith("bad-manual-figma-execution-path-snapshot-private")) {
     value.handoffContent = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readFigmaMcpCapabilityDiscovery(id, params) {
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"9".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "figma-mcp-capability-discovery-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: figmaMcpCapabilityDiscoveryId, revision: 2, digest: candidateDigest },
+    toolCount: 7,
+    advertisedToolCount: 5,
+    unavailableToolCount: 1,
+    unknownAvailabilityCount: 1,
+    readToolCount: 3,
+    writeToolCount: 2,
+    unknownEffectCount: 1,
+    notAssessedToolCount: 1,
+    sourceRecordedToolCount: 2,
+    humanReviewedToolCount: 4,
+    unresolvedPermissionCount: 2,
+    unresolvedLimitCount: 1,
+    unresolvedVersionCount: 3,
+    unresolvedOwnershipCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    catalogState: "candidate-observation-complete",
+    permissionModelState: "candidate-separated",
+    limitCatalogState: "not-assessed",
+    versionCatalogState: "not-assessed",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more source-recorded candidate observations require human review"],
+    assessedAt: "2026-07-28T19:30:00.000Z",
+    authorityBoundary: "figma-mcp-capability-discovery-status-is-observational-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "figma-mcp-capability-discovery-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: figmaMcpCapabilityDiscoveryId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"a".repeat(64)}`,
+      state: "candidate",
+      toolCount: 7,
+      advertisedToolCount: 5,
+      readToolCount: 3,
+      writeToolCount: 2,
+      reviewState: "held",
+      updatedAt: "2026-07-28T19:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-tool-names-schemas-permissions-limits-versions-source-content-personal-content-secrets-credentials-or-figma-content",
+    authorityBoundary: "figma-mcp-capability-discovery-projection-is-read-only-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-figma-mcp-capability-discovery-snapshot-binding")) content.initiative.id = figmaMcpCapabilityDiscoveryId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-figma-mcp-capability-discovery-snapshot-digest")) value.candidate.toolCount = 8
+  if (workspacePath.endsWith("bad-figma-mcp-capability-discovery-snapshot-private")) {
+    value.toolNames = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

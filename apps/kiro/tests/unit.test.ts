@@ -1878,6 +1878,59 @@ test("protocol-v2 client validates privacy-safe Manual Figma Execution Path proj
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 client validates privacy-safe Figma MCP Capability Discovery projections and rejects hostile responses", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-figma-mcp-capability-discovery-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-figma-mcp-capability-discovery-snapshot-binding",
+    "bad-figma-mcp-capability-discovery-snapshot-digest",
+    "bad-figma-mcp-capability-discovery-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readFigmaMcpCapabilityDiscovery(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.toolCount, 7)
+    assert.equal(projection.status.advertisedToolCount, 5)
+    assert.equal(projection.status.readToolCount, 3)
+    assert.equal(projection.status.writeToolCount, 2)
+    assert.equal(projection.status.humanReviewedToolCount, 4)
+    assert.equal(projection.candidate?.toolCount, 7)
+    assert.equal(
+      projection.authorityBoundary,
+      "figma-mcp-capability-discovery-projection-is-read-only-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"toolNames":'), false)
+    assert.equal(serialized.includes('"permissions":'), false)
+    assert.equal(serialized.includes('"limits":'), false)
+    assert.equal(serialized.includes('"versions":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readFigmaMcpCapabilityDiscovery(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")

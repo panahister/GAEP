@@ -33,6 +33,7 @@ import {
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
   manualFigmaExecutionPathProjectionSchema,
+  figmaMcpCapabilityDiscoveryProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
@@ -73,6 +74,7 @@ import {
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
   type ManualFigmaExecutionPathProjection,
+  type FigmaMcpCapabilityDiscoveryProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -788,6 +790,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = manualFigmaExecutionPathProjectionSchema.safeParse(
         await this.request("design.manualFigmaExecutionPath.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readFigmaMcpCapabilityDiscovery(initiativeValue: string): Promise<FigmaMcpCapabilityDiscoveryProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = figmaMcpCapabilityDiscoveryProjectionSchema.safeParse(
+        await this.request("design.figmaMcpCapabilityDiscovery.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

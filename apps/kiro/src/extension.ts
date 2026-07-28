@@ -34,6 +34,7 @@ import {
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
   type ManualFigmaExecutionPathProjection,
+  type FigmaMcpCapabilityDiscoveryProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -139,6 +140,7 @@ const commandIds = {
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
   manualFigmaExecutionPath: "gaepKiro.manualFigmaExecutionPath.inspect",
+  figmaMcpCapabilityDiscovery: "gaepKiro.figmaMcpCapabilityDiscovery.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -263,6 +265,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
     vscode.commands.registerCommand(commandIds.manualFigmaExecutionPath, (input?: unknown) => runUserCommand(() => showManualFigmaExecutionPath(pool, input))),
+    vscode.commands.registerCommand(commandIds.figmaMcpCapabilityDiscovery, (input?: unknown) => runUserCommand(() => showFigmaMcpCapabilityDiscovery(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1849,6 +1852,48 @@ async function showManualFigmaExecutionPath(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and digests only; this does not connect to Figma, prove execution or returned-design completeness, grant write authority, approve design, establish a baseline or readiness, or authorize implementation or action.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showFigmaMcpCapabilityDiscovery(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<FigmaMcpCapabilityDiscoveryProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Figma MCP Capability Discovery", "Initiative ID")
+  const projection = await client.readFigmaMcpCapabilityDiscovery(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Figma MCP Capability Discovery candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Catalogs: tools ${status.catalogState} · permissions ${status.permissionModelState} · limits ${status.limitCatalogState} · versions ${status.versionCatalogState}`,
+    `Inventory: ${status.toolCount} tool observations · ${status.advertisedToolCount} advertised · ${status.unavailableToolCount} not advertised · ${status.unknownAvailabilityCount} unknown`,
+    `Effects: ${status.readToolCount} read · ${status.writeToolCount} write · ${status.unknownEffectCount} unknown`,
+    `Evidence: ${status.humanReviewedToolCount} human-reviewed · ${status.sourceRecordedToolCount} source-recorded · ${status.notAssessedToolCount} not assessed`,
+    `Candidate gaps: ${status.unresolvedPermissionCount} permissions · ${status.unresolvedLimitCount} limits · ${status.unresolvedVersionCount} versions · ${status.unresolvedOwnershipCount} ownership · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate inventory: ${record.toolCount} tools · ${record.advertisedToolCount} advertised · ${record.readToolCount} read · ${record.writeToolCount} write · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and digests only; this does not connect to or call Figma, request credentials, grant permissions, establish live tool availability or compatibility, authorize writes, approve design, establish a baseline or readiness, or authorize implementation or action.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,
