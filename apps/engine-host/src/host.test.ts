@@ -1521,6 +1521,44 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "design-requirements-read-empty",
+      protocolVersion: 2,
+      method: "design.requirements.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-requirements-assess-empty",
+      protocolVersion: 2,
+      method: "design.requirements.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      requirementCount: 0,
+      representedOutcomeCount: 0,
+      unresolvedOutcomeCount: 0,
+      workItemCount: 0,
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-establish-requirement-validity-completeness-priority-approval"),
+    })
+    const designRequirementsProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-requirements-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.requirements.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: designRequirementsSnapshotDigest,
+      ...designRequirementsProjectionBody
+    } = designRequirementsProjection
+    expect(designRequirementsSnapshotDigest).toBe(canonicalDigest(designRequirementsProjectionBody))
+    expect(designRequirementsProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-requirement-outcome-work-item-design-target-source-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-establish-requirement-validity-completeness-priority-approval"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -1583,6 +1621,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "screen-state-inventory-v1-block",
       method: "design.screenStateInventory.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-requirements-v1-block",
+      method: "design.requirements.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
