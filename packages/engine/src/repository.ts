@@ -24,6 +24,7 @@ import {
   designApplicabilitySchema,
   designPersonaRoleModelSchema,
   userJourneyModelSchema,
+  informationArchitectureModelSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -152,6 +153,8 @@ const directoryNames = [
   "design-persona-role-model-history",
   "user-journey-models",
   "user-journey-model-history",
+  "information-architecture-models",
+  "information-architecture-model-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -965,6 +968,8 @@ export class GaepRepository {
       ["design-persona-role-model-history", /^design-persona-role-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["user-journey-models", /^[0-9a-f-]+\.json$/i],
       ["user-journey-model-history", /^user-journey-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["information-architecture-models", /^[0-9a-f-]+\.json$/i],
+      ["information-architecture-model-history", /^information-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1144,6 +1149,10 @@ export class GaepRepository {
     if (/^user-journey-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^user-journey-model-history\/user-journey-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, userJourneyModelSchema)
+    }
+    if (/^information-architecture-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^information-architecture-model-history\/information-architecture-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, informationArchitectureModelSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

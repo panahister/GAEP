@@ -18,12 +18,14 @@ import {
   type Initiative,
   type InitiativeApplicabilityMatrixInput,
   type InitiativeClassificationInput,
+  type InformationArchitectureModelInput,
   type Product,
   type SourceRecord,
   type SourceRecordInput,
   type StakeholderModel,
   type StakeholderModelInput,
   type UserJourneyModelInput,
+  type UserJourneyModel,
 } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -585,6 +587,128 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  function informationArchitectureRoute(kind: typeof userJourneyPathKindValues[number]) {
+    return {
+      key: `${kind}-route`,
+      label: `${kind} release review route`,
+      kind,
+      journeyKey: "release-readiness-review",
+      journeyPathKey: `${kind}-path`,
+      personaKeys: ["release-change-owner"],
+      entryNodeKey: "portal-review",
+      nodeKeys: ["portal-review"],
+      destinationNodeKey: "portal-review",
+      purpose: "Map the exact governed journey path to a bounded navigation route without claiming that participants can find or understand it.",
+      entryConditions: ["The exact current Product, Initiative, journey, and candidate architecture context is available"],
+      successCues: ["The exact current state and bounded next navigation choice are visible"],
+      failureCues: ["The participant cannot identify the current state or the bounded recovery route"],
+      recoveryRouteKeys: kind === "failure" ? ["recovery-route"] : [],
+      accessibilityChecks: ["The complete route has a keyboard-operable and textual representation"],
+      privacyChecks: ["Only purpose-limited candidate metadata is presented"],
+      fallback: "Provide the same bounded route, state, and recovery guidance through a portable textual representation.",
+      evidenceState: "human-reviewed" as const,
+      sources: [reference()],
+      reviewedBy: { kind: "human" as const, id: actorId },
+      reviewedAt: "2026-07-28T10:00:00.000Z",
+      validationState: "not-established" as const,
+    }
+  }
+
+  async function informationArchitectureInput(
+    personaRole: DesignPersonaRoleModel,
+    journeyModel: UserJourneyModel,
+    overrides: Partial<InformationArchitectureModelInput> = {},
+  ): Promise<InformationArchitectureModelInput> {
+    const exact = await exactContext()
+    return {
+      initiativeId: initiative.id,
+      context: exact,
+      informationClassification: "internal",
+      title: "Customer portal Information Architecture candidate",
+      designApplicability: {
+        recordId: applicability.id,
+        revision: applicability.revision,
+        digest: canonicalDigest(applicability),
+        membershipDigest: applicability.membershipDigest,
+      },
+      designPersonaRoleModel: {
+        recordId: personaRole.id,
+        revision: personaRole.revision,
+        digest: canonicalDigest(personaRole),
+        membershipDigest: personaRole.membershipDigest,
+      },
+      userJourneyModel: {
+        recordId: journeyModel.id,
+        revision: journeyModel.revision,
+        digest: canonicalDigest(journeyModel),
+        membershipDigest: journeyModel.membershipDigest,
+      },
+      contentNodes: [{
+        key: "portal-review",
+        label: "Portal review",
+        kind: "workspace",
+        position: 1,
+        purpose: "Organize the exact candidate evidence, status, limitations, and recovery navigation required for the bounded release-review journey.",
+        designScopeKeys: ["client-application.customer-portal"],
+        journeyKeys: ["release-readiness-review"],
+        touchpoints: [{ journeyKey: "release-readiness-review", touchpointKey: "portal-review" }],
+        personaKeys: ["release-change-owner"],
+        designRoleKeys: ["portal-product-designer"],
+        contentModel: {
+          contentType: "governed-review-workspace",
+          requiredElementKeys: ["candidate-identity", "current-state", "limitations", "recovery-navigation"],
+          optionalElementKeys: ["supporting-evidence-summary"],
+          ownerDesignRoleKeys: ["portal-product-designer"],
+          lifecycleStates: ["candidate", "held", "ready-for-human-review"],
+        },
+        findability: {
+          entryPointKeys: ["product-studio.users-jobs"],
+          labelAlternatives: ["Governed release review", "Release readiness evidence"],
+          searchTerms: ["candidate status", "release review"],
+          orientationCues: ["Exact Product and Initiative identity remain visible"],
+        },
+        accessibilityRequirements: ["Landmarks, headings, status, and navigation order have complete textual semantics"],
+        inclusionRequirements: ["Labels do not require prior knowledge of GAEP terminology"],
+        privacyAndDataUse: {
+          dataCategories: ["candidate-metadata"],
+          purpose: "Support the bounded release-review navigation job without monitoring individual productivity.",
+          minimization: "Display only record identity, status, counts, digests, limitations, and bounded route guidance.",
+          retention: "Use the governed Product retention policy for candidate metadata.",
+          prohibitedUses: ["Individual productivity ranking is prohibited"],
+        },
+        fallback: "Expose the same content hierarchy, labels, status, and routes in a portable textual representation.",
+        evidence: {
+          structure: "human-reviewed",
+          findability: "human-reviewed",
+          comprehension: "human-reviewed",
+          reviewedBy: { kind: "human", id: actorId },
+          reviewedAt: "2026-07-28T10:00:00.000Z",
+        },
+        sources: [reference()],
+        validationState: "not-established",
+      }],
+      navigationRoutes: userJourneyPathKindValues.map(informationArchitectureRoute),
+      scopeCoverage: [{
+        designScopeKey: "client-application.customer-portal",
+        status: "represented",
+        nodeKeys: ["portal-review"],
+        routeKeys: userJourneyPathKindValues.map((kind) => `${kind}-route`).sort(),
+        rationale: "The exact customer portal design scope is represented by a source-linked content node and all governed journey paths.",
+        sources: [reference()],
+        approval: { state: "not-required", conditions: [] },
+      }],
+      unresolvedQuestions: [],
+      limitations: ["Findability, comprehension, accessibility validation, content validation, design approval, readiness, implementation, and action authority are not established"],
+      reviewState: "ready-for-human-review",
+      findabilityValidationState: "not-established",
+      comprehensionValidationState: "not-established",
+      accessibilityValidationState: "not-established",
+      designApprovalState: "not-established",
+      implementationAuthorityState: "not-established",
+      ...overrides,
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -871,5 +995,140 @@ describe("Design Persona and Role service", () => {
       reviewState: "held",
     })
     await expect(engine.userJourneyModel.create(unresolved, actorId)).rejects.toThrow("requires represented User Journey coverage")
+  })
+
+  it("persists, assesses, projects, and revises exact Information Architecture without findability, comprehension, accessibility, design, or action authority", async () => {
+    const personaRole = await engine.designPersonaRoleModel.create(await input(), actorId)
+    const journeyModel = await engine.userJourneyModel.create(await journeyInput(personaRole), actorId)
+    const firstInput = await informationArchitectureInput(personaRole, journeyModel)
+    const candidate = await engine.informationArchitectureModel.create(firstInput, actorId)
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      contentNodes: [{ validationState: "not-established" }],
+      findabilityValidationState: "not-established",
+      comprehensionValidationState: "not-established",
+      accessibilityValidationState: "not-established",
+      designApprovalState: "not-established",
+      implementationAuthorityState: "not-established",
+      authorityBoundary: expect.stringContaining("does-not-prove-findability-comprehension-or-accessibility"),
+    })
+    expect(candidate.navigationRoutes.every((route) => route.validationState === "not-established")).toBe(true)
+    expect(await engine.informationArchitectureModel.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      nodeCount: 1,
+      rootNodeCount: 1,
+      routeCount: 4,
+      representedScopeCount: 1,
+      unresolvedScopeCount: 0,
+      weakEvidenceNodeCount: 0,
+      weakEvidenceRouteCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      reviewState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.informationArchitectureModel.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: { id: candidate.id, revision: 1, nodeCount: 1, rootNodeCount: 1, routeCount: 4 },
+      privacyBoundary: expect.stringContaining("not-node-route-content-persona-source-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-prove-findability-comprehension-or-accessibility"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("Individual productivity ranking")
+    expect(JSON.stringify(projection)).not.toContain("Governed release review")
+
+    const revisedInput = await informationArchitectureInput(personaRole, journeyModel, {
+      limitations: [
+        "Findability, comprehension, accessibility validation, content validation, design approval, readiness, implementation, and action authority are not established",
+        "The candidate remains subject to independent accountable human review",
+      ].sort(),
+    })
+    const revised = await engine.informationArchitectureModel.revise(candidate.id, candidate.revision, revisedInput, actorId)
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.informationArchitectureModel.listHistory(candidate.id)).map((record) => record.revision)).toEqual([2, 1])
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "information-architecture.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        designApplicability: revised.designApplicability,
+        designPersonaRoleModel: revised.designPersonaRoleModel,
+        userJourneyModel: revised.userJourneyModel,
+        nodeCount: 1,
+        rootNodeCount: 1,
+        routeCount: 4,
+        nodeKindCounts: { workspace: 1 },
+        routeKindCounts: { failure: 1, primary: 1, recovery: 1, success: 1 },
+        scopeCoverageStatusCounts: { represented: 1 },
+        reviewState: "ready-for-human-review",
+        findabilityValidationState: "not-established",
+        comprehensionValidationState: "not-established",
+        accessibilityValidationState: "not-established",
+        designApprovalState: "not-established",
+        implementationAuthorityState: "not-established",
+        readinessAuthorityState: "not-established",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("fails Information Architecture closed on stale dependencies, unknown journey touchpoints, and superseded Source evidence", async () => {
+    const personaRole = await engine.designPersonaRoleModel.create(await input(), actorId)
+    const journeyModel = await engine.userJourneyModel.create(await journeyInput(personaRole), actorId)
+    const stale = await informationArchitectureInput(personaRole, journeyModel, {
+      userJourneyModel: {
+        recordId: journeyModel.id,
+        revision: journeyModel.revision,
+        digest: digest("f"),
+        membershipDigest: journeyModel.membershipDigest,
+      },
+    })
+    await expect(engine.informationArchitectureModel.create(stale, actorId)).rejects.toThrow("exact current User Journey")
+
+    const unknownTouchpoint = await informationArchitectureInput(personaRole, journeyModel)
+    unknownTouchpoint.contentNodes[0]!.touchpoints[0]!.touchpointKey = "missing-touchpoint"
+    await expect(engine.informationArchitectureModel.create(unknownTouchpoint, actorId)).rejects.toThrow("exact current User Journey model")
+
+    const candidate = await engine.informationArchitectureModel.create(
+      await informationArchitectureInput(personaRole, journeyModel), actorId,
+    )
+    await engine.sourceGovernance.reviseSource(source.id, source.revision, sourceInput({
+      revisionIdentity: { kind: "resource-revision", value: "GAEP-P2-04@2" },
+      contentDigest: digest("b"),
+    }), actorId)
+    expect(await engine.informationArchitectureModel.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "information-architecture.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("requires represented Information Architecture coverage for every exact material journey path and touchpoint", async () => {
+    const personaRole = await engine.designPersonaRoleModel.create(await input(), actorId)
+    const journeyModel = await engine.userJourneyModel.create(await journeyInput(personaRole), actorId)
+    const incomplete = await informationArchitectureInput(personaRole, journeyModel)
+    incomplete.navigationRoutes = incomplete.navigationRoutes.filter((route) => route.kind !== "success")
+    incomplete.scopeCoverage[0]!.routeKeys = incomplete.scopeCoverage[0]!.routeKeys.filter((key) => key !== "success-route")
+    await expect(engine.informationArchitectureModel.create(incomplete, actorId)).rejects.toThrow("route every exact current User Journey path")
+
+    const missingTouchpoint = await informationArchitectureInput(personaRole, journeyModel)
+    missingTouchpoint.contentNodes[0]!.touchpoints = []
+    await expect(engine.informationArchitectureModel.create(missingTouchpoint, actorId)).rejects.toThrow("place every exact current User Journey touchpoint")
   })
 })
