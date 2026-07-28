@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260728T124152Z-phase-2-design-system-token-contract-packages.json",
-  conformance: "evidence/ide-conformance/20260728T124152Z-phase-2-design-system-token-contract.json",
+  packages: "evidence/local-packages/20260728T142800Z-phase-2-accessibility-design-rules-packages.json",
+  conformance: "evidence/ide-conformance/20260728T142800Z-phase-2-accessibility-design-rules.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    designSystemTokenContract
+    accessibilityDesignRules
+      ? {
+          id: "phase-2-accessibility-design-rules-closure",
+          state: "not-established",
+          basis: "the governed Accessibility Design Rules candidate is implemented locally across the shared engine and four host projections; real Product research, attributable human target, rule, check, evidence-state, ownership and requirement-coverage review, native-host interaction, accessibility testing, rule and check validation, legal review, design approval, Design Baseline and Product Owner acceptance remain incomplete",
+        }
+      : designSystemTokenContract
       ? {
           id: "phase-2-design-system-token-contract-closure",
           state: "not-established",
@@ -326,6 +332,9 @@ export async function buildPhase0AcceptanceReport({
   const designSystemTokenContract = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-system-token-contract" && capability.state === "implemented"))
+  const accessibilityDesignRules = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "accessibility-design-rules" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -334,6 +343,7 @@ export async function buildPhase0AcceptanceReport({
     screenStateInventory,
     designRequirements,
     designSystemTokenContract,
+    accessibilityDesignRules,
   })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
@@ -351,8 +361,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: designSystemTokenContract
+    phase: accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: accessibilityDesignRules
+      ? "phase-2-accessibility-design-rules-local"
+      : designSystemTokenContract
       ? "phase-2-design-system-token-contract-local"
       : designRequirements
       ? "phase-2-design-requirements-local"
@@ -408,7 +420,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: designSystemTokenContract
+    claimBoundary: accessibilityDesignRules
+      ? "This report binds the exact governed Accessibility Design Rules candidate lifecycle, exact Product, Initiative, Screen and State Inventory, Design Requirements, Design System and Token Contract, Sources and optional portable-design snapshot dependencies, bounded candidate target, rule, design-check, evidence-state, candidate-ownership and requirement-coverage metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not establish accessibility conformance, Rule or Design Check validity, legal compliance, ownership authority, design approval, a Design Baseline, real Product research, readiness, implementation, write or action authority, native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : designSystemTokenContract
       ? "This report binds the exact governed Design System and Token Contract candidate lifecycle, exact Product, Initiative, Design Applicability, Screen and State Inventory, Design Requirements and optional portable-design snapshot dependencies, bounded Design System, Token, Variable Collection, Variable, Component, candidate-ownership, requirement-coverage and accessibility-review metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not establish Design System, Token, Variable or Component validity, ownership authority, accessibility validity, design approval, a Design Baseline, real Product research, readiness, implementation, write or action authority, native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : designRequirements
       ? "This report binds the exact governed Design Requirements candidate lifecycle, exact Product, Initiative, Outcome Model and Screen and State Inventory dependencies, current Requirement records, exact Initiative Work Items, bounded outcome coverage, design targets, backlog dispositions and evidence, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not establish requirement validity, completeness, priority approval, satisfaction, backlog commitment, design approval, a Design Baseline, real Product research, implementation or action authority, native-host acceptance, Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
