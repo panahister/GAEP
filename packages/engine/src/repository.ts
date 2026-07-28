@@ -29,6 +29,7 @@ import {
   designRequirementsSchema,
   designSystemTokenContractSchema,
   accessibilityDesignRulesSchema,
+  responsiveMultiPlatformTargetsSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -167,6 +168,8 @@ const directoryNames = [
   "design-system-token-contracts-history",
   "accessibility-design-rules",
   "accessibility-design-rules-history",
+  "responsive-multi-platform-targets",
+  "responsive-multi-platform-targets-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -990,6 +993,8 @@ export class GaepRepository {
       ["design-system-token-contracts-history", /^design-system-token-contract-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["accessibility-design-rules", /^[0-9a-f-]+\.json$/i],
       ["accessibility-design-rules-history", /^accessibility-design-rules-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["responsive-multi-platform-targets", /^[0-9a-f-]+\.json$/i],
+      ["responsive-multi-platform-targets-history", /^responsive-multi-platform-targets-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1189,6 +1194,10 @@ export class GaepRepository {
     if (/^accessibility-design-rules\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^accessibility-design-rules-history\/accessibility-design-rules-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, accessibilityDesignRulesSchema)
+    }
+    if (/^responsive-multi-platform-targets\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^responsive-multi-platform-targets-history\/responsive-multi-platform-targets-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, responsiveMultiPlatformTargetsSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

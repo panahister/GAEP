@@ -11,6 +11,7 @@ import {
   type BusinessUnderstanding,
   type BusinessUnderstandingInput,
   type AccessibilityDesignRulesInput,
+  type AccessibilityDesignRules,
   type DesignApplicability,
   type DesignApplicabilityInput,
   type DesignRequirementsInput,
@@ -32,6 +33,7 @@ import {
   type SourceRecordInput,
   type ScreenStateInventoryInput,
   type ScreenStateInventory,
+  type ResponsiveMultiPlatformTargetsInput,
   type StakeholderModel,
   type StakeholderModelInput,
   type UserJourneyModelInput,
@@ -1300,6 +1302,134 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  async function createResponsiveMultiPlatformTargetsPrerequisites() {
+    const { inventory, requirement, requirements, designSystem } = await createAccessibilityDesignRulesPrerequisites()
+    const accessibility = await engine.accessibilityDesignRules.create(
+      await accessibilityDesignRulesInput(inventory, requirement, requirements, designSystem), actorId,
+    )
+    return { inventory, requirement, requirements, designSystem, accessibility }
+  }
+
+  async function responsiveMultiPlatformTargetsInput(
+    inventory: ScreenStateInventory,
+    requirement: Awaited<ReturnType<typeof engine.productStudio.readRequirement>>,
+    requirements: DesignRequirements,
+    designSystem: DesignSystemTokenContract,
+    accessibility: AccessibilityDesignRules,
+    overrides: Partial<ResponsiveMultiPlatformTargetsInput> = {},
+  ): Promise<ResponsiveMultiPlatformTargetsInput> {
+    const owner = { state: "assigned-candidate" as const, owner: { kind: "role" as const, id: "product-designer" } }
+    return {
+      initiativeId: initiative.id,
+      context: await exactContext(),
+      informationClassification: "internal",
+      title: "Customer portal Responsive and Multi-Platform Targets candidate",
+      screenStateInventory: {
+        recordId: inventory.id, revision: inventory.revision,
+        digest: canonicalDigest(inventory), membershipDigest: inventory.membershipDigest,
+      },
+      designRequirements: {
+        recordId: requirements.id, revision: requirements.revision,
+        digest: canonicalDigest(requirements), membershipDigest: requirements.membershipDigest,
+      },
+      designSystemTokenContract: {
+        recordId: designSystem.id, revision: designSystem.revision,
+        digest: canonicalDigest(designSystem), membershipDigest: designSystem.membershipDigest,
+      },
+      accessibilityDesignRules: {
+        recordId: accessibility.id, revision: accessibility.revision,
+        digest: canonicalDigest(accessibility), membershipDigest: accessibility.membershipDigest,
+      },
+      platformTargets: [{
+        key: "responsive-web-target",
+        platformKey: "responsive-web",
+        formFactors: ["desktop", "phone", "tablet"],
+        deliverySurfaces: ["responsive-web"],
+        inputModes: ["keyboard", "pointer", "touch"],
+        orientations: ["landscape", "portrait"],
+        contextClassKeys: ["compact", "wide"],
+        screenKeys: ["release-review"],
+        requirementKeys: [requirement.key],
+        ownership: owner,
+        sources: [reference()],
+        limitations: ["Candidate form-factor coverage does not prove responsive completeness or platform parity"],
+      }],
+      breakpoints: [{
+        key: "responsive-web-compact",
+        platformKey: "responsive-web",
+        contextClassKey: "compact",
+        basis: "container",
+        maximumInlineSizePxExclusive: 768,
+        rationale: "The compact candidate class preserves the exact governed review sequence below the declared transition edge.",
+        sources: [reference()],
+      }, {
+        key: "responsive-web-wide",
+        platformKey: "responsive-web",
+        contextClassKey: "wide",
+        basis: "container",
+        minimumInlineSizePx: 768,
+        rationale: "The wide candidate class permits a split presentation without changing task or authorization semantics.",
+        sources: [reference()],
+      }],
+      behaviors: [{
+        key: "release-review-layout",
+        title: "Release review adapts without changing task order",
+        kind: "layout",
+        applicability: "applicable",
+        platformKeys: ["responsive-web"],
+        breakpointKeys: ["responsive-web-compact", "responsive-web-wide"],
+        screenKeys: ["release-review"],
+        stateKeys: ["review-default"],
+        requirementKeys: [requirement.key],
+        accessibilityRuleKeys: ["keyboard-operation"],
+        adaptationRules: ["Collapse the wide candidate split view to one canonical ordered column in the compact class"],
+        preservationRules: ["Preserve content priority, task order, authorization meaning, focus order, and recovery access"],
+        ownership: owner,
+        rationale: "The governed screen must retain one semantic task sequence across both exact candidate container classes.",
+        sources: [reference()],
+      }],
+      checks: [{
+        key: "release-review-compact-check",
+        behaviorKey: "release-review-layout",
+        platformKey: "responsive-web",
+        breakpointKey: "responsive-web-compact",
+        screenKey: "release-review",
+        stateKey: "review-default",
+        method: "hybrid",
+        evidenceState: "human-reviewed",
+        observation: "evidence-supports",
+        evidenceDigests: [digest("b")],
+        reviewedBy: { kind: "human", id: actorId },
+        reviewedAt: "2026-07-28T15:00:00.000Z",
+        procedure: "Inspect the compact candidate layout and recorded automation evidence for semantic order, focus continuity, overflow, and recovery access.",
+        sources: [reference()],
+      }],
+      requirementCoverage: [{
+        requirementKey: requirement.key,
+        state: "represented",
+        behaviorKeys: ["release-review-layout"],
+        rationale: "The exact current Design Requirement is represented by the candidate cross-container release-review behavior.",
+        sources: [reference()],
+      }],
+      targetCatalogState: "candidate-complete",
+      breakpointCatalogState: "candidate-complete",
+      behaviorCatalogState: "candidate-complete",
+      unresolvedQuestions: [],
+      limitations: ["Responsive completeness, platform parity, breakpoint and behavior validity, accessibility, approval, baseline, readiness, and implementation remain not established"],
+      reviewState: "ready-for-human-review",
+      responsiveCompletenessState: "not-established",
+      platformParityState: "not-established",
+      breakpointValidityState: "not-established",
+      behaviorValidityState: "not-established",
+      accessibilityConformanceState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-established",
+      ...overrides,
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -2350,6 +2480,173 @@ describe("Design Persona and Role service", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "accessibility-design-rules.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, and revises exact Responsive and Multi-Platform Targets without completeness, parity, validity, approval, readiness, or action authority", async () => {
+    const { inventory, requirement, requirements, designSystem, accessibility } =
+      await createResponsiveMultiPlatformTargetsPrerequisites()
+    const candidate = await engine.responsiveMultiPlatformTargets.create(
+      await responsiveMultiPlatformTargetsInput(inventory, requirement, requirements, designSystem, accessibility), actorId,
+    )
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      platformTargets: [{ platformKey: "responsive-web", ownership: { state: "assigned-candidate" } }],
+      breakpoints: [{ contextClassKey: "compact" }, { contextClassKey: "wide" }],
+      behaviors: [{ applicability: "applicable", kind: "layout", accessibilityRuleKeys: ["keyboard-operation"] }],
+      checks: [{ method: "hybrid", evidenceState: "human-reviewed", observation: "evidence-supports" }],
+      responsiveCompletenessState: "not-established",
+      platformParityState: "not-established",
+      breakpointValidityState: "not-established",
+      behaviorValidityState: "not-established",
+      accessibilityConformanceState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-established",
+      authorityBoundary: expect.stringContaining("do-not-establish-responsive-completeness-platform-parity"),
+    })
+    expect(await engine.responsiveMultiPlatformTargets.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      platformTargetCount: 1,
+      breakpointCount: 2,
+      behaviorCount: 1,
+      checkCount: 1,
+      applicableBehaviorCount: 1,
+      unresolvedBehaviorCount: 0,
+      notAssessedCheckCount: 0,
+      evidenceRecordedCheckCount: 0,
+      humanReviewedCheckCount: 1,
+      contradictedCheckCount: 0,
+      representedRequirementCount: 1,
+      unresolvedRequirementCount: 0,
+      unresolvedOwnershipCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      targetCatalogState: "candidate-complete",
+      breakpointCatalogState: "candidate-complete",
+      behaviorCatalogState: "candidate-complete",
+      reviewState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.responsiveMultiPlatformTargets.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: {
+        id: candidate.id,
+        revision: 1,
+        platformTargetCount: 1,
+        breakpointCount: 2,
+        behaviorCount: 1,
+        checkCount: 1,
+        representedRequirementCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-breakpoint-rules-behavior-procedures-evidence-requirement-source-design-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-establish-responsive-completeness-platform-parity"),
+    })
+    expect(JSON.stringify(projection)).not.toContain("release-review-layout")
+    expect(JSON.stringify(projection)).not.toContain("responsive-web-compact")
+
+    const revisedInput = await responsiveMultiPlatformTargetsInput(
+      inventory, requirement, requirements, designSystem, accessibility,
+      { limitations: [
+        "Responsive completeness, platform parity, breakpoint and behavior validity, accessibility, approval, baseline, readiness, and implementation remain not established",
+        "The candidate matrix remains subject to independent attributable human validation on supported platforms",
+      ].sort() },
+    )
+    const revised = await engine.responsiveMultiPlatformTargets.revise(candidate.id, candidate.revision, revisedInput, actorId)
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.responsiveMultiPlatformTargets.listHistory(candidate.id)).map((record) => record.revision)).toEqual([2, 1])
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "responsive-multi-platform-targets.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        screenStateInventory: revised.screenStateInventory,
+        designRequirements: revised.designRequirements,
+        designSystemTokenContract: revised.designSystemTokenContract,
+        accessibilityDesignRules: revised.accessibilityDesignRules,
+        platformTargetCount: 1,
+        breakpointCount: 2,
+        behaviorCount: 1,
+        checkCount: 1,
+        targetCatalogState: "candidate-complete",
+        breakpointCatalogState: "candidate-complete",
+        behaviorCatalogState: "candidate-complete",
+        reviewState: "ready-for-human-review",
+        responsiveCompletenessState: "not-established",
+        platformParityState: "not-established",
+        breakpointValidityState: "not-established",
+        behaviorValidityState: "not-established",
+        accessibilityConformanceState: "not-established",
+        designApprovalState: "not-established",
+        designBaselineState: "not-established",
+        readinessState: "not-established",
+        implementationAuthorityState: "not-established",
+        ownershipAuthorityState: "not-established",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+  })
+
+  it("fails Responsive and Multi-Platform Targets closed on stale bindings, unknown context classes, or mismatched Requirement coverage", async () => {
+    const { inventory, requirement, requirements, designSystem, accessibility } =
+      await createResponsiveMultiPlatformTargetsPrerequisites()
+    const staleAccessibility = await responsiveMultiPlatformTargetsInput(
+      inventory, requirement, requirements, designSystem, accessibility,
+      { accessibilityDesignRules: {
+        recordId: accessibility.id,
+        revision: accessibility.revision,
+        digest: digest("f"),
+        membershipDigest: accessibility.membershipDigest,
+      } },
+    )
+    await expect(engine.responsiveMultiPlatformTargets.create(staleAccessibility, actorId))
+      .rejects.toThrow("exact current Accessibility Design Rules")
+
+    const unknownContext = await responsiveMultiPlatformTargetsInput(
+      inventory, requirement, requirements, designSystem, accessibility,
+    )
+    unknownContext.breakpoints[0]!.contextClassKey = "unknown-context"
+    await expect(engine.responsiveMultiPlatformTargets.create(unknownContext, actorId))
+      .rejects.toThrow("exact current platform context classes")
+
+    const mismatchedCoverage = await responsiveMultiPlatformTargetsInput(
+      inventory, requirement, requirements, designSystem, accessibility,
+    )
+    mismatchedCoverage.behaviors[0]!.requirementKeys = []
+    await expect(engine.responsiveMultiPlatformTargets.create(mismatchedCoverage, actorId))
+      .rejects.toThrow("reconcile to exact behavior Requirement links")
+
+    const candidate = await engine.responsiveMultiPlatformTargets.create(
+      await responsiveMultiPlatformTargetsInput(inventory, requirement, requirements, designSystem, accessibility), actorId,
+    )
+    const revisedAccessibilityInput = await accessibilityDesignRulesInput(inventory, requirement, requirements, designSystem, {
+      limitations: [
+        "Accessibility conformance, rule and check validity, legal compliance, ownership authority, design approval, baseline, readiness, and implementation remain not established",
+        "Accessibility Design Rules changed after the responsive target matrix was created",
+      ].sort((left, right) => left.localeCompare(right)),
+    })
+    await engine.accessibilityDesignRules.revise(accessibility.id, accessibility.revision, revisedAccessibilityInput, actorId)
+    expect(await engine.responsiveMultiPlatformTargets.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "responsive-multi-platform-targets.binding-review-required",
       severity: "warning",
     }))
   })
