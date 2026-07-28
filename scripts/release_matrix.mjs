@@ -3,6 +3,7 @@
 // them into the canonical local bundle. It never relabels a cross-target artifact and never reports a
 // native cross-build as built without producing it. `--target current` resolves the real OS/arch.
 import { execFileSync } from "node:child_process"
+import { readFileSync, writeFileSync } from "node:fs"
 
 import {
   CHANGE_SET_ID, VERSION, SCHEMA_VERSION, repoRoot, bundleRoot, canonicalTarget, SEA_TARGET, TARGET_OS,
@@ -22,56 +23,67 @@ if (!IDES_BY_TARGET[target]) { process.stderr.write(`Unknown target: ${target}\n
 const outRoot = join(repoRoot, "dist", "phase0", "cs02")
 const bundle = bundleRoot()
 const targetDir = join(bundle, target)
-const sourceIdentity = await currentSourceIdentity()
-const observedAt = new Date().toISOString()
+// release:cs02 refreshes two tracked provenance files as part of its standalone workflow. A local
+// matrix build only consumes its binary outputs, so preserve those files byte-for-byte; otherwise
+// every local bundle build dirties Git and causes a pointless provenance-commit/CI loop.
+const trackedProvenance = [join(outRoot, "package-manifest.json"), join(outRoot, "SHA256SUMS.txt")]
+  .filter(existsSync)
+  .map((path) => ({ path, bytes: readFileSync(path) }))
 
-// Build the platform-neutral VS Code + Kiro VSIX and the shared engine-host once (release:cs02).
-execFileSync("npm", ["run", "release:cs02"], { cwd: repoRoot, stdio: "inherit" })
+try {
+  const sourceIdentity = await currentSourceIdentity()
+  const observedAt = new Date().toISOString()
 
-// If this host matches the requested target, build the native darwin SEA + Rider plugin.
-if (target === host && host === "macos-arm64") {
-  buildDarwinRider()
-}
+  // Build the platform-neutral VS Code + Kiro VSIX and the shared engine-host once (release:cs02).
+  execFileSync("npm", ["run", "release:cs02"], { cwd: repoRoot, stdio: "inherit" })
 
-const manifest = readManifest(bundle) ?? {
-  schemaVersion: SCHEMA_VERSION, changeSetId: CHANGE_SET_ID, version: VERSION,
-  sourceCommit: sourceIdentity.baseCommit, sourceTreeDigest: sourceIdentity.sourceTreeDigest, dirty: sourceIdentity.dirty,
-  generatedAt: observedAt, artifacts: [],
-}
-// A regenerated bundle must reflect the current source revision.
-manifest.sourceCommit = sourceIdentity.baseCommit
-manifest.sourceTreeDigest = sourceIdentity.sourceTreeDigest
-manifest.dirty = sourceIdentity.dirty
-manifest.generatedAt = observedAt
+  // If this host matches the requested target, build the native darwin SEA + Rider plugin.
+  if (target === host && host === "macos-arm64") {
+    buildDarwinRider()
+  }
 
-for (const ide of IDES_BY_TARGET[target]) {
-  const name = artifactName(ide, target)
-  const source = locateSource(ide, target)
-  const relPath = `${target}/${ide}/${name}`
-  const base = {
-    changeSetId: CHANGE_SET_ID, version: VERSION, ideHost: ide, targetOs: TARGET_OS[target].os, targetArch: TARGET_OS[target].arch,
-    artifactRelativePath: relPath, buildOrigin: "local", githubRunId: null, githubRunUrl: null,
+  const manifest = readManifest(bundle) ?? {
+    schemaVersion: SCHEMA_VERSION, changeSetId: CHANGE_SET_ID, version: VERSION,
     sourceCommit: sourceIdentity.baseCommit, sourceTreeDigest: sourceIdentity.sourceTreeDigest, dirty: sourceIdentity.dirty,
-    installTestState: "not-run", workflowTestState: "not-run", observedAt,
+    generatedAt: observedAt, artifacts: [],
   }
-  if (source && existsSync(source)) {
-    const dest = join(targetDir, ide, name)
-    mkdirSync(join(targetDir, ide), { recursive: true })
-    cpSync(source, dest)
-    upsertArtifact(manifest, { ...base, buildState: "built", artifactSha256: sha256File(dest), notBuiltReason: null, knownLimitation: knownLimitation(ide, target) })
-  } else {
-    // Truthful not-built: a native artifact this host cannot produce is never reported as built.
-    upsertArtifact(manifest, { ...base, buildState: "not-built", artifactSha256: null, notBuiltReason: notBuiltReason(ide, target, host), knownLimitation: null })
+  // A regenerated bundle must reflect the current source revision.
+  manifest.sourceCommit = sourceIdentity.baseCommit
+  manifest.sourceTreeDigest = sourceIdentity.sourceTreeDigest
+  manifest.dirty = sourceIdentity.dirty
+  manifest.generatedAt = observedAt
+
+  for (const ide of IDES_BY_TARGET[target]) {
+    const name = artifactName(ide, target)
+    const source = locateSource(ide, target)
+    const relPath = `${target}/${ide}/${name}`
+    const base = {
+      changeSetId: CHANGE_SET_ID, version: VERSION, ideHost: ide, targetOs: TARGET_OS[target].os, targetArch: TARGET_OS[target].arch,
+      artifactRelativePath: relPath, buildOrigin: "local", githubRunId: null, githubRunUrl: null,
+      sourceCommit: sourceIdentity.baseCommit, sourceTreeDigest: sourceIdentity.sourceTreeDigest, dirty: sourceIdentity.dirty,
+      installTestState: "not-run", workflowTestState: "not-run", observedAt,
+    }
+    if (source && existsSync(source)) {
+      const dest = join(targetDir, ide, name)
+      mkdirSync(join(targetDir, ide), { recursive: true })
+      cpSync(source, dest)
+      upsertArtifact(manifest, { ...base, buildState: "built", artifactSha256: sha256File(dest), notBuiltReason: null, knownLimitation: knownLimitation(ide, target) })
+    } else {
+      // Truthful not-built: a native artifact this host cannot produce is never reported as built.
+      upsertArtifact(manifest, { ...base, buildState: "not-built", artifactSha256: null, notBuiltReason: notBuiltReason(ide, target, host), knownLimitation: null })
+    }
   }
-}
 
-writeJsonAtomic(join(bundle, "bundle-manifest.json"), manifest)
-writeSha256Sums(bundle, manifest)
-writeTestKit(bundle, target)
+  writeJsonAtomic(join(bundle, "bundle-manifest.json"), manifest)
+  writeSha256Sums(bundle, manifest)
+  writeTestKit(bundle, target)
 
-process.stdout.write(`Collected ${target} into ${bundle}\n`)
-for (const a of manifest.artifacts.filter((x) => x.targetOs === TARGET_OS[target].os)) {
-  process.stdout.write(`  ${a.ideHost}: ${a.buildState}${a.notBuiltReason ? ` (${a.notBuiltReason})` : ""}\n`)
+  process.stdout.write(`Collected ${target} into ${bundle}\n`)
+  for (const a of manifest.artifacts.filter((x) => x.targetOs === TARGET_OS[target].os)) {
+    process.stdout.write(`  ${a.ideHost}: ${a.buildState}${a.notBuiltReason ? ` (${a.notBuiltReason})` : ""}\n`)
+  }
+} finally {
+  for (const file of trackedProvenance) writeFileSync(file.path, file.bytes)
 }
 
 // --- helpers ---
