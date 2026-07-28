@@ -46,6 +46,7 @@ private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-89
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
 private val manualFigmaExecutionPathId = UUID.fromString("72727272-7272-4272-8272-727272727272")
+private val figmaMcpCapabilityDiscoveryId = UUID.fromString("73737373-7373-4373-8373-737373737373")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -274,6 +275,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.manualFigmaExecutionPath.snapshot" -> handleManualFigmaExecutionPath(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.figmaMcpCapabilityDiscovery.snapshot" -> handleFigmaMcpCapabilityDiscovery(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3358,6 +3364,105 @@ private fun handleManualFigmaExecutionPath(id: Long, params: JsonObject, workspa
         }
         workspacePath.endsWith("bad-manual-figma-execution-path-snapshot-private") -> {
             value.addProperty("handoffContent", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleFigmaMcpCapabilityDiscovery(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE FIGMA MCP CAPABILITY DISCOVERY PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-figma-mcp-capability-discovery-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-28T19:30:00.000Z"
+    val candidateDigest = "sha256:${"9".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "figma-mcp-capability-discovery-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "figma-mcp-capability-discovery-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", figmaMcpCapabilityDiscoveryId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("toolCount", 7)
+            addProperty("advertisedToolCount", 5)
+            addProperty("unavailableToolCount", 1)
+            addProperty("unknownAvailabilityCount", 1)
+            addProperty("readToolCount", 3)
+            addProperty("writeToolCount", 2)
+            addProperty("unknownEffectCount", 1)
+            addProperty("notAssessedToolCount", 1)
+            addProperty("sourceRecordedToolCount", 2)
+            addProperty("humanReviewedToolCount", 4)
+            addProperty("unresolvedPermissionCount", 2)
+            addProperty("unresolvedLimitCount", 1)
+            addProperty("unresolvedVersionCount", 3)
+            addProperty("unresolvedOwnershipCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedQuestionCount", 3)
+            addProperty("catalogState", "candidate-observation-complete")
+            addProperty("permissionModelState", "candidate-separated")
+            addProperty("limitCatalogState", "not-assessed")
+            addProperty("versionCatalogState", "not-assessed")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more source-recorded candidate observations require human review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "figma-mcp-capability-discovery-status-is-observational-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", figmaMcpCapabilityDiscoveryId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"a".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("toolCount", 7)
+            addProperty("advertisedToolCount", 5)
+            addProperty("readToolCount", 3)
+            addProperty("writeToolCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-28T19:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-digests-only-not-tool-names-schemas-permissions-limits-versions-source-content-personal-content-secrets-credentials-or-figma-content",
+        )
+        addProperty(
+            "authorityBoundary",
+            "figma-mcp-capability-discovery-projection-is-read-only-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-figma-mcp-capability-discovery-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("toolCount", 8)
+        }
+        workspacePath.endsWith("bad-figma-mcp-capability-discovery-snapshot-private") -> {
+            value.addProperty("toolNames", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

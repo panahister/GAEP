@@ -1716,6 +1716,58 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Figma MCP Capability Discovery projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("figma-mcp-capability-discovery-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readFigmaMcpCapabilityDiscovery(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("candidate-observation-complete", projection.catalogState)
+            assertEquals("candidate-separated", projection.permissionModelState)
+            assertEquals("not-assessed", projection.limitCatalogState)
+            assertEquals("not-assessed", projection.versionCatalogState)
+            assertEquals(7, projection.toolCount)
+            assertEquals(5, projection.advertisedToolCount)
+            assertEquals(3, projection.readToolCount)
+            assertEquals(2, projection.writeToolCount)
+            assertEquals(4, projection.humanReviewedToolCount)
+            assertEquals(7, projection.candidate?.toolCount)
+
+            val rendered = RiderProductController(client).readFigmaMcpCapabilityDiscovery(entryId)
+            assertTrue(rendered.contains("GAEP governed Figma MCP Capability Discovery candidate"))
+            assertTrue(rendered.contains("7 tool observations · 5 advertised"))
+            assertTrue(rendered.contains("4 human-reviewed"))
+            assertTrue(rendered.contains("no Figma connection or call"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("toolNames"))
+        }
+
+        listOf(
+            "bad-figma-mcp-capability-discovery-snapshot-digest",
+            "bad-figma-mcp-capability-discovery-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readFigmaMcpCapabilityDiscovery(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-figma-mcp-capability-discovery-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readFigmaMcpCapabilityDiscovery(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

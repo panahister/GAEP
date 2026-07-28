@@ -610,6 +610,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += manualFigmaExecutionPathButton
         actions.add(manualFigmaExecutionPathButton)
 
+        val figmaMcpCapabilityDiscoveryButton = JButton("Inspect Figma MCP Capability Discovery…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Tool names, schemas, permissions, limits, versions, Source, Figma content, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Figma MCP Capability Discovery",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Figma MCP Capability Discovery", status, output, buttons) {
+                    controller.readFigmaMcpCapabilityDiscovery(initiativeId)
+                }
+            }
+        }
+        buttons += figmaMcpCapabilityDiscoveryButton
+        actions.add(figmaMcpCapabilityDiscoveryButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

@@ -2164,6 +2164,54 @@ data class ManualFigmaExecutionPathProjection(
     val snapshotDigest: String,
 )
 
+data class FigmaMcpCapabilityDiscoveryRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val toolCount: Int,
+    val advertisedToolCount: Int,
+    val readToolCount: Int,
+    val writeToolCount: Int,
+    val reviewState: String,
+)
+
+data class FigmaMcpCapabilityDiscoveryProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reviewState: String,
+    val catalogState: String,
+    val permissionModelState: String,
+    val limitCatalogState: String,
+    val versionCatalogState: String,
+    val reasons: List<String>,
+    val toolCount: Int,
+    val advertisedToolCount: Int,
+    val unavailableToolCount: Int,
+    val unknownAvailabilityCount: Int,
+    val readToolCount: Int,
+    val writeToolCount: Int,
+    val unknownEffectCount: Int,
+    val notAssessedToolCount: Int,
+    val sourceRecordedToolCount: Int,
+    val humanReviewedToolCount: Int,
+    val unresolvedPermissionCount: Int,
+    val unresolvedLimitCount: Int,
+    val unresolvedVersionCount: Int,
+    val unresolvedOwnershipCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: FigmaMcpCapabilityDiscoveryRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -2387,6 +2435,12 @@ internal object PortableDesignProtocol {
         "manual-figma-execution-path-projection-is-read-only-and-does-not-connect-to-figma-prove-execution-or-return-completeness-grant-write-authority-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority"
     private const val MANUAL_FIGMA_EXECUTION_PATH_STATUS_AUTHORITY_BOUNDARY =
         "manual-figma-execution-path-status-is-observational-and-does-not-connect-to-figma-prove-execution-or-return-completeness-grant-write-authority-approve-design-establish-a-baseline-readiness-implementation-or-action-authority"
+    private const val FIGMA_MCP_CAPABILITY_DISCOVERY_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-digests-only-not-tool-names-schemas-permissions-limits-versions-source-content-personal-content-secrets-credentials-or-figma-content"
+    private const val FIGMA_MCP_CAPABILITY_DISCOVERY_PROJECTION_AUTHORITY_BOUNDARY =
+        "figma-mcp-capability-discovery-projection-is-read-only-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority"
+    private const val FIGMA_MCP_CAPABILITY_DISCOVERY_STATUS_AUTHORITY_BOUNDARY =
+        "figma-mcp-capability-discovery-status-is-observational-and-does-not-connect-to-or-call-figma-request-credentials-grant-permissions-establish-tool-availability-or-compatibility-authorize-write-approve-design-establish-a-baseline-readiness-implementation-or-action-authority"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -7653,6 +7707,147 @@ internal object PortableDesignProtocol {
             returnContractState, reasons, scopeCount, instructionCount, checkCount, notAssessedCheckCount,
             evidenceRecordedCheckCount, humanReviewedCheckCount, contradictedCheckCount, representedRequirementCount,
             unresolvedRequirementCount, unresolvedOwnershipCount, staleBindingCount, staleSourceReferenceCount,
+            unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseFigmaMcpCapabilityDiscoveryEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): FigmaMcpCapabilityDiscoveryProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "figma-mcp-capability-discovery-projection" ||
+            projection.requireString("privacyBoundary") != FIGMA_MCP_CAPABILITY_DISCOVERY_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != FIGMA_MCP_CAPABILITY_DISCOVERY_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "toolCount", "advertisedToolCount", "unavailableToolCount", "unknownAvailabilityCount",
+                "readToolCount", "writeToolCount", "unknownEffectCount", "notAssessedToolCount",
+                "sourceRecordedToolCount", "humanReviewedToolCount", "unresolvedPermissionCount",
+                "unresolvedLimitCount", "unresolvedVersionCount", "unresolvedOwnershipCount", "staleBindingCount",
+                "staleSourceReferenceCount", "unresolvedQuestionCount", "catalogState", "permissionModelState",
+                "limitCatalogState", "versionCatalogState", "reviewState", "state", "reasons", "assessedAt",
+                "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "figma-mcp-capability-discovery-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != FIGMA_MCP_CAPABILITY_DISCOVERY_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val toolCount = status.requireBoundedNonNegativeInt("toolCount", 16_384)
+        val advertisedToolCount = status.requireBoundedNonNegativeInt("advertisedToolCount", 16_384)
+        val unavailableToolCount = status.requireBoundedNonNegativeInt("unavailableToolCount", 16_384)
+        val unknownAvailabilityCount = status.requireBoundedNonNegativeInt("unknownAvailabilityCount", 16_384)
+        val readToolCount = status.requireBoundedNonNegativeInt("readToolCount", 16_384)
+        val writeToolCount = status.requireBoundedNonNegativeInt("writeToolCount", 16_384)
+        val unknownEffectCount = status.requireBoundedNonNegativeInt("unknownEffectCount", 16_384)
+        val notAssessedToolCount = status.requireBoundedNonNegativeInt("notAssessedToolCount", 16_384)
+        val sourceRecordedToolCount = status.requireBoundedNonNegativeInt("sourceRecordedToolCount", 16_384)
+        val humanReviewedToolCount = status.requireBoundedNonNegativeInt("humanReviewedToolCount", 16_384)
+        val unresolvedPermissionCount = status.requireBoundedNonNegativeInt("unresolvedPermissionCount", 65_536)
+        val unresolvedLimitCount = status.requireBoundedNonNegativeInt("unresolvedLimitCount", 65_536)
+        val unresolvedVersionCount = status.requireBoundedNonNegativeInt("unresolvedVersionCount", 16_386)
+        val unresolvedOwnershipCount = status.requireBoundedNonNegativeInt("unresolvedOwnershipCount", 1)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val catalogState = status.requireOneOf("catalogState", setOf("candidate-observation-complete", "not-assessed"))
+        val permissionModelState = status.requireOneOf("permissionModelState", setOf("candidate-separated", "contradicted", "not-assessed"))
+        val limitCatalogState = status.requireOneOf("limitCatalogState", setOf("candidate-complete", "not-assessed"))
+        val versionCatalogState = status.requireOneOf("versionCatalogState", setOf("candidate-complete", "not-assessed"))
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = unknownAvailabilityCount + unknownEffectCount + notAssessedToolCount + sourceRecordedToolCount +
+            unresolvedPermissionCount + unresolvedLimitCount + unresolvedVersionCount + unresolvedOwnershipCount +
+            staleBindingCount + staleSourceReferenceCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-review" &&
+                (gapCount > 0 || toolCount == 0 || catalogState != "candidate-observation-complete" ||
+                    permissionModelState != "candidate-separated" || limitCatalogState != "candidate-complete" ||
+                    versionCatalogState != "candidate-complete" || reviewState != "ready-for-human-review" ||
+                    reasons.isNotEmpty() || reference == null)) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "toolCount", "advertisedToolCount",
+                "readToolCount", "writeToolCount", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = FigmaMcpCapabilityDiscoveryRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("toolCount", 16_384),
+                value.requireBoundedNonNegativeInt("advertisedToolCount", 16_384),
+                value.requireBoundedNonNegativeInt("readToolCount", 16_384),
+                value.requireBoundedNonNegativeInt("writeToolCount", 16_384),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest ||
+                record.toolCount != toolCount || record.advertisedToolCount != advertisedToolCount ||
+                record.readToolCount != readToolCount || record.writeToolCount != writeToolCount ||
+                record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return FigmaMcpCapabilityDiscoveryProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reviewState, catalogState, permissionModelState, limitCatalogState,
+            versionCatalogState, reasons, toolCount, advertisedToolCount, unavailableToolCount,
+            unknownAvailabilityCount, readToolCount, writeToolCount, unknownEffectCount, notAssessedToolCount,
+            sourceRecordedToolCount, humanReviewedToolCount, unresolvedPermissionCount, unresolvedLimitCount,
+            unresolvedVersionCount, unresolvedOwnershipCount, staleBindingCount, staleSourceReferenceCount,
             unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }

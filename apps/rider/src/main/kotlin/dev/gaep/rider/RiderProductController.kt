@@ -1720,6 +1720,65 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readFigmaMcpCapabilityDiscovery(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readFigmaMcpCapabilityDiscovery(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Figma MCP Capability Discovery was read. Refresh the exact records." }
+        return renderFigmaMcpCapabilityDiscovery(projection)
+    }
+
+    fun renderFigmaMcpCapabilityDiscovery(projection: FigmaMcpCapabilityDiscoveryProjection): String = buildString {
+        appendLine("GAEP governed Figma MCP Capability Discovery candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine(
+            "Catalogs: tools ${projection.catalogState} · permissions ${projection.permissionModelState} · " +
+                "limits ${projection.limitCatalogState} · versions ${projection.versionCatalogState}",
+        )
+        appendLine(
+            "Inventory: ${projection.toolCount} tool observations · ${projection.advertisedToolCount} advertised · " +
+                "${projection.unavailableToolCount} not advertised · ${projection.unknownAvailabilityCount} unknown",
+        )
+        appendLine(
+            "Effects: ${projection.readToolCount} read · ${projection.writeToolCount} write · " +
+                "${projection.unknownEffectCount} unknown",
+        )
+        appendLine(
+            "Evidence: ${projection.humanReviewedToolCount} human-reviewed · " +
+                "${projection.sourceRecordedToolCount} source-recorded · ${projection.notAssessedToolCount} not assessed",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedPermissionCount} permissions · ${projection.unresolvedLimitCount} limits · " +
+                "${projection.unresolvedVersionCount} versions · ${projection.unresolvedOwnershipCount} ownership · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Figma MCP Capability Discovery candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate inventory: ${record.toolCount} tools · ${record.advertisedToolCount} advertised · " +
+                    "${record.readToolCount} read · ${record.writeToolCount} write · ${record.reviewState}",
+            )
+        } ?: appendLine("Figma MCP Capability Discovery candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and digests only; no Figma connection or call, " +
+                "credential request, permission grant, live availability or compatibility claim, write authority, design approval, " +
+                "baseline, readiness, implementation, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()
