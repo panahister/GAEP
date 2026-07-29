@@ -2083,6 +2083,51 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Designer-Ready Gate projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("designer-ready-gate-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDesignerReadyGate(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("incomplete", projection.candidateResult)
+            assertEquals("held", projection.reviewState)
+            assertEquals(12, projection.prerequisiteCount)
+            assertEquals(9, projection.satisfiedCount)
+            assertEquals(10, projection.humanReviewedCount)
+            assertEquals(12, projection.candidate?.prerequisiteCount)
+
+            val rendered = RiderProductController(client).readDesignerReadyGate(entryId)
+            assertTrue(rendered.contains("GAEP Designer-Ready Gate candidate"))
+            assertTrue(rendered.contains("9 satisfied · 1 not-applicable candidates · 10/12 human-reviewed"))
+            assertTrue(rendered.contains("12 exact"))
+            assertTrue(rendered.contains("evaluation result, not permission or readiness"))
+            assertTrue(rendered.contains("implementation, or action authority"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("criteria="))
+        }
+
+        listOf("bad-designer-ready-gate-digest", "bad-designer-ready-gate-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDesignerReadyGate(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-designer-ready-gate-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDesignerReadyGate(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

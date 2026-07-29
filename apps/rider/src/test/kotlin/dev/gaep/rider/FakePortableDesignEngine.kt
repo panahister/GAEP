@@ -53,6 +53,7 @@ private val outboundDesignBriefPackageId = UUID.fromString("76767676-7676-4676-8
 private val governedFigmaWriteId = UUID.fromString("77777777-7777-4777-8777-777777777777")
 private val finalizedFigmaSnapshotImportId = UUID.fromString("78787878-7878-4878-8878-787878787878")
 private val designToRequirementBindingId = UUID.fromString("79797979-7979-4979-8979-797979797979")
+private val designerReadyGateId = UUID.fromString("80808080-8080-4080-8080-808080808080")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -316,6 +317,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.designToRequirementBinding.snapshot" -> handleDesignToRequirementBinding(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.designerReadyGate.snapshot" -> handleDesignerReadyGate(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4118,6 +4124,102 @@ private fun handleDesignToRequirementBinding(id: Long, params: JsonObject, works
         }
         workspacePath.endsWith("bad-design-to-requirement-binding-private") -> {
             value.addProperty("humanAttribution", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDesignerReadyGate(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGNER READY GATE PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-designer-ready-gate-binding")) 8 else 7
+    val assessedAt = "2026-07-29T22:25:00.000Z"
+    val candidateDigest = "sha256:${"1".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "designer-ready-gate-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "designer-ready-gate-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", designerReadyGateId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("prerequisiteCount", 12)
+            addProperty("satisfiedCount", 9)
+            addProperty("notApplicableCount", 1)
+            addProperty("unsatisfiedCount", 1)
+            addProperty("notAssessedCount", 1)
+            addProperty("staleOrUnknownCount", 2)
+            addProperty("humanReviewedCount", 10)
+            addProperty("pendingExceptionCount", 1)
+            addProperty("grantedExceptionCandidateCount", 1)
+            addProperty("invalidExceptionCount", 1)
+            addProperty("staleBindingCount", 2)
+            addProperty("staleSourceReferenceCount", 3)
+            addProperty("unresolvedQuestionCount", 4)
+            addProperty("candidateResult", "incomplete")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more prerequisites remain incomplete") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("gateBoundary", "a-passing-designer-ready-gate-candidate-is-an-evaluation-result-not-permission-or-readiness")
+            addProperty(
+                "authorityBoundary",
+                "designer-ready-gate-status-is-observational-and-does-not-establish-design-completeness-external-completeness-design-validity-approval-baseline-readiness-exception-waiver-acceptance-phase-entry-implementation-write-import-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", designerReadyGateId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"2".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("prerequisiteCount", 12)
+            addProperty("prerequisiteCatalogDigest", "sha256:${"3".repeat(64)}")
+            addProperty("evaluationCatalogDigest", "sha256:${"4".repeat(64)}")
+            addProperty("exceptionCatalogDigest", "sha256:${"5".repeat(64)}")
+            addProperty("assessmentDefinitionDigest", "sha256:${"6".repeat(64)}")
+            addProperty("assessmentReceiptDigest", "sha256:${"7".repeat(64)}")
+            addProperty("candidateResult", "incomplete")
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-29T22:24:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-criteria-findings-exception-rationale-decision-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+        )
+        addProperty(
+            "authorityBoundary",
+            "designer-ready-gate-projection-is-read-only-and-does-not-establish-design-completeness-external-completeness-design-validity-approval-baseline-readiness-exception-waiver-acceptance-phase-entry-implementation-write-import-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-designer-ready-gate-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("prerequisiteCount", 11)
+        }
+        workspacePath.endsWith("bad-designer-ready-gate-private") -> {
+            value.addProperty("criteria", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

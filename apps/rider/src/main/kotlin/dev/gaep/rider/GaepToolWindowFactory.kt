@@ -722,6 +722,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += designToRequirementBindingButton
         actions.add(designToRequirementBindingButton)
 
+        val designerReadyGateButton = JButton("Inspect Designer-Ready Gate…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Design content, criteria, findings, exception rationale, Decision content, Source content, human attribution, personal data, local paths, secrets, credentials, permissions, and authority are withheld.",
+                    "GAEP Designer-Ready Gate",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Designer-Ready Gate", status, output, buttons) {
+                    controller.readDesignerReadyGate(initiativeId)
+                }
+            }
+        }
+        buttons += designerReadyGateButton
+        actions.add(designerReadyGateButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

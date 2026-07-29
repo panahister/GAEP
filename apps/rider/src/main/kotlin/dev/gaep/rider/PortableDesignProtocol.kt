@@ -2530,6 +2530,50 @@ data class DesignToRequirementBindingProjection(
     val snapshotDigest: String,
 )
 
+data class DesignerReadyGateRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val prerequisiteCount: Int,
+    val prerequisiteCatalogDigest: String,
+    val evaluationCatalogDigest: String,
+    val exceptionCatalogDigest: String,
+    val assessmentDefinitionDigest: String,
+    val assessmentReceiptDigest: String,
+    val candidateResult: String,
+    val reviewState: String,
+)
+
+data class DesignerReadyGateProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val candidateResult: String,
+    val reviewState: String,
+    val assessmentState: String,
+    val reasons: List<String>,
+    val prerequisiteCount: Int,
+    val satisfiedCount: Int,
+    val notApplicableCount: Int,
+    val unsatisfiedCount: Int,
+    val notAssessedCount: Int,
+    val staleOrUnknownCount: Int,
+    val humanReviewedCount: Int,
+    val pendingExceptionCount: Int,
+    val grantedExceptionCandidateCount: Int,
+    val invalidExceptionCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: DesignerReadyGateRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -2795,6 +2839,14 @@ internal object PortableDesignProtocol {
         "design-to-requirement-binding-projection-is-read-only-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority"
     private const val DESIGN_TO_REQUIREMENT_BINDING_STATUS_AUTHORITY_BOUNDARY =
         "design-to-requirement-binding-status-is-observational-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority"
+    private const val DESIGNER_READY_GATE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-criteria-findings-exception-rationale-decision-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions"
+    private const val DESIGNER_READY_GATE_PROJECTION_AUTHORITY_BOUNDARY =
+        "designer-ready-gate-projection-is-read-only-and-does-not-establish-design-completeness-external-completeness-design-validity-approval-baseline-readiness-exception-waiver-acceptance-phase-entry-implementation-write-import-or-action-authority"
+    private const val DESIGNER_READY_GATE_STATUS_AUTHORITY_BOUNDARY =
+        "designer-ready-gate-status-is-observational-and-does-not-establish-design-completeness-external-completeness-design-validity-approval-baseline-readiness-exception-waiver-acceptance-phase-entry-implementation-write-import-or-action-authority"
+    private const val DESIGNER_READY_GATE_BOUNDARY =
+        "a-passing-designer-ready-gate-candidate-is-an-evaluation-result-not-permission-or-readiness"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -9093,6 +9145,146 @@ internal object PortableDesignProtocol {
             unboundRequirementCount, decisionCount, boundDecisionCount, unboundDecisionCount,
             openConflictCount, staleBindingCount, staleSourceReferenceCount, unresolvedQuestionCount,
             candidate, snapshotDigest,
+        )
+    }
+
+    fun parseDesignerReadyGateEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): DesignerReadyGateProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "designer-ready-gate-projection" ||
+            projection.requireString("privacyBoundary") != DESIGNER_READY_GATE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != DESIGNER_READY_GATE_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "prerequisiteCount", "satisfiedCount", "notApplicableCount", "unsatisfiedCount", "notAssessedCount",
+                "staleOrUnknownCount", "humanReviewedCount", "pendingExceptionCount",
+                "grantedExceptionCandidateCount", "invalidExceptionCount", "staleBindingCount",
+                "staleSourceReferenceCount", "unresolvedQuestionCount", "candidateResult", "reviewState", "state",
+                "reasons", "assessedAt", "gateBoundary", "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "designer-ready-gate-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("gateBoundary") != DESIGNER_READY_GATE_BOUNDARY ||
+            status.requireString("authorityBoundary") != DESIGNER_READY_GATE_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val prerequisiteCount = status.requireBoundedNonNegativeInt("prerequisiteCount", 12)
+        val satisfiedCount = status.requireBoundedNonNegativeInt("satisfiedCount", 12)
+        val notApplicableCount = status.requireBoundedNonNegativeInt("notApplicableCount", 12)
+        val unsatisfiedCount = status.requireBoundedNonNegativeInt("unsatisfiedCount", 12)
+        val notAssessedCount = status.requireBoundedNonNegativeInt("notAssessedCount", 12)
+        val staleOrUnknownCount = status.requireBoundedNonNegativeInt("staleOrUnknownCount", 12)
+        val humanReviewedCount = status.requireBoundedNonNegativeInt("humanReviewedCount", 12)
+        val pendingExceptionCount = status.requireBoundedNonNegativeInt("pendingExceptionCount", 512)
+        val grantedExceptionCandidateCount = status.requireBoundedNonNegativeInt("grantedExceptionCandidateCount", 512)
+        val invalidExceptionCount = status.requireBoundedNonNegativeInt("invalidExceptionCount", 512)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        if (satisfiedCount + notApplicableCount + unsatisfiedCount + notAssessedCount != prerequisiteCount ||
+            humanReviewedCount > prerequisiteCount
+        ) throw invalidResponse()
+        val candidateResult = status.requireOneOf(
+            "candidateResult",
+            setOf("blocked", "conditional-pass-candidate", "incomplete", "not-applicable-candidate", "not-assessed", "pass-candidate"),
+        )
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-decision"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-human-decision"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val passLike = candidateResult in setOf("conditional-pass-candidate", "not-applicable-candidate", "pass-candidate")
+        val gapCount = unsatisfiedCount + notAssessedCount + staleOrUnknownCount + pendingExceptionCount +
+            invalidExceptionCount + staleBindingCount + staleSourceReferenceCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-human-decision" &&
+                (!passLike || reference == null || prerequisiteCount != 12 || satisfiedCount + notApplicableCount != 12 ||
+                    humanReviewedCount != 12 || gapCount > 0 || reviewState != "ready-for-human-decision" || reasons.isNotEmpty())) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "prerequisiteCount",
+                "prerequisiteCatalogDigest", "evaluationCatalogDigest", "exceptionCatalogDigest",
+                "assessmentDefinitionDigest", "assessmentReceiptDigest", "candidateResult", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = DesignerReadyGateRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("prerequisiteCount", 12),
+                value.requireDigest("prerequisiteCatalogDigest"),
+                value.requireDigest("evaluationCatalogDigest"),
+                value.requireDigest("exceptionCatalogDigest"),
+                value.requireDigest("assessmentDefinitionDigest"),
+                value.requireDigest("assessmentReceiptDigest"),
+                value.requireOneOf(
+                    "candidateResult",
+                    setOf("blocked", "conditional-pass-candidate", "incomplete", "not-applicable-candidate", "pass-candidate"),
+                ),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-decision")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest ||
+                record.prerequisiteCount != 12 || record.prerequisiteCount != prerequisiteCount ||
+                record.candidateResult != candidateResult || record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return DesignerReadyGateProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, candidateResult, reviewState, assessmentState, reasons, prerequisiteCount,
+            satisfiedCount, notApplicableCount, unsatisfiedCount, notAssessedCount, staleOrUnknownCount,
+            humanReviewedCount, pendingExceptionCount, grantedExceptionCandidateCount, invalidExceptionCount,
+            staleBindingCount, staleSourceReferenceCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 
