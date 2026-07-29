@@ -33,6 +33,7 @@ import {
   manualFigmaExecutionPathSchema,
   figmaMcpCapabilityDiscoverySchema,
   figmaReadSnapshotSchema,
+  figmaContextImportSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -179,6 +180,8 @@ const directoryNames = [
   "figma-mcp-capability-discovery-history",
   "figma-read-snapshots",
   "figma-read-snapshot-history",
+  "figma-context-imports",
+  "figma-context-import-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -1010,6 +1013,8 @@ export class GaepRepository {
       ["figma-mcp-capability-discovery-history", /^figma-mcp-capability-discovery-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["figma-read-snapshots", /^[0-9a-f-]+\.json$/i],
       ["figma-read-snapshot-history", /^figma-read-snapshot-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["figma-context-imports", /^[0-9a-f-]+\.json$/i],
+      ["figma-context-import-history", /^figma-context-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1225,6 +1230,10 @@ export class GaepRepository {
     if (/^figma-read-snapshots\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^figma-read-snapshot-history\/figma-read-snapshot-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, figmaReadSnapshotSchema)
+    }
+    if (/^figma-context-imports\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^figma-context-import-history\/figma-context-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, figmaContextImportSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

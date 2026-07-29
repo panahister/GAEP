@@ -23,6 +23,7 @@ import {
   manualFigmaExecutionPathSchema,
   figmaMcpCapabilityDiscoverySchema,
   figmaReadSnapshotSchema,
+  figmaContextImportSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -102,6 +103,7 @@ import {
   type ManualFigmaExecutionPath,
   type FigmaMcpCapabilityDiscovery,
   type FigmaReadSnapshot,
+  type FigmaContextImport,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2293,6 +2295,16 @@ export class ProductStudioService {
       /^figma-read-snapshot-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       figmaReadSnapshotSchema,
     )
+    const figmaContextImports = await this.listRecords(
+      "figma-context-imports",
+      /^[0-9a-f-]+\.json$/i,
+      figmaContextImportSchema,
+    )
+    const figmaContextImportHistory = await this.listRecords(
+      "figma-context-import-history",
+      /^figma-context-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      figmaContextImportSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2381,6 +2393,8 @@ export class ProductStudioService {
       ...figmaMcpCapabilityDiscoveryHistory,
       ...figmaReadSnapshots,
       ...figmaReadSnapshotHistory,
+      ...figmaContextImports,
+      ...figmaContextImportHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2706,6 +2720,13 @@ export class ProductStudioService {
       "figma-read-snapshot-candidate",
       figmaReadSnapshotHistory,
       (record) => `figma-read-snapshot-history/figma-read-snapshot-${record.id}-r${record.revision}.json`,
+    )
+    append("figma-context-imports", "figma-context-import-candidate", figmaContextImports)
+    append(
+      "figma-context-import-history",
+      "figma-context-import-candidate",
+      figmaContextImportHistory,
+      (record) => `figma-context-import-history/figma-context-import-${record.id}-r${record.revision}.json`,
     )
     append(
       "candidates",
@@ -3181,6 +3202,14 @@ export class ProductStudioService {
           `figma-read-snapshot-history/figma-read-snapshot-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Figma Read Snapshot history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("figma-context-import-history/")) {
+        const record = validated as FigmaContextImport
+        const expectedHistoryPath =
+          `figma-context-import-history/figma-context-import-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Figma Context Import history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4315,7 +4344,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4347,7 +4376,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -7282,7 +7311,7 @@ export class ProductStudioService {
     const figmaReadSnapshotHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("figma-read-snapshot-history/"))
       .map(([, record]) => figmaReadSnapshotSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactFigmaReadSnapshots = validateVersionedBusinessRecords(
       figmaReadSnapshots,
       figmaReadSnapshotHistory,
       "Figma Read Snapshot",
@@ -7543,6 +7572,198 @@ export class ProductStudioService {
       })
       if (canonicalDigest(derived) !== canonicalDigest({ classification: pack.classification, sufficiency: pack.sufficiency })) {
         throw new Error(`Import Context Pack ${pack.id} carries forged classification or sufficiency`)
+      }
+    }
+
+    const figmaContextImports = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("figma-context-imports/"))
+      .map(([, record]) => figmaContextImportSchema.parse(record))
+    const figmaContextImportHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("figma-context-import-history/"))
+      .map(([, record]) => figmaContextImportSchema.parse(record))
+    validateVersionedBusinessRecords(
+      figmaContextImports,
+      figmaContextImportHistory,
+      "Figma Context Import",
+    )
+    const contextPackByExact = new Map(contextPacks.map((pack) => [
+      `${pack.id}:${pack.revision}:${canonicalDigest(pack)}:${pack.packDigest}`,
+      pack,
+    ]))
+    const classificationRank = { public: 0, internal: 1, confidential: 2, restricted: 3 } as const
+    for (const candidate of [...figmaContextImports, ...figmaContextImportHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        designApplicability: candidate.designApplicability,
+        designRequirements: candidate.designRequirements,
+        designSystemTokenContract: candidate.designSystemTokenContract,
+        accessibilityDesignRules: candidate.accessibilityDesignRules,
+        responsiveMultiPlatformTargets: candidate.responsiveMultiPlatformTargets,
+        manualFigmaExecutionPath: candidate.manualFigmaExecutionPath,
+        figmaMcpCapabilityDiscovery: candidate.figmaMcpCapabilityDiscovery,
+        figmaReadSnapshot: candidate.figmaReadSnapshot,
+        contextPacks: candidate.contextPacks,
+        sections: candidate.sections,
+        targets: candidate.targets,
+        requirementCoverage: candidate.requirementCoverage,
+        preview: candidate.preview,
+        contextSelectionState: candidate.contextSelectionState,
+        provenanceState: candidate.provenanceState,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        packagePreparationState: candidate.packagePreparationState,
+        contextTransferState: candidate.contextTransferState,
+        figmaConnectionAuthorityState: candidate.figmaConnectionAuthorityState,
+        credentialAuthorityState: candidate.credentialAuthorityState,
+        permissionGrantState: candidate.permissionGrantState,
+        figmaWriteAuthorityState: candidate.figmaWriteAuthorityState,
+        targetValidityState: candidate.targetValidityState,
+        externalCompletenessState: candidate.externalCompletenessState,
+        designValidityState: candidate.designValidityState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Figma Context Import ${candidate.id} membership digest is invalid`)
+      }
+      const applicability = exactDesignApplicability.get(
+        `${candidate.designApplicability.recordId}:${candidate.designApplicability.revision}:${candidate.designApplicability.digest}`,
+      )
+      const requirements = exactDesignRequirements.get(
+        `${candidate.designRequirements.recordId}:${candidate.designRequirements.revision}:${candidate.designRequirements.digest}`,
+      )
+      const designSystem = exactDesignSystemTokenContracts.get(
+        `${candidate.designSystemTokenContract.recordId}:${candidate.designSystemTokenContract.revision}:${candidate.designSystemTokenContract.digest}`,
+      )
+      const accessibility = exactAccessibilityDesignRules.get(
+        `${candidate.accessibilityDesignRules.recordId}:${candidate.accessibilityDesignRules.revision}:${candidate.accessibilityDesignRules.digest}`,
+      )
+      const responsive = exactResponsiveMultiPlatformTargets.get(
+        `${candidate.responsiveMultiPlatformTargets.recordId}:${candidate.responsiveMultiPlatformTargets.revision}:${candidate.responsiveMultiPlatformTargets.digest}`,
+      )
+      const manualPath = exactManualFigmaExecutionPaths.get(
+        `${candidate.manualFigmaExecutionPath.recordId}:${candidate.manualFigmaExecutionPath.revision}:${candidate.manualFigmaExecutionPath.digest}`,
+      )
+      const discovery = exactFigmaMcpCapabilityDiscoveries.get(
+        `${candidate.figmaMcpCapabilityDiscovery.recordId}:${candidate.figmaMcpCapabilityDiscovery.revision}:${candidate.figmaMcpCapabilityDiscovery.digest}`,
+      )
+      const snapshot = exactFigmaReadSnapshots.get(
+        `${candidate.figmaReadSnapshot.recordId}:${candidate.figmaReadSnapshot.revision}:${candidate.figmaReadSnapshot.digest}`,
+      )
+      const exactBindings = [
+        [applicability, candidate.designApplicability],
+        [requirements, candidate.designRequirements],
+        [designSystem, candidate.designSystemTokenContract],
+        [accessibility, candidate.accessibilityDesignRules],
+        [responsive, candidate.responsiveMultiPlatformTargets],
+        [manualPath, candidate.manualFigmaExecutionPath],
+        [discovery, candidate.figmaMcpCapabilityDiscovery],
+        [snapshot, candidate.figmaReadSnapshot],
+      ] as const
+      if (exactBindings.some(([record, reference]) => !record || record.initiativeId !== candidate.initiativeId ||
+          record.membershipDigest !== reference.membershipDigest)) {
+        throw new Error(`Import Figma Context Import ${candidate.id} has an unresolved exact governed binding`)
+      }
+      const packs = candidate.contextPacks.map((reference) => contextPackByExact.get(
+        `${reference.recordId}:${reference.revision}:${reference.digest}:${reference.packDigest}`,
+      ))
+      if (packs.some((pack) => !pack || pack.productId !== candidate.productId)) {
+        throw new Error(`Import Figma Context Import ${candidate.id} has an unresolved exact Context Pack binding`)
+      }
+      const exactPacks = packs as ContextPack[]
+      if (exactPacks.some((pack) => pack.recipient.kind !== "tool" || pack.recipient.id !== discovery!.adapter.key)) {
+        throw new Error(`Import Figma Context Import ${candidate.id} Context Pack recipient does not match the exact Figma adapter`)
+      }
+      const packById = new Map(exactPacks.map((pack) => [pack.id, pack]))
+      const selectedItemIds = new Set<string>()
+      for (const section of candidate.sections) {
+        const pack = packById.get(section.contextPackId)
+        if (!pack) throw new Error(`Import Figma Context Import ${candidate.id} section has no exact Context Pack`)
+        const itemById = new Map(pack.items.map((item) => [item.id, item]))
+        const selected = section.contextItemIds.map((id) => itemById.get(id))
+        if (selected.some((item) => !item)) {
+          throw new Error(`Import Figma Context Import ${candidate.id} section contains an unknown Context Item`)
+        }
+        for (const id of section.contextItemIds) selectedItemIds.add(id)
+        const exactItems = selected as ContextPack["items"]
+        if (section.contentDigest !== canonicalDigest(exactItems.map((item) => ({ id: item.id, contentDigest: item.contentDigest }))) ||
+            section.transformationDigest !== canonicalDigest(exactItems.map((item) => ({ id: item.id, transformations: item.transformations })))) {
+          throw new Error(`Import Figma Context Import ${candidate.id} section digest is invalid`)
+        }
+        if (section.informationClassification !== pack.classification.level) {
+          throw new Error(`Import Figma Context Import ${candidate.id} section classification is invalid`)
+        }
+      }
+      const allItems = exactPacks.flatMap((pack) => pack.items)
+      if (candidate.contextSelectionState === "candidate-selection-complete" &&
+          (selectedItemIds.size !== allItems.length || allItems.some((item) => !selectedItemIds.has(item.id)) ||
+           exactPacks.some((pack) => pack.sufficiency.status === "insufficient" ||
+             pack.omissions.some((omission) => omission.required || omission.material) ||
+             pack.conflicts.some((conflict) => conflict.state === "open")))) {
+        throw new Error(`Import Figma Context Import ${candidate.id} candidate-complete selection is incomplete or contradicted`)
+      }
+      const maximumClassification = exactPacks.reduce<keyof typeof classificationRank>((maximum, pack) =>
+        classificationRank[pack.classification.level] > classificationRank[maximum] ? pack.classification.level : maximum,
+      "public")
+      if (candidate.informationClassification !== maximumClassification) {
+        throw new Error(`Import Figma Context Import ${candidate.id} aggregate classification is invalid`)
+      }
+      const requirementKeys = new Set(requirements!.requirements.map((requirement) => requirement.key))
+      const coveredKeys = new Set(candidate.requirementCoverage.map((coverage) => coverage.requirementKey))
+      if (requirementKeys.size !== coveredKeys.size || [...requirementKeys].some((key) => !coveredKeys.has(key))) {
+        throw new Error(`Import Figma Context Import ${candidate.id} Design Requirement coverage is incomplete`)
+      }
+      const fileByKey = new Map(snapshot!.files.map((file) => [file.key, file]))
+      const toolByKey = new Map(discovery!.tools.map((tool) => [tool.key, tool]))
+      for (const target of candidate.targets) {
+        const file = fileByKey.get(target.fileKey)
+        if (!file || target.externalFileIdentityDigest !== canonicalDigest(file.provenance.externalObjectId) ||
+            target.externalVersionDigest !== canonicalDigest(file.provenance.externalVersion)) {
+          throw new Error(`Import Figma Context Import ${candidate.id} Figma target identity or version is invalid`)
+        }
+        const tool = toolByKey.get(target.plannedWriteToolKey)
+        if (!tool || tool.availabilityState !== "advertised" || tool.capabilityClass !== "write-design" ||
+            tool.effectClass !== "figma-write" || !tool.permissions.some((permission) =>
+              permission.accessClass === "write" && permission.requirementState === "required" && permission.grantState === "not-granted")) {
+          throw new Error(`Import Figma Context Import ${candidate.id} planned write tool binding is invalid`)
+        }
+      }
+      const selectionReceipt = {
+        designApplicability: candidate.designApplicability,
+        designRequirements: candidate.designRequirements,
+        designSystemTokenContract: candidate.designSystemTokenContract,
+        accessibilityDesignRules: candidate.accessibilityDesignRules,
+        responsiveMultiPlatformTargets: candidate.responsiveMultiPlatformTargets,
+        manualFigmaExecutionPath: candidate.manualFigmaExecutionPath,
+        figmaMcpCapabilityDiscovery: candidate.figmaMcpCapabilityDiscovery,
+        figmaReadSnapshot: candidate.figmaReadSnapshot,
+        contextPacks: candidate.contextPacks,
+        sections: candidate.sections,
+        targets: candidate.targets,
+        requirementCoverage: candidate.requirementCoverage,
+      }
+      if (candidate.preview.selectionDigest !== canonicalDigest(selectionReceipt)) {
+        throw new Error(`Import Figma Context Import ${candidate.id} selection digest is invalid`)
+      }
+      const previewReceipt = {
+        selectionDigest: candidate.preview.selectionDigest,
+        title: candidate.title,
+        informationClassification: candidate.informationClassification,
+        contextPackCount: candidate.contextPacks.length,
+        sectionCount: candidate.sections.length,
+        contextItemCount: candidate.sections.reduce((total, section) => total + section.contextItemIds.length, 0),
+        targetCount: candidate.targets.length,
+        requirementCoverageCount: candidate.requirementCoverage.length,
+        limitations: candidate.limitations,
+      }
+      if (candidate.preview.previewDigest !== undefined && candidate.preview.previewDigest !== canonicalDigest(previewReceipt)) {
+        throw new Error(`Import Figma Context Import ${candidate.id} preview digest is invalid`)
       }
     }
 
@@ -8134,6 +8355,10 @@ export class ProductStudioService {
         /^figma-read-snapshot-history\/figma-read-snapshot-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "figma-read-snapshot-candidate"
     }
+    if (/^figma-context-imports\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^figma-context-import-history\/figma-context-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "figma-context-import-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -8311,6 +8536,10 @@ export class ProductStudioService {
     if (/^figma-read-snapshots\/[0-9a-f-]+\.json$/i.test(path) ||
         /^figma-read-snapshot-history\/figma-read-snapshot-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return figmaReadSnapshotSchema
+    }
+    if (/^figma-context-imports\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^figma-context-import-history\/figma-context-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return figmaContextImportSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||

@@ -26,6 +26,7 @@ import {
   type ExactSourceReference,
   type FigmaMcpCapabilityDiscoveryInput,
   type FigmaMcpCapabilityDiscovery,
+  type FigmaContextImportInput,
   type FigmaReadSnapshotInput,
   type Initiative,
   type InitiativeApplicabilityMatrixInput,
@@ -1869,6 +1870,223 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  async function createFigmaContextImportPrerequisites() {
+    const { inventory, requirement, requirements, designSystem, accessibility, responsive } =
+      await createManualFigmaExecutionPathPrerequisites()
+    const manualPath = await engine.manualFigmaExecutionPath.create(
+      await manualFigmaExecutionPathInput(
+        inventory, requirement, requirements, designSystem, accessibility, responsive,
+      ),
+      actorId,
+    )
+    const discovery = await figmaReadCapabilityDiscovery(manualPath)
+    const snapshot = await engine.figmaReadSnapshot.create(
+      await figmaReadSnapshotInput(designSystem, discovery), actorId,
+    )
+    const contextContent = {
+      brief: "Use the governed release-review journey, screen-state, accessibility, and responsive constraints for the candidate design context.",
+      requirements: "Represent GAEP-UX-001 without claiming requirement validity, design approval, readiness, or implementation authority.",
+    }
+    const item = (id: string, locator: string, content: string) => ({
+      id,
+      source: { kind: "logical" as const, value: locator },
+      sourceRevision: 1,
+      sourceDigest: canonicalDigest(content),
+      selectionReason: "This bounded item is required for the exact candidate Figma context selection.",
+      required: true,
+      content,
+      contentDigest: canonicalDigest(content),
+      trust: {
+        semanticAuthority: {
+          standing: "authoritative" as const,
+          domain: "Candidate Figma context selection",
+          owner: actorId,
+          scope: ["P2-13 Import GAEP Context into Figma"],
+        },
+        epistemicRole: "governing-constraint" as const,
+        sourceAuthenticity: "verified" as const,
+        contentIntegrity: "verified" as const,
+        confidentiality: {
+          classification: "internal" as const,
+          purpose: "Prepare a privacy-safe candidate selection for the observed Figma MCP adapter.",
+          recipients: ["figma-mcp"],
+          retention: "Retain only under governed Product revision and audit controls.",
+        },
+        instructionPrivilege: "workflow-data" as const,
+        freshness: {
+          status: "fresh" as const,
+          assessedAt: "2026-07-29T08:00:00.000Z",
+          basis: "The Product owner reviewed this exact Context Item revision.",
+        },
+        validity: { status: "valid" as const, basis: "The item binds current governed design records." },
+        revisionDisposition: "current" as const,
+        applicability: { status: "applicable" as const, basis: "The item targets the current UI-bearing Initiative." },
+      },
+      transformations: [],
+    })
+    product = await engine.readProduct()
+    const contextPack = await engine.productStudio.createContextPack({
+      objective: "Select exact governed GAEP design context for a reviewable candidate Figma import without packaging, transfer, connection, credentials, permissions, or write authority.",
+      recipient: { kind: "tool", id: discovery.adapter.key },
+      items: [
+        item("11111111-1111-4111-8111-111111111111", "gaep.context.design-brief", contextContent.brief),
+        item("22222222-2222-4222-8222-222222222222", "gaep.context.design-requirements", contextContent.requirements),
+      ],
+      omissions: [],
+      warnings: [],
+      conflicts: [],
+      classificationCombinationRisk: "The combined internal context remains internal and must not be projected as raw content.",
+      sufficiencyCriteria: ["Every selected Context Item binds exact current governed design and Figma observation records"],
+      sufficiencyEvaluator: { kind: "human", id: actorId },
+      sufficiencyAssumptions: [],
+    }, product.revision!, actorId)
+    return {
+      inventory, requirement, requirements, designSystem, accessibility, responsive,
+      manualPath, discovery, snapshot, contextPack, contextContent,
+    }
+  }
+
+  async function figmaContextImportInput(
+    prerequisites: Awaited<ReturnType<typeof createFigmaContextImportPrerequisites>>,
+    overrides: Partial<FigmaContextImportInput> = {},
+  ): Promise<FigmaContextImportInput> {
+    const { requirement, requirements, designSystem, accessibility, responsive,
+      manualPath, discovery, snapshot, contextPack } = prerequisites
+    const binding = <T extends { id: string; revision: number; membershipDigest: string }>(record: T) => ({
+      recordId: record.id,
+      revision: record.revision,
+      digest: canonicalDigest(record),
+      membershipDigest: record.membershipDigest,
+    })
+    const section = (key: "design-brief" | "design-requirements", contextItemId: string) => {
+      const selected = contextPack.items.filter((item) => item.id === contextItemId)
+      return {
+        key,
+        kind: key,
+        contextPackId: contextPack.id,
+        contextItemIds: [contextItemId],
+        contentDigest: canonicalDigest(selected.map((item) => ({ id: item.id, contentDigest: item.contentDigest }))),
+        transformationDigest: canonicalDigest(selected.map((item) => ({ id: item.id, transformations: item.transformations }))),
+        informationClassification: contextPack.classification.level,
+        redactionState: "not-required" as const,
+        evidence: {
+          state: "human-reviewed" as const,
+          evidenceDigests: [digest(key === "design-brief" ? "3" : "4")],
+          reviewedBy: { kind: "human" as const, id: actorId },
+          reviewedAt: "2026-07-29T08:30:00.000Z",
+        },
+        sources: [reference()],
+      }
+    }
+    const sections = [
+      section("design-brief", contextPack.items[0]!.id),
+      section("design-requirements", contextPack.items[1]!.id),
+    ]
+    const file = snapshot.files.find((entry) => entry.key === "product-ui")!
+    const targets = [{
+      key: "primary-design-file",
+      designScopeKey: "customer-portal",
+      fileKey: file.key,
+      targetKind: "file-root" as const,
+      externalFileIdentityDigest: canonicalDigest(file.provenance.externalObjectId),
+      externalVersionDigest: canonicalDigest(file.provenance.externalVersion),
+      plannedWriteToolKey: "write-design-node",
+      expectedEffect: "write" as const,
+      permissionRequirementState: "ungranted" as const,
+      sectionKeys: sections.map((entry) => entry.key).sort(),
+      ownership: { state: "assigned-candidate" as const, owner: { kind: "role" as const, id: "design-integration-owner" } },
+      sources: [reference()],
+      limitations: ["The exact external target and version must be revalidated before any separately governed write"],
+    }]
+    const requirementCoverage = [{
+      requirementKey: requirement.key,
+      state: "represented" as const,
+      sectionKeys: ["design-requirements"],
+      targetKeys: ["primary-design-file"],
+      rationaleDigest: digest("5"),
+      sources: [reference()],
+    }]
+    const base = {
+      initiativeId: initiative.id,
+      context: await exactContext(),
+      informationClassification: "internal" as const,
+      title: "Customer portal Figma Context Import candidate",
+      designApplicability: binding(applicability),
+      designRequirements: binding(requirements),
+      designSystemTokenContract: binding(designSystem),
+      accessibilityDesignRules: binding(accessibility),
+      responsiveMultiPlatformTargets: binding(responsive),
+      manualFigmaExecutionPath: binding(manualPath),
+      figmaMcpCapabilityDiscovery: binding(discovery),
+      figmaReadSnapshot: binding(snapshot),
+      contextPacks: [{
+        recordId: contextPack.id,
+        revision: contextPack.revision,
+        digest: canonicalDigest(contextPack),
+        packDigest: contextPack.packDigest,
+      }],
+      sections,
+      targets,
+      requirementCoverage,
+      contextSelectionState: "candidate-selection-complete" as const,
+      provenanceState: "exact" as const,
+      unresolvedQuestions: [],
+      limitations: ["This candidate selects context only and does not package, transfer, connect to, request credentials from, grant permissions to, or write to Figma"],
+      reviewState: "ready-for-human-review" as const,
+      packagePreparationState: "not-started" as const,
+      contextTransferState: "not-performed" as const,
+      figmaConnectionAuthorityState: "not-granted" as const,
+      credentialAuthorityState: "not-granted" as const,
+      permissionGrantState: "not-granted" as const,
+      figmaWriteAuthorityState: "not-granted" as const,
+      targetValidityState: "not-established" as const,
+      externalCompletenessState: "not-established" as const,
+      designValidityState: "not-established" as const,
+      designApprovalState: "not-established" as const,
+      designBaselineState: "not-established" as const,
+      readinessState: "not-established" as const,
+      implementationAuthorityState: "not-granted" as const,
+    }
+    const selectionReceipt = {
+      designApplicability: base.designApplicability,
+      designRequirements: base.designRequirements,
+      designSystemTokenContract: base.designSystemTokenContract,
+      accessibilityDesignRules: base.accessibilityDesignRules,
+      responsiveMultiPlatformTargets: base.responsiveMultiPlatformTargets,
+      manualFigmaExecutionPath: base.manualFigmaExecutionPath,
+      figmaMcpCapabilityDiscovery: base.figmaMcpCapabilityDiscovery,
+      figmaReadSnapshot: base.figmaReadSnapshot,
+      contextPacks: base.contextPacks,
+      sections: base.sections,
+      targets: base.targets,
+      requirementCoverage: base.requirementCoverage,
+    }
+    const selectionDigest = canonicalDigest(selectionReceipt)
+    const previewReceipt = {
+      selectionDigest,
+      title: base.title,
+      informationClassification: base.informationClassification,
+      contextPackCount: base.contextPacks.length,
+      sectionCount: base.sections.length,
+      contextItemCount: base.sections.reduce((total, entry) => total + entry.contextItemIds.length, 0),
+      targetCount: base.targets.length,
+      requirementCoverageCount: base.requirementCoverage.length,
+      limitations: base.limitations,
+    }
+    return {
+      ...base,
+      preview: {
+        selectionDigest,
+        previewDigest: canonicalDigest(previewReceipt),
+        state: "human-reviewed",
+        evidenceDigests: [digest("6")],
+        reviewedBy: { kind: "human", id: actorId },
+        reviewedAt: "2026-07-29T08:30:00.000Z",
+      },
+      ...overrides,
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -3697,6 +3915,212 @@ describe("Design Persona and Role service", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "figma-read-snapshot.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, audits, and revises exact Figma context selections without packaging, transfer, credentials, permissions, or write authority", async () => {
+    const prerequisites = await createFigmaContextImportPrerequisites()
+    const candidate = await engine.figmaContextImport.create(
+      await figmaContextImportInput(prerequisites), actorId,
+    )
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      contextPacks: [{ recordId: prerequisites.contextPack.id, packDigest: prerequisites.contextPack.packDigest }],
+      sections: [
+        { key: "design-brief", evidence: { state: "human-reviewed" }, redactionState: "not-required" },
+        { key: "design-requirements", evidence: { state: "human-reviewed" }, redactionState: "not-required" },
+      ],
+      targets: [{
+        key: "primary-design-file",
+        fileKey: "product-ui",
+        plannedWriteToolKey: "write-design-node",
+        expectedEffect: "write",
+        permissionRequirementState: "ungranted",
+      }],
+      requirementCoverage: [{ requirementKey: prerequisites.requirement.key, state: "represented" }],
+      packagePreparationState: "not-started",
+      contextTransferState: "not-performed",
+      figmaConnectionAuthorityState: "not-granted",
+      credentialAuthorityState: "not-granted",
+      permissionGrantState: "not-granted",
+      figmaWriteAuthorityState: "not-granted",
+      targetValidityState: "not-established",
+      externalCompletenessState: "not-established",
+      designValidityState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-granted",
+      authorityBoundary: expect.stringContaining("does-not-package-or-transfer-context"),
+    })
+    expect(await engine.figmaContextImport.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      contextPackCount: 1,
+      sectionCount: 2,
+      contextItemCount: 2,
+      targetCount: 1,
+      humanReviewedSectionCount: 2,
+      sourceRecordedSectionCount: 0,
+      notAssessedSectionCount: 0,
+      unresolvedRedactionCount: 0,
+      representedRequirementCount: 1,
+      unresolvedRequirementCount: 0,
+      unresolvedOwnershipCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      contextSelectionState: "candidate-selection-complete",
+      provenanceState: "exact",
+      previewState: "human-reviewed",
+      reviewState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.figmaContextImport.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: {
+        id: candidate.id,
+        revision: 1,
+        contextPackCount: 1,
+        sectionCount: 2,
+        contextItemCount: 2,
+        targetCount: 1,
+        representedRequirementCount: 1,
+      },
+      privacyBoundary: expect.stringContaining("not-brief-requirement-constraint-context-item-figma-target-tool-source-or-personal-content"),
+      authorityBoundary: expect.stringContaining("does-not-package-or-transfer-context"),
+    })
+    expect(JSON.stringify(projection)).not.toContain(prerequisites.contextContent.brief)
+    expect(JSON.stringify(projection)).not.toContain("figma-file-1")
+    expect(JSON.stringify(projection)).not.toContain("write-design-node")
+
+    const revisedInput = await figmaContextImportInput(prerequisites)
+    revisedInput.limitations = [
+      "Independent supported-host and live-adapter validation remains required before any separately governed context package or write action",
+      "This candidate selects context only and does not package, transfer, connect to, request credentials from, grant permissions to, or write to Figma",
+    ].sort((left, right) => left.localeCompare(right))
+    revisedInput.preview.previewDigest = canonicalDigest({
+      selectionDigest: revisedInput.preview.selectionDigest,
+      title: revisedInput.title,
+      informationClassification: revisedInput.informationClassification,
+      contextPackCount: revisedInput.contextPacks.length,
+      sectionCount: revisedInput.sections.length,
+      contextItemCount: revisedInput.sections.reduce((total, entry) => total + entry.contextItemIds.length, 0),
+      targetCount: revisedInput.targets.length,
+      requirementCoverageCount: revisedInput.requirementCoverage.length,
+      limitations: revisedInput.limitations,
+    })
+    const revised = await engine.figmaContextImport.revise(candidate.id, candidate.revision, revisedInput, actorId)
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.figmaContextImport.listHistory(candidate.id)).map((record) => record.revision)).toEqual([2, 1])
+
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `figma-context-imports/${candidate.id}.json`,
+      `figma-context-import-history/figma-context-import-${candidate.id}-r1.json`,
+      `figma-context-import-history/figma-context-import-${candidate.id}-r2.json`,
+    ]))
+    await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({
+      status: "compatible",
+      importMutation: "not-performed",
+    })
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "figma-context-import.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        designApplicability: revised.designApplicability,
+        designRequirements: revised.designRequirements,
+        designSystemTokenContract: revised.designSystemTokenContract,
+        accessibilityDesignRules: revised.accessibilityDesignRules,
+        responsiveMultiPlatformTargets: revised.responsiveMultiPlatformTargets,
+        manualFigmaExecutionPath: revised.manualFigmaExecutionPath,
+        figmaMcpCapabilityDiscovery: revised.figmaMcpCapabilityDiscovery,
+        figmaReadSnapshot: revised.figmaReadSnapshot,
+        contextPackCount: 1,
+        sectionCount: 2,
+        contextItemCount: 2,
+        targetCount: 1,
+        requirementCoverageCount: 1,
+        selectionDigest: revised.preview.selectionDigest,
+        previewDigest: revised.preview.previewDigest,
+        previewState: "human-reviewed",
+        contextSelectionState: "candidate-selection-complete",
+        provenanceState: "exact",
+        reviewState: "ready-for-human-review",
+        packagePreparationState: "not-started",
+        contextTransferState: "not-performed",
+        figmaConnectionAuthorityState: "not-granted",
+        credentialAuthorityState: "not-granted",
+        permissionGrantState: "not-granted",
+        figmaWriteAuthorityState: "not-granted",
+        targetValidityState: "not-established",
+        externalCompletenessState: "not-established",
+        designValidityState: "not-established",
+        designApprovalState: "not-established",
+        designBaselineState: "not-established",
+        readinessState: "not-established",
+        implementationAuthorityState: "not-granted",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+    expect(JSON.stringify(events.at(-1))).not.toContain(prerequisites.contextContent.brief)
+    expect(JSON.stringify(events.at(-1))).not.toContain("figma-file-1")
+  })
+
+  it("fails Figma context selections closed on stale records, forged Context Item digests, target versions, non-write tools, or superseded Context Packs", async () => {
+    const prerequisites = await createFigmaContextImportPrerequisites()
+
+    const staleRequirements = await figmaContextImportInput(prerequisites)
+    staleRequirements.designRequirements.digest = digest("f")
+    await expect(engine.figmaContextImport.create(staleRequirements, actorId))
+      .rejects.toThrow("exact current designRequirements")
+
+    const forgedSection = await figmaContextImportInput(prerequisites)
+    forgedSection.sections[0]!.contentDigest = digest("e")
+    forgedSection.preview.selectionDigest = digest("d")
+    await expect(engine.figmaContextImport.create(forgedSection, actorId))
+      .rejects.toThrow("content digest must bind exact selected Context Item digests")
+
+    const forgedTargetVersion = await figmaContextImportInput(prerequisites)
+    forgedTargetVersion.targets[0]!.externalVersionDigest = digest("c")
+    forgedTargetVersion.preview.selectionDigest = digest("b")
+    await expect(engine.figmaContextImport.create(forgedTargetVersion, actorId))
+      .rejects.toThrow("exact observed Figma file identity and version")
+
+    const readTool = await figmaContextImportInput(prerequisites)
+    readTool.targets[0]!.plannedWriteToolKey = "read-file-metadata"
+    readTool.preview.selectionDigest = digest("a")
+    await expect(engine.figmaContextImport.create(readTool, actorId))
+      .rejects.toThrow("advertised exact write-design tool with required ungranted write permission")
+
+    const candidate = await engine.figmaContextImport.create(
+      await figmaContextImportInput(prerequisites), actorId,
+    )
+    await engine.productStudio.reviseContextPack(
+      prerequisites.contextPack.id,
+      prerequisites.contextPack.revision,
+      { warnings: ["The Context Pack changed after the exact selection was recorded"] },
+      actorId,
+    )
+    expect(await engine.figmaContextImport.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "figma-context-import.binding-review-required",
       severity: "warning",
     }))
   })
