@@ -40,6 +40,7 @@ import {
   type GovernedFigmaWriteProjection,
   type FinalizedFigmaSnapshotImportProjection,
   type DesignToRequirementBindingProjection,
+  type DesignerReadyGateProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2608,6 +2609,65 @@ function designToRequirementBindingProjection(): DesignToRequirementBindingProje
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function designerReadyGateProjection(): DesignerReadyGateProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "designer-ready-gate-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "efefefef-efef-4fef-8fef-efefefefefef", revision: 2, digest: `sha256:${"1".repeat(64)}` as const },
+    prerequisiteCount: 12,
+    satisfiedCount: 9,
+    notApplicableCount: 1,
+    unsatisfiedCount: 1,
+    notAssessedCount: 1,
+    staleOrUnknownCount: 2,
+    humanReviewedCount: 10,
+    pendingExceptionCount: 1,
+    grantedExceptionCandidateCount: 1,
+    invalidExceptionCount: 1,
+    staleBindingCount: 2,
+    staleSourceReferenceCount: 3,
+    unresolvedQuestionCount: 4,
+    candidateResult: "incomplete" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more prerequisites remain incomplete"],
+    assessedAt: "2026-07-29T22:25:00.000Z",
+    gateBoundary: "a-passing-designer-ready-gate-candidate-is-an-evaluation-result-not-permission-or-readiness" as const,
+    authorityBoundary: "designer-ready-gate-status-is-observational-and-does-not-establish-design-completeness-external-completeness-design-validity-approval-baseline-readiness-exception-waiver-acceptance-phase-entry-implementation-write-import-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "designer-ready-gate-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"2".repeat(64)}` as const,
+      state: "candidate" as const,
+      prerequisiteCount: 12 as const,
+      prerequisiteCatalogDigest: `sha256:${"3".repeat(64)}` as const,
+      evaluationCatalogDigest: `sha256:${"4".repeat(64)}` as const,
+      exceptionCatalogDigest: `sha256:${"5".repeat(64)}` as const,
+      assessmentDefinitionDigest: `sha256:${"6".repeat(64)}` as const,
+      assessmentReceiptDigest: `sha256:${"7".repeat(64)}` as const,
+      candidateResult: status.candidateResult,
+      reviewState: status.reviewState,
+      updatedAt: "2026-07-29T22:24:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-criteria-findings-exception-rationale-decision-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions" as const,
+    authorityBoundary: "designer-ready-gate-projection-is-read-only-and-does-not-establish-design-completeness-external-completeness-design-validity-approval-baseline-readiness-exception-waiver-acceptance-phase-entry-implementation-write-import-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -3270,6 +3330,7 @@ interface HarnessOptions {
   governedFigmaWriteProjection?: GovernedFigmaWriteProjection
   finalizedFigmaSnapshotImportProjection?: FinalizedFigmaSnapshotImportProjection
   designToRequirementBindingProjection?: DesignToRequirementBindingProjection
+  designerReadyGateProjection?: DesignerReadyGateProjection
   commandResult?: unknown
 }
 
@@ -3555,6 +3616,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.designToRequirementBindingProjection ? {
       designToRequirementBinding: {
         project: async () => options.designToRequirementBindingProjection!,
+      },
+    } : {}),
+    ...(options.designerReadyGateProjection ? {
+      designerReadyGate: {
+        project: async () => options.designerReadyGateProjection!,
       },
     } : {}),
   }
@@ -4582,6 +4648,33 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private figma content|private external identity|private requirement text|private decision content|private source content|private human attribution|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe Designer-Ready Gate metadata on the native readiness page", async () => {
+    const projection = designerReadyGateProjection()
+    const { source } = harness({ designerReadyGateProjection: projection })
+    const snapshot = await source.readSnapshot("readiness")
+    expect(snapshot.page.kind === "readiness" && snapshot.page.designerReadyGates).toMatchObject({
+      id: "designer-ready-gate",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          prerequisites: `12 exact prerequisites · ${projection.candidate?.prerequisiteCatalogDigest}`,
+          assessment: `definition ${projection.candidate?.assessmentDefinitionDigest} · receipt ${projection.candidate?.assessmentReceiptDigest} · evaluations ${projection.candidate?.evaluationCatalogDigest}`,
+          exceptions: projection.candidate?.exceptionCatalogDigest,
+          result: "incomplete · attention-required · held",
+          coverage: "9 satisfied · 1 not-applicable candidates · 10/12 human-reviewed",
+          gaps: "1 unsatisfied · 1 not assessed · 2 stale/unknown · 1 pending exceptions · 1 invalid exceptions · 4 questions · 2 stale bindings · 3 stale Source references",
+          boundary: expect.stringContaining("passing candidate is an evaluation result, not permission or readiness"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private design content|private criteria|private finding|private exception rationale|private decision content|private source content|private human attribution|customer@example\.com|api_key/iu,
     )
   })
 

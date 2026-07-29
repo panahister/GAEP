@@ -68,6 +68,7 @@ import type {
   GovernedFigmaWriteProjection,
   FinalizedFigmaSnapshotImportProjection,
   DesignToRequirementBindingProjection,
+  DesignerReadyGateProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -279,6 +280,9 @@ export interface CurrentStudioEngineReader {
   designToRequirementBinding?: {
     project(initiativeId: string): Promise<DesignToRequirementBindingProjection>
   }
+  designerReadyGate?: {
+    project(initiativeId: string): Promise<DesignerReadyGateProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -356,6 +360,7 @@ interface ObservedStudioState {
   governedFigmaWriteProjections: Map<string, GovernedFigmaWriteProjection>
   finalizedFigmaSnapshotImportProjections: Map<string, FinalizedFigmaSnapshotImportProjection>
   designToRequirementBindingProjections: Map<string, DesignToRequirementBindingProjection>
+  designerReadyGateProjections: Map<string, DesignerReadyGateProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2524,6 +2529,59 @@ function designToRequirementBindingTable(state: ObservedStudioState): StudioTabl
   }
 }
 
+function designerReadyGateTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.designerReadyGateProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        prerequisites: `${record.prerequisiteCount} exact prerequisites · ${record.prerequisiteCatalogDigest}`,
+        assessment: `definition ${record.assessmentDefinitionDigest} · receipt ${record.assessmentReceiptDigest} · evaluations ${record.evaluationCatalogDigest}`,
+        exceptions: record.exceptionCatalogDigest,
+        result: `${status.candidateResult} · ${status.state} · ${status.reviewState}`,
+        coverage: `${status.satisfiedCount} satisfied · ${status.notApplicableCount} not-applicable candidates · ${status.humanReviewedCount}/${status.prerequisiteCount} human-reviewed`,
+        gaps: `${status.unsatisfiedCount} unsatisfied · ${status.notAssessedCount} not assessed · ${status.staleOrUnknownCount} stale/unknown · ${status.pendingExceptionCount} pending exceptions · ${status.invalidExceptionCount} invalid exceptions · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, exact digests, counts, and results only; no design content, criteria, findings, exception rationale, Decision content, Source content, human attribution, personal, secret, credential, or permission content. A passing candidate is an evaluation result, not permission or readiness, and grants no completeness, validity, approval, baseline, exception, waiver, acceptance, phase-entry, Figma connection, credential, permission, import, write, implementation, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "designer-ready-gate",
+    title: "Designer-Ready Gate Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "prerequisites", label: "Exact prerequisites" },
+      { key: "assessment", label: "Assessment digests" },
+      { key: "exceptions", label: "Exception catalog digest" },
+      { key: "result", label: "Candidate result" },
+      { key: "coverage", label: "Review coverage" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No Designer-Ready Gate candidate",
+        "Create an exact evaluation candidate through the governed engine workflow. This view does not establish completeness, design validity, approval, baseline, readiness, exception or waiver authority, acceptance, phase entry, Figma access, implementation, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -4231,6 +4289,7 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
   const portableDesignPage = state.domainPages["portable-design-snapshot"]
   const portableDesignImportEnabled = state.audit?.valid === true && portableDesignPage !== undefined
   const portableDesignSnapshots = portableDesignSnapshotTable(state.portableDesignSnapshots, portableDesignImportEnabled)
+  const designerReadyGates = designerReadyGateTable(state)
   const portableDesignInventory = portableDesignPage
     ? `${portableDesignPage.total} governed record${portableDesignPage.total === 1 ? "" : "s"}; every validated import remains pending human review.`
     : "Unavailable until audit and governed snapshot inventory verification both succeed."
@@ -4258,6 +4317,7 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
     designRevisions,
     productRevisions,
     portableDesignSnapshots,
+    designerReadyGates,
     portability: [
       { term: "Export", value: "Portable bundle only; authority, readiness, runtime bindings, credentials, and implementation approval are not conferred." },
       { term: "Product export preview", value: state.importPreview ? `${state.importPreview.status}; preview only; no mutation performed.` : "No Product export preview is loaded; that preview workflow never mutates Product state." },
@@ -4357,6 +4417,7 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       designRevisions: capTable(page.designRevisions),
       productRevisions: capTable(page.productRevisions),
       portableDesignSnapshots: capTable(page.portableDesignSnapshots),
+      designerReadyGates: capTable(page.designerReadyGates),
     }
   }
 }
@@ -4437,6 +4498,7 @@ function addDomainPagination(page: StudioPageSnapshot, state: ObservedStudioStat
       designRevisions: pageTable(page.designRevisions, "product-design-revision"),
       productRevisions: pageTable(page.productRevisions, "product-revision"),
       portableDesignSnapshots: pageTable(page.portableDesignSnapshots, "portable-design-snapshot"),
+      designerReadyGates: page.designerReadyGates,
     }
   }
 }
@@ -5218,6 +5280,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       governedFigmaWriteProjections: new Map(),
       finalizedFigmaSnapshotImportProjections: new Map(),
       designToRequirementBindingProjections: new Map(),
+      designerReadyGateProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -6976,6 +7039,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "design-to-requirement-binding-unavailable",
           "Design-to-Requirement Binding metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "readiness" && engine.designerReadyGate) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.designerReadyGate!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.designerReadyGateProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Designer-Ready Gate projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `designer-ready-gate-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Designer-Ready Gate metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "designer-ready-gate-unavailable",
+          "Designer-Ready Gate metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

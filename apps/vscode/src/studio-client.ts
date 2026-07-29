@@ -819,6 +819,7 @@ class StudioShell {
       this.renderTable(page.designRevisions),
       this.renderTable(page.productRevisions),
       this.renderTable(page.portableDesignSnapshots),
+      this.renderTable(page.designerReadyGates),
       this.renderDefinitionGroup("Portable export and import boundary", page.portability),
     )
     return container
