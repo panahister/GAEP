@@ -63,6 +63,7 @@ import { figmaReadSnapshotInputSchema } from "./figma-read-snapshot.js"
 import { figmaContextImportInputSchema } from "./figma-context-import.js"
 import { outboundDesignBriefPackageInputSchema } from "./outbound-design-brief-package.js"
 import { governedFigmaWriteInputSchema } from "./governed-figma-write.js"
+import { finalizedFigmaSnapshotImportInputSchema } from "./finalized-figma-snapshot-import.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -695,6 +696,18 @@ export const hostGovernedFigmaWriteReviseParamsSchema = z.object({
   record: governedFigmaWriteInputSchema,
 }).strict()
 
+export const hostFinalizedFigmaSnapshotImportCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: finalizedFigmaSnapshotImportInputSchema,
+}).strict()
+
+export const hostFinalizedFigmaSnapshotImportReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: finalizedFigmaSnapshotImportInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -937,6 +950,11 @@ export const hostMethodSchema = z.enum([
   "design.governedFigmaWrite.revise",
   "design.governedFigmaWrite.assess",
   "design.governedFigmaWrite.snapshot",
+  "design.finalizedFigmaSnapshotImport.read",
+  "design.finalizedFigmaSnapshotImport.create",
+  "design.finalizedFigmaSnapshotImport.revise",
+  "design.finalizedFigmaSnapshotImport.assess",
+  "design.finalizedFigmaSnapshotImport.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1188,6 +1206,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.governedFigmaWrite.revise", hostGovernedFigmaWriteReviseParamsSchema),
   requestVariant("design.governedFigmaWrite.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.governedFigmaWrite.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.finalizedFigmaSnapshotImport.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.finalizedFigmaSnapshotImport.create", hostFinalizedFigmaSnapshotImportCreateParamsSchema),
+  requestVariant("design.finalizedFigmaSnapshotImport.revise", hostFinalizedFigmaSnapshotImportReviseParamsSchema),
+  requestVariant("design.finalizedFigmaSnapshotImport.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.finalizedFigmaSnapshotImport.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
