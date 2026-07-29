@@ -70,7 +70,8 @@
     { "id": "outbound-design-brief-package", "label": "Exact governed Outbound Design Brief Package manifest-only candidate projection with bounded Context Pack, entry, Context Item, recipient, evidence, redaction, requirement-coverage, disclosure and receipt metadata, without materializing or transferring context, connecting to or calling Figma, requesting credentials, granting permissions, authorizing or performing writes, validating targets or design, approving design, establishing a baseline or readiness, implementation, or action authority" },
     { "id": "governed-figma-write", "label": "Exact governed Figma Write authorization-review candidate projection with bounded package, target, request, effect, preview, approval-state, permission-evidence-state, idempotency, replay, recovery and gap metadata, without materializing or transferring context, connecting to or calling Figma, requesting credentials, granting permissions, authorizing or performing writes, validating targets or design, approving design, establishing a baseline or readiness, implementation, or action authority" },
     { "id": "finalized-figma-snapshot-import", "label": "Exact governed Finalized Figma Snapshot Import review-candidate projection with bounded governed-write, return-receipt, item, conflict, authorization, reconciliation, provenance, completeness and gap metadata, without transferring or importing content, connecting to or calling Figma, requesting credentials, granting permissions, proving external completeness, validating or approving design, establishing a baseline or readiness, implementation, or action authority" },
-    { "id": "design-to-requirement-binding", "label": "Exact governed Design-to-Requirement Binding review-candidate projection with bounded finalized-design, Requirement and Decision dependency, catalog, binding, coverage, conflict, reconciliation, provenance and gap metadata, without establishing relationship truth, coverage completeness, Requirement satisfaction, Decision effectiveness, external completeness, design validity or approval, baseline, readiness, Figma connection or call, credential or permission authority, import or write execution, implementation, or action authority" }
+    { "id": "design-to-requirement-binding", "label": "Exact governed Design-to-Requirement Binding review-candidate projection with bounded finalized-design, Requirement and Decision dependency, catalog, binding, coverage, conflict, reconciliation, provenance and gap metadata, without establishing relationship truth, coverage completeness, Requirement satisfaction, Decision effectiveness, external completeness, design validity or approval, baseline, readiness, Figma connection or call, credential or permission authority, import or write execution, implementation, or action authority" },
+    { "id": "designer-ready-gate", "label": "Exact governed Designer-Ready Gate evaluation-candidate projection over twelve current attributable human-reviewed prerequisites with bounded candidate-result, assessment-receipt, exception-candidate, stale-binding, stale-source and unresolved-question metadata, without establishing design or external completeness, design validity, approval, baseline, readiness, exception or waiver authority, acceptance, phase entry, implementation, Figma connection or call, credential or permission authority, import or write execution, or action authority" }
   ],
   "hosts": [
     {
@@ -81,7 +82,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T214810Z-phase-2-design-to-requirement-binding-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260729T223831Z-phase-2-designer-ready-gate-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -296,6 +297,9 @@
         ] },
         { "capabilityId": "design-to-requirement-binding", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designToRequirementBinding?: {", "engine.designToRequirementBinding!.project(initiative.id)", "id: \"design-to-requirement-binding\"", "no relationship-truth or coverage-completeness proof"] }
+        ] },
+        { "capabilityId": "designer-ready-gate", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designerReadyGate?: {", "engine.designerReadyGate!.project(initiative.id)", "id: \"designer-ready-gate\"", "evaluation result, not permission or readiness"] }
         ] }
       ]
     },
@@ -307,7 +311,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T214810Z-phase-2-design-to-requirement-binding-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260729T223831Z-phase-2-designer-ready-gate-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -555,6 +559,10 @@
         { "capabilityId": "design-to-requirement-binding", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignToRequirementBinding(", "this.request(\"design.designToRequirementBinding.snapshot\"", "designToRequirementBindingProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignToRequirementBinding", "GAEP Design-to-Requirement Binding review candidate", "does not prove relationship truth or coverage completeness"] }
+        ] },
+        { "capabilityId": "designer-ready-gate", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignerReadyGate(", "this.request(\"design.designerReadyGate.snapshot\"", "designerReadyGateProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignerReadyGate", "GAEP Designer-Ready Gate candidate", "evaluation result, not permission or readiness"] }
         ] }
       ]
     },
@@ -566,7 +574,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T214810Z-phase-2-design-to-requirement-binding-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260729T223831Z-phase-2-designer-ready-gate-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -865,6 +873,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignToRequirementBinding(", "portableRequest(\"design.designToRequirementBinding.snapshot\"", "parseDesignToRequirementBindingEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP Design-to-Requirement Binding review candidate", "no relationship-truth or coverage-completeness proof", "permission grant"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DesignToRequirementBindingProjection", "DESIGN_TO_REQUIREMENT_BINDING_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "designer-ready-gate", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignerReadyGate(", "portableRequest(\"design.designerReadyGate.snapshot\"", "parseDesignerReadyGateEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP Designer-Ready Gate candidate", "evaluation result, not permission or readiness", "implementation, or action authority"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DesignerReadyGateProjection", "DESIGNER_READY_GATE_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -876,7 +889,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T214810Z-phase-2-design-to-requirement-binding-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260729T223831Z-phase-2-designer-ready-gate-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1187,6 +1200,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignToRequirementBindingAsync(", "\"design.designToRequirementBinding.snapshot\"", "ParseDesignToRequirementBindingResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP Design-to-Requirement Binding review candidate", "no relationship-truth or coverage-completeness proof", "permission grant"] },
           { "path": "apps/visual-studio/Gaep.HostClient/DesignToRequirementBindingProtocol.cs", "contains": ["DesignToRequirementBindingProjection", "DesignToRequirementBindingProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "designer-ready-gate", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignerReadyGateAsync(", "\"design.designerReadyGate.snapshot\"", "ParseDesignerReadyGateResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP Designer-Ready Gate candidate", "evaluation result, not permission or readiness", "implementation, or action authority"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/DesignerReadyGateProtocol.cs", "contains": ["DesignerReadyGateProjection", "DesignerReadyGateProjectionAuthorityBoundary"] }
         ] }
       ]
     }

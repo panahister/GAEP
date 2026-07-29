@@ -1,0 +1,1559 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-0-ide-conformance-report-v1",
+  "phase": "phase-0-local",
+  "recordedAt": "2026-07-29T22:38:31Z",
+  "contractPath": "conformance/phase-0-ide-contract.json",
+  "packageReportPath": "evidence/local-packages/20260729T223831Z-phase-2-designer-ready-gate-packages.json",
+  "verificationResult": "pass",
+  "phaseGate": "incomplete",
+  "summary": {
+    "hosts": 4,
+    "capabilities": 69,
+    "assessments": 276,
+    "implemented": 276,
+    "partial": 0,
+    "not-implemented": 0,
+    "producedPackages": 3,
+    "acceptedHosts": 0,
+    "providers": 2,
+    "acceptedProviders": 0
+  },
+  "hosts": [
+    {
+      "id": "vscode",
+      "displayName": "VS Code",
+      "packageId": "gaep.gaep-vscode@0.1.0",
+      "package": {
+        "status": "produced",
+        "artifactPath": "apps/vscode/dist/gaep-vscode.vsix",
+        "bytes": 899677,
+        "digest": "sha256:9809cc33b6ebef40966648b2d2fa8e45400b716e07a8685ae24a5e5b2ac852f1",
+        "verification": "exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-and-bundled-engine-empty-recovery-evidence-workflow"
+      },
+      "runtimeEvidence": {
+        "source": "evidence/ide-smokes/20260729T223831Z-phase-2-designer-ready-gate-host-behavior.json",
+        "level": "installed-package-bundled-engine-workflow-local",
+        "recordedAt": "2026-07-29T22:38:31Z",
+        "sourceSnapshotDigest": "sha256:749f55fca31be31c3b93a9447eb428c1574f01b538fa929c688be5fa9ab477d7",
+        "checksPassed": 1
+      },
+      "capabilityCounts": {
+        "implemented": 69,
+        "partial": 0,
+        "not-implemented": 0
+      },
+      "capabilities": [
+        {
+          "capabilityId": "shared-engine-boundary",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "product-binding-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "initiative-entry-workflow",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "initiative-entry-policy-coverage",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "portable-design-list",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-local-import",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "exact-product-revision-recheck",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "pending-review-governance",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "metadata-only-privacy",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "codex-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "claude-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "provider-model-selection",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "versioned-handoff",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "managed-readonly-execution",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "staged-effectful-review",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "evidence-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "phase-dashboard-framework",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "phase1-summary-readiness-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "phase1-change-impact-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "phase1-agent-model-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "change-impact-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "agent-model-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "accessible-dashboard-tables",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "freshness-evidence-cues",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "source-intake-governance",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "candidate-source-baseline",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "source-provenance",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "business-understanding",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "stakeholder-role-model",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "outcome-success-model",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "business-capability-map",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "value-stream-model",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "operating-model",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "business-rule-catalog",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "business-architecture-baseline",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "system-solution-architecture",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "bounded-context-ownership",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "security-privacy-threat-assessment",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "process-model",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "data-model",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "authorization-model",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "event-integration-model",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "failure-recovery-model",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "architecture-challenge-model",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "decision-register",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "risk-register",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "evidence-registry",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "end-to-end-traceability",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "p0-p4-readiness-gate",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "p5-handoff-package",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "design-applicability",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "design-personas-roles",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "user-journeys",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "information-architecture",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "screen-state-inventory",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "design-requirements",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "design-system-token-contract",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "accessibility-design-rules",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "responsive-multi-platform-targets",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "manual-figma-execution-path",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "figma-mcp-capability-discovery",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "figma-read-snapshot",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "figma-context-import",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "outbound-design-brief-package",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "governed-figma-write",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "finalized-figma-snapshot-import",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "design-to-requirement-binding",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "designer-ready-gate",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        }
+      ],
+      "remainingRequirements": [
+        "native assistive-technology acceptance",
+        "real-provider managed read-only and staged-review package workflow acceptance",
+        "supported-OS installation matrix",
+        "Product Owner acceptance"
+      ],
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "kiro",
+      "displayName": "Kiro",
+      "packageId": "gaep.gaep-kiro@0.1.0",
+      "package": {
+        "status": "produced",
+        "artifactPath": "apps/kiro/dist/gaep-kiro.vsix",
+        "bytes": 857080,
+        "digest": "sha256:c1a463fa1c643f7c08d7a5ef8b076871aeafea2c037de661c8ce3176e0224f33",
+        "verification": "exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-digest-bound-package-local-provider-model-dashboard-and-empty-evidence-workflows-with-private-safe-output-and-immutable-store"
+      },
+      "runtimeEvidence": {
+        "source": "evidence/ide-smokes/20260729T223831Z-phase-2-designer-ready-gate-host-behavior.json",
+        "level": "compatible-host-packaged-engine-workflow-local",
+        "recordedAt": "2026-07-29T22:38:31Z",
+        "sourceSnapshotDigest": "sha256:c2a02e0edd95dacaa0fdcf381db869fce09377ed0bda6de0058476e2d887a21f",
+        "checksPassed": 1
+      },
+      "capabilityCounts": {
+        "implemented": 69,
+        "partial": 0,
+        "not-implemented": 0
+      },
+      "capabilities": [
+        {
+          "capabilityId": "shared-engine-boundary",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "product-binding-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "initiative-entry-workflow",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "initiative-entry-policy-coverage",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "portable-design-list",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-local-import",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "exact-product-revision-recheck",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "pending-review-governance",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "metadata-only-privacy",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "codex-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "claude-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "provider-model-selection",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "versioned-handoff",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "managed-readonly-execution",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "staged-effectful-review",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "evidence-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "phase-dashboard-framework",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "phase1-summary-readiness-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "phase1-change-impact-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "phase1-agent-model-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "change-impact-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "agent-model-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "accessible-dashboard-tables",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "freshness-evidence-cues",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "source-intake-governance",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "candidate-source-baseline",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "source-provenance",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "business-understanding",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "stakeholder-role-model",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "outcome-success-model",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "business-capability-map",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "value-stream-model",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "operating-model",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "business-rule-catalog",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "business-architecture-baseline",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "system-solution-architecture",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "bounded-context-ownership",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "security-privacy-threat-assessment",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "process-model",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "data-model",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "authorization-model",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "event-integration-model",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "failure-recovery-model",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "architecture-challenge-model",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "decision-register",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "risk-register",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "evidence-registry",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "end-to-end-traceability",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "p0-p4-readiness-gate",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "p5-handoff-package",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "design-applicability",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "design-personas-roles",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "user-journeys",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "information-architecture",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "screen-state-inventory",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "design-requirements",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "design-system-token-contract",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "accessibility-design-rules",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "responsive-multi-platform-targets",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "manual-figma-execution-path",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "figma-mcp-capability-discovery",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "figma-read-snapshot",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "figma-context-import",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "outbound-design-brief-package",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "governed-figma-write",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "finalized-figma-snapshot-import",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "design-to-requirement-binding",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "designer-ready-gate",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        }
+      ],
+      "remainingRequirements": [
+        "native Kiro installation and activation",
+        "native assistive-technology acceptance",
+        "real-provider managed read-only and staged-review package workflow acceptance",
+        "interactive cancellation and resume",
+        "supported-OS matrix",
+        "Product Owner acceptance"
+      ],
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "rider",
+      "displayName": "Rider",
+      "packageId": "dev.gaep.productstudio@0.1.0",
+      "package": {
+        "status": "produced",
+        "artifactPath": "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
+        "bytes": 1607219,
+        "digest": "sha256:61c9b28b21a9de8e5e664e5127840d6f97fa926a98943fca776d902d993a4e5e",
+        "verification": "clean-test-instrumentation-build-exact-engine-and-jar-archive-prepared-sandbox-parity-jetbrains-plugininstaller-install-removal-absence-reinstall-native-startup-and-client-packaged-engine-empty-evidence-workflow"
+      },
+      "runtimeEvidence": {
+        "source": "evidence/ide-smokes/20260729T223831Z-phase-2-designer-ready-gate-host-behavior.json",
+        "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
+        "recordedAt": "2026-07-29T22:38:31Z",
+        "sourceSnapshotDigest": "sha256:b90b73836028328427721580695269a9c07df669518bf860652150bd40a97bd4",
+        "checksPassed": 2
+      },
+      "capabilityCounts": {
+        "implemented": 69,
+        "partial": 0,
+        "not-implemented": 0
+      },
+      "capabilities": [
+        {
+          "capabilityId": "shared-engine-boundary",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "product-binding-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "initiative-entry-workflow",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "initiative-entry-policy-coverage",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "portable-design-list",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-local-import",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "exact-product-revision-recheck",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "pending-review-governance",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "metadata-only-privacy",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "codex-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "claude-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "provider-model-selection",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "versioned-handoff",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "managed-readonly-execution",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "staged-effectful-review",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "evidence-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "phase-dashboard-framework",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "phase1-summary-readiness-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "phase1-change-impact-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "phase1-agent-model-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "change-impact-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "agent-model-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "accessible-dashboard-tables",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "freshness-evidence-cues",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "source-intake-governance",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "candidate-source-baseline",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "source-provenance",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "business-understanding",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "stakeholder-role-model",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "outcome-success-model",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "business-capability-map",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "value-stream-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "operating-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "business-rule-catalog",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "business-architecture-baseline",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "system-solution-architecture",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "bounded-context-ownership",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "security-privacy-threat-assessment",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "process-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "data-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "authorization-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "event-integration-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "failure-recovery-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "architecture-challenge-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "decision-register",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "risk-register",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "evidence-registry",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "end-to-end-traceability",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "p0-p4-readiness-gate",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "p5-handoff-package",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "design-applicability",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "design-personas-roles",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "user-journeys",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "information-architecture",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "screen-state-inventory",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "design-requirements",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "design-system-token-contract",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "accessibility-design-rules",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "responsive-multi-platform-targets",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "manual-figma-execution-path",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "figma-mcp-capability-discovery",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "figma-read-snapshot",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "figma-context-import",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "outbound-design-brief-package",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "governed-figma-write",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "finalized-figma-snapshot-import",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "design-to-requirement-binding",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "designer-ready-gate",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        }
+      ],
+      "remainingRequirements": [
+        "Plugins UI or Marketplace installation",
+        "IDE-managed uninstall",
+        "interactive Product tool-window packaged-engine and assistive-technology automation",
+        "real-provider managed read-only and staged-review package workflow acceptance",
+        "interactive cancellation and resume",
+        "supported-OS matrix",
+        "Product Owner acceptance"
+      ],
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "visual-studio",
+      "displayName": "Visual Studio",
+      "packageId": "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
+      "package": {
+        "status": "not-produced-on-this-platform",
+        "artifactPath": "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
+        "verification": "cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-542-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending",
+        "limitation": "Native Visual Studio VSIX container creation and installation require Windows and VsixUtil.exe."
+      },
+      "runtimeEvidence": {
+        "source": "evidence/ide-smokes/20260729T223831Z-phase-2-designer-ready-gate-host-behavior.json",
+        "level": "cross-platform-packaged-engine-client-workflow-local",
+        "recordedAt": "2026-07-29T22:38:31Z",
+        "sourceSnapshotDigest": "sha256:7d2fe20246b94695ca16d06146930b7b7375db08749d337010c8c5d10e704225",
+        "checksPassed": 1
+      },
+      "capabilityCounts": {
+        "implemented": 69,
+        "partial": 0,
+        "not-implemented": 0
+      },
+      "capabilities": [
+        {
+          "capabilityId": "shared-engine-boundary",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "product-binding-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "initiative-entry-workflow",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "initiative-entry-policy-coverage",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "portable-design-list",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-read",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "portable-design-local-import",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "exact-product-revision-recheck",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "pending-review-governance",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "metadata-only-privacy",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "codex-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "claude-readiness",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "provider-model-selection",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "versioned-handoff",
+          "state": "implemented",
+          "sourceProbesVerified": 1
+        },
+        {
+          "capabilityId": "managed-readonly-execution",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "staged-effectful-review",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "evidence-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 5
+        },
+        {
+          "capabilityId": "phase-dashboard-framework",
+          "state": "implemented",
+          "sourceProbesVerified": 4
+        },
+        {
+          "capabilityId": "phase1-summary-readiness-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 5
+        },
+        {
+          "capabilityId": "phase1-change-impact-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 5
+        },
+        {
+          "capabilityId": "phase1-agent-model-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 5
+        },
+        {
+          "capabilityId": "change-impact-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 5
+        },
+        {
+          "capabilityId": "agent-model-dashboard",
+          "state": "implemented",
+          "sourceProbesVerified": 5
+        },
+        {
+          "capabilityId": "accessible-dashboard-tables",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "freshness-evidence-cues",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "source-intake-governance",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "candidate-source-baseline",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "source-provenance",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "business-understanding",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "stakeholder-role-model",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "outcome-success-model",
+          "state": "implemented",
+          "sourceProbesVerified": 2
+        },
+        {
+          "capabilityId": "business-capability-map",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "value-stream-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "operating-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "business-rule-catalog",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "business-architecture-baseline",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "system-solution-architecture",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "bounded-context-ownership",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "security-privacy-threat-assessment",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "process-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "data-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "authorization-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "event-integration-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "failure-recovery-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "architecture-challenge-model",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "decision-register",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "risk-register",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "evidence-registry",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "end-to-end-traceability",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "p0-p4-readiness-gate",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "p5-handoff-package",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "design-applicability",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "design-personas-roles",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "user-journeys",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "information-architecture",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "screen-state-inventory",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "design-requirements",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "design-system-token-contract",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "accessibility-design-rules",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "responsive-multi-platform-targets",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "manual-figma-execution-path",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "figma-mcp-capability-discovery",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "figma-read-snapshot",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "figma-context-import",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "outbound-design-brief-package",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "governed-figma-write",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "finalized-figma-snapshot-import",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "design-to-requirement-binding",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        },
+        {
+          "capabilityId": "designer-ready-gate",
+          "state": "implemented",
+          "sourceProbesVerified": 3
+        }
+      ],
+      "remainingRequirements": [
+        "Windows VSIX container",
+        "Windows installation and activation",
+        "rendered Remote UI automation",
+        "installed Windows-package engine workflow",
+        "real-provider managed read-only workflow acceptance",
+        "interactive provider cancellation and resume",
+        "supported-Visual-Studio matrix",
+        "Product Owner acceptance"
+      ],
+      "acceptance": "incomplete"
+    }
+  ],
+  "providerEvidence": {
+    "source": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+    "recordedAt": "2026-07-27T10:54:31Z",
+    "providers": 2,
+    "checksPassed": 2,
+    "liveAcceptedProviders": 0,
+    "remainingRequirements": [
+      "live Codex provider request and real-account acceptance",
+      "supported Claude runtime with non-persisted authentication and effective managed-policy attestation",
+      "live Claude provider request and real-account acceptance",
+      "supported-provider version and service-behavior matrix",
+      "Product Owner acceptance"
+    ]
+  },
+  "claimBoundary": "This contract records source-level capability presence, exact local package state and bounded runtime evidence. It is not native-host acceptance, supported-platform certification, Product readiness, release approval or security review."
+}
