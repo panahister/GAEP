@@ -60,6 +60,7 @@ import { responsiveMultiPlatformTargetsInputSchema } from "./responsive-multi-pl
 import { manualFigmaExecutionPathInputSchema } from "./manual-figma-execution-path.js"
 import { figmaMcpCapabilityDiscoveryInputSchema } from "./figma-mcp-capability-discovery.js"
 import { figmaReadSnapshotInputSchema } from "./figma-read-snapshot.js"
+import { figmaContextImportInputSchema } from "./figma-context-import.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -656,6 +657,18 @@ export const hostFigmaReadSnapshotReviseParamsSchema = z.object({
   record: figmaReadSnapshotInputSchema,
 }).strict()
 
+export const hostFigmaContextImportCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: figmaContextImportInputSchema,
+}).strict()
+
+export const hostFigmaContextImportReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: figmaContextImportInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -883,6 +896,11 @@ export const hostMethodSchema = z.enum([
   "design.figmaReadSnapshot.revise",
   "design.figmaReadSnapshot.assess",
   "design.figmaReadSnapshot.snapshot",
+  "design.figmaContextImport.read",
+  "design.figmaContextImport.create",
+  "design.figmaContextImport.revise",
+  "design.figmaContextImport.assess",
+  "design.figmaContextImport.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1119,6 +1137,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.figmaReadSnapshot.revise", hostFigmaReadSnapshotReviseParamsSchema),
   requestVariant("design.figmaReadSnapshot.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.figmaReadSnapshot.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.figmaContextImport.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.figmaContextImport.create", hostFigmaContextImportCreateParamsSchema),
+  requestVariant("design.figmaContextImport.revise", hostFigmaContextImportReviseParamsSchema),
+  requestVariant("design.figmaContextImport.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.figmaContextImport.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

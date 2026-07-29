@@ -269,6 +269,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.figmaReadSnapshot.revise",
   "design.figmaReadSnapshot.assess",
   "design.figmaReadSnapshot.snapshot",
+  "design.figmaContextImport.read",
+  "design.figmaContextImport.create",
+  "design.figmaContextImport.revise",
+  "design.figmaContextImport.assess",
+  "design.figmaContextImport.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1667,6 +1672,24 @@ export class EngineHost {
         return this.engine.figmaReadSnapshot.assess(request.params.initiativeId)
       case "design.figmaReadSnapshot.snapshot":
         return this.engine.figmaReadSnapshot.project(request.params.initiativeId)
+      case "design.figmaContextImport.read":
+        return await this.engine.figmaContextImport.readCurrent(request.params.initiativeId) ?? null
+      case "design.figmaContextImport.create":
+        return this.engine.figmaContextImport.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.figmaContextImport.revise":
+        return this.engine.figmaContextImport.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.figmaContextImport.assess":
+        return this.engine.figmaContextImport.assess(request.params.initiativeId)
+      case "design.figmaContextImport.snapshot":
+        return this.engine.figmaContextImport.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {
