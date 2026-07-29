@@ -66,6 +66,7 @@ import type {
   FigmaContextImportProjection,
   OutboundDesignBriefPackageProjection,
   GovernedFigmaWriteProjection,
+  FinalizedFigmaSnapshotImportProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -271,6 +272,9 @@ export interface CurrentStudioEngineReader {
   governedFigmaWrite?: {
     project(initiativeId: string): Promise<GovernedFigmaWriteProjection>
   }
+  finalizedFigmaSnapshotImport?: {
+    project(initiativeId: string): Promise<FinalizedFigmaSnapshotImportProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -346,6 +350,7 @@ interface ObservedStudioState {
   figmaContextImportProjections: Map<string, FigmaContextImportProjection>
   outboundDesignBriefPackageProjections: Map<string, OutboundDesignBriefPackageProjection>
   governedFigmaWriteProjections: Map<string, GovernedFigmaWriteProjection>
+  finalizedFigmaSnapshotImportProjections: Map<string, FinalizedFigmaSnapshotImportProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2408,6 +2413,59 @@ function governedFigmaWriteTable(state: ObservedStudioState): StudioTableSnapsho
   }
 }
 
+function finalizedFigmaSnapshotImportTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.finalizedFigmaSnapshotImportProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        governedWrite: `${record.governedWrite.recordId} · r${record.governedWrite.revision} · request ${record.governedWrite.requestDigest} · effect ${record.governedWrite.effectDigest}`,
+        receipts: `file ${record.externalFileIdentityDigest} · returned version ${record.returnedExternalVersionDigest} · payload ${record.payloadDigest} · receipt ${record.receiptDigest}`,
+        inventory: `${record.itemCount} items · ${record.conflictCount} conflicts · reconciliation ${record.reconciliationDigest}`,
+        governance: `return authorization ${status.returnAuthorizationState} · reconciliation ${status.reconciliationState} · provenance ${status.provenanceState} · completeness ${status.snapshotCompletenessState}`,
+        assessment: `${status.state} · ${status.reviewState} · execution ${status.importExecutionState} · result ${status.importResultState}`,
+        gaps: `${status.sourceRecordedItemCount} source-recorded items · ${status.notAssessedItemCount} unassessed items · ${status.openConflictCount} open conflicts · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, counts, statuses, and digests only; no Figma content, names, external identities, Source content, authorization actor, personal, secret, credential, or permission content and no content transfer or import, Figma connection or call, credential request, permission grant, external-completeness proof, target or design validation, design approval, baseline, readiness, implementation, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "finalized-figma-snapshot-import",
+    title: "Finalized Figma Snapshot Import Review Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "governedWrite", label: "Exact governed-write binding" },
+      { key: "receipts", label: "Return receipts" },
+      { key: "inventory", label: "Privacy-safe inventory" },
+      { key: "governance", label: "Reconciliation and evidence" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No finalized Figma Snapshot Import candidate",
+        "Record an exact attributable return receipt through the governed engine workflow. This view does not transfer or import content, connect to or call Figma, request credentials, grant permissions, prove external completeness, validate or approve design, establish a baseline or readiness, or authorize implementation or action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2441,6 +2499,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     figmaContextImportTable(state),
     outboundDesignBriefPackageTable(state),
     governedFigmaWriteTable(state),
+    finalizedFigmaSnapshotImportTable(state),
   )
   if (route === "architecture") {
     relatedRecords.push(
@@ -5098,6 +5157,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       figmaContextImportProjections: new Map(),
       outboundDesignBriefPackageProjections: new Map(),
       governedFigmaWriteProjections: new Map(),
+      finalizedFigmaSnapshotImportProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -6772,6 +6832,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "governed-figma-write-unavailable",
           "Governed Figma Write metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "scope" && engine.finalizedFigmaSnapshotImport) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.finalizedFigmaSnapshotImport!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.finalizedFigmaSnapshotImportProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Finalized Figma Snapshot Import projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `finalized-figma-snapshot-import-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Finalized Figma Snapshot Import metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "finalized-figma-snapshot-import-unavailable",
+          "Finalized Figma Snapshot Import metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

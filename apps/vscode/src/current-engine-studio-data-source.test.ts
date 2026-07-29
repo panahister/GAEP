@@ -38,6 +38,7 @@ import {
   type FigmaContextImportProjection,
   type OutboundDesignBriefPackageProjection,
   type GovernedFigmaWriteProjection,
+  type FinalizedFigmaSnapshotImportProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2449,6 +2450,79 @@ function governedFigmaWriteProjection(): GovernedFigmaWriteProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function finalizedFigmaSnapshotImportProjection(): FinalizedFigmaSnapshotImportProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "finalized-figma-snapshot-import-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd", revision: 2, digest: `sha256:${"c".repeat(64)}` as const },
+    itemCount: 18,
+    humanReviewedItemCount: 12,
+    sourceRecordedItemCount: 4,
+    notAssessedItemCount: 2,
+    openConflictCount: 3,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 5,
+    returnAuthorizationState: "missing" as const,
+    reconciliationState: "partial" as const,
+    provenanceState: "partial" as const,
+    snapshotCompletenessState: "partial" as const,
+    reviewState: "held" as const,
+    importExecutionState: "not-performed" as const,
+    importResultState: "not-recorded" as const,
+    state: "attention-required" as const,
+    reasons: ["Exact return authorization is missing"],
+    assessedAt: "2026-07-29T15:30:00.000Z",
+    authorityBoundary: "finalized-figma-snapshot-import-status-is-observational-and-does-not-transfer-or-import-content-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-validate-or-approve-design-establish-a-baseline-readiness-implementation-or-action-authority" as const,
+  }
+  const governedWrite = {
+    recordId: "bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc",
+    revision: 2,
+    digest: `sha256:${"1".repeat(64)}` as const,
+    membershipDigest: `sha256:${"2".repeat(64)}` as const,
+    requestDigest: `sha256:${"3".repeat(64)}` as const,
+    effectDigest: `sha256:${"4".repeat(64)}` as const,
+    externalFileIdentityDigest: `sha256:${"5".repeat(64)}` as const,
+    expectedExternalVersionDigest: `sha256:${"6".repeat(64)}` as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "finalized-figma-snapshot-import-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"7".repeat(64)}` as const,
+      state: "candidate" as const,
+      governedWrite,
+      externalFileIdentityDigest: governedWrite.externalFileIdentityDigest,
+      returnedExternalVersionDigest: `sha256:${"8".repeat(64)}` as const,
+      payloadDigest: `sha256:${"9".repeat(64)}` as const,
+      receiptDigest: `sha256:${"a".repeat(64)}` as const,
+      reconciliationDigest: `sha256:${"b".repeat(64)}` as const,
+      itemCount: status.itemCount,
+      conflictCount: 4,
+      returnAuthorizationState: status.returnAuthorizationState,
+      reconciliationState: status.reconciliationState,
+      provenanceState: status.provenanceState,
+      reviewState: status.reviewState,
+      importExecutionState: status.importExecutionState,
+      updatedAt: "2026-07-29T15:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-content-names-external-identities-source-content-authorization-actor-personal-content-secrets-credentials-or-permissions" as const,
+    authorityBoundary: "finalized-figma-snapshot-import-projection-is-read-only-and-does-not-transfer-or-import-content-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-validate-or-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -3109,6 +3183,7 @@ interface HarnessOptions {
   figmaContextImportProjection?: FigmaContextImportProjection
   outboundDesignBriefPackageProjection?: OutboundDesignBriefPackageProjection
   governedFigmaWriteProjection?: GovernedFigmaWriteProjection
+  finalizedFigmaSnapshotImportProjection?: FinalizedFigmaSnapshotImportProjection
   commandResult?: unknown
 }
 
@@ -3384,6 +3459,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.governedFigmaWriteProjection ? {
       governedFigmaWrite: {
         project: async () => options.governedFigmaWriteProjection!,
+      },
+    } : {}),
+    ...(options.finalizedFigmaSnapshotImportProjection ? {
+      finalizedFigmaSnapshotImport: {
+        project: async () => options.finalizedFigmaSnapshotImportProjection!,
       },
     } : {}),
   }
@@ -4357,6 +4437,33 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private brief|private requirement|private constraint|private context item|private figma target|private tool|private approval actor|private permission evidence|private recovery detail|private source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe Finalized Figma Snapshot Import metadata on the native scope page", async () => {
+    const projection = finalizedFigmaSnapshotImportProjection()
+    const { source } = harness({ finalizedFigmaSnapshotImportProjection: projection })
+    const snapshot = await source.readSnapshot("scope")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "finalized-figma-snapshot-import")).toMatchObject({
+      id: "finalized-figma-snapshot-import",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          governedWrite: `${projection.candidate?.governedWrite.recordId} · r2 · request ${projection.candidate?.governedWrite.requestDigest} · effect ${projection.candidate?.governedWrite.effectDigest}`,
+          receipts: `file ${projection.candidate?.externalFileIdentityDigest} · returned version ${projection.candidate?.returnedExternalVersionDigest} · payload ${projection.candidate?.payloadDigest} · receipt ${projection.candidate?.receiptDigest}`,
+          inventory: `18 items · 4 conflicts · reconciliation ${projection.candidate?.reconciliationDigest}`,
+          governance: "return authorization missing · reconciliation partial · provenance partial · completeness partial",
+          assessment: "attention-required · held · execution not-performed · result not-recorded",
+          gaps: "4 source-recorded items · 2 unassessed items · 3 open conflicts · 5 questions · 1 stale bindings · 2 stale Source references",
+          boundary: "Candidate identities, counts, statuses, and digests only; no Figma content, names, external identities, Source content, authorization actor, personal, secret, credential, or permission content and no content transfer or import, Figma connection or call, credential request, permission grant, external-completeness proof, target or design validation, design approval, baseline, readiness, implementation, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private figma content|private figma name|private external identity|private authorization actor|private source content|customer@example\.com|api_key/iu,
     )
   })
 
