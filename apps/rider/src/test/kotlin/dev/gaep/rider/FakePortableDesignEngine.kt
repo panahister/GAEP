@@ -48,6 +48,7 @@ private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-41
 private val manualFigmaExecutionPathId = UUID.fromString("72727272-7272-4272-8272-727272727272")
 private val figmaMcpCapabilityDiscoveryId = UUID.fromString("73737373-7373-4373-8373-737373737373")
 private val figmaReadSnapshotId = UUID.fromString("74747474-7474-4474-8474-747474747474")
+private val figmaContextImportId = UUID.fromString("75757575-7575-4575-8575-757575757575")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -286,6 +287,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.figmaReadSnapshot.snapshot" -> handleFigmaReadSnapshot(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.figmaContextImport.snapshot" -> handleFigmaContextImport(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3563,6 +3569,102 @@ private fun handleFigmaReadSnapshot(id: Long, params: JsonObject, workspacePath:
         }
         workspacePath.endsWith("bad-figma-read-snapshot-private") -> {
             value.addProperty("fileNames", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleFigmaContextImport(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE FIGMA CONTEXT IMPORT PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-figma-context-import-binding")) 8 else 7
+    val assessedAt = "2026-07-29T09:30:00.000Z"
+    val candidateDigest = "sha256:${"d".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "figma-context-import-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "figma-context-import-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", figmaContextImportId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("contextPackCount", 2)
+            addProperty("sectionCount", 8)
+            addProperty("contextItemCount", 24)
+            addProperty("targetCount", 2)
+            addProperty("humanReviewedSectionCount", 5)
+            addProperty("sourceRecordedSectionCount", 2)
+            addProperty("notAssessedSectionCount", 1)
+            addProperty("unresolvedRedactionCount", 1)
+            addProperty("representedRequirementCount", 7)
+            addProperty("unresolvedRequirementCount", 2)
+            addProperty("unresolvedOwnershipCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedQuestionCount", 3)
+            addProperty("contextSelectionState", "partial")
+            addProperty("provenanceState", "partial")
+            addProperty("previewState", "candidate-generated")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more selected sections require human review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "figma-context-import-status-is-observational-and-does-not-package-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", figmaContextImportId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"e".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("contextPackCount", 2)
+            addProperty("sectionCount", 8)
+            addProperty("contextItemCount", 24)
+            addProperty("targetCount", 2)
+            addProperty("representedRequirementCount", 7)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-29T09:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-or-personal-content-secrets-credentials-or-permissions",
+        )
+        addProperty(
+            "authorityBoundary",
+            "figma-context-import-projection-is-read-only-and-does-not-package-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-figma-context-import-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("contextItemCount", 25)
+        }
+        workspacePath.endsWith("bad-figma-context-import-private") -> {
+            value.addProperty("contextItems", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

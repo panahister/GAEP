@@ -1833,6 +1833,65 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readFigmaContextImport(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readFigmaContextImport(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Figma Context Import was read. Refresh the exact records." }
+        return renderFigmaContextImport(projection)
+    }
+
+    fun renderFigmaContextImport(projection: FigmaContextImportProjection): String = buildString {
+        appendLine("GAEP governed Figma Context Import candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine(
+            "Selection: ${projection.contextSelectionState} · provenance ${projection.provenanceState} · " +
+                "preview ${projection.previewState}",
+        )
+        appendLine(
+            "Inventory: ${projection.contextPackCount} Context Packs · ${projection.sectionCount} sections · " +
+                "${projection.contextItemCount} Context Items · ${projection.targetCount} Figma targets",
+        )
+        appendLine(
+            "Evidence: ${projection.humanReviewedSectionCount} human-reviewed · " +
+                "${projection.sourceRecordedSectionCount} source-recorded · ${projection.notAssessedSectionCount} not assessed · " +
+                "${projection.unresolvedRedactionCount} redaction gaps",
+        )
+        appendLine(
+            "Requirement coverage: ${projection.representedRequirementCount} represented · " +
+                "${projection.unresolvedRequirementCount} unresolved",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedOwnershipCount} ownership · ${projection.unresolvedQuestionCount} questions · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Figma Context Import candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate inventory: ${record.contextPackCount} Context Packs · ${record.sectionCount} sections · " +
+                    "${record.contextItemCount} Context Items · ${record.targetCount} Figma targets · " +
+                    "${record.representedRequirementCount} represented Requirements · ${record.reviewState}",
+            )
+        } ?: appendLine("Figma Context Import candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and digests only; no context packaging or transfer, " +
+                "Figma connection or call, credential request, permission grant, write, target or design validation, design approval, " +
+                "baseline, readiness, implementation, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

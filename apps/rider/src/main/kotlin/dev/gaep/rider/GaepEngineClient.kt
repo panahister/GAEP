@@ -402,6 +402,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readFigmaContextImport(initiativeId: UUID): FigmaContextImportProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("design.figmaContextImport.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseFigmaContextImportEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

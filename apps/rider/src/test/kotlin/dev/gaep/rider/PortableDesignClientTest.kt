@@ -1818,6 +1818,58 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Figma Context Import projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("figma-context-import-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readFigmaContextImport(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("partial", projection.contextSelectionState)
+            assertEquals("partial", projection.provenanceState)
+            assertEquals("candidate-generated", projection.previewState)
+            assertEquals(2, projection.contextPackCount)
+            assertEquals(8, projection.sectionCount)
+            assertEquals(24, projection.contextItemCount)
+            assertEquals(2, projection.targetCount)
+            assertEquals(5, projection.humanReviewedSectionCount)
+            assertEquals(7, projection.representedRequirementCount)
+            assertEquals(2, projection.candidate?.contextPackCount)
+
+            val rendered = RiderProductController(client).readFigmaContextImport(entryId)
+            assertTrue(rendered.contains("GAEP governed Figma Context Import candidate"))
+            assertTrue(rendered.contains("2 Context Packs · 8 sections · 24 Context Items · 2 Figma targets"))
+            assertTrue(rendered.contains("5 human-reviewed"))
+            assertTrue(rendered.contains("no context packaging or transfer"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("contextItems"))
+        }
+
+        listOf(
+            "bad-figma-context-import-digest",
+            "bad-figma-context-import-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readFigmaContextImport(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-figma-context-import-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readFigmaContextImport(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

@@ -642,6 +642,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += figmaReadSnapshotButton
         actions.add(figmaReadSnapshotButton)
 
+        val figmaContextImportButton = JButton("Inspect Figma Context Import…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Brief, Requirement, constraint, Context Item, Figma target, tool, Source, personal data, local paths, secrets, credentials, permissions, and authority are withheld.",
+                    "GAEP Figma Context Import",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Figma Context Import", status, output, buttons) {
+                    controller.readFigmaContextImport(initiativeId)
+                }
+            }
+        }
+        buttons += figmaContextImportButton
+        actions.add(figmaContextImportButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {
