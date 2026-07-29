@@ -2151,6 +2151,61 @@ test("protocol-v2 client validates privacy-safe Governed Figma Write projections
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 client validates privacy-safe Finalized Figma Snapshot Import projections and rejects hostile responses", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-finalized-figma-snapshot-import-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-finalized-figma-snapshot-import-binding",
+    "bad-finalized-figma-snapshot-import-digest",
+    "bad-finalized-figma-snapshot-import-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readFinalizedFigmaSnapshotImport(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.returnAuthorizationState, "missing")
+    assert.equal(projection.status.reconciliationState, "partial")
+    assert.equal(projection.status.provenanceState, "partial")
+    assert.equal(projection.status.snapshotCompletenessState, "partial")
+    assert.equal(projection.status.importExecutionState, "not-performed")
+    assert.equal(projection.status.importResultState, "not-recorded")
+    assert.equal(projection.candidate?.itemCount, 18)
+    assert.equal(projection.candidate?.conflictCount, 4)
+    assert.equal(
+      projection.authorityBoundary,
+      "finalized-figma-snapshot-import-projection-is-read-only-and-does-not-transfer-or-import-content-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-validate-or-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"authorizationActor":'), false)
+    assert.equal(serialized.includes('"items":'), false)
+    assert.equal(serialized.includes('"conflicts":'), false)
+    assert.equal(serialized.includes('"sources":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readFinalizedFigmaSnapshotImport(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")

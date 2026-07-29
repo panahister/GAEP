@@ -39,6 +39,7 @@ import {
   type FigmaContextImportProjection,
   type OutboundDesignBriefPackageProjection,
   type GovernedFigmaWriteProjection,
+  type FinalizedFigmaSnapshotImportProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -149,6 +150,7 @@ const commandIds = {
   figmaContextImport: "gaepKiro.figmaContextImport.inspect",
   outboundDesignBriefPackage: "gaepKiro.outboundDesignBriefPackage.inspect",
   governedFigmaWrite: "gaepKiro.governedFigmaWrite.inspect",
+  finalizedFigmaSnapshotImport: "gaepKiro.finalizedFigmaSnapshotImport.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -278,6 +280,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.figmaContextImport, (input?: unknown) => runUserCommand(() => showFigmaContextImport(pool, input))),
     vscode.commands.registerCommand(commandIds.outboundDesignBriefPackage, (input?: unknown) => runUserCommand(() => showOutboundDesignBriefPackage(pool, input))),
     vscode.commands.registerCommand(commandIds.governedFigmaWrite, (input?: unknown) => runUserCommand(() => showGovernedFigmaWrite(pool, input))),
+    vscode.commands.registerCommand(commandIds.finalizedFigmaSnapshotImport, (input?: unknown) => runUserCommand(() => showFinalizedFigmaSnapshotImport(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -2080,6 +2083,51 @@ async function showGovernedFigmaWrite(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and digests only; this does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a baseline or readiness, or authorize implementation or action.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showFinalizedFigmaSnapshotImport(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<FinalizedFigmaSnapshotImportProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Finalized Figma Snapshot Import", "Initiative ID")
+  const projection = await client.readFinalizedFigmaSnapshotImport(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP finalized Figma Snapshot Import review candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Reconciliation: ${status.reconciliationState} · provenance ${status.provenanceState} · completeness ${status.snapshotCompletenessState}`,
+    `Return authorization: ${status.returnAuthorizationState}`,
+    `Inventory: ${status.itemCount} items · ${status.humanReviewedItemCount} human-reviewed · ${status.sourceRecordedItemCount} source-recorded · ${status.notAssessedItemCount} not assessed`,
+    `Execution: ${status.importExecutionState} · result ${status.importResultState}`,
+    `Candidate gaps: ${status.openConflictCount} open conflicts · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Governed write: ${record.governedWrite.recordId}@${record.governedWrite.revision} · request ${record.governedWrite.requestDigest} · effect ${record.governedWrite.effectDigest}`,
+      `Return receipts: file ${record.externalFileIdentityDigest} · returned version ${record.returnedExternalVersionDigest} · payload ${record.payloadDigest} · receipt ${record.receiptDigest}`,
+      `Reconciliation receipt: ${record.reconciliationDigest}`,
+      `Candidate inventory: ${record.itemCount} items · ${record.conflictCount} conflicts · return authorization ${record.returnAuthorizationState} · reconciliation ${record.reconciliationState} · provenance ${record.provenanceState} · review ${record.reviewState} · execution ${record.importExecutionState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and digests only; this does not transfer or import content, connect to or call Figma, request credentials, grant permissions, prove external completeness, validate targets or design, approve design, establish a baseline or readiness, or authorize implementation or action.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

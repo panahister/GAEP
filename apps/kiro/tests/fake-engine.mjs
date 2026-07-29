@@ -65,6 +65,7 @@ const figmaReadSnapshotId = "67676767-6767-4767-8767-676767676767"
 const figmaContextImportId = "68686868-6868-4868-8868-686868686868"
 const outboundDesignBriefPackageId = "69696969-6969-4969-8969-696969696969"
 const governedFigmaWriteId = "70707070-7070-4070-8070-707070707070"
+const finalizedFigmaSnapshotImportId = "71717171-7171-4171-8171-717171717171"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -176,6 +177,8 @@ input.on("line", (line) => {
       return readOutboundDesignBriefPackage(id, request.params)
     case "design.governedFigmaWrite.snapshot":
       return readGovernedFigmaWrite(id, request.params)
+    case "design.finalizedFigmaSnapshotImport.snapshot":
+      return readFinalizedFigmaSnapshotImport(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2725,6 +2728,88 @@ function readGovernedFigmaWrite(id, params) {
   if (workspacePath.endsWith("bad-governed-figma-write-digest")) value.candidate.selectedEntryCount = 9
   if (workspacePath.endsWith("bad-governed-figma-write-private")) {
     value.approvalActor = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readFinalizedFigmaSnapshotImport(id, params) {
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"c".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "finalized-figma-snapshot-import-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: finalizedFigmaSnapshotImportId, revision: 2, digest: candidateDigest },
+    itemCount: 18,
+    humanReviewedItemCount: 12,
+    sourceRecordedItemCount: 4,
+    notAssessedItemCount: 2,
+    openConflictCount: 3,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 5,
+    returnAuthorizationState: "missing",
+    reconciliationState: "partial",
+    provenanceState: "partial",
+    snapshotCompletenessState: "partial",
+    reviewState: "held",
+    importExecutionState: "not-performed",
+    importResultState: "not-recorded",
+    state: "attention-required",
+    reasons: ["Exact return authorization is missing"],
+    assessedAt: "2026-07-29T15:30:00.000Z",
+    authorityBoundary: "finalized-figma-snapshot-import-status-is-observational-and-does-not-transfer-or-import-content-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-validate-or-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+  }
+  const governedWrite = {
+    recordId: governedFigmaWriteId,
+    revision: 2,
+    digest: `sha256:${"1".repeat(64)}`,
+    membershipDigest: `sha256:${"2".repeat(64)}`,
+    requestDigest: `sha256:${"3".repeat(64)}`,
+    effectDigest: `sha256:${"4".repeat(64)}`,
+    externalFileIdentityDigest: `sha256:${"5".repeat(64)}`,
+    expectedExternalVersionDigest: `sha256:${"6".repeat(64)}`,
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "finalized-figma-snapshot-import-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: finalizedFigmaSnapshotImportId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"7".repeat(64)}`,
+      state: "candidate",
+      governedWrite,
+      externalFileIdentityDigest: governedWrite.externalFileIdentityDigest,
+      returnedExternalVersionDigest: `sha256:${"8".repeat(64)}`,
+      payloadDigest: `sha256:${"9".repeat(64)}`,
+      receiptDigest: `sha256:${"a".repeat(64)}`,
+      reconciliationDigest: `sha256:${"b".repeat(64)}`,
+      itemCount: 18,
+      conflictCount: 4,
+      returnAuthorizationState: "missing",
+      reconciliationState: "partial",
+      provenanceState: "partial",
+      reviewState: "held",
+      importExecutionState: "not-performed",
+      updatedAt: "2026-07-29T15:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-content-names-external-identities-source-content-authorization-actor-personal-content-secrets-credentials-or-permissions",
+    authorityBoundary: "finalized-figma-snapshot-import-projection-is-read-only-and-does-not-transfer-or-import-content-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-validate-or-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-finalized-figma-snapshot-import-binding")) content.initiative.id = finalizedFigmaSnapshotImportId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-finalized-figma-snapshot-import-digest")) value.candidate.itemCount = 19
+  if (workspacePath.endsWith("bad-finalized-figma-snapshot-import-private")) {
+    value.authorizationActor = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }
