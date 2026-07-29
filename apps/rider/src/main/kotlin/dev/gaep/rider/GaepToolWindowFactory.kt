@@ -674,6 +674,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += outboundDesignBriefPackageButton
         actions.add(outboundDesignBriefPackageButton)
 
+        val governedFigmaWriteButton = JButton("Inspect Governed Figma Write…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Brief, Requirement, constraint, Context Item, Figma target, tool, Source, approval actor, permission evidence, recovery detail, personal data, local paths, secrets, credentials, and authority are withheld.",
+                    "GAEP Governed Figma Write",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Governed Figma Write", status, output, buttons) {
+                    controller.readGovernedFigmaWrite(initiativeId)
+                }
+            }
+        }
+        buttons += governedFigmaWriteButton
+        actions.add(governedFigmaWriteButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

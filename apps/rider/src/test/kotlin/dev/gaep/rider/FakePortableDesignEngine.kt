@@ -50,6 +50,7 @@ private val figmaMcpCapabilityDiscoveryId = UUID.fromString("73737373-7373-4373-
 private val figmaReadSnapshotId = UUID.fromString("74747474-7474-4474-8474-747474747474")
 private val figmaContextImportId = UUID.fromString("75757575-7575-4575-8575-757575757575")
 private val outboundDesignBriefPackageId = UUID.fromString("76767676-7676-4676-8676-767676767676")
+private val governedFigmaWriteId = UUID.fromString("77777777-7777-4777-8777-777777777777")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -298,6 +299,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.outboundDesignBriefPackage.snapshot" -> handleOutboundDesignBriefPackage(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.governedFigmaWrite.snapshot" -> handleGovernedFigmaWrite(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3772,6 +3778,115 @@ private fun handleOutboundDesignBriefPackage(id: Long, params: JsonObject, works
         }
         workspacePath.endsWith("bad-outbound-design-brief-package-private") -> {
             value.addProperty("entries", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleGovernedFigmaWrite(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE GOVERNED FIGMA WRITE PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-governed-figma-write-binding")) 8 else 7
+    val assessedAt = "2026-07-29T14:00:00.000Z"
+    val candidateDigest = "sha256:${"1".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "governed-figma-write-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "governed-figma-write-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", governedFigmaWriteId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("selectedEntryCount", 8)
+            addProperty("unresolvedDisclosureCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedQuestionCount", 3)
+            addProperty("previewState", "candidate-generated")
+            addProperty("approvalState", "pending")
+            addProperty("permissionEvidenceState", "missing")
+            addProperty("idempotencyState", "defined")
+            addProperty("replayProtectionState", "defined")
+            addProperty("recoveryPlanState", "defined")
+            addProperty("writePlanState", "held")
+            addProperty("reviewState", "held")
+            addProperty("writeExecutionState", "not-performed")
+            addProperty("writeResultState", "not-recorded")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("Exact permission evidence is missing") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "governed-figma-write-status-is-observational-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", governedFigmaWriteId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"2".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("requestFormat", "gaep-governed-figma-write-request-v1")
+            addProperty("requestDigest", "sha256:${"3".repeat(64)}")
+            addProperty("effectDigest", "sha256:${"4".repeat(64)}")
+            add("outboundPackage", JsonObject().apply {
+                addProperty("recordId", outboundDesignBriefPackageId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", "sha256:${"5".repeat(64)}")
+                addProperty("membershipDigest", "sha256:${"6".repeat(64)}")
+                addProperty("manifestDigest", "sha256:${"7".repeat(64)}")
+                addProperty("payloadDigest", "sha256:${"8".repeat(64)}")
+            })
+            addProperty("externalFileIdentityDigest", "sha256:${"9".repeat(64)}")
+            addProperty("expectedExternalVersionDigest", "sha256:${"a".repeat(64)}")
+            addProperty("selectedEntryCount", 8)
+            addProperty("previewState", "candidate-generated")
+            addProperty("previewDigest", "sha256:${"b".repeat(64)}")
+            addProperty("approvalState", "pending")
+            addProperty("permissionEvidenceState", "missing")
+            addProperty("idempotencyState", "defined")
+            addProperty("recoveryPlanState", "defined")
+            addProperty("reviewState", "held")
+            addProperty("writeExecutionState", "not-performed")
+            addProperty("updatedAt", "2026-07-29T13:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-approval-actor-permission-evidence-recovery-or-personal-content-secrets-or-credentials",
+        )
+        addProperty(
+            "authorityBoundary",
+            "governed-figma-write-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-governed-figma-write-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("selectedEntryCount", 9)
+        }
+        workspacePath.endsWith("bad-governed-figma-write-private") -> {
+            value.addProperty("approvalActor", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

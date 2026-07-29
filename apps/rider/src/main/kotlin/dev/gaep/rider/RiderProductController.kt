@@ -1954,6 +1954,71 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readGovernedFigmaWrite(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readGovernedFigmaWrite(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Governed Figma Write was read. Refresh the exact records." }
+        return renderGovernedFigmaWrite(projection)
+    }
+
+    fun renderGovernedFigmaWrite(projection: GovernedFigmaWriteProjection): String = buildString {
+        appendLine("GAEP governed Figma Write authorization-review candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine(
+            "Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState} · " +
+                "plan ${projection.writePlanState}",
+        )
+        appendLine(
+            "Governance: preview ${projection.previewState} · approval ${projection.approvalState} · " +
+                "permission evidence ${projection.permissionEvidenceState}",
+        )
+        appendLine(
+            "Safety: idempotency ${projection.idempotencyState} · replay ${projection.replayProtectionState} · " +
+                "recovery ${projection.recoveryPlanState}",
+        )
+        appendLine("Execution: ${projection.writeExecutionState} · result ${projection.writeResultState}")
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedDisclosureCount} disclosures · ${projection.unresolvedQuestionCount} questions · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Candidate record: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine("Request receipt: ${record.requestFormat} · ${record.requestDigest}")
+            appendLine("Effect receipt: ${record.effectDigest}")
+            appendLine("Preview receipt: ${record.previewDigest ?: "not-generated"}")
+            appendLine(
+                "Package receipt: ${record.outboundPackage.recordId}@${record.outboundPackage.revision} · " +
+                    "manifest ${record.outboundPackage.manifestDigest} · payload ${record.outboundPackage.payloadDigest}",
+            )
+            appendLine(
+                "Target receipts: file ${record.externalFileIdentityDigest} · expected version " +
+                    "${record.expectedExternalVersionDigest} · ${record.selectedEntryCount} selected entries",
+            )
+            appendLine(
+                "Candidate states: preview ${record.previewState} · approval ${record.approvalState} · " +
+                    "permission evidence ${record.permissionEvidenceState} · idempotency ${record.idempotencyState} · " +
+                    "recovery ${record.recoveryPlanState} · review ${record.reviewState} · execution ${record.writeExecutionState}",
+            )
+        } ?: appendLine("Candidate record: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and digests only; no package materialization or context transfer, " +
+                "Figma connection or call, credential request, permission grant, write authorization or execution, target or design validation, " +
+                "design approval, baseline, readiness, implementation, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

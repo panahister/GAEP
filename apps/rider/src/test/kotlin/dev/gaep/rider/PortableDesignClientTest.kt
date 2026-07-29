@@ -1923,6 +1923,61 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Governed Figma Write projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("governed-figma-write-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readGovernedFigmaWrite(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("held", projection.writePlanState)
+            assertEquals("candidate-generated", projection.previewState)
+            assertEquals("pending", projection.approvalState)
+            assertEquals("missing", projection.permissionEvidenceState)
+            assertEquals("defined", projection.idempotencyState)
+            assertEquals("defined", projection.replayProtectionState)
+            assertEquals("defined", projection.recoveryPlanState)
+            assertEquals("not-performed", projection.writeExecutionState)
+            assertEquals("not-recorded", projection.writeResultState)
+            assertEquals(8, projection.selectedEntryCount)
+            assertEquals("gaep-governed-figma-write-request-v1", projection.candidate?.requestFormat)
+            assertEquals(2, projection.candidate?.outboundPackage?.revision)
+
+            val rendered = RiderProductController(client).readGovernedFigmaWrite(entryId)
+            assertTrue(rendered.contains("GAEP governed Figma Write authorization-review candidate"))
+            assertTrue(rendered.contains("approval pending · permission evidence missing"))
+            assertTrue(rendered.contains("8 selected entries"))
+            assertTrue(rendered.contains("no package materialization or context transfer"))
+            assertTrue(rendered.contains("permission grant"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("approvalActor="))
+        }
+
+        listOf(
+            "bad-governed-figma-write-digest",
+            "bad-governed-figma-write-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readGovernedFigmaWrite(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-governed-figma-write-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readGovernedFigmaWrite(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

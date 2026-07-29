@@ -2350,6 +2350,66 @@ data class OutboundDesignBriefPackageProjection(
     val snapshotDigest: String,
 )
 
+data class GovernedFigmaWritePackageBindingView(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val manifestDigest: String,
+    val payloadDigest: String,
+)
+
+data class GovernedFigmaWriteRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val requestFormat: String,
+    val requestDigest: String,
+    val effectDigest: String,
+    val outboundPackage: GovernedFigmaWritePackageBindingView,
+    val externalFileIdentityDigest: String,
+    val expectedExternalVersionDigest: String,
+    val selectedEntryCount: Int,
+    val previewState: String,
+    val previewDigest: String?,
+    val approvalState: String,
+    val permissionEvidenceState: String,
+    val idempotencyState: String,
+    val recoveryPlanState: String,
+    val reviewState: String,
+    val writeExecutionState: String,
+)
+
+data class GovernedFigmaWriteProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reviewState: String,
+    val writePlanState: String,
+    val previewState: String,
+    val approvalState: String,
+    val permissionEvidenceState: String,
+    val idempotencyState: String,
+    val replayProtectionState: String,
+    val recoveryPlanState: String,
+    val writeExecutionState: String,
+    val writeResultState: String,
+    val reasons: List<String>,
+    val selectedEntryCount: Int,
+    val unresolvedDisclosureCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: GovernedFigmaWriteRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -2597,6 +2657,12 @@ internal object PortableDesignProtocol {
         "outbound-design-brief-package-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority"
     private const val OUTBOUND_DESIGN_BRIEF_PACKAGE_STATUS_AUTHORITY_BOUNDARY =
         "outbound-design-brief-package-status-is-observational-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority"
+    private const val GOVERNED_FIGMA_WRITE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-approval-actor-permission-evidence-recovery-or-personal-content-secrets-or-credentials"
+    private const val GOVERNED_FIGMA_WRITE_PROJECTION_AUTHORITY_BOUNDARY =
+        "governed-figma-write-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority"
+    private const val GOVERNED_FIGMA_WRITE_STATUS_AUTHORITY_BOUNDARY =
+        "governed-figma-write-status-is-observational-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -8420,6 +8486,164 @@ internal object PortableDesignProtocol {
             previewState, reasons, contextPackCount, entryCount, contextItemCount, recipientCount,
             humanReviewedEntryCount, sourceRecordedEntryCount, notAssessedEntryCount, unresolvedRedactionCount,
             representedRequirementCount, unresolvedRequirementCount, unresolvedDisclosureCount, staleBindingCount,
+            staleSourceReferenceCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseGovernedFigmaWriteEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): GovernedFigmaWriteProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "governed-figma-write-projection" ||
+            projection.requireString("privacyBoundary") != GOVERNED_FIGMA_WRITE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != GOVERNED_FIGMA_WRITE_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "selectedEntryCount", "unresolvedDisclosureCount", "staleBindingCount", "staleSourceReferenceCount",
+                "unresolvedQuestionCount", "previewState", "approvalState", "permissionEvidenceState",
+                "idempotencyState", "replayProtectionState", "recoveryPlanState", "writePlanState", "reviewState",
+                "writeExecutionState", "writeResultState", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "governed-figma-write-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != GOVERNED_FIGMA_WRITE_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val selectedEntryCount = status.requireBoundedNonNegativeInt("selectedEntryCount", 4_096)
+        val unresolvedDisclosureCount = status.requireBoundedNonNegativeInt("unresolvedDisclosureCount", 1_024)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val previewState = status.requireOneOf("previewState", setOf("candidate-generated", "human-reviewed", "not-generated"))
+        val approvalState = status.requireOneOf("approvalState", setOf("not-requested", "pending", "granted", "declined", "expired", "revoked"))
+        val permissionEvidenceState = status.requireOneOf("permissionEvidenceState", setOf("not-assessed", "missing", "verified"))
+        val idempotencyState = status.requireOneOf("idempotencyState", setOf("defined", "not-assessed"))
+        val replayProtectionState = status.requireOneOf("replayProtectionState", setOf("defined", "not-assessed"))
+        val recoveryPlanState = status.requireOneOf("recoveryPlanState", setOf("defined", "not-assessed"))
+        val writePlanState = status.requireOneOf("writePlanState", setOf("draft", "held", "complete-for-authorization-review"))
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val writeExecutionState = status.requireOneOf("writeExecutionState", setOf("not-performed"))
+        val writeResultState = status.requireOneOf("writeResultState", setOf("not-recorded"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-authorization-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = unresolvedDisclosureCount + staleBindingCount + staleSourceReferenceCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-authorization-review" &&
+                (gapCount > 0 || selectedEntryCount == 0 || previewState != "human-reviewed" ||
+                    permissionEvidenceState != "verified" || idempotencyState != "defined" ||
+                    replayProtectionState != "defined" || recoveryPlanState != "defined" ||
+                    writePlanState != "complete-for-authorization-review" || reviewState != "ready-for-human-review" ||
+                    reasons.isNotEmpty() || reference == null)) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireKeys(
+                setOf(
+                    "id", "revision", "digest", "membershipDigest", "state", "requestFormat", "requestDigest",
+                    "effectDigest", "outboundPackage", "externalFileIdentityDigest", "expectedExternalVersionDigest",
+                    "selectedEntryCount", "previewState", "approvalState", "permissionEvidenceState", "idempotencyState",
+                    "recoveryPlanState", "reviewState", "writeExecutionState", "updatedAt",
+                ),
+                setOf("previewDigest"),
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val packageValue = value.get("outboundPackage").requireObject()
+            packageValue.requireExactKeys(
+                "recordId", "revision", "digest", "membershipDigest", "manifestDigest", "payloadDigest",
+            )
+            val packageRevision = packageValue.requireLong("revision")
+            if (packageRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            val packageBinding = GovernedFigmaWritePackageBindingView(
+                packageValue.requireNonEmptyUuid("recordId"),
+                packageRevision,
+                packageValue.requireDigest("digest"),
+                packageValue.requireDigest("membershipDigest"),
+                packageValue.requireDigest("manifestDigest"),
+                packageValue.requireDigest("payloadDigest"),
+            )
+            val record = GovernedFigmaWriteRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireOneOf("requestFormat", setOf("gaep-governed-figma-write-request-v1")),
+                value.requireDigest("requestDigest"),
+                value.requireDigest("effectDigest"),
+                packageBinding,
+                value.requireDigest("externalFileIdentityDigest"),
+                value.requireDigest("expectedExternalVersionDigest"),
+                value.requireBoundedNonNegativeInt("selectedEntryCount", 4_096),
+                value.requireOneOf("previewState", setOf("candidate-generated", "human-reviewed", "not-generated")),
+                value.get("previewDigest")?.let { value.requireDigest("previewDigest") },
+                value.requireOneOf("approvalState", setOf("not-requested", "pending", "granted", "declined", "expired", "revoked")),
+                value.requireOneOf("permissionEvidenceState", setOf("not-assessed", "missing", "verified")),
+                value.requireOneOf("idempotencyState", setOf("defined", "not-assessed")),
+                value.requireOneOf("recoveryPlanState", setOf("defined", "not-assessed")),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+                value.requireOneOf("writeExecutionState", setOf("not-performed")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest ||
+                record.selectedEntryCount != selectedEntryCount || record.previewState != previewState ||
+                record.approvalState != approvalState || record.permissionEvidenceState != permissionEvidenceState ||
+                record.idempotencyState != idempotencyState || record.recoveryPlanState != recoveryPlanState ||
+                record.reviewState != reviewState || record.writeExecutionState != writeExecutionState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return GovernedFigmaWriteProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reviewState, writePlanState, previewState, approvalState,
+            permissionEvidenceState, idempotencyState, replayProtectionState, recoveryPlanState, writeExecutionState,
+            writeResultState, reasons, selectedEntryCount, unresolvedDisclosureCount, staleBindingCount,
             staleSourceReferenceCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
