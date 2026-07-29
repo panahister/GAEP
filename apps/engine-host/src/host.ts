@@ -274,6 +274,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.figmaContextImport.revise",
   "design.figmaContextImport.assess",
   "design.figmaContextImport.snapshot",
+  "design.outboundDesignBriefPackage.read",
+  "design.outboundDesignBriefPackage.create",
+  "design.outboundDesignBriefPackage.revise",
+  "design.outboundDesignBriefPackage.assess",
+  "design.outboundDesignBriefPackage.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1690,6 +1695,24 @@ export class EngineHost {
         return this.engine.figmaContextImport.assess(request.params.initiativeId)
       case "design.figmaContextImport.snapshot":
         return this.engine.figmaContextImport.project(request.params.initiativeId)
+      case "design.outboundDesignBriefPackage.read":
+        return await this.engine.outboundDesignBriefPackage.readCurrent(request.params.initiativeId) ?? null
+      case "design.outboundDesignBriefPackage.create":
+        return this.engine.outboundDesignBriefPackage.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.outboundDesignBriefPackage.revise":
+        return this.engine.outboundDesignBriefPackage.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.outboundDesignBriefPackage.assess":
+        return this.engine.outboundDesignBriefPackage.assess(request.params.initiativeId)
+      case "design.outboundDesignBriefPackage.snapshot":
+        return this.engine.outboundDesignBriefPackage.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

@@ -1892,6 +1892,58 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "outbound-design-brief-package-read-empty",
+      protocolVersion: 2,
+      method: "design.outboundDesignBriefPackage.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "outbound-design-brief-package-assess-empty",
+      protocolVersion: 2,
+      method: "design.outboundDesignBriefPackage.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      contextPackCount: 0,
+      entryCount: 0,
+      contextItemCount: 0,
+      recipientCount: 0,
+      humanReviewedEntryCount: 0,
+      sourceRecordedEntryCount: 0,
+      notAssessedEntryCount: 0,
+      unresolvedRedactionCount: 0,
+      representedRequirementCount: 0,
+      unresolvedRequirementCount: 0,
+      unresolvedDisclosureCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      manifestState: "not-assessed",
+      provenanceState: "not-assessed",
+      redactionReviewState: "not-assessed",
+      previewState: "not-generated",
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-materialize-or-transfer-context"),
+    })
+    const outboundDesignBriefPackageProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "outbound-design-brief-package-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.outboundDesignBriefPackage.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: outboundDesignBriefPackageDigest,
+      ...outboundDesignBriefPackageProjectionBody
+    } = outboundDesignBriefPackageProjection
+    expect(outboundDesignBriefPackageDigest).toBe(canonicalDigest(outboundDesignBriefPackageProjectionBody))
+    expect(outboundDesignBriefPackageProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-brief-requirement-constraint-context-item"),
+      authorityBoundary: expect.stringContaining("does-not-materialize-or-transfer-context"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -2002,6 +2054,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "figma-context-import-v1-block",
       method: "design.figmaContextImport.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "outbound-design-brief-package-v1-block",
+      method: "design.outboundDesignBriefPackage.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

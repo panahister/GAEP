@@ -61,6 +61,7 @@ import { manualFigmaExecutionPathInputSchema } from "./manual-figma-execution-pa
 import { figmaMcpCapabilityDiscoveryInputSchema } from "./figma-mcp-capability-discovery.js"
 import { figmaReadSnapshotInputSchema } from "./figma-read-snapshot.js"
 import { figmaContextImportInputSchema } from "./figma-context-import.js"
+import { outboundDesignBriefPackageInputSchema } from "./outbound-design-brief-package.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -669,6 +670,18 @@ export const hostFigmaContextImportReviseParamsSchema = z.object({
   record: figmaContextImportInputSchema,
 }).strict()
 
+export const hostOutboundDesignBriefPackageCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: outboundDesignBriefPackageInputSchema,
+}).strict()
+
+export const hostOutboundDesignBriefPackageReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: outboundDesignBriefPackageInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -901,6 +914,11 @@ export const hostMethodSchema = z.enum([
   "design.figmaContextImport.revise",
   "design.figmaContextImport.assess",
   "design.figmaContextImport.snapshot",
+  "design.outboundDesignBriefPackage.read",
+  "design.outboundDesignBriefPackage.create",
+  "design.outboundDesignBriefPackage.revise",
+  "design.outboundDesignBriefPackage.assess",
+  "design.outboundDesignBriefPackage.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1142,6 +1160,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.figmaContextImport.revise", hostFigmaContextImportReviseParamsSchema),
   requestVariant("design.figmaContextImport.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.figmaContextImport.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.outboundDesignBriefPackage.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.outboundDesignBriefPackage.create", hostOutboundDesignBriefPackageCreateParamsSchema),
+  requestVariant("design.outboundDesignBriefPackage.revise", hostOutboundDesignBriefPackageReviseParamsSchema),
+  requestVariant("design.outboundDesignBriefPackage.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.outboundDesignBriefPackage.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
