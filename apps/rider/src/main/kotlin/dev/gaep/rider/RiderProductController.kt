@@ -2019,6 +2019,67 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readFinalizedFigmaSnapshotImport(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readFinalizedFigmaSnapshotImport(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Finalized Figma Snapshot Import was read. Refresh the exact records." }
+        return renderFinalizedFigmaSnapshotImport(projection)
+    }
+
+    fun renderFinalizedFigmaSnapshotImport(projection: FinalizedFigmaSnapshotImportProjection): String = buildString {
+        appendLine("GAEP finalized Figma Snapshot Import review candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine(
+            "Reconciliation: ${projection.reconciliationState} · provenance ${projection.provenanceState} · " +
+                "completeness ${projection.snapshotCompletenessState}",
+        )
+        appendLine("Return authorization: ${projection.returnAuthorizationState}")
+        appendLine(
+            "Inventory: ${projection.itemCount} items · ${projection.humanReviewedItemCount} human-reviewed · " +
+                "${projection.sourceRecordedItemCount} source-recorded · ${projection.notAssessedItemCount} not assessed",
+        )
+        appendLine("Execution: ${projection.importExecutionState} · result ${projection.importResultState}")
+        appendLine(
+            "Candidate gaps: ${projection.openConflictCount} open conflicts · ${projection.unresolvedQuestionCount} questions · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Candidate record: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Governed write: ${record.governedWrite.recordId}@${record.governedWrite.revision} · " +
+                    "request ${record.governedWrite.requestDigest} · effect ${record.governedWrite.effectDigest}",
+            )
+            appendLine(
+                "Return receipts: file ${record.externalFileIdentityDigest} · returned version " +
+                    "${record.returnedExternalVersionDigest} · payload ${record.payloadDigest} · receipt ${record.receiptDigest}",
+            )
+            appendLine("Reconciliation receipt: ${record.reconciliationDigest}")
+            appendLine(
+                "Candidate inventory: ${record.itemCount} items · ${record.conflictCount} conflicts · " +
+                    "return authorization ${record.returnAuthorizationState} · reconciliation ${record.reconciliationState} · " +
+                    "provenance ${record.provenanceState} · review ${record.reviewState} · execution ${record.importExecutionState}",
+            )
+        } ?: appendLine("Candidate record: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and digests only; no content transfer or import, " +
+                "Figma connection or call, credential request, permission grant, external-completeness proof, target or design validation, " +
+                "design approval, baseline, readiness, implementation, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

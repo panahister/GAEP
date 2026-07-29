@@ -51,6 +51,7 @@ private val figmaReadSnapshotId = UUID.fromString("74747474-7474-4474-8474-74747
 private val figmaContextImportId = UUID.fromString("75757575-7575-4575-8575-757575757575")
 private val outboundDesignBriefPackageId = UUID.fromString("76767676-7676-4676-8676-767676767676")
 private val governedFigmaWriteId = UUID.fromString("77777777-7777-4777-8777-777777777777")
+private val finalizedFigmaSnapshotImportId = UUID.fromString("78787878-7878-4878-8878-787878787878")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -304,6 +305,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.governedFigmaWrite.snapshot" -> handleGovernedFigmaWrite(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.finalizedFigmaSnapshotImport.snapshot" -> handleFinalizedFigmaSnapshotImport(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3887,6 +3893,115 @@ private fun handleGovernedFigmaWrite(id: Long, params: JsonObject, workspacePath
         }
         workspacePath.endsWith("bad-governed-figma-write-private") -> {
             value.addProperty("approvalActor", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleFinalizedFigmaSnapshotImport(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE FINALIZED FIGMA SNAPSHOT IMPORT PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-finalized-figma-snapshot-import-binding")) 8 else 7
+    val assessedAt = "2026-07-29T15:30:00.000Z"
+    val candidateDigest = "sha256:${"c".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "finalized-figma-snapshot-import-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "finalized-figma-snapshot-import-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", finalizedFigmaSnapshotImportId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("itemCount", 18)
+            addProperty("humanReviewedItemCount", 12)
+            addProperty("sourceRecordedItemCount", 4)
+            addProperty("notAssessedItemCount", 2)
+            addProperty("openConflictCount", 3)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedQuestionCount", 5)
+            addProperty("returnAuthorizationState", "missing")
+            addProperty("reconciliationState", "partial")
+            addProperty("provenanceState", "partial")
+            addProperty("snapshotCompletenessState", "partial")
+            addProperty("reviewState", "held")
+            addProperty("importExecutionState", "not-performed")
+            addProperty("importResultState", "not-recorded")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("Exact return authorization is missing") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "finalized-figma-snapshot-import-status-is-observational-and-does-not-transfer-or-import-content-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-validate-or-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", finalizedFigmaSnapshotImportId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"7".repeat(64)}")
+            addProperty("state", "candidate")
+            add("governedWrite", JsonObject().apply {
+                addProperty("recordId", governedFigmaWriteId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", "sha256:${"1".repeat(64)}")
+                addProperty("membershipDigest", "sha256:${"2".repeat(64)}")
+                addProperty("requestDigest", "sha256:${"3".repeat(64)}")
+                addProperty("effectDigest", "sha256:${"4".repeat(64)}")
+                addProperty("externalFileIdentityDigest", "sha256:${"5".repeat(64)}")
+                addProperty("expectedExternalVersionDigest", "sha256:${"6".repeat(64)}")
+            })
+            addProperty("externalFileIdentityDigest", "sha256:${"5".repeat(64)}")
+            addProperty("returnedExternalVersionDigest", "sha256:${"8".repeat(64)}")
+            addProperty("payloadDigest", "sha256:${"9".repeat(64)}")
+            addProperty("receiptDigest", "sha256:${"a".repeat(64)}")
+            addProperty("reconciliationDigest", "sha256:${"b".repeat(64)}")
+            addProperty("itemCount", 18)
+            addProperty("conflictCount", 4)
+            addProperty("returnAuthorizationState", "missing")
+            addProperty("reconciliationState", "partial")
+            addProperty("provenanceState", "partial")
+            addProperty("reviewState", "held")
+            addProperty("importExecutionState", "not-performed")
+            addProperty("updatedAt", "2026-07-29T15:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-content-names-external-identities-source-content-authorization-actor-personal-content-secrets-credentials-or-permissions",
+        )
+        addProperty(
+            "authorityBoundary",
+            "finalized-figma-snapshot-import-projection-is-read-only-and-does-not-transfer-or-import-content-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-validate-or-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-finalized-figma-snapshot-import-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("itemCount", 19)
+        }
+        workspacePath.endsWith("bad-finalized-figma-snapshot-import-private") -> {
+            value.addProperty("authorizationActor", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

@@ -690,6 +690,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += governedFigmaWriteButton
         actions.add(governedFigmaWriteButton)
 
+        val finalizedFigmaSnapshotImportButton = JButton("Inspect Finalized Figma Snapshot Import…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Figma content, names, external identities, Source content, authorization actors, personal data, local paths, secrets, credentials, permissions, and authority are withheld.",
+                    "GAEP Finalized Figma Snapshot Import",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Finalized Figma Snapshot Import", status, output, buttons) {
+                    controller.readFinalizedFigmaSnapshotImport(initiativeId)
+                }
+            }
+        }
+        buttons += finalizedFigmaSnapshotImportButton
+        actions.add(finalizedFigmaSnapshotImportButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {
