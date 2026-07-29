@@ -68,7 +68,8 @@
     { "id": "figma-read-snapshot", "label": "Exact governed Figma Read Snapshot candidate projection with bounded file, component, variable-collection, variable, provenance, freshness, evidence, type-gap and ownership metadata, without connecting to or calling Figma, requesting credentials, granting permissions, proving external completeness, authorizing writes, validating or approving design, establishing a baseline or readiness, implementation, or action authority" },
     { "id": "figma-context-import", "label": "Exact governed Figma Context Import candidate projection with bounded Context Pack, section, Context Item, target, evidence, redaction, requirement-coverage, provenance and ownership metadata, without packaging or transferring context, connecting to or calling Figma, requesting credentials, granting permissions, authorizing or performing writes, validating targets or design, approving design, establishing a baseline or readiness, implementation, or action authority" },
     { "id": "outbound-design-brief-package", "label": "Exact governed Outbound Design Brief Package manifest-only candidate projection with bounded Context Pack, entry, Context Item, recipient, evidence, redaction, requirement-coverage, disclosure and receipt metadata, without materializing or transferring context, connecting to or calling Figma, requesting credentials, granting permissions, authorizing or performing writes, validating targets or design, approving design, establishing a baseline or readiness, implementation, or action authority" },
-    { "id": "governed-figma-write", "label": "Exact governed Figma Write authorization-review candidate projection with bounded package, target, request, effect, preview, approval-state, permission-evidence-state, idempotency, replay, recovery and gap metadata, without materializing or transferring context, connecting to or calling Figma, requesting credentials, granting permissions, authorizing or performing writes, validating targets or design, approving design, establishing a baseline or readiness, implementation, or action authority" }
+    { "id": "governed-figma-write", "label": "Exact governed Figma Write authorization-review candidate projection with bounded package, target, request, effect, preview, approval-state, permission-evidence-state, idempotency, replay, recovery and gap metadata, without materializing or transferring context, connecting to or calling Figma, requesting credentials, granting permissions, authorizing or performing writes, validating targets or design, approving design, establishing a baseline or readiness, implementation, or action authority" },
+    { "id": "finalized-figma-snapshot-import", "label": "Exact governed Finalized Figma Snapshot Import review-candidate projection with bounded governed-write, return-receipt, item, conflict, authorization, reconciliation, provenance, completeness and gap metadata, without transferring or importing content, connecting to or calling Figma, requesting credentials, granting permissions, proving external completeness, validating or approving design, establishing a baseline or readiness, implementation, or action authority" }
   ],
   "hosts": [
     {
@@ -79,7 +80,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T134626Z-phase-2-governed-figma-write-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260729T205313Z-phase-2-finalized-figma-snapshot-import-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -288,6 +289,9 @@
         ] },
         { "capabilityId": "governed-figma-write", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["governedFigmaWrite?: {", "engine.governedFigmaWrite!.project(initiative.id)", "id: \"governed-figma-write\"", "no package materialization or transfer, Figma connection or call, credential request, permission grant, write authorization or execution"] }
+        ] },
+        { "capabilityId": "finalized-figma-snapshot-import", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["finalizedFigmaSnapshotImport?: {", "engine.finalizedFigmaSnapshotImport!.project(initiative.id)", "id: \"finalized-figma-snapshot-import\"", "no content transfer or import"] }
         ] }
       ]
     },
@@ -299,7 +303,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T134626Z-phase-2-governed-figma-write-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260729T205313Z-phase-2-finalized-figma-snapshot-import-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -539,6 +543,10 @@
         { "capabilityId": "governed-figma-write", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readGovernedFigmaWrite(", "this.request(\"design.governedFigmaWrite.snapshot\"", "governedFigmaWriteProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showGovernedFigmaWrite", "GAEP governed Figma Write authorization-review candidate", "does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions"] }
+        ] },
+        { "capabilityId": "finalized-figma-snapshot-import", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readFinalizedFigmaSnapshotImport(", "this.request(\"design.finalizedFigmaSnapshotImport.snapshot\"", "finalizedFigmaSnapshotImportProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showFinalizedFigmaSnapshotImport", "GAEP finalized Figma Snapshot Import review candidate", "does not transfer or import content, connect to or call Figma, request credentials, grant permissions"] }
         ] }
       ]
     },
@@ -550,7 +558,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T134626Z-phase-2-governed-figma-write-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260729T205313Z-phase-2-finalized-figma-snapshot-import-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -839,6 +847,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readGovernedFigmaWrite(", "portableRequest(\"design.governedFigmaWrite.snapshot\"", "parseGovernedFigmaWriteEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Figma Write authorization-review candidate", "no package materialization or context transfer", "write authorization or execution"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["GovernedFigmaWriteProjection", "GOVERNED_FIGMA_WRITE_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "finalized-figma-snapshot-import", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readFinalizedFigmaSnapshotImport(", "portableRequest(\"design.finalizedFigmaSnapshotImport.snapshot\"", "parseFinalizedFigmaSnapshotImportEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP finalized Figma Snapshot Import review candidate", "no content transfer or import", "external-completeness proof"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["FinalizedFigmaSnapshotImportProjection", "FINALIZED_FIGMA_SNAPSHOT_IMPORT_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -850,7 +863,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T134626Z-phase-2-governed-figma-write-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260729T205313Z-phase-2-finalized-figma-snapshot-import-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1151,6 +1164,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadGovernedFigmaWriteAsync(", "\"design.governedFigmaWrite.snapshot\"", "ParseGovernedFigmaWriteResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Figma Write authorization-review candidate", "no package materialization or context transfer", "write authorization or execution"] },
           { "path": "apps/visual-studio/Gaep.HostClient/GovernedFigmaWriteProtocol.cs", "contains": ["GovernedFigmaWriteProjection", "GovernedFigmaWriteProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "finalized-figma-snapshot-import", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadFinalizedFigmaSnapshotImportAsync(", "\"design.finalizedFigmaSnapshotImport.snapshot\"", "ParseFinalizedFigmaSnapshotImportResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP finalized Figma Snapshot Import review candidate", "no content transfer or import", "external-completeness proof"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/FinalizedFigmaSnapshotImportProtocol.cs", "contains": ["FinalizedFigmaSnapshotImportProjection", "FinalizedFigmaSnapshotImportProjectionAuthorityBoundary"] }
         ] }
       ]
     }
