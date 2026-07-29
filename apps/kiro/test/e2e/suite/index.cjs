@@ -59,6 +59,7 @@ const commands = [
   "gaepKiro.manualFigmaExecutionPath.inspect",
   "gaepKiro.figmaMcpCapabilityDiscovery.inspect",
   "gaepKiro.figmaReadSnapshot.inspect",
+  "gaepKiro.figmaContextImport.inspect",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",

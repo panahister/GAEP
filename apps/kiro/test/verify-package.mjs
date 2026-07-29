@@ -145,7 +145,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
     fail("package identity, host engine, entry point, or extension kind differs")
   }
   const commands = packagedManifest.contributes?.commands
-  if (!Array.isArray(commands) || commands.length !== 54 ||
+  if (!Array.isArray(commands) || commands.length !== 55 ||
       new Set(commands.map((command) => command.command)).size !== commands.length ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1Summary") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1ChangeImpact") ||
@@ -161,8 +161,9 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.responsiveMultiPlatformTargets.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.manualFigmaExecutionPath.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.figmaMcpCapabilityDiscovery.inspect") ||
-      !commands.some((command) => command.command === "gaepKiro.figmaReadSnapshot.inspect")) {
-    fail("package command inventory must contain 54 unique commands including all three Phase 1 dashboards and governed Design phase candidates through Figma Read Snapshot")
+      !commands.some((command) => command.command === "gaepKiro.figmaReadSnapshot.inspect") ||
+      !commands.some((command) => command.command === "gaepKiro.figmaContextImport.inspect")) {
+    fail("package command inventory must contain 55 unique commands including all three Phase 1 dashboards and governed Design phase candidates through Figma Context Import")
   }
   const activationCommands = packagedManifest.activationEvents
     .filter((event) => event.startsWith("onCommand:"))

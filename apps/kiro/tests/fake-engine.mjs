@@ -62,6 +62,7 @@ const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
 const manualFigmaExecutionPathId = "65656565-6565-4565-8565-656565656565"
 const figmaMcpCapabilityDiscoveryId = "66666666-6666-4666-8666-666666666666"
 const figmaReadSnapshotId = "67676767-6767-4767-8767-676767676767"
+const figmaContextImportId = "68686868-6868-4868-8868-686868686868"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -167,6 +168,8 @@ input.on("line", (line) => {
       return readFigmaMcpCapabilityDiscovery(id, request.params)
     case "design.figmaReadSnapshot.snapshot":
       return readFigmaReadSnapshot(id, request.params)
+    case "design.figmaContextImport.snapshot":
+      return readFigmaContextImport(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2494,6 +2497,74 @@ function readFigmaReadSnapshot(id, params) {
   if (workspacePath.endsWith("bad-figma-read-snapshot-digest")) value.candidate.fileCount = 3
   if (workspacePath.endsWith("bad-figma-read-snapshot-private")) {
     value.fileNames = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readFigmaContextImport(id, params) {
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"d".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "figma-context-import-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: figmaContextImportId, revision: 2, digest: candidateDigest },
+    contextPackCount: 2,
+    sectionCount: 8,
+    contextItemCount: 24,
+    targetCount: 2,
+    humanReviewedSectionCount: 5,
+    sourceRecordedSectionCount: 2,
+    notAssessedSectionCount: 1,
+    unresolvedRedactionCount: 1,
+    representedRequirementCount: 7,
+    unresolvedRequirementCount: 2,
+    unresolvedOwnershipCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    contextSelectionState: "partial",
+    provenanceState: "partial",
+    previewState: "candidate-generated",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more selected sections require human review"],
+    assessedAt: "2026-07-29T09:30:00.000Z",
+    authorityBoundary: "figma-context-import-status-is-observational-and-does-not-package-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "figma-context-import-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: figmaContextImportId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"e".repeat(64)}`,
+      state: "candidate",
+      contextPackCount: 2,
+      sectionCount: 8,
+      contextItemCount: 24,
+      targetCount: 2,
+      representedRequirementCount: 7,
+      reviewState: "held",
+      updatedAt: "2026-07-29T09:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-or-personal-content-secrets-credentials-or-permissions",
+    authorityBoundary: "figma-context-import-projection-is-read-only-and-does-not-package-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-figma-context-import-binding")) content.initiative.id = figmaContextImportId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-figma-context-import-digest")) value.candidate.contextItemCount = 25
+  if (workspacePath.endsWith("bad-figma-context-import-private")) {
+    value.contextItems = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }
