@@ -109,6 +109,7 @@ import { OutboundDesignBriefPackageService } from "./outbound-design-brief-packa
 import { GovernedFigmaWriteService } from "./governed-figma-write.js"
 import { FinalizedFigmaSnapshotImportService } from "./finalized-figma-snapshot-import.js"
 import { DesignToRequirementBindingService } from "./design-to-requirement-binding.js"
+import { DesignerReadyGateService } from "./designer-ready-gate.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -307,6 +308,7 @@ export class GaepEngine {
   readonly governedFigmaWrite: GovernedFigmaWriteService
   readonly finalizedFigmaSnapshotImport: FinalizedFigmaSnapshotImportService
   readonly designToRequirementBinding: DesignToRequirementBindingService
+  readonly designerReadyGate: DesignerReadyGateService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -684,6 +686,26 @@ export class GaepEngine {
       this.designRequirements,
       this.decisionRegister,
     )
+    this.designerReadyGate = new DesignerReadyGateService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
+      {
+        "accessibility-design-rules": this.accessibilityDesignRules,
+        "decision-register": this.decisionRegister,
+        "design-applicability": this.designApplicability,
+        "design-personas-roles": this.designPersonaRoleModel,
+        "design-requirements": this.designRequirements,
+        "design-system-token-contract": this.designSystemTokenContract,
+        "figma-mcp-capability-discovery": this.figmaMcpCapabilityDiscovery,
+        "information-architecture": this.informationArchitectureModel,
+        "manual-figma-execution-path": this.manualFigmaExecutionPath,
+        "responsive-multi-platform-targets": this.responsiveMultiPlatformTargets,
+        "screen-state-inventory": this.screenStateInventory,
+        "user-journeys": this.userJourneyModel,
+      },
+    )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
       this.adapters.set(adapter.id, adapter)
@@ -777,7 +799,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues, figmaContextImportIssues, outboundDesignBriefPackageIssues, governedFigmaWriteIssues, finalizedFigmaSnapshotImportIssues, designToRequirementBindingIssues] = await Promise.all([
+      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues, figmaContextImportIssues, outboundDesignBriefPackageIssues, governedFigmaWriteIssues, finalizedFigmaSnapshotImportIssues, designToRequirementBindingIssues, designerReadyGateIssues] = await Promise.all([
         this.productStudio.healthIssues(),
         this.sourceGovernance.healthIssues(),
         this.businessUnderstanding.healthIssues(),
@@ -818,6 +840,7 @@ export class GaepEngine {
         this.governedFigmaWrite.healthIssues(),
         this.finalizedFigmaSnapshotImport.healthIssues(),
         this.designToRequirementBinding.healthIssues(),
+        this.designerReadyGate.healthIssues(),
       ])
       domainIssues = [
         ...productIssues,
@@ -860,6 +883,7 @@ export class GaepEngine {
         ...governedFigmaWriteIssues,
         ...finalizedFigmaSnapshotImportIssues,
         ...designToRequirementBindingIssues,
+        ...designerReadyGateIssues,
       ]
     } catch (error) {
       domainIssues = [{

@@ -38,6 +38,7 @@ import {
   governedFigmaWriteSchema,
   finalizedFigmaSnapshotImportSchema,
   designToRequirementBindingSchema,
+  designerReadyGateSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -194,6 +195,8 @@ const directoryNames = [
   "finalized-figma-snapshot-import-history",
   "design-to-requirement-bindings",
   "design-to-requirement-binding-history",
+  "designer-ready-gates",
+  "designer-ready-gate-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -1035,6 +1038,8 @@ export class GaepRepository {
       ["finalized-figma-snapshot-import-history", /^finalized-figma-snapshot-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["design-to-requirement-bindings", /^[0-9a-f-]+\.json$/i],
       ["design-to-requirement-binding-history", /^design-to-requirement-binding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["designer-ready-gates", /^[0-9a-f-]+\.json$/i],
+      ["designer-ready-gate-history", /^designer-ready-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1270,6 +1275,10 @@ export class GaepRepository {
     if (/^design-to-requirement-bindings\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^design-to-requirement-binding-history\/design-to-requirement-binding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, designToRequirementBindingSchema)
+    }
+    if (/^designer-ready-gates\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^designer-ready-gate-history\/designer-ready-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, designerReadyGateSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
