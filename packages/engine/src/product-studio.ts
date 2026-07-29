@@ -29,6 +29,7 @@ import {
   finalizedFigmaSnapshotImportSchema,
   designToRequirementBindingSchema,
   designerReadyGateSchema,
+  designDeltaSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -114,6 +115,7 @@ import {
   type FinalizedFigmaSnapshotImport,
   type DesignToRequirementBinding,
   type DesignerReadyGate,
+  type DesignDelta,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -168,6 +170,7 @@ import {
 } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { designerReadyAssessmentReceiptDigest } from "./designer-ready-gate.js"
+import { designDeltaComparisonReceiptDigest } from "./design-delta.js"
 import {
   canonicalDigest as portableDesignDigest,
   importPortableDesignBundle,
@@ -2366,6 +2369,16 @@ export class ProductStudioService {
       /^designer-ready-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       designerReadyGateSchema,
     )
+    const designDeltas = await this.listRecords(
+      "design-deltas",
+      /^[0-9a-f-]+\.json$/i,
+      designDeltaSchema,
+    )
+    const designDeltaHistory = await this.listRecords(
+      "design-delta-history",
+      /^design-delta-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      designDeltaSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2466,6 +2479,8 @@ export class ProductStudioService {
       ...designToRequirementBindingHistory,
       ...designerReadyGates,
       ...designerReadyGateHistory,
+      ...designDeltas,
+      ...designDeltaHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2841,6 +2856,13 @@ export class ProductStudioService {
       "designer-ready-gate-candidate",
       designerReadyGateHistory,
       (record) => `designer-ready-gate-history/designer-ready-gate-${record.id}-r${record.revision}.json`,
+    )
+    append("design-deltas", "design-delta-candidate", designDeltas)
+    append(
+      "design-delta-history",
+      "design-delta-candidate",
+      designDeltaHistory,
+      (record) => `design-delta-history/design-delta-${record.id}-r${record.revision}.json`,
     )
     append(
       "candidates",
@@ -3363,6 +3385,13 @@ export class ProductStudioService {
         const expectedHistoryPath = `designer-ready-gate-history/designer-ready-gate-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Designer-Ready Gate history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("design-delta-history/")) {
+        const record = validated as DesignDelta
+        const expectedHistoryPath = `design-delta-history/design-delta-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Design Delta history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4497,7 +4526,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4529,7 +4558,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -8636,6 +8665,104 @@ export class ProductStudioService {
       }
     }
 
+    const designDeltas = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-deltas/"))
+      .map(([, record]) => designDeltaSchema.parse(record))
+    const designDeltaHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-delta-history/"))
+      .map(([, record]) => designDeltaSchema.parse(record))
+    validateVersionedBusinessRecords(designDeltas, designDeltaHistory, "Design Delta")
+    const exactDesignerReadyGate = new Map([...designerReadyGates, ...designerReadyGateHistory].map((record) => [
+      `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+      record,
+    ]))
+    const exactFinalizedSnapshot = new Map([...finalizedFigmaSnapshotImports, ...finalizedFigmaSnapshotImportHistory].map((record) => [
+      `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+      record,
+    ]))
+    const exactDesignBinding = new Map([...designToRequirementBindings, ...designToRequirementBindingHistory].map((record) => [
+      `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+      record,
+    ]))
+    for (const candidate of [...designDeltas, ...designDeltaHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        objectiveDigest: candidate.objectiveDigest,
+        designerReadyGate: candidate.designerReadyGate,
+        finalizedSnapshot: candidate.finalizedSnapshot,
+        designBinding: candidate.designBinding,
+        sourceSnapshotDigest: candidate.sourceSnapshotDigest,
+        targetSnapshotDigest: candidate.targetSnapshotDigest,
+        comparisonDefinitionDigest: candidate.comparisonDefinitionDigest,
+        comparisonReceiptDigest: candidate.comparisonReceiptDigest,
+        sourceItemCount: candidate.sourceItemCount,
+        targetItemCount: candidate.targetItemCount,
+        deltas: candidate.deltas,
+        comparisonState: candidate.comparisonState,
+        provenanceState: candidate.provenanceState,
+        candidateResult: candidate.candidateResult,
+        unresolvedMappings: candidate.unresolvedMappings,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        deltaCompletenessState: candidate.deltaCompletenessState,
+        externalCompletenessState: candidate.externalCompletenessState,
+        designValidityState: candidate.designValidityState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        conflictResolutionAuthorityState: candidate.conflictResolutionAuthorityState,
+        synchronizationAuthorityState: candidate.synchronizationAuthorityState,
+        figmaConnectionAuthorityState: candidate.figmaConnectionAuthorityState,
+        credentialAuthorityState: candidate.credentialAuthorityState,
+        permissionGrantState: candidate.permissionGrantState,
+        importExecutionState: candidate.importExecutionState,
+        writeExecutionState: candidate.writeExecutionState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Design Delta ${candidate.id} membership digest is invalid`)
+      }
+      if (candidate.comparisonReceiptDigest !== designDeltaComparisonReceiptDigest(candidate)) {
+        throw new Error(`Import Design Delta ${candidate.id} comparison receipt digest is invalid`)
+      }
+      const ready = exactDesignerReadyGate.get(
+        `${candidate.designerReadyGate.recordId}:${candidate.designerReadyGate.revision}:${candidate.designerReadyGate.digest}`,
+      )
+      if (!ready || ready.productId !== candidate.productId || ready.initiativeId !== candidate.initiativeId ||
+          ready.membershipDigest !== candidate.designerReadyGate.membershipDigest ||
+          canonicalDigest(ready.prerequisites) !== candidate.designerReadyGate.prerequisiteCatalogDigest ||
+          ready.assessmentReceiptDigest !== candidate.designerReadyGate.assessmentReceiptDigest ||
+          ready.candidateResult !== candidate.designerReadyGate.candidateResult ||
+          candidate.sourceSnapshotDigest !== canonicalDigest(ready.prerequisites)) {
+        throw new Error(`Import Design Delta ${candidate.id} has an unresolved exact Designer-Ready Gate binding`)
+      }
+      const finalized = exactFinalizedSnapshot.get(
+        `${candidate.finalizedSnapshot.recordId}:${candidate.finalizedSnapshot.revision}:${candidate.finalizedSnapshot.digest}`,
+      )
+      if (!finalized || finalized.productId !== candidate.productId || finalized.initiativeId !== candidate.initiativeId ||
+          finalized.membershipDigest !== candidate.finalizedSnapshot.membershipDigest ||
+          canonicalDigest(finalized.items) !== candidate.finalizedSnapshot.itemCatalogDigest ||
+          finalized.reconciliationDigest !== candidate.finalizedSnapshot.reconciliationDigest ||
+          finalized.reviewState !== candidate.finalizedSnapshot.reviewState ||
+          candidate.targetSnapshotDigest !== canonicalDigest(finalized.items)) {
+        throw new Error(`Import Design Delta ${candidate.id} has an unresolved exact Finalized Figma Snapshot binding`)
+      }
+      const binding = exactDesignBinding.get(
+        `${candidate.designBinding.recordId}:${candidate.designBinding.revision}:${candidate.designBinding.digest}`,
+      )
+      if (!binding || binding.productId !== candidate.productId || binding.initiativeId !== candidate.initiativeId ||
+          binding.membershipDigest !== candidate.designBinding.membershipDigest ||
+          canonicalDigest(binding.bindings) !== candidate.designBinding.bindingCatalogDigest ||
+          binding.reconciliationDigest !== candidate.designBinding.reconciliationDigest ||
+          binding.reviewState !== candidate.designBinding.reviewState) {
+        throw new Error(`Import Design Delta ${candidate.id} has an unresolved exact Design-to-Requirement Binding`)
+      }
+    }
+
     const plans = [...recordsByPath.entries()].filter(([path]) => path.startsWith("workflow-plans/"))
       .map(([, record]) => workflowPlanSchema.parse(record))
     for (const plan of plans) this.validateWorkflowInImport(plan, resolveExact)
@@ -9248,6 +9375,10 @@ export class ProductStudioService {
         /^designer-ready-gate-history\/designer-ready-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "designer-ready-gate-candidate"
     }
+    if (/^design-deltas\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-delta-history\/design-delta-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "design-delta-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -9449,6 +9580,10 @@ export class ProductStudioService {
     if (/^designer-ready-gates\/[0-9a-f-]+\.json$/i.test(path) ||
         /^designer-ready-gate-history\/designer-ready-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return designerReadyGateSchema
+    }
+    if (/^design-deltas\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-delta-history\/design-delta-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return designDeltaSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||

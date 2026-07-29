@@ -221,6 +221,13 @@ describe("Design Delta service", () => {
     expect((await service.listHistory(created.id)).map((entry) => entry.revision)).toEqual([2, 1])
     expect((await service.assess(initiative.id)).state).toBe("attention-required")
 
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `design-deltas/${created.id}.json`,
+      `design-delta-history/design-delta-${created.id}-r1.json`,
+      `design-delta-history/design-delta-${created.id}-r2.json`,
+    ]))
+
   })
 
   it("fails closed on forged comparison receipts and superseded dependencies", async () => {
