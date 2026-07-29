@@ -36,6 +36,7 @@ import {
   type FigmaMcpCapabilityDiscoveryProjection,
   type FigmaReadSnapshotProjection,
   type FigmaContextImportProjection,
+  type OutboundDesignBriefPackageProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2310,6 +2311,70 @@ function figmaContextImportProjection(): FigmaContextImportProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function outboundDesignBriefPackageProjection(): OutboundDesignBriefPackageProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "outbound-design-brief-package-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "abababab-abab-4bab-8bab-abababababab", revision: 2, digest: `sha256:${"e".repeat(64)}` as const },
+    contextPackCount: 2,
+    entryCount: 8,
+    contextItemCount: 24,
+    recipientCount: 2,
+    humanReviewedEntryCount: 5,
+    sourceRecordedEntryCount: 2,
+    notAssessedEntryCount: 1,
+    unresolvedRedactionCount: 1,
+    representedRequirementCount: 7,
+    unresolvedRequirementCount: 2,
+    unresolvedDisclosureCount: 3,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    manifestState: "partial" as const,
+    provenanceState: "partial" as const,
+    redactionReviewState: "partial" as const,
+    previewState: "candidate-generated" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more outbound package entries require human review"],
+    assessedAt: "2026-07-29T10:30:00.000Z",
+    authorityBoundary: "outbound-design-brief-package-status-is-observational-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "outbound-design-brief-package-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"f".repeat(64)}` as const,
+      state: "candidate" as const,
+      manifestFormat: "gaep-outbound-design-brief-package-v1" as const,
+      manifestDigest: `sha256:${"a".repeat(64)}` as const,
+      payloadDigest: `sha256:${"b".repeat(64)}` as const,
+      contextPackCount: status.contextPackCount,
+      entryCount: status.entryCount,
+      contextItemCount: status.contextItemCount,
+      recipientCount: status.recipientCount,
+      representedRequirementCount: status.representedRequirementCount,
+      unresolvedDisclosureCount: status.unresolvedDisclosureCount,
+      reviewState: status.reviewState,
+      updatedAt: "2026-07-29T10:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-transformation-disclosure-or-personal-content-secrets-credentials-or-permissions" as const,
+    authorityBoundary: "outbound-design-brief-package-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2968,6 +3033,7 @@ interface HarnessOptions {
   figmaMcpCapabilityDiscoveryProjection?: FigmaMcpCapabilityDiscoveryProjection
   figmaReadSnapshotProjection?: FigmaReadSnapshotProjection
   figmaContextImportProjection?: FigmaContextImportProjection
+  outboundDesignBriefPackageProjection?: OutboundDesignBriefPackageProjection
   commandResult?: unknown
 }
 
@@ -3233,6 +3299,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.figmaContextImportProjection ? {
       figmaContextImport: {
         project: async () => options.figmaContextImportProjection!,
+      },
+    } : {}),
+    ...(options.outboundDesignBriefPackageProjection ? {
+      outboundDesignBriefPackage: {
+        project: async () => options.outboundDesignBriefPackageProjection!,
       },
     } : {}),
   }
@@ -4152,6 +4223,33 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private brief|private requirement|private constraint|private context item|private figma target|private tool|private source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Outbound Design Brief Package metadata on the native scope page", async () => {
+    const projection = outboundDesignBriefPackageProjection()
+    const { source } = harness({ outboundDesignBriefPackageProjection: projection })
+    const snapshot = await source.readSnapshot("scope")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "outbound-design-brief-package")).toMatchObject({
+      id: "outbound-design-brief-package",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          receipts: `gaep-outbound-design-brief-package-v1 · manifest ${projection.candidate?.manifestDigest} · payload ${projection.candidate?.payloadDigest}`,
+          inventory: "2 Context Packs · 8 entries · 24 Context Items · 2 recipients",
+          evidence: "5 human-reviewed · 2 source-recorded · 1 not assessed · 1 redaction gaps",
+          requirements: "7 represented · 2 unresolved · 3 unresolved disclosures",
+          assessment: "attention-required · held · manifest partial · provenance partial · redaction partial · preview candidate-generated",
+          gaps: "3 questions · 0 stale bindings · 2 stale Source references",
+          boundary: "Candidate identities, counts, statuses, and digests only; no brief, Requirement, constraint, Context Item, Figma target, tool, Source, transformation, disclosure, personal, secret, credential, or permission content and no package materialization or context transfer, Figma connection or call, credential request, permission grant, write, target or design validation, design approval, baseline, readiness, implementation, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private brief|private requirement|private constraint|private context item|private figma target|private tool|private transformation|private disclosure|private source content|customer@example\.com|api_key/iu,
     )
   })
 

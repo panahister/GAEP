@@ -64,6 +64,7 @@ import type {
   FigmaMcpCapabilityDiscoveryProjection,
   FigmaReadSnapshotProjection,
   FigmaContextImportProjection,
+  OutboundDesignBriefPackageProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -263,6 +264,9 @@ export interface CurrentStudioEngineReader {
   figmaContextImport?: {
     project(initiativeId: string): Promise<FigmaContextImportProjection>
   }
+  outboundDesignBriefPackage?: {
+    project(initiativeId: string): Promise<OutboundDesignBriefPackageProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -336,6 +340,7 @@ interface ObservedStudioState {
   figmaMcpCapabilityDiscoveryProjections: Map<string, FigmaMcpCapabilityDiscoveryProjection>
   figmaReadSnapshotProjections: Map<string, FigmaReadSnapshotProjection>
   figmaContextImportProjections: Map<string, FigmaContextImportProjection>
+  outboundDesignBriefPackageProjections: Map<string, OutboundDesignBriefPackageProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2292,6 +2297,59 @@ function figmaContextImportTable(state: ObservedStudioState): StudioTableSnapsho
   }
 }
 
+function outboundDesignBriefPackageTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.outboundDesignBriefPackageProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        receipts: `${record.manifestFormat} · manifest ${record.manifestDigest} · payload ${record.payloadDigest}`,
+        inventory: `${status.contextPackCount} Context Packs · ${status.entryCount} entries · ${status.contextItemCount} Context Items · ${status.recipientCount} recipients`,
+        evidence: `${status.humanReviewedEntryCount} human-reviewed · ${status.sourceRecordedEntryCount} source-recorded · ${status.notAssessedEntryCount} not assessed · ${status.unresolvedRedactionCount} redaction gaps`,
+        requirements: `${status.representedRequirementCount} represented · ${status.unresolvedRequirementCount} unresolved · ${status.unresolvedDisclosureCount} unresolved disclosures`,
+        assessment: `${status.state} · ${status.reviewState} · manifest ${status.manifestState} · provenance ${status.provenanceState} · redaction ${status.redactionReviewState} · preview ${status.previewState}`,
+        gaps: `${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, counts, statuses, and digests only; no brief, Requirement, constraint, Context Item, Figma target, tool, Source, transformation, disclosure, personal, secret, credential, or permission content and no package materialization or context transfer, Figma connection or call, credential request, permission grant, write, target or design validation, design approval, baseline, readiness, implementation, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "outbound-design-brief-package",
+    title: "Governed Outbound Design Brief Package Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "receipts", label: "Manifest receipts" },
+      { key: "inventory", label: "Privacy-safe inventory" },
+      { key: "evidence", label: "Evidence and redaction" },
+      { key: "requirements", label: "Requirement coverage" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Outbound Design Brief Package candidate",
+        "Create an exact manifest-only candidate through the governed engine workflow. This view does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a baseline or readiness, or authorize implementation or action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2323,6 +2381,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     figmaMcpCapabilityDiscoveryTable(state),
     figmaReadSnapshotTable(state),
     figmaContextImportTable(state),
+    outboundDesignBriefPackageTable(state),
   )
   if (route === "architecture") {
     relatedRecords.push(
@@ -4978,6 +5037,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       figmaMcpCapabilityDiscoveryProjections: new Map(),
       figmaReadSnapshotProjections: new Map(),
       figmaContextImportProjections: new Map(),
+      outboundDesignBriefPackageProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -6568,6 +6628,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "figma-context-import-unavailable",
           "Figma Context Import metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "scope" && engine.outboundDesignBriefPackage) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.outboundDesignBriefPackage!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.outboundDesignBriefPackageProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Outbound Design Brief Package projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `outbound-design-brief-package-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Outbound Design Brief Package metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "outbound-design-brief-package-unavailable",
+          "Outbound Design Brief Package metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
