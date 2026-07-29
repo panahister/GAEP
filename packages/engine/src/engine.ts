@@ -107,6 +107,7 @@ import { FigmaReadSnapshotService } from "./figma-read-snapshot.js"
 import { FigmaContextImportService } from "./figma-context-import.js"
 import { OutboundDesignBriefPackageService } from "./outbound-design-brief-package.js"
 import { GovernedFigmaWriteService } from "./governed-figma-write.js"
+import { FinalizedFigmaSnapshotImportService } from "./finalized-figma-snapshot-import.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -303,6 +304,7 @@ export class GaepEngine {
   readonly figmaContextImport: FigmaContextImportService
   readonly outboundDesignBriefPackage: OutboundDesignBriefPackageService
   readonly governedFigmaWrite: GovernedFigmaWriteService
+  readonly finalizedFigmaSnapshotImport: FinalizedFigmaSnapshotImportService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -664,6 +666,13 @@ export class GaepEngine {
       this.sourceGovernance,
       this.outboundDesignBriefPackage,
     )
+    this.finalizedFigmaSnapshotImport = new FinalizedFigmaSnapshotImportService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
+      this.governedFigmaWrite,
+    )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
       this.adapters.set(adapter.id, adapter)
@@ -757,7 +766,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues, figmaContextImportIssues, outboundDesignBriefPackageIssues, governedFigmaWriteIssues] = await Promise.all([
+      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues, figmaContextImportIssues, outboundDesignBriefPackageIssues, governedFigmaWriteIssues, finalizedFigmaSnapshotImportIssues] = await Promise.all([
         this.productStudio.healthIssues(),
         this.sourceGovernance.healthIssues(),
         this.businessUnderstanding.healthIssues(),
@@ -796,6 +805,7 @@ export class GaepEngine {
         this.figmaContextImport.healthIssues(),
         this.outboundDesignBriefPackage.healthIssues(),
         this.governedFigmaWrite.healthIssues(),
+        this.finalizedFigmaSnapshotImport.healthIssues(),
       ])
       domainIssues = [
         ...productIssues,
@@ -836,6 +846,7 @@ export class GaepEngine {
         ...figmaContextImportIssues,
         ...outboundDesignBriefPackageIssues,
         ...governedFigmaWriteIssues,
+        ...finalizedFigmaSnapshotImportIssues,
       ]
     } catch (error) {
       domainIssues = [{

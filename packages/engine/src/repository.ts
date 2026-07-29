@@ -36,6 +36,7 @@ import {
   figmaContextImportSchema,
   outboundDesignBriefPackageSchema,
   governedFigmaWriteSchema,
+  finalizedFigmaSnapshotImportSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -188,6 +189,8 @@ const directoryNames = [
   "outbound-design-brief-package-history",
   "governed-figma-writes",
   "governed-figma-write-history",
+  "finalized-figma-snapshot-imports",
+  "finalized-figma-snapshot-import-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -1025,6 +1028,8 @@ export class GaepRepository {
       ["outbound-design-brief-package-history", /^outbound-design-brief-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["governed-figma-writes", /^[0-9a-f-]+\.json$/i],
       ["governed-figma-write-history", /^governed-figma-write-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["finalized-figma-snapshot-imports", /^[0-9a-f-]+\.json$/i],
+      ["finalized-figma-snapshot-import-history", /^finalized-figma-snapshot-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1252,6 +1257,10 @@ export class GaepRepository {
     if (/^governed-figma-writes\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^governed-figma-write-history\/governed-figma-write-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, governedFigmaWriteSchema)
+    }
+    if (/^finalized-figma-snapshot-imports\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^finalized-figma-snapshot-import-history\/finalized-figma-snapshot-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, finalizedFigmaSnapshotImportSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

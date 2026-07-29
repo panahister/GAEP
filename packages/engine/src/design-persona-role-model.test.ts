@@ -38,6 +38,8 @@ import {
   type OutboundDesignBriefPackageInput,
   type OutboundDesignBriefPackage,
   type GovernedFigmaWriteInput,
+  type GovernedFigmaWrite,
+  type FinalizedFigmaSnapshotImportInput,
   type OutcomeModel,
   type OutcomeModelInput,
   type Product,
@@ -2439,6 +2441,104 @@ describe("Design Persona and Role service", () => {
       writeExecutionState: "not-performed",
       writeResultState: "not-recorded",
       externalVersionValidationState: "not-established",
+      targetValidityState: "not-established",
+      designValidityState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-granted",
+    }
+  }
+
+  async function finalizedFigmaSnapshotImportInput(
+    governedWrite: GovernedFigmaWrite,
+  ): Promise<FinalizedFigmaSnapshotImportInput> {
+    const governedWriteReference = {
+      recordId: governedWrite.id,
+      revision: governedWrite.revision,
+      digest: canonicalDigest(governedWrite),
+      membershipDigest: governedWrite.membershipDigest,
+      requestDigest: governedWrite.requestDigest,
+      effectDigest: governedWrite.effectDigest,
+      externalFileIdentityDigest: governedWrite.target.externalFileIdentityDigest,
+      expectedExternalVersionDigest: governedWrite.target.expectedExternalVersionDigest,
+    }
+    const items = [{
+      key: "primary-file",
+      kind: "file" as const,
+      externalIdentityDigest: governedWrite.target.externalFileIdentityDigest,
+      contentDigest: digest("2"),
+      provenanceDigest: digest("3"),
+      evidenceState: "human-reviewed" as const,
+      sources: [reference()],
+    }]
+    const receiptBase = {
+      mode: "manual-return-receipt" as const,
+      externalFileIdentityDigest: governedWrite.target.externalFileIdentityDigest,
+      returnedExternalVersionDigest: digest("4"),
+      capturedAt: "2026-07-29T15:00:00.000Z",
+      evidenceState: "human-reviewed" as const,
+      evidenceDigests: [digest("5")],
+      sources: [reference()],
+    }
+    const payloadDigest = canonicalDigest({
+      governedWrite: governedWriteReference,
+      externalFileIdentityDigest: receiptBase.externalFileIdentityDigest,
+      returnedExternalVersionDigest: receiptBase.returnedExternalVersionDigest,
+      items,
+    })
+    const receiptDigest = canonicalDigest({ ...receiptBase, payloadDigest })
+    const conflicts: FinalizedFigmaSnapshotImportInput["conflicts"] = []
+    const reconciliationDigest = canonicalDigest({
+      governedWrite: governedWriteReference,
+      returnReceipt: {
+        externalFileIdentityDigest: receiptBase.externalFileIdentityDigest,
+        returnedExternalVersionDigest: receiptBase.returnedExternalVersionDigest,
+        payloadDigest,
+        receiptDigest,
+      },
+      itemCatalogDigest: canonicalDigest(items),
+      conflictCatalogDigest: canonicalDigest(conflicts),
+    })
+    const returnAuthorization = {
+      state: "verified" as const,
+      scopeDigest: canonicalDigest({
+        governedWrite: governedWriteReference,
+        returnReceiptDigest: receiptDigest,
+        reconciliationDigest,
+      }),
+      decisionDigest: digest("6"),
+      evidenceDigests: [digest("7")],
+      verifiedBy: { kind: "human" as const, id: actorId },
+      verifiedAt: "2026-07-29T15:05:00.000Z",
+    }
+    return {
+      initiativeId: initiative.id,
+      context: await exactContext(),
+      informationClassification: governedWrite.informationClassification,
+      title: "Finalized customer portal Figma snapshot candidate",
+      objectiveDigest: canonicalDigest({ objective: "Reconcile an attributable returned Figma snapshot without importing content" }),
+      governedWrite: governedWriteReference,
+      returnReceipt: { ...receiptBase, payloadDigest, receiptDigest },
+      returnAuthorization,
+      items,
+      conflicts,
+      reconciliationDigest,
+      reconciliationState: "exact",
+      provenanceState: "exact",
+      snapshotCompletenessState: "candidate-complete",
+      unresolvedQuestions: [],
+      limitations: [
+        "This candidate records privacy-safe reconciliation evidence only and does not connect to Figma, transfer or import content, validate or approve design, establish a baseline or readiness, or grant implementation authority",
+      ],
+      reviewState: "ready-for-human-review",
+      inboundTransferState: "not-performed",
+      importExecutionState: "not-performed",
+      importResultState: "not-recorded",
+      figmaConnectionAuthorityState: "not-granted",
+      credentialAuthorityState: "not-granted",
+      permissionGrantState: "not-granted",
+      externalCompletenessState: "not-established",
       targetValidityState: "not-established",
       designValidityState: "not-established",
       designApprovalState: "not-established",
@@ -4926,6 +5026,196 @@ describe("Design Persona and Role service", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "governed-figma-write.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, audits, and revises immutable Finalized Figma Snapshot Import candidates", async () => {
+    const prerequisites = await createFigmaContextImportPrerequisites()
+    const contextImport = await engine.figmaContextImport.create(
+      await figmaContextImportInput(prerequisites), actorId,
+    )
+    const outboundPackage = await engine.outboundDesignBriefPackage.create(
+      await outboundDesignBriefPackageInput(contextImport), actorId,
+    )
+    const governedWrite = await engine.governedFigmaWrite.create(
+      await governedFigmaWriteInput(outboundPackage), actorId,
+    )
+    const input = await finalizedFigmaSnapshotImportInput(governedWrite)
+    const candidate = await engine.finalizedFigmaSnapshotImport.create(input, actorId)
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      governedWrite: {
+        recordId: governedWrite.id,
+        revision: governedWrite.revision,
+        digest: canonicalDigest(governedWrite),
+        membershipDigest: governedWrite.membershipDigest,
+        requestDigest: governedWrite.requestDigest,
+        effectDigest: governedWrite.effectDigest,
+      },
+      returnReceipt: {
+        mode: "manual-return-receipt",
+        evidenceState: "human-reviewed",
+      },
+      returnAuthorization: { state: "verified" },
+      reconciliationState: "exact",
+      provenanceState: "exact",
+      snapshotCompletenessState: "candidate-complete",
+      reviewState: "ready-for-human-review",
+      inboundTransferState: "not-performed",
+      importExecutionState: "not-performed",
+      importResultState: "not-recorded",
+      figmaConnectionAuthorityState: "not-granted",
+      credentialAuthorityState: "not-granted",
+      permissionGrantState: "not-granted",
+      externalCompletenessState: "not-established",
+      targetValidityState: "not-established",
+      designValidityState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-granted",
+      authorityBoundary: expect.stringContaining("does-not-transfer-or-import-content"),
+    })
+    expect(await engine.finalizedFigmaSnapshotImport.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      itemCount: 1,
+      humanReviewedItemCount: 1,
+      sourceRecordedItemCount: 0,
+      notAssessedItemCount: 0,
+      openConflictCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      returnAuthorizationState: "verified",
+      reconciliationState: "exact",
+      provenanceState: "exact",
+      snapshotCompletenessState: "candidate-complete",
+      reviewState: "ready-for-human-review",
+      importExecutionState: "not-performed",
+      importResultState: "not-recorded",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.finalizedFigmaSnapshotImport.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: {
+        id: candidate.id,
+        revision: 1,
+        governedWrite: candidate.governedWrite,
+        externalFileIdentityDigest: candidate.returnReceipt.externalFileIdentityDigest,
+        returnedExternalVersionDigest: candidate.returnReceipt.returnedExternalVersionDigest,
+        payloadDigest: candidate.returnReceipt.payloadDigest,
+        receiptDigest: candidate.returnReceipt.receiptDigest,
+        reconciliationDigest: candidate.reconciliationDigest,
+        itemCount: 1,
+        conflictCount: 0,
+        returnAuthorizationState: "verified",
+        importExecutionState: "not-performed",
+      },
+      privacyBoundary: expect.stringContaining("not-figma-content-names-external-identities"),
+      authorityBoundary: expect.stringContaining("does-not-transfer-or-import-content"),
+    })
+    expect(JSON.stringify(projection)).not.toContain(candidate.title)
+    expect(JSON.stringify(projection)).not.toContain(actorId)
+
+    const revised = await engine.finalizedFigmaSnapshotImport.revise(
+      candidate.id, candidate.revision, input, actorId,
+    )
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.finalizedFigmaSnapshotImport.listHistory(candidate.id)).map((record) => record.revision))
+      .toEqual([2, 1])
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "finalized-figma-snapshot-import.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        objectiveDigest: revised.objectiveDigest,
+        governedWrite: revised.governedWrite,
+        returnMode: "manual-return-receipt",
+        externalFileIdentityDigest: revised.returnReceipt.externalFileIdentityDigest,
+        returnedExternalVersionDigest: revised.returnReceipt.returnedExternalVersionDigest,
+        payloadDigest: revised.returnReceipt.payloadDigest,
+        receiptDigest: revised.returnReceipt.receiptDigest,
+        returnReceiptEvidenceState: "human-reviewed",
+        returnAuthorizationState: "verified",
+        returnAuthorizationScopeDigest: revised.returnAuthorization.scopeDigest,
+        returnAuthorizationDecisionDigest: revised.returnAuthorization.decisionDigest,
+        itemCount: 1,
+        conflictCount: 0,
+        reconciliationDigest: revised.reconciliationDigest,
+        reconciliationState: "exact",
+        provenanceState: "exact",
+        snapshotCompletenessState: "candidate-complete",
+        reviewState: "ready-for-human-review",
+        inboundTransferState: "not-performed",
+        importExecutionState: "not-performed",
+        importResultState: "not-recorded",
+        figmaConnectionAuthorityState: "not-granted",
+        credentialAuthorityState: "not-granted",
+        permissionGrantState: "not-granted",
+        externalCompletenessState: "not-established",
+        targetValidityState: "not-established",
+        designValidityState: "not-established",
+        designApprovalState: "not-established",
+        designBaselineState: "not-established",
+        readinessState: "not-established",
+        implementationAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+    expect(JSON.stringify(events.at(-1)?.payload)).not.toContain(candidate.title)
+    expect(JSON.stringify(events.at(-1)?.payload)).not.toContain(actorId)
+  })
+
+  it("fails Finalized Figma Snapshot Imports closed on stale writes, forged receipts, invented scope, or dependency drift", async () => {
+    const prerequisites = await createFigmaContextImportPrerequisites()
+    const contextImport = await engine.figmaContextImport.create(
+      await figmaContextImportInput(prerequisites), actorId,
+    )
+    const outboundPackage = await engine.outboundDesignBriefPackage.create(
+      await outboundDesignBriefPackageInput(contextImport), actorId,
+    )
+    const governedInput = await governedFigmaWriteInput(outboundPackage)
+    const governedWrite = await engine.governedFigmaWrite.create(governedInput, actorId)
+
+    const staleWrite = await finalizedFigmaSnapshotImportInput(governedWrite)
+    staleWrite.governedWrite.digest = digest("f")
+    await expect(engine.finalizedFigmaSnapshotImport.create(staleWrite, actorId))
+      .rejects.toThrow("exact current Governed Figma Write")
+
+    const forgedPayload = await finalizedFigmaSnapshotImportInput(governedWrite)
+    forgedPayload.returnReceipt.payloadDigest = digest("e")
+    await expect(engine.finalizedFigmaSnapshotImport.create(forgedPayload, actorId))
+      .rejects.toThrow("payload digest must bind")
+
+    const inventedScope = await finalizedFigmaSnapshotImportInput(governedWrite)
+    inventedScope.returnAuthorization.scopeDigest = digest("d")
+    await expect(engine.finalizedFigmaSnapshotImport.create(inventedScope, actorId))
+      .rejects.toThrow("authorization scope must bind")
+
+    const candidate = await engine.finalizedFigmaSnapshotImport.create(
+      await finalizedFigmaSnapshotImportInput(governedWrite), actorId,
+    )
+    await engine.governedFigmaWrite.revise(
+      governedWrite.id, governedWrite.revision, governedInput, actorId,
+    )
+    expect(await engine.finalizedFigmaSnapshotImport.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "finalized-figma-snapshot-import.binding-review-required",
       severity: "warning",
     }))
   })
