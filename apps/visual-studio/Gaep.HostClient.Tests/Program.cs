@@ -78,6 +78,7 @@ internal static class Program
     private static readonly Guid FigmaMcpCapabilityDiscoveryId = Guid.Parse("73737373-7373-4373-8373-737373737373");
     private static readonly Guid FigmaReadSnapshotId = Guid.Parse("74747474-7474-4474-8474-747474747474");
     private static readonly Guid FigmaContextImportId = Guid.Parse("75757575-7575-4575-8575-757575757575");
+    private static readonly Guid OutboundDesignBriefPackageId = Guid.Parse("76767676-7676-4676-8676-767676767676");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -241,6 +242,9 @@ internal static class Program
         var badFigmaContextImportBindingRoot = Path.Combine(temporaryRoot, "bad-figma-context-import-binding");
         var badFigmaContextImportDigestRoot = Path.Combine(temporaryRoot, "bad-figma-context-import-digest");
         var badFigmaContextImportPrivateRoot = Path.Combine(temporaryRoot, "bad-figma-context-import-private");
+        var badOutboundDesignBriefPackageBindingRoot = Path.Combine(temporaryRoot, "bad-outbound-design-brief-package-binding");
+        var badOutboundDesignBriefPackageDigestRoot = Path.Combine(temporaryRoot, "bad-outbound-design-brief-package-digest");
+        var badOutboundDesignBriefPackagePrivateRoot = Path.Combine(temporaryRoot, "bad-outbound-design-brief-package-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -404,6 +408,9 @@ internal static class Program
         Directory.CreateDirectory(badFigmaContextImportBindingRoot);
         Directory.CreateDirectory(badFigmaContextImportDigestRoot);
         Directory.CreateDirectory(badFigmaContextImportPrivateRoot);
+        Directory.CreateDirectory(badOutboundDesignBriefPackageBindingRoot);
+        Directory.CreateDirectory(badOutboundDesignBriefPackageDigestRoot);
+        Directory.CreateDirectory(badOutboundDesignBriefPackagePrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2193,6 +2200,52 @@ internal static class Program
                 "Figma Context Import rejects a projection rebound to a substituted Product revision");
         }
 
+        var outboundPackageProjection = await client.ReadOutboundDesignBriefPackageAsync(InitiativeId);
+        Check(outboundPackageProjection.ProductId == product.Id &&
+              outboundPackageProjection.ProductRevision == product.Revision &&
+              outboundPackageProjection.ProductDigest == product.Digest &&
+              outboundPackageProjection.InitiativeId == resolved.Id &&
+              outboundPackageProjection.InitiativeRevision == resolved.Revision &&
+              outboundPackageProjection.InitiativeDigest == resolved.Digest &&
+              outboundPackageProjection.AssessmentState == "attention-required" &&
+              outboundPackageProjection.ReviewState == "held" &&
+              outboundPackageProjection.ManifestState == "partial" &&
+              outboundPackageProjection.ProvenanceState == "partial" &&
+              outboundPackageProjection.RedactionReviewState == "partial" &&
+              outboundPackageProjection.PreviewState == "candidate-generated" &&
+              outboundPackageProjection.ContextPackCount == 2 &&
+              outboundPackageProjection.EntryCount == 8 &&
+              outboundPackageProjection.ContextItemCount == 24 &&
+              outboundPackageProjection.RecipientCount == 2 &&
+              outboundPackageProjection.HumanReviewedEntryCount == 5 &&
+              outboundPackageProjection.RepresentedRequirementCount == 7 &&
+              outboundPackageProjection.Candidate?.ManifestFormat == "gaep-outbound-design-brief-package-v1",
+            "Typed Outbound Design Brief Package preserves exact Product, Initiative, assessment, manifest, and privacy-safe inventory metadata");
+        var outboundPackageOutput = await initiativeController.ReadOutboundDesignBriefPackageAsync(InitiativeId);
+        Check(outboundPackageOutput.Contains("GAEP governed Outbound Design Brief Package candidate", StringComparison.Ordinal) &&
+              outboundPackageOutput.Contains("2 Context Packs · 8 entries · 24 Context Items · 2 recipients", StringComparison.Ordinal) &&
+              outboundPackageOutput.Contains("5 human-reviewed", StringComparison.Ordinal) &&
+              outboundPackageOutput.Contains("no package materialization or context transfer", StringComparison.Ordinal) &&
+              !outboundPackageOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !outboundPackageOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !outboundPackageOutput.Contains("entries=", StringComparison.Ordinal),
+            "Outbound Design Brief Package workflow renders privacy-safe receipt metadata with explicit no-transfer and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badOutboundDesignBriefPackageDigestRoot, badOutboundDesignBriefPackagePrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadOutboundDesignBriefPackageAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Outbound Design Brief Package rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badOutboundDesignBriefPackageBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadOutboundDesignBriefPackageAsync(InitiativeId),
+                "Outbound Design Brief Package rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3537,6 +3590,9 @@ internal static class Program
         var badFigmaContextImportBinding = Path.GetFileName(workspace) == "bad-figma-context-import-binding";
         var badFigmaContextImportDigest = Path.GetFileName(workspace) == "bad-figma-context-import-digest";
         var badFigmaContextImportPrivate = Path.GetFileName(workspace) == "bad-figma-context-import-private";
+        var badOutboundDesignBriefPackageBinding = Path.GetFileName(workspace) == "bad-outbound-design-brief-package-binding";
+        var badOutboundDesignBriefPackageDigest = Path.GetFileName(workspace) == "bad-outbound-design-brief-package-digest";
+        var badOutboundDesignBriefPackagePrivate = Path.GetFileName(workspace) == "bad-outbound-design-brief-package-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -4043,6 +4099,17 @@ internal static class Program
                         badFigmaContextImportBinding,
                         badFigmaContextImportDigest,
                         badFigmaContextImportPrivate);
+                    break;
+                case "design.outboundDesignBriefPackage.snapshot":
+                    await HandleOutboundDesignBriefPackageAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badOutboundDesignBriefPackageBinding,
+                        badOutboundDesignBriefPackageDigest,
+                        badOutboundDesignBriefPackagePrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -7763,6 +7830,114 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["contextItemCount"] = 25;
         if (includePrivateField) result["contextItems"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleOutboundDesignBriefPackageAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID OUTBOUND DESIGN BRIEF PACKAGE");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-29T10:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('f', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = OutboundDesignBriefPackageId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('a', 64)}",
+            ["state"] = "candidate",
+            ["manifestFormat"] = "gaep-outbound-design-brief-package-v1",
+            ["manifestDigest"] = $"sha256:{new string('b', 64)}",
+            ["payloadDigest"] = $"sha256:{new string('c', 64)}",
+            ["contextPackCount"] = 2,
+            ["entryCount"] = 8,
+            ["contextItemCount"] = 24,
+            ["recipientCount"] = 2,
+            ["representedRequirementCount"] = 7,
+            ["unresolvedDisclosureCount"] = 3,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-29T10:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "outbound-design-brief-package-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "outbound-design-brief-package-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = OutboundDesignBriefPackageId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["contextPackCount"] = 2,
+                ["entryCount"] = 8,
+                ["contextItemCount"] = 24,
+                ["recipientCount"] = 2,
+                ["humanReviewedEntryCount"] = 5,
+                ["sourceRecordedEntryCount"] = 2,
+                ["notAssessedEntryCount"] = 1,
+                ["unresolvedRedactionCount"] = 1,
+                ["representedRequirementCount"] = 7,
+                ["unresolvedRequirementCount"] = 2,
+                ["unresolvedDisclosureCount"] = 3,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedQuestionCount"] = 3,
+                ["manifestState"] = "partial",
+                ["provenanceState"] = "partial",
+                ["redactionReviewState"] = "partial",
+                ["previewState"] = "candidate-generated",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more outbound package entries require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "outbound-design-brief-package-status-is-observational-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-transformation-disclosure-or-personal-content-secrets-credentials-or-permissions",
+            ["authorityBoundary"] =
+                "outbound-design-brief-package-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["contextItemCount"] = 25;
+        if (includePrivateField) result["entries"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

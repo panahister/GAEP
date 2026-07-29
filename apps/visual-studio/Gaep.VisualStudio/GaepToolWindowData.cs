@@ -237,6 +237,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadFigmaMcpCapabilityDiscoveryCommand = new AsyncCommand(LoadFigmaMcpCapabilityDiscoveryAsync);
         LoadFigmaReadSnapshotCommand = new AsyncCommand(LoadFigmaReadSnapshotAsync);
         LoadFigmaContextImportCommand = new AsyncCommand(LoadFigmaContextImportAsync);
+        LoadOutboundDesignBriefPackageCommand = new AsyncCommand(LoadOutboundDesignBriefPackageAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -389,6 +390,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadFigmaContextImportCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadOutboundDesignBriefPackageCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -970,6 +974,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Figma Context Import candidate",
             (controller, _, token) => controller.ReadFigmaContextImportAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadOutboundDesignBriefPackageAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Outbound Design Brief Package candidate",
+            (controller, _, token) => controller.ReadOutboundDesignBriefPackageAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

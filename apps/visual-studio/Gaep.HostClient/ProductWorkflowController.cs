@@ -2170,6 +2170,73 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadOutboundDesignBriefPackageAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadOutboundDesignBriefPackageAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Outbound Design Brief Package was read. Refresh the exact records.");
+        }
+        return RenderOutboundDesignBriefPackage(projection);
+    }
+
+    public static string RenderOutboundDesignBriefPackage(OutboundDesignBriefPackageProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Outbound Design Brief Package candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Manifest: {projection.ManifestState} · provenance {projection.ProvenanceState} · " +
+                $"redaction {projection.RedactionReviewState} · preview {projection.PreviewState}")
+            .AppendLine(
+                $"Inventory: {projection.ContextPackCount} Context Packs · {projection.EntryCount} entries · " +
+                $"{projection.ContextItemCount} Context Items · {projection.RecipientCount} recipients")
+            .AppendLine(
+                $"Evidence: {projection.HumanReviewedEntryCount} human-reviewed · " +
+                $"{projection.SourceRecordedEntryCount} source-recorded · {projection.NotAssessedEntryCount} not assessed · " +
+                $"{projection.UnresolvedRedactionCount} redaction gaps")
+            .AppendLine(
+                $"Requirement coverage: {projection.RepresentedRequirementCount} represented · " +
+                $"{projection.UnresolvedRequirementCount} unresolved · {projection.UnresolvedDisclosureCount} unresolved disclosures")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Outbound Design Brief Package candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine($"Manifest receipt: {candidate.ManifestFormat} · {candidate.ManifestDigest}")
+                .AppendLine($"Payload receipt: {candidate.PayloadDigest}")
+                .AppendLine(
+                    $"Candidate inventory: {candidate.ContextPackCount} Context Packs · {candidate.EntryCount} entries · " +
+                    $"{candidate.ContextItemCount} Context Items · {candidate.RecipientCount} recipients · " +
+                    $"{candidate.RepresentedRequirementCount} represented Requirements · " +
+                    $"{candidate.UnresolvedDisclosureCount} unresolved disclosures · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Outbound Design Brief Package candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and digests only; no package materialization or context transfer, " +
+                "Figma connection or call, credential request, permission grant, write, target or design validation, design approval, " +
+                "baseline, readiness, implementation, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,
