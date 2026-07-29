@@ -6,7 +6,7 @@ import { buildIdeConformanceReport } from "./lib/ide_conformance.mjs"
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const options = {
   contractPath: resolve(repositoryRoot, "conformance/phase-0-ide-contract.json"),
-  packageReportPath: resolve(repositoryRoot, "evidence/local-packages/20260729T113542Z-phase-2-figma-context-import-packages.json"),
+  packageReportPath: resolve(repositoryRoot, "evidence/local-packages/20260729T123744Z-phase-2-outbound-design-brief-package-packages.json"),
   recordedAt: undefined,
   outputPath: undefined,
 }

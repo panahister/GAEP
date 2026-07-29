@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260729T113542Z-phase-2-figma-context-import-packages.json",
-  conformance: "evidence/ide-conformance/20260729T113542Z-phase-2-figma-context-import.json",
+  packages: "evidence/local-packages/20260729T123744Z-phase-2-outbound-design-brief-package-packages.json",
+  conformance: "evidence/ide-conformance/20260729T123744Z-phase-2-outbound-design-brief-package.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    figmaContextImport
+    outboundDesignBriefPackage
+      ? {
+          id: "phase-2-outbound-design-brief-package-closure",
+          state: "not-established",
+          basis: "the governed Outbound Design Brief Package manifest-only candidate is implemented locally across the shared engine and four host projections; real Product research, attributable human Context Pack, entry, Context Item, recipient, redaction, requirement-coverage, disclosure, provenance and evidence review, actual package materialization or context transfer, a live Figma connection or request, credential and permission workflows, write authorization or execution, target and design validation, native-host interaction, design review and approval, Design Baseline and Product Owner acceptance remain incomplete",
+        }
+      : figmaContextImport
       ? {
           id: "phase-2-figma-context-import-closure",
           state: "not-established",
@@ -380,6 +386,9 @@ export async function buildPhase0AcceptanceReport({
   const figmaContextImport = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "figma-context-import" && capability.state === "implemented"))
+  const outboundDesignBriefPackage = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "outbound-design-brief-package" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -394,6 +403,7 @@ export async function buildPhase0AcceptanceReport({
     figmaMcpCapabilityDiscovery,
     figmaReadSnapshot,
     figmaContextImport,
+    outboundDesignBriefPackage,
   })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
@@ -411,8 +421,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: figmaContextImport
+    phase: outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: outboundDesignBriefPackage
+      ? "phase-2-outbound-design-brief-package-local"
+      : figmaContextImport
       ? "phase-2-figma-context-import-local"
       : figmaReadSnapshot
       ? "phase-2-figma-read-snapshot-local"
@@ -480,7 +492,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: figmaContextImport
+    claimBoundary: outboundDesignBriefPackage
+      ? "This report binds the exact governed Outbound Design Brief Package manifest-only candidate lifecycle, exact Product, Initiative, Figma Context Import and Context Pack dependencies, bounded entry, Context Item, recipient, redaction, requirement-coverage, disclosure, provenance, evidence-state, manifest, payload and preview receipt metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : figmaContextImport
       ? "This report binds the exact governed Figma Context Import candidate lifecycle, exact Product, Initiative, Design Applicability, Design Requirements, Context Pack, Figma Read Snapshot and Figma MCP Capability Discovery dependencies, bounded section, Context Item, Figma target, redaction, requirement-coverage, provenance, evidence-state, candidate-ownership and gap metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not package or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : figmaReadSnapshot
       ? "This report binds the exact governed Figma Read Snapshot candidate lifecycle, exact Product, Initiative, Design Applicability, Design System and Token Contract, Figma MCP Capability Discovery and Sources dependencies, bounded file, component, variable-collection, variable, external-version, provenance, freshness, evidence-state, type-gap, candidate-ownership and gap metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not connect to or call Figma, request credentials, grant permissions, prove external completeness, authorize writes, validate or approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
