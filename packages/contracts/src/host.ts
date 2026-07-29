@@ -62,6 +62,7 @@ import { figmaMcpCapabilityDiscoveryInputSchema } from "./figma-mcp-capability-d
 import { figmaReadSnapshotInputSchema } from "./figma-read-snapshot.js"
 import { figmaContextImportInputSchema } from "./figma-context-import.js"
 import { outboundDesignBriefPackageInputSchema } from "./outbound-design-brief-package.js"
+import { governedFigmaWriteInputSchema } from "./governed-figma-write.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -682,6 +683,18 @@ export const hostOutboundDesignBriefPackageReviseParamsSchema = z.object({
   record: outboundDesignBriefPackageInputSchema,
 }).strict()
 
+export const hostGovernedFigmaWriteCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: governedFigmaWriteInputSchema,
+}).strict()
+
+export const hostGovernedFigmaWriteReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: governedFigmaWriteInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -919,6 +932,11 @@ export const hostMethodSchema = z.enum([
   "design.outboundDesignBriefPackage.revise",
   "design.outboundDesignBriefPackage.assess",
   "design.outboundDesignBriefPackage.snapshot",
+  "design.governedFigmaWrite.read",
+  "design.governedFigmaWrite.create",
+  "design.governedFigmaWrite.revise",
+  "design.governedFigmaWrite.assess",
+  "design.governedFigmaWrite.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1165,6 +1183,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.outboundDesignBriefPackage.revise", hostOutboundDesignBriefPackageReviseParamsSchema),
   requestVariant("design.outboundDesignBriefPackage.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.outboundDesignBriefPackage.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.governedFigmaWrite.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.governedFigmaWrite.create", hostGovernedFigmaWriteCreateParamsSchema),
+  requestVariant("design.governedFigmaWrite.revise", hostGovernedFigmaWriteReviseParamsSchema),
+  requestVariant("design.governedFigmaWrite.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.governedFigmaWrite.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
