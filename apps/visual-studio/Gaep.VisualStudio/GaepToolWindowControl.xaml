@@ -176,6 +176,10 @@
                 Command="{Binding LoadFinalizedFigmaSnapshotImportCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds Figma content, names, external identities, Source content, authorization actors, personal, secret, credential, and permission content, and does not transfer or import content, connect to or call Figma, request credentials, grant permissions, prove external completeness, validate or approve design, establish a baseline or readiness, or authorize implementation or action."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadDesignToRequirementBindingButton" Content="Inspect Design-to-Requirement Binding"
+                Command="{Binding LoadDesignToRequirementBindingCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate identities, exact dependency and catalog digests, counts, and statuses only; it withholds Figma content, external identities, Requirement text, Decision content, Source content, human attribution, personal, secret, credential, and permission content, and does not prove relationships or completeness, satisfy Requirements, establish Decision effectiveness, validate or approve design, establish a baseline or readiness, connect to or call Figma, request credentials, grant permissions, execute imports or writes, or authorize implementation or action."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

@@ -81,6 +81,7 @@ internal static class Program
     private static readonly Guid OutboundDesignBriefPackageId = Guid.Parse("76767676-7676-4676-8676-767676767676");
     private static readonly Guid GovernedFigmaWriteId = Guid.Parse("77777777-7777-4777-8777-777777777777");
     private static readonly Guid FinalizedFigmaSnapshotImportId = Guid.Parse("78787878-7878-4878-8878-787878787878");
+    private static readonly Guid DesignToRequirementBindingId = Guid.Parse("79797979-7979-4979-8979-797979797979");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -253,6 +254,9 @@ internal static class Program
         var badFinalizedFigmaSnapshotImportBindingRoot = Path.Combine(temporaryRoot, "bad-finalized-figma-snapshot-import-binding");
         var badFinalizedFigmaSnapshotImportDigestRoot = Path.Combine(temporaryRoot, "bad-finalized-figma-snapshot-import-digest");
         var badFinalizedFigmaSnapshotImportPrivateRoot = Path.Combine(temporaryRoot, "bad-finalized-figma-snapshot-import-private");
+        var badDesignToRequirementBindingBindingRoot = Path.Combine(temporaryRoot, "bad-design-to-requirement-binding-binding");
+        var badDesignToRequirementBindingDigestRoot = Path.Combine(temporaryRoot, "bad-design-to-requirement-binding-digest");
+        var badDesignToRequirementBindingPrivateRoot = Path.Combine(temporaryRoot, "bad-design-to-requirement-binding-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -425,6 +429,9 @@ internal static class Program
         Directory.CreateDirectory(badFinalizedFigmaSnapshotImportBindingRoot);
         Directory.CreateDirectory(badFinalizedFigmaSnapshotImportDigestRoot);
         Directory.CreateDirectory(badFinalizedFigmaSnapshotImportPrivateRoot);
+        Directory.CreateDirectory(badDesignToRequirementBindingBindingRoot);
+        Directory.CreateDirectory(badDesignToRequirementBindingDigestRoot);
+        Directory.CreateDirectory(badDesignToRequirementBindingPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2355,6 +2362,50 @@ internal static class Program
                 "Finalized Figma Snapshot Import rejects a projection rebound to a substituted Product revision");
         }
 
+        var designBindingProjection = await client.ReadDesignToRequirementBindingAsync(InitiativeId);
+        Check(designBindingProjection.ProductId == product.Id &&
+              designBindingProjection.ProductRevision == product.Revision &&
+              designBindingProjection.ProductDigest == product.Digest &&
+              designBindingProjection.InitiativeId == resolved.Id &&
+              designBindingProjection.InitiativeRevision == resolved.Revision &&
+              designBindingProjection.InitiativeDigest == resolved.Digest &&
+              designBindingProjection.AssessmentState == "attention-required" &&
+              designBindingProjection.ReviewState == "held" &&
+              designBindingProjection.ReconciliationState == "partial" &&
+              designBindingProjection.CandidateCoverageState == "partial" &&
+              designBindingProjection.ProvenanceState == "exact" &&
+              designBindingProjection.BindingCount == 7 &&
+              designBindingProjection.HumanReviewedBindingCount == 5 &&
+              designBindingProjection.Candidate?.DesignItemCoverageCount == 4 &&
+              designBindingProjection.Candidate?.SubjectCoverageCount == 5 &&
+              designBindingProjection.Candidate?.ConflictCount == 3,
+            "Typed Design-to-Requirement Binding preserves exact Product, Initiative, dependency, coverage, and privacy-safe candidate metadata");
+        var designBindingOutput = await initiativeController.ReadDesignToRequirementBindingAsync(InitiativeId);
+        Check(designBindingOutput.Contains("GAEP Design-to-Requirement Binding review candidate", StringComparison.Ordinal) &&
+              designBindingOutput.Contains("reconciliation partial", StringComparison.Ordinal) &&
+              designBindingOutput.Contains("7 bindings · 4 design items · 5 governed subjects · 3 conflicts", StringComparison.Ordinal) &&
+              designBindingOutput.Contains("no relationship-truth or coverage-completeness proof", StringComparison.Ordinal) &&
+              designBindingOutput.Contains("permission grant", StringComparison.Ordinal) &&
+              !designBindingOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !designBindingOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !designBindingOutput.Contains("humanAttribution=", StringComparison.Ordinal),
+            "Design-to-Requirement Binding workflow renders privacy-safe exact dependency metadata with explicit no-proof and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badDesignToRequirementBindingDigestRoot, badDesignToRequirementBindingPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDesignToRequirementBindingAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Design-to-Requirement Binding rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badDesignToRequirementBindingBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDesignToRequirementBindingAsync(InitiativeId),
+                "Design-to-Requirement Binding rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3708,6 +3759,9 @@ internal static class Program
         var badFinalizedFigmaSnapshotImportBinding = Path.GetFileName(workspace) == "bad-finalized-figma-snapshot-import-binding";
         var badFinalizedFigmaSnapshotImportDigest = Path.GetFileName(workspace) == "bad-finalized-figma-snapshot-import-digest";
         var badFinalizedFigmaSnapshotImportPrivate = Path.GetFileName(workspace) == "bad-finalized-figma-snapshot-import-private";
+        var badDesignToRequirementBindingBinding = Path.GetFileName(workspace) == "bad-design-to-requirement-binding-binding";
+        var badDesignToRequirementBindingDigest = Path.GetFileName(workspace) == "bad-design-to-requirement-binding-digest";
+        var badDesignToRequirementBindingPrivate = Path.GetFileName(workspace) == "bad-design-to-requirement-binding-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -4247,6 +4301,17 @@ internal static class Program
                         badFinalizedFigmaSnapshotImportBinding,
                         badFinalizedFigmaSnapshotImportDigest,
                         badFinalizedFigmaSnapshotImportPrivate);
+                    break;
+                case "design.designToRequirementBinding.snapshot":
+                    await HandleDesignToRequirementBindingAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDesignToRequirementBindingBinding,
+                        badDesignToRequirementBindingDigest,
+                        badDesignToRequirementBindingPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -8310,6 +8375,130 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["itemCount"] = 19;
         if (includePrivateField) result["authorizationActor"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDesignToRequirementBindingAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DESIGN TO REQUIREMENT BINDING");
+            return;
+        }
+        static Dictionary<string, object?> Dependency(
+            Guid recordId,
+            int revision,
+            string catalogProperty,
+            char digestSeed,
+            char membershipSeed,
+            char catalogSeed) => new()
+        {
+            ["recordId"] = recordId.ToString("D"),
+            ["revision"] = revision,
+            ["digest"] = $"sha256:{new string(digestSeed, 64)}",
+            ["membershipDigest"] = $"sha256:{new string(membershipSeed, 64)}",
+            [catalogProperty] = $"sha256:{new string(catalogSeed, 64)}",
+        };
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-29T16:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('d', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DesignToRequirementBindingId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('e', 64)}",
+            ["state"] = "candidate",
+            ["finalizedSnapshot"] = Dependency(FinalizedFigmaSnapshotImportId, 2, "itemCatalogDigest", '1', '2', '3'),
+            ["designRequirements"] = Dependency(DesignRequirementsId, 3, "requirementCatalogDigest", '4', '5', '6'),
+            ["decisionRegister"] = Dependency(DecisionRegisterId, 4, "decisionCatalogDigest", '7', '8', '9'),
+            ["reconciliationDigest"] = $"sha256:{new string('a', 64)}",
+            ["bindingCount"] = 7,
+            ["designItemCoverageCount"] = 4,
+            ["subjectCoverageCount"] = 5,
+            ["conflictCount"] = 3,
+            ["reconciliationState"] = "partial",
+            ["candidateCoverageState"] = "partial",
+            ["provenanceState"] = "exact",
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-29T16:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "design-to-requirement-binding-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "design-to-requirement-binding-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DesignToRequirementBindingId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["bindingCount"] = 7,
+                ["humanReviewedBindingCount"] = 5,
+                ["designItemCount"] = 4,
+                ["boundDesignItemCount"] = 3,
+                ["unboundDesignItemCount"] = 1,
+                ["requirementCount"] = 3,
+                ["boundRequirementCount"] = 2,
+                ["unboundRequirementCount"] = 1,
+                ["decisionCount"] = 2,
+                ["boundDecisionCount"] = 1,
+                ["unboundDecisionCount"] = 1,
+                ["openConflictCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedQuestionCount"] = 3,
+                ["reconciliationState"] = "partial",
+                ["candidateCoverageState"] = "partial",
+                ["provenanceState"] = "exact",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more governed subjects remain unbound" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "design-to-requirement-binding-status-is-observational-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-content-external-identities-requirement-text-decision-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+            ["authorityBoundary"] =
+                "design-to-requirement-binding-projection-is-read-only-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["bindingCount"] = 8;
+        if (includePrivateField) result["humanAttribution"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

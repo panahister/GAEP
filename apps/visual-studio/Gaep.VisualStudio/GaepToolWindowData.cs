@@ -240,6 +240,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadOutboundDesignBriefPackageCommand = new AsyncCommand(LoadOutboundDesignBriefPackageAsync);
         LoadGovernedFigmaWriteCommand = new AsyncCommand(LoadGovernedFigmaWriteAsync);
         LoadFinalizedFigmaSnapshotImportCommand = new AsyncCommand(LoadFinalizedFigmaSnapshotImportAsync);
+        LoadDesignToRequirementBindingCommand = new AsyncCommand(LoadDesignToRequirementBindingAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -401,6 +402,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadFinalizedFigmaSnapshotImportCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadDesignToRequirementBindingCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -1000,6 +1004,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact finalized Figma Snapshot Import candidate",
             (controller, _, token) => controller.ReadFinalizedFigmaSnapshotImportAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadDesignToRequirementBindingAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact Design-to-Requirement Binding candidate",
+            (controller, _, token) => controller.ReadDesignToRequirementBindingAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

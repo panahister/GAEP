@@ -2372,6 +2372,77 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDesignToRequirementBindingAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDesignToRequirementBindingAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Design-to-Requirement Binding was read. Refresh the exact records.");
+        }
+        return RenderDesignToRequirementBinding(projection);
+    }
+
+    public static string RenderDesignToRequirementBinding(DesignToRequirementBindingProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP Design-to-Requirement Binding review candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Governance: reconciliation {projection.ReconciliationState} · candidate coverage " +
+                $"{projection.CandidateCoverageState} · provenance {projection.ProvenanceState}")
+            .AppendLine($"Bindings: {projection.BindingCount} total · {projection.HumanReviewedBindingCount} human-reviewed")
+            .AppendLine(
+                $"Coverage: {projection.BoundDesignItemCount}/{projection.DesignItemCount} design items · " +
+                $"{projection.BoundRequirementCount}/{projection.RequirementCount} Requirements · " +
+                $"{projection.BoundDecisionCount}/{projection.DecisionCount} Decisions")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnboundDesignItemCount} unbound design items · " +
+                $"{projection.UnboundRequirementCount} unbound Requirements · {projection.UnboundDecisionCount} unbound Decisions · " +
+                $"{projection.OpenConflictCount} open conflicts · {projection.UnresolvedQuestionCount} questions · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Candidate record: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Finalized snapshot: {candidate.FinalizedSnapshot.RecordId:D}@{candidate.FinalizedSnapshot.Revision} · " +
+                    $"catalog {candidate.FinalizedSnapshot.CatalogDigest}")
+                .AppendLine(
+                    $"Design Requirements: {candidate.DesignRequirements.RecordId:D}@{candidate.DesignRequirements.Revision} · " +
+                    $"catalog {candidate.DesignRequirements.CatalogDigest}")
+                .AppendLine(
+                    $"Decision Register: {candidate.DecisionRegister.RecordId:D}@{candidate.DecisionRegister.Revision} · " +
+                    $"catalog {candidate.DecisionRegister.CatalogDigest}")
+                .AppendLine($"Reconciliation receipt: {candidate.ReconciliationDigest}")
+                .AppendLine(
+                    $"Candidate inventory: {candidate.BindingCount} bindings · {candidate.DesignItemCoverageCount} design items · " +
+                    $"{candidate.SubjectCoverageCount} governed subjects · {candidate.ConflictCount} conflicts");
+        }
+        else output.AppendLine("Candidate record: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, exact dependency and catalog digests, counts, and statuses only; " +
+                "no relationship-truth or coverage-completeness proof, Requirement satisfaction, Decision effectiveness, " +
+                "external-completeness proof, design validation or approval, baseline, readiness, Figma connection or call, " +
+                "credential request, permission grant, import or write execution, implementation, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

@@ -1,0 +1,58 @@
+namespace Gaep.HostClient;
+
+public sealed record DesignToRequirementDependencyBindingView(
+    Guid RecordId,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    string CatalogDigest);
+
+public sealed record DesignToRequirementBindingRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    DesignToRequirementDependencyBindingView FinalizedSnapshot,
+    DesignToRequirementDependencyBindingView DesignRequirements,
+    DesignToRequirementDependencyBindingView DecisionRegister,
+    string ReconciliationDigest,
+    int BindingCount,
+    int DesignItemCoverageCount,
+    int SubjectCoverageCount,
+    int ConflictCount,
+    string ReconciliationState,
+    string CandidateCoverageState,
+    string ProvenanceState,
+    string ReviewState);
+
+public sealed record DesignToRequirementBindingProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    string ReviewState,
+    string ReconciliationState,
+    string CandidateCoverageState,
+    string ProvenanceState,
+    IReadOnlyList<string> Reasons,
+    int BindingCount,
+    int HumanReviewedBindingCount,
+    int DesignItemCount,
+    int BoundDesignItemCount,
+    int UnboundDesignItemCount,
+    int RequirementCount,
+    int BoundRequirementCount,
+    int UnboundRequirementCount,
+    int DecisionCount,
+    int BoundDecisionCount,
+    int UnboundDecisionCount,
+    int OpenConflictCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    int UnresolvedQuestionCount,
+    DesignToRequirementBindingRecordView? Candidate,
+    string SnapshotDigest);
