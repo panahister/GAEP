@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260729T223831Z-phase-2-designer-ready-gate-packages.json",
-  conformance: "evidence/ide-conformance/20260729T223831Z-phase-2-designer-ready-gate.json",
+  packages: "evidence/local-packages/20260729T232922Z-phase-2-design-delta-packages.json",
+  conformance: "evidence/ide-conformance/20260729T232922Z-phase-2-design-delta.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    designerReadyGate
+    designDelta
+      ? {
+          id: "phase-2-design-delta-closure",
+          state: "not-established",
+          basis: "the Design Delta comparison candidate is implemented locally across the shared engine and four host projections; real Product research, an approved Design Baseline, a returned current Figma snapshot, exact current comparison inputs, attributable human delta/provenance/conflict/mapping review, conflict resolution, synchronization, stale-state resolution, delta and external completeness, design validity, native-host interaction, design review and approval, readiness and Product Owner acceptance remain incomplete",
+        }
+      : designerReadyGate
       ? {
           id: "phase-2-designer-ready-gate-closure",
           state: "not-established",
@@ -425,6 +431,9 @@ export async function buildPhase0AcceptanceReport({
   const designerReadyGate = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "designer-ready-gate" && capability.state === "implemented"))
+  const designDelta = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "design-delta" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -444,6 +453,7 @@ export async function buildPhase0AcceptanceReport({
     finalizedFigmaSnapshotImport,
     designToRequirementBinding,
     designerReadyGate,
+    designDelta,
   })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
@@ -461,8 +471,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: designerReadyGate
+    phase: designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: designDelta
+      ? "phase-2-design-delta-local"
+      : designerReadyGate
       ? "phase-2-designer-ready-gate-local"
       : designToRequirementBinding
       ? "phase-2-design-to-requirement-binding-local"
@@ -540,7 +552,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: designerReadyGate
+    claimBoundary: designDelta
+      ? "This report binds the exact Design Delta comparison-candidate lifecycle, exact Product and Initiative identity, exact current Designer-Ready Gate, Finalized Figma Snapshot Import and Design-to-Requirement Binding dependencies, source and target snapshot digests, stable comparison definitions and receipts, bounded added, changed, conflicting, missing, stale and unmapped classifications, attributable human-review state, stale-binding, stale-source, unresolved-mapping and unresolved-question metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. This report does not establish delta or external completeness, design validity or approval, a Design Baseline, readiness, conflict-resolution or synchronization authority, connect to or call Figma, request credentials, grant permissions, authorize or perform writes or imports, prove real Product research or a returned current Figma snapshot, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : designerReadyGate
       ? "This report binds the exact Designer-Ready Gate evaluation-candidate lifecycle, exact Product and Initiative identity, twelve exact current governed prerequisite records, stable assessment definitions and receipts, attributable human-review state, bounded exception-candidate decisions, stale-binding, stale-source and unresolved-question metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. A passing candidate remains an evaluation result, not permission or readiness. This report does not establish design or external completeness, design validity or approval, a Design Baseline, readiness, exception or waiver authority, acceptance, phase entry, implementation or action authority, connect to or call Figma, request credentials, grant permissions, authorize or perform writes or imports, prove real Product research, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : designToRequirementBinding
       ? "This report binds the exact Design-to-Requirement Binding review-candidate lifecycle, exact Product, Initiative, Finalized Figma Snapshot Import, Design Requirements and Decision Register dependencies, bounded relationship, coverage, conflict, reconciliation, provenance, evidence-state and gap metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not establish relationship truth, coverage completeness, Requirement satisfaction, Decision effectiveness, transfer or import Figma content, connect to or call Figma, request credentials, grant permissions, authorize or perform writes or imports, prove external completeness, validate or approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
