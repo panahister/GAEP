@@ -299,6 +299,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.designerReadyGate.revise",
   "design.designerReadyGate.assess",
   "design.designerReadyGate.snapshot",
+  "design.designDelta.read",
+  "design.designDelta.create",
+  "design.designDelta.revise",
+  "design.designDelta.assess",
+  "design.designDelta.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1802,6 +1807,21 @@ export class EngineHost {
         return this.engine.designerReadyGate.assess(request.params.initiativeId)
       case "design.designerReadyGate.snapshot":
         return this.engine.designerReadyGate.project(request.params.initiativeId)
+      case "design.designDelta.read":
+        return await this.engine.designDelta.readCurrent(request.params.initiativeId) ?? null
+      case "design.designDelta.create":
+        return this.engine.designDelta.create(request.params.record, actorId(request.params.actorId))
+      case "design.designDelta.revise":
+        return this.engine.designDelta.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.designDelta.assess":
+        return this.engine.designDelta.assess(request.params.initiativeId)
+      case "design.designDelta.snapshot":
+        return this.engine.designDelta.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

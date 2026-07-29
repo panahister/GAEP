@@ -66,6 +66,7 @@ import { governedFigmaWriteInputSchema } from "./governed-figma-write.js"
 import { finalizedFigmaSnapshotImportInputSchema } from "./finalized-figma-snapshot-import.js"
 import { designToRequirementBindingInputSchema } from "./design-to-requirement-binding.js"
 import { designerReadyGateInputSchema } from "./designer-ready-gate.js"
+import { designDeltaInputSchema } from "./design-delta.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -734,6 +735,18 @@ export const hostDesignerReadyGateReviseParamsSchema = z.object({
   record: designerReadyGateInputSchema,
 }).strict()
 
+export const hostDesignDeltaCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: designDeltaInputSchema,
+}).strict()
+
+export const hostDesignDeltaReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: designDeltaInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -991,6 +1004,11 @@ export const hostMethodSchema = z.enum([
   "design.designerReadyGate.revise",
   "design.designerReadyGate.assess",
   "design.designerReadyGate.snapshot",
+  "design.designDelta.read",
+  "design.designDelta.create",
+  "design.designDelta.revise",
+  "design.designDelta.assess",
+  "design.designDelta.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1257,6 +1275,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.designerReadyGate.revise", hostDesignerReadyGateReviseParamsSchema),
   requestVariant("design.designerReadyGate.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.designerReadyGate.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designDelta.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designDelta.create", hostDesignDeltaCreateParamsSchema),
+  requestVariant("design.designDelta.revise", hostDesignDeltaReviseParamsSchema),
+  requestVariant("design.designDelta.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designDelta.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

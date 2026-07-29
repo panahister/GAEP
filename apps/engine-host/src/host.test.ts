@@ -2135,6 +2135,54 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "design-delta-read-empty",
+      protocolVersion: 2,
+      method: "design.designDelta.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-delta-assess-empty",
+      protocolVersion: 2,
+      method: "design.designDelta.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      sourceItemCount: 0,
+      targetItemCount: 0,
+      deltaCount: 0,
+      addedCount: 0,
+      changedCount: 0,
+      conflictingCount: 0,
+      missingCount: 0,
+      staleCount: 0,
+      unmappedCount: 0,
+      humanReviewedCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedMappingCount: 0,
+      unresolvedQuestionCount: 0,
+      comparisonState: "not-assessed",
+      provenanceState: "not-assessed",
+      candidateResult: "not-assessed",
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-establish-delta-completeness"),
+    })
+    const designDeltaProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-delta-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.designDelta.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: designDeltaDigest, ...designDeltaProjectionBody } = designDeltaProjection
+    expect(designDeltaDigest).toBe(canonicalDigest(designDeltaProjectionBody))
+    expect(designDeltaProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-design-content-delta-content-external-identities"),
+      authorityBoundary: expect.stringContaining("does-not-establish-delta-completeness"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -2275,6 +2323,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "designer-ready-gate-v1-block",
       method: "design.designerReadyGate.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-delta-v1-block",
+      method: "design.designDelta.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
