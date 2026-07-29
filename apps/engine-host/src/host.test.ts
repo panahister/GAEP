@@ -2037,6 +2037,58 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "design-to-requirement-binding-read-empty",
+      protocolVersion: 2,
+      method: "design.designToRequirementBinding.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-to-requirement-binding-assess-empty",
+      protocolVersion: 2,
+      method: "design.designToRequirementBinding.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      bindingCount: 0,
+      humanReviewedBindingCount: 0,
+      designItemCount: 0,
+      boundDesignItemCount: 0,
+      unboundDesignItemCount: 0,
+      requirementCount: 0,
+      boundRequirementCount: 0,
+      unboundRequirementCount: 0,
+      decisionCount: 0,
+      boundDecisionCount: 0,
+      unboundDecisionCount: 0,
+      openConflictCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      reconciliationState: "not-assessed",
+      candidateCoverageState: "not-assessed",
+      provenanceState: "not-assessed",
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-establish-relationship-truth"),
+    })
+    const designToRequirementBindingProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-to-requirement-binding-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.designToRequirementBinding.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: designToRequirementBindingDigest,
+      ...designToRequirementBindingProjectionBody
+    } = designToRequirementBindingProjection
+    expect(designToRequirementBindingDigest).toBe(canonicalDigest(designToRequirementBindingProjectionBody))
+    expect(designToRequirementBindingProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-figma-content-external-identities-requirement-text-decision-content"),
+      authorityBoundary: expect.stringContaining("does-not-establish-relationship-truth"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -2165,6 +2217,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "finalized-figma-snapshot-import-v1-block",
       method: "design.finalizedFigmaSnapshotImport.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-to-requirement-binding-v1-block",
+      method: "design.designToRequirementBinding.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

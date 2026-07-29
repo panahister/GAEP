@@ -64,6 +64,7 @@ import { figmaContextImportInputSchema } from "./figma-context-import.js"
 import { outboundDesignBriefPackageInputSchema } from "./outbound-design-brief-package.js"
 import { governedFigmaWriteInputSchema } from "./governed-figma-write.js"
 import { finalizedFigmaSnapshotImportInputSchema } from "./finalized-figma-snapshot-import.js"
+import { designToRequirementBindingInputSchema } from "./design-to-requirement-binding.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -708,6 +709,18 @@ export const hostFinalizedFigmaSnapshotImportReviseParamsSchema = z.object({
   record: finalizedFigmaSnapshotImportInputSchema,
 }).strict()
 
+export const hostDesignToRequirementBindingCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: designToRequirementBindingInputSchema,
+}).strict()
+
+export const hostDesignToRequirementBindingReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: designToRequirementBindingInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -955,6 +968,11 @@ export const hostMethodSchema = z.enum([
   "design.finalizedFigmaSnapshotImport.revise",
   "design.finalizedFigmaSnapshotImport.assess",
   "design.finalizedFigmaSnapshotImport.snapshot",
+  "design.designToRequirementBinding.read",
+  "design.designToRequirementBinding.create",
+  "design.designToRequirementBinding.revise",
+  "design.designToRequirementBinding.assess",
+  "design.designToRequirementBinding.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1211,6 +1229,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.finalizedFigmaSnapshotImport.revise", hostFinalizedFigmaSnapshotImportReviseParamsSchema),
   requestVariant("design.finalizedFigmaSnapshotImport.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.finalizedFigmaSnapshotImport.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designToRequirementBinding.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designToRequirementBinding.create", hostDesignToRequirementBindingCreateParamsSchema),
+  requestVariant("design.designToRequirementBinding.revise", hostDesignToRequirementBindingReviseParamsSchema),
+  requestVariant("design.designToRequirementBinding.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designToRequirementBinding.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

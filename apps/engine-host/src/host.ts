@@ -289,6 +289,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.finalizedFigmaSnapshotImport.revise",
   "design.finalizedFigmaSnapshotImport.assess",
   "design.finalizedFigmaSnapshotImport.snapshot",
+  "design.designToRequirementBinding.read",
+  "design.designToRequirementBinding.create",
+  "design.designToRequirementBinding.revise",
+  "design.designToRequirementBinding.assess",
+  "design.designToRequirementBinding.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1759,6 +1764,24 @@ export class EngineHost {
         return this.engine.finalizedFigmaSnapshotImport.assess(request.params.initiativeId)
       case "design.finalizedFigmaSnapshotImport.snapshot":
         return this.engine.finalizedFigmaSnapshotImport.project(request.params.initiativeId)
+      case "design.designToRequirementBinding.read":
+        return await this.engine.designToRequirementBinding.readCurrent(request.params.initiativeId) ?? null
+      case "design.designToRequirementBinding.create":
+        return this.engine.designToRequirementBinding.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.designToRequirementBinding.revise":
+        return this.engine.designToRequirementBinding.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.designToRequirementBinding.assess":
+        return this.engine.designToRequirementBinding.assess(request.params.initiativeId)
+      case "design.designToRequirementBinding.snapshot":
+        return this.engine.designToRequirementBinding.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {
