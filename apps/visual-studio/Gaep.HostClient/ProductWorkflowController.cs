@@ -2501,6 +2501,70 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDesignDeltaAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDesignDeltaAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Design Delta was read. Refresh the exact records.");
+        }
+        return RenderDesignDelta(projection);
+    }
+
+    public static string RenderDesignDelta(DesignDeltaProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP Design Delta candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate result: {projection.CandidateResult} · {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine($"Compared inventory: {projection.SourceItemCount} source items · {projection.TargetItemCount} target items · {projection.DeltaCount} deltas")
+            .AppendLine(
+                $"Deltas: {projection.AddedCount} added · {projection.ChangedCount} changed · " +
+                $"{projection.ConflictingCount} conflicting · {projection.MissingCount} missing · " +
+                $"{projection.StaleCount} stale · {projection.UnmappedCount} unmapped · " +
+                $"{projection.HumanReviewedCount}/{projection.DeltaCount} human-reviewed")
+            .AppendLine($"Comparison governance: comparison {projection.ComparisonState} · provenance {projection.ProvenanceState}")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedMappingCount} unresolved mappings · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Candidate record: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Dependencies: Designer-Ready {candidate.DesignerReadyGate.RecordId:D}@{candidate.DesignerReadyGate.Revision} · " +
+                    $"finalized snapshot {candidate.FinalizedSnapshot.RecordId:D}@{candidate.FinalizedSnapshot.Revision} · " +
+                    $"design binding {candidate.DesignBinding.RecordId:D}@{candidate.DesignBinding.Revision}")
+                .AppendLine($"Snapshots: source {candidate.SourceSnapshotDigest} · target {candidate.TargetSnapshotDigest}")
+                .AppendLine(
+                    $"Comparison: definition {candidate.ComparisonDefinitionDigest} · receipt {candidate.ComparisonReceiptDigest} · " +
+                    $"catalog {candidate.DeltaCatalogDigest}");
+        }
+        else output.AppendLine("Candidate record: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, exact dependency, snapshot, comparison, receipt, catalog, counts, " +
+                "and results only; this comparison is observational and establishes no delta or external completeness, " +
+                "design validity, approval, baseline, readiness, conflict-resolution or synchronization authority, Figma " +
+                "connection, credential, permission, import, write, implementation, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

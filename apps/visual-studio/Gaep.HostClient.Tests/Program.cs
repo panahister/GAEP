@@ -83,6 +83,7 @@ internal static class Program
     private static readonly Guid FinalizedFigmaSnapshotImportId = Guid.Parse("78787878-7878-4878-8878-787878787878");
     private static readonly Guid DesignToRequirementBindingId = Guid.Parse("79797979-7979-4979-8979-797979797979");
     private static readonly Guid DesignerReadyGateId = Guid.Parse("80808080-8080-4080-8080-808080808080");
+    private static readonly Guid DesignDeltaId = Guid.Parse("81818181-8181-4181-8181-818181818181");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -261,6 +262,9 @@ internal static class Program
         var badDesignerReadyGateBindingRoot = Path.Combine(temporaryRoot, "bad-designer-ready-gate-binding");
         var badDesignerReadyGateDigestRoot = Path.Combine(temporaryRoot, "bad-designer-ready-gate-digest");
         var badDesignerReadyGatePrivateRoot = Path.Combine(temporaryRoot, "bad-designer-ready-gate-private");
+        var badDesignDeltaBindingRoot = Path.Combine(temporaryRoot, "bad-design-delta-binding");
+        var badDesignDeltaDigestRoot = Path.Combine(temporaryRoot, "bad-design-delta-digest");
+        var badDesignDeltaPrivateRoot = Path.Combine(temporaryRoot, "bad-design-delta-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -439,6 +443,9 @@ internal static class Program
         Directory.CreateDirectory(badDesignerReadyGateBindingRoot);
         Directory.CreateDirectory(badDesignerReadyGateDigestRoot);
         Directory.CreateDirectory(badDesignerReadyGatePrivateRoot);
+        Directory.CreateDirectory(badDesignDeltaBindingRoot);
+        Directory.CreateDirectory(badDesignDeltaDigestRoot);
+        Directory.CreateDirectory(badDesignDeltaPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2454,6 +2461,48 @@ internal static class Program
                 "Designer-Ready Gate rejects a projection rebound to a substituted Product revision");
         }
 
+        var designDeltaProjection = await client.ReadDesignDeltaAsync(InitiativeId);
+        Check(designDeltaProjection.ProductId == product.Id &&
+              designDeltaProjection.ProductRevision == product.Revision &&
+              designDeltaProjection.ProductDigest == product.Digest &&
+              designDeltaProjection.InitiativeId == resolved.Id &&
+              designDeltaProjection.InitiativeRevision == resolved.Revision &&
+              designDeltaProjection.InitiativeDigest == resolved.Digest &&
+              designDeltaProjection.AssessmentState == "attention-required" &&
+              designDeltaProjection.CandidateResult == "conflict-candidate" &&
+              designDeltaProjection.ReviewState == "held" &&
+              designDeltaProjection.DeltaCount == 6 &&
+              designDeltaProjection.ConflictingCount == 1 &&
+              designDeltaProjection.HumanReviewedCount == 3 &&
+              designDeltaProjection.Candidate?.DeltaCount == 6,
+            "Typed Design Delta preserves exact Product, Initiative, comparison, assessment, and privacy-safe candidate metadata");
+        var designDeltaOutput = await initiativeController.ReadDesignDeltaAsync(InitiativeId);
+        Check(designDeltaOutput.Contains("GAEP Design Delta candidate", StringComparison.Ordinal) &&
+              designDeltaOutput.Contains("12 source items · 14 target items · 6 deltas", StringComparison.Ordinal) &&
+              designDeltaOutput.Contains("2 added · 1 changed · 1 conflicting", StringComparison.Ordinal) &&
+              designDeltaOutput.Contains("comparison partial · provenance partial", StringComparison.Ordinal) &&
+              designDeltaOutput.Contains("no delta or external completeness", StringComparison.Ordinal) &&
+              designDeltaOutput.Contains("implementation, or action authority", StringComparison.Ordinal) &&
+              !designDeltaOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !designDeltaOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !designDeltaOutput.Contains("deltaContent=", StringComparison.Ordinal),
+            "Design Delta workflow renders privacy-safe exact comparison metadata with explicit no-completeness and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badDesignDeltaDigestRoot, badDesignDeltaPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDesignDeltaAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Design Delta rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badDesignDeltaBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDesignDeltaAsync(InitiativeId),
+                "Design Delta rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3813,6 +3862,9 @@ internal static class Program
         var badDesignerReadyGateBinding = Path.GetFileName(workspace) == "bad-designer-ready-gate-binding";
         var badDesignerReadyGateDigest = Path.GetFileName(workspace) == "bad-designer-ready-gate-digest";
         var badDesignerReadyGatePrivate = Path.GetFileName(workspace) == "bad-designer-ready-gate-private";
+        var badDesignDeltaBinding = Path.GetFileName(workspace) == "bad-design-delta-binding";
+        var badDesignDeltaDigest = Path.GetFileName(workspace) == "bad-design-delta-digest";
+        var badDesignDeltaPrivate = Path.GetFileName(workspace) == "bad-design-delta-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -4374,6 +4426,17 @@ internal static class Program
                         badDesignerReadyGateBinding,
                         badDesignerReadyGateDigest,
                         badDesignerReadyGatePrivate);
+                    break;
+                case "design.designDelta.snapshot":
+                    await HandleDesignDeltaAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDesignDeltaBinding,
+                        badDesignDeltaDigest,
+                        badDesignDeltaPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -8665,6 +8728,143 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["prerequisiteCount"] = 11;
         if (includePrivateField) result["criteria"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDesignDeltaAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DESIGN DELTA");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-29T23:12:00.000Z";
+        var candidateDigest = $"sha256:{new string('8', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DesignDeltaId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('9', 64)}",
+            ["state"] = "candidate",
+            ["designerReadyGate"] = new Dictionary<string, object?>
+            {
+                ["recordId"] = DesignerReadyGateId.ToString("D"),
+                ["revision"] = 2,
+                ["digest"] = $"sha256:{new string('1', 64)}",
+                ["membershipDigest"] = $"sha256:{new string('2', 64)}",
+                ["prerequisiteCatalogDigest"] = $"sha256:{new string('3', 64)}",
+                ["assessmentReceiptDigest"] = $"sha256:{new string('4', 64)}",
+                ["candidateResult"] = "incomplete",
+            },
+            ["finalizedSnapshot"] = new Dictionary<string, object?>
+            {
+                ["recordId"] = FinalizedFigmaSnapshotImportId.ToString("D"),
+                ["revision"] = 2,
+                ["digest"] = $"sha256:{new string('5', 64)}",
+                ["membershipDigest"] = $"sha256:{new string('6', 64)}",
+                ["itemCatalogDigest"] = $"sha256:{new string('7', 64)}",
+                ["reconciliationDigest"] = $"sha256:{new string('8', 64)}",
+                ["reviewState"] = "held",
+            },
+            ["designBinding"] = new Dictionary<string, object?>
+            {
+                ["recordId"] = DesignToRequirementBindingId.ToString("D"),
+                ["revision"] = 2,
+                ["digest"] = $"sha256:{new string('9', 64)}",
+                ["membershipDigest"] = $"sha256:{new string('a', 64)}",
+                ["bindingCatalogDigest"] = $"sha256:{new string('b', 64)}",
+                ["reconciliationDigest"] = $"sha256:{new string('c', 64)}",
+                ["reviewState"] = "held",
+            },
+            ["sourceSnapshotDigest"] = $"sha256:{new string('d', 64)}",
+            ["targetSnapshotDigest"] = $"sha256:{new string('e', 64)}",
+            ["comparisonDefinitionDigest"] = $"sha256:{new string('f', 64)}",
+            ["comparisonReceiptDigest"] = $"sha256:{new string('0', 64)}",
+            ["deltaCatalogDigest"] = $"sha256:{new string('1', 64)}",
+            ["deltaCount"] = 6,
+            ["comparisonState"] = "partial",
+            ["provenanceState"] = "partial",
+            ["candidateResult"] = "conflict-candidate",
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-29T23:11:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "design-delta-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "design-delta-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DesignDeltaId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["sourceItemCount"] = 12,
+                ["targetItemCount"] = 14,
+                ["deltaCount"] = 6,
+                ["addedCount"] = 2,
+                ["changedCount"] = 1,
+                ["conflictingCount"] = 1,
+                ["missingCount"] = 1,
+                ["staleCount"] = 1,
+                ["unmappedCount"] = 0,
+                ["humanReviewedCount"] = 3,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedMappingCount"] = 2,
+                ["unresolvedQuestionCount"] = 3,
+                ["comparisonState"] = "partial",
+                ["provenanceState"] = "partial",
+                ["candidateResult"] = "conflict-candidate",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "The candidate contains an unresolved conflicting delta" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "design-delta-status-is-observational-and-does-not-establish-delta-completeness-external-completeness-design-validity-approval-baseline-readiness-conflict-resolution-synchronization-implementation-write-import-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-delta-content-external-identities-evidence-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+            ["authorityBoundary"] =
+                "design-delta-projection-is-read-only-and-does-not-establish-delta-completeness-external-completeness-design-validity-approval-baseline-readiness-conflict-resolution-synchronization-implementation-write-import-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) ((Dictionary<string, object?>)result["status"]!)["deltaCount"] = 5;
+        if (includePrivateField) result["deltaContent"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

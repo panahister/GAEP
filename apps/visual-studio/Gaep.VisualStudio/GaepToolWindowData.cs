@@ -242,6 +242,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadFinalizedFigmaSnapshotImportCommand = new AsyncCommand(LoadFinalizedFigmaSnapshotImportAsync);
         LoadDesignToRequirementBindingCommand = new AsyncCommand(LoadDesignToRequirementBindingAsync);
         LoadDesignerReadyGateCommand = new AsyncCommand(LoadDesignerReadyGateAsync);
+        LoadDesignDeltaCommand = new AsyncCommand(LoadDesignDeltaAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -409,6 +410,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadDesignerReadyGateCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadDesignDeltaCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -1020,6 +1024,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact Designer-Ready Gate candidate",
             (controller, _, token) => controller.ReadDesignerReadyGateAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadDesignDeltaAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact Design Delta candidate",
+            (controller, _, token) => controller.ReadDesignDeltaAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

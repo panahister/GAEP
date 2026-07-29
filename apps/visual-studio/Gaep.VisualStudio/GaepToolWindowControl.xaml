@@ -184,6 +184,10 @@
                 Command="{Binding LoadDesignerReadyGateCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, exact digests, counts, and results only; it withholds design content, criteria, findings, exception rationale, Decision content, Source content, human attribution, personal, secret, credential, and permission content. A passing candidate is an evaluation result, not permission or readiness, and grants no completeness, validity, approval, baseline, exception, waiver, acceptance, phase-entry, Figma access, implementation, or action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadDesignDeltaButton" Content="Inspect Design Delta"
+                Command="{Binding LoadDesignDeltaCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate identities, exact dependency, snapshot, comparison, receipt, and catalog digests, counts, and results only; it withholds design and delta content, external identities, evidence, Source content, human attribution, personal, secret, credential, and permission content, and establishes no completeness, design validity, approval, baseline, readiness, conflict-resolution or synchronization authority, Figma access, import or write execution, implementation, or action authority."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

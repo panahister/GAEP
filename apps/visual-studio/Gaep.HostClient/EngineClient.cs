@@ -651,6 +651,20 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParseDesignerReadyGateResponse(envelope, initiativeId));
     }
 
+    public async Task<DesignDeltaProjection> ReadDesignDeltaAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        using var response = await RequestPortableDesignAsync(
+            "design.designDelta.snapshot",
+            new Dictionary<string, object?> { ["initiativeId"] = initiativeId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseDesignDeltaResponse(envelope, initiativeId));
+    }
+
     public async Task<InitiativeEntryRecord> ClassifyInitiativeAsync(
         Guid initiativeId,
         long expectedInitiativeRevision,
