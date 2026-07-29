@@ -25,6 +25,7 @@ import {
   figmaReadSnapshotSchema,
   figmaContextImportSchema,
   outboundDesignBriefPackageSchema,
+  governedFigmaWriteSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -106,6 +107,7 @@ import {
   type FigmaReadSnapshot,
   type FigmaContextImport,
   type OutboundDesignBriefPackage,
+  type GovernedFigmaWrite,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2317,6 +2319,16 @@ export class ProductStudioService {
       /^outbound-design-brief-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       outboundDesignBriefPackageSchema,
     )
+    const governedFigmaWrites = await this.listRecords(
+      "governed-figma-writes",
+      /^[0-9a-f-]+\.json$/i,
+      governedFigmaWriteSchema,
+    )
+    const governedFigmaWriteHistory = await this.listRecords(
+      "governed-figma-write-history",
+      /^governed-figma-write-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      governedFigmaWriteSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2409,6 +2421,8 @@ export class ProductStudioService {
       ...figmaContextImportHistory,
       ...outboundDesignBriefPackages,
       ...outboundDesignBriefPackageHistory,
+      ...governedFigmaWrites,
+      ...governedFigmaWriteHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2748,6 +2762,13 @@ export class ProductStudioService {
       "outbound-design-brief-package-candidate",
       outboundDesignBriefPackageHistory,
       (record) => `outbound-design-brief-package-history/outbound-design-brief-package-${record.id}-r${record.revision}.json`,
+    )
+    append("governed-figma-writes", "governed-figma-write-candidate", governedFigmaWrites)
+    append(
+      "governed-figma-write-history",
+      "governed-figma-write-candidate",
+      governedFigmaWriteHistory,
+      (record) => `governed-figma-write-history/governed-figma-write-${record.id}-r${record.revision}.json`,
     )
     append(
       "candidates",
@@ -3239,6 +3260,14 @@ export class ProductStudioService {
           `outbound-design-brief-package-history/outbound-design-brief-package-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Outbound Design Brief Package history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("governed-figma-write-history/")) {
+        const record = validated as GovernedFigmaWrite
+        const expectedHistoryPath =
+          `governed-figma-write-history/governed-figma-write-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Governed Figma Write history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4373,7 +4402,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4405,7 +4434,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -7997,6 +8026,188 @@ export class ProductStudioService {
       }
     }
 
+    const governedFigmaWrites = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("governed-figma-writes/"))
+      .map(([, record]) => governedFigmaWriteSchema.parse(record))
+    const governedFigmaWriteHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("governed-figma-write-history/"))
+      .map(([, record]) => governedFigmaWriteSchema.parse(record))
+    validateVersionedBusinessRecords(governedFigmaWrites, governedFigmaWriteHistory, "Governed Figma Write")
+    const outboundPackageByExact = new Map(
+      [...outboundDesignBriefPackages, ...outboundDesignBriefPackageHistory].map((record) => [
+        `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+        record,
+      ]),
+    )
+    for (const candidate of [...governedFigmaWrites, ...governedFigmaWriteHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        objectiveDigest: candidate.objectiveDigest,
+        outboundPackage: candidate.outboundPackage,
+        target: candidate.target,
+        requestFormat: candidate.requestFormat,
+        requestDigest: candidate.requestDigest,
+        effectDigest: candidate.effectDigest,
+        preview: candidate.preview,
+        approval: candidate.approval,
+        permissionEvidence: candidate.permissionEvidence,
+        idempotency: candidate.idempotency,
+        recoveryPlan: candidate.recoveryPlan,
+        disclosures: candidate.disclosures,
+        sources: candidate.sources,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        writePlanState: candidate.writePlanState,
+        packageMaterializationState: candidate.packageMaterializationState,
+        contextTransferState: candidate.contextTransferState,
+        figmaConnectionAuthorityState: candidate.figmaConnectionAuthorityState,
+        credentialAuthorityState: candidate.credentialAuthorityState,
+        permissionGrantState: candidate.permissionGrantState,
+        figmaWriteAuthorityState: candidate.figmaWriteAuthorityState,
+        writeExecutionState: candidate.writeExecutionState,
+        writeResultState: candidate.writeResultState,
+        externalVersionValidationState: candidate.externalVersionValidationState,
+        targetValidityState: candidate.targetValidityState,
+        designValidityState: candidate.designValidityState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Governed Figma Write ${candidate.id} membership digest is invalid`)
+      }
+      const outboundPackage = outboundPackageByExact.get(
+        `${candidate.outboundPackage.recordId}:${candidate.outboundPackage.revision}:${candidate.outboundPackage.digest}`,
+      )
+      if (!outboundPackage || outboundPackage.productId !== candidate.productId ||
+          outboundPackage.initiativeId !== candidate.initiativeId ||
+          outboundPackage.membershipDigest !== candidate.outboundPackage.membershipDigest ||
+          outboundPackage.manifestDigest !== candidate.outboundPackage.manifestDigest ||
+          outboundPackage.payloadDigest !== candidate.outboundPackage.payloadDigest) {
+        throw new Error(`Import Governed Figma Write ${candidate.id} has an unresolved exact Outbound Design Brief Package binding`)
+      }
+      if (candidate.informationClassification !== outboundPackage.informationClassification) {
+        throw new Error(`Import Governed Figma Write ${candidate.id} classification does not preserve its exact outbound package`)
+      }
+      const recipient = outboundPackage.recipients.find((entry) => entry.key === candidate.target.recipientKey)
+      if (!recipient || candidate.target.sourceTargetKey !== recipient.sourceTargetKey ||
+          candidate.target.designScopeKey !== recipient.designScopeKey || candidate.target.fileKey !== recipient.fileKey ||
+          candidate.target.targetKind !== recipient.targetKind ||
+          candidate.target.externalFileIdentityDigest !== recipient.externalFileIdentityDigest ||
+          candidate.target.expectedExternalVersionDigest !== recipient.externalVersionDigest ||
+          candidate.target.plannedWriteToolKey !== recipient.plannedWriteToolKey ||
+          candidate.target.intendedEffect !== "figma-write" || recipient.expectedEffect !== "write" ||
+          canonicalDigest(candidate.target.selectedEntryKeys) !== canonicalDigest(recipient.entryKeys) ||
+          canonicalDigest(candidate.target.sources) !== canonicalDigest(recipient.sources)) {
+        throw new Error(`Import Governed Figma Write ${candidate.id} target does not preserve its exact outbound recipient`)
+      }
+      const requestReceipt = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        objectiveDigest: candidate.objectiveDigest,
+        outboundPackage: candidate.outboundPackage,
+        target: {
+          recipientKey: candidate.target.recipientKey,
+          sourceTargetKey: candidate.target.sourceTargetKey,
+          designScopeKey: candidate.target.designScopeKey,
+          fileKey: candidate.target.fileKey,
+          targetKind: candidate.target.targetKind,
+          externalFileIdentityDigest: candidate.target.externalFileIdentityDigest,
+          expectedExternalVersionDigest: candidate.target.expectedExternalVersionDigest,
+          plannedWriteToolKey: candidate.target.plannedWriteToolKey,
+          selectedEntryKeys: candidate.target.selectedEntryKeys,
+          intendedEffect: candidate.target.intendedEffect,
+        },
+        requestFormat: candidate.requestFormat,
+      }
+      if (candidate.requestDigest !== canonicalDigest(requestReceipt)) {
+        throw new Error(`Import Governed Figma Write ${candidate.id} request receipt is invalid`)
+      }
+      const expectedIdempotencyScopeDigest = canonicalDigest({
+        outboundPackage: candidate.outboundPackage,
+        recipientKey: candidate.target.recipientKey,
+        externalFileIdentityDigest: candidate.target.externalFileIdentityDigest,
+        expectedExternalVersionDigest: candidate.target.expectedExternalVersionDigest,
+      })
+      if (candidate.idempotency.scopeDigest !== expectedIdempotencyScopeDigest ||
+          candidate.idempotency.keyDigest !== canonicalDigest({
+            scopeDigest: expectedIdempotencyScopeDigest,
+            requestDigest: candidate.requestDigest,
+          })) {
+        throw new Error(`Import Governed Figma Write ${candidate.id} idempotency receipt is invalid`)
+      }
+      const effectReceipt = {
+        requestDigest: candidate.requestDigest,
+        packageManifestDigest: candidate.outboundPackage.manifestDigest,
+        packagePayloadDigest: candidate.outboundPackage.payloadDigest,
+        externalFileIdentityDigest: candidate.target.externalFileIdentityDigest,
+        expectedExternalVersionDigest: candidate.target.expectedExternalVersionDigest,
+        plannedWriteToolKey: candidate.target.plannedWriteToolKey,
+        selectedEntryKeys: candidate.target.selectedEntryKeys,
+        intendedEffect: candidate.target.intendedEffect,
+        idempotencyKeyDigest: candidate.idempotency.keyDigest,
+        idempotencyScopeDigest: candidate.idempotency.scopeDigest,
+      }
+      if (candidate.effectDigest !== canonicalDigest(effectReceipt)) {
+        throw new Error(`Import Governed Figma Write ${candidate.id} effect receipt is invalid`)
+      }
+      const previewReceipt = {
+        packageManifestDigest: candidate.outboundPackage.manifestDigest,
+        packagePayloadDigest: candidate.outboundPackage.payloadDigest,
+        requestDigest: candidate.requestDigest,
+        effectDigest: candidate.effectDigest,
+        title: candidate.title,
+        informationClassification: candidate.informationClassification,
+        externalFileIdentityDigest: candidate.target.externalFileIdentityDigest,
+        expectedExternalVersionDigest: candidate.target.expectedExternalVersionDigest,
+        selectedEntryCount: candidate.target.selectedEntryKeys.length,
+        approvalState: candidate.approval.state,
+        permissionEvidenceState: candidate.permissionEvidence.state,
+        idempotencyState: candidate.idempotency.state,
+        recoveryPlanState: candidate.recoveryPlan.state,
+        limitations: candidate.limitations,
+      }
+      if (candidate.preview.packageManifestDigest !== candidate.outboundPackage.manifestDigest ||
+          candidate.preview.packagePayloadDigest !== candidate.outboundPackage.payloadDigest ||
+          candidate.preview.requestDigest !== candidate.requestDigest || candidate.preview.effectDigest !== candidate.effectDigest ||
+          (candidate.preview.previewDigest !== undefined && candidate.preview.previewDigest !== canonicalDigest(previewReceipt))) {
+        throw new Error(`Import Governed Figma Write ${candidate.id} preview receipt is invalid`)
+      }
+      if (["granted", "declined", "expired", "revoked"].includes(candidate.approval.state)) {
+        const expectedApprovalScopeDigest = canonicalDigest({
+          requestDigest: candidate.requestDigest,
+          effectDigest: candidate.effectDigest,
+          outboundPackage: candidate.outboundPackage,
+          target: {
+            recipientKey: candidate.target.recipientKey,
+            externalFileIdentityDigest: candidate.target.externalFileIdentityDigest,
+            expectedExternalVersionDigest: candidate.target.expectedExternalVersionDigest,
+          },
+          idempotencyKeyDigest: candidate.idempotency.keyDigest,
+        })
+        if (candidate.approval.scopeDigest !== expectedApprovalScopeDigest) {
+          throw new Error(`Import Governed Figma Write ${candidate.id} approval scope receipt is invalid`)
+        }
+      }
+      if (candidate.permissionEvidence.state === "verified") {
+        const expectedPermissionDigest = canonicalDigest({
+          plannedWriteToolKey: candidate.target.plannedWriteToolKey,
+          externalFileIdentityDigest: candidate.target.externalFileIdentityDigest,
+          permissionKeys: candidate.permissionEvidence.permissionKeys,
+          evidenceDigests: candidate.permissionEvidence.evidenceDigests,
+        })
+        if (candidate.permissionEvidence.verificationDigest !== expectedPermissionDigest) {
+          throw new Error(`Import Governed Figma Write ${candidate.id} permission verification receipt is invalid`)
+        }
+      }
+    }
+
     const plans = [...recordsByPath.entries()].filter(([path]) => path.startsWith("workflow-plans/"))
       .map(([, record]) => workflowPlanSchema.parse(record))
     for (const plan of plans) this.validateWorkflowInImport(plan, resolveExact)
@@ -8593,6 +8804,10 @@ export class ProductStudioService {
         /^outbound-design-brief-package-history\/outbound-design-brief-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "outbound-design-brief-package-candidate"
     }
+    if (/^governed-figma-writes\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^governed-figma-write-history\/governed-figma-write-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "governed-figma-write-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -8778,6 +8993,10 @@ export class ProductStudioService {
     if (/^outbound-design-brief-packages\/[0-9a-f-]+\.json$/i.test(path) ||
         /^outbound-design-brief-package-history\/outbound-design-brief-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return outboundDesignBriefPackageSchema
+    }
+    if (/^governed-figma-writes\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^governed-figma-write-history\/governed-figma-write-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return governedFigmaWriteSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
