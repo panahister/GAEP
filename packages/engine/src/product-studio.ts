@@ -27,6 +27,7 @@ import {
   outboundDesignBriefPackageSchema,
   governedFigmaWriteSchema,
   finalizedFigmaSnapshotImportSchema,
+  designToRequirementBindingSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -110,6 +111,7 @@ import {
   type OutboundDesignBriefPackage,
   type GovernedFigmaWrite,
   type FinalizedFigmaSnapshotImport,
+  type DesignToRequirementBinding,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2341,6 +2343,16 @@ export class ProductStudioService {
       /^finalized-figma-snapshot-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       finalizedFigmaSnapshotImportSchema,
     )
+    const designToRequirementBindings = await this.listRecords(
+      "design-to-requirement-bindings",
+      /^[0-9a-f-]+\.json$/i,
+      designToRequirementBindingSchema,
+    )
+    const designToRequirementBindingHistory = await this.listRecords(
+      "design-to-requirement-binding-history",
+      /^design-to-requirement-binding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      designToRequirementBindingSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2437,6 +2449,8 @@ export class ProductStudioService {
       ...governedFigmaWriteHistory,
       ...finalizedFigmaSnapshotImports,
       ...finalizedFigmaSnapshotImportHistory,
+      ...designToRequirementBindings,
+      ...designToRequirementBindingHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2794,6 +2808,17 @@ export class ProductStudioService {
       "finalized-figma-snapshot-import-candidate",
       finalizedFigmaSnapshotImportHistory,
       (record) => `finalized-figma-snapshot-import-history/finalized-figma-snapshot-import-${record.id}-r${record.revision}.json`,
+    )
+    append(
+      "design-to-requirement-bindings",
+      "design-to-requirement-binding-candidate",
+      designToRequirementBindings,
+    )
+    append(
+      "design-to-requirement-binding-history",
+      "design-to-requirement-binding-candidate",
+      designToRequirementBindingHistory,
+      (record) => `design-to-requirement-binding-history/design-to-requirement-binding-${record.id}-r${record.revision}.json`,
     )
     append(
       "candidates",
@@ -3301,6 +3326,14 @@ export class ProductStudioService {
           `finalized-figma-snapshot-import-history/finalized-figma-snapshot-import-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Finalized Figma Snapshot Import history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("design-to-requirement-binding-history/")) {
+        const record = validated as DesignToRequirementBinding
+        const expectedHistoryPath =
+          `design-to-requirement-binding-history/design-to-requirement-binding-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Design-to-Requirement Binding history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4435,7 +4468,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4467,7 +4500,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -8357,6 +8390,139 @@ export class ProductStudioService {
       }
     }
 
+    const designToRequirementBindings = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-to-requirement-bindings/"))
+      .map(([, record]) => designToRequirementBindingSchema.parse(record))
+    const designToRequirementBindingHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-to-requirement-binding-history/"))
+      .map(([, record]) => designToRequirementBindingSchema.parse(record))
+    validateVersionedBusinessRecords(
+      designToRequirementBindings,
+      designToRequirementBindingHistory,
+      "Design-to-Requirement Binding",
+    )
+    const finalizedSnapshotByExact = new Map(
+      [...finalizedFigmaSnapshotImports, ...finalizedFigmaSnapshotImportHistory].map((record) => [
+        `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+        record,
+      ]),
+    )
+    const designRequirementsByExact = new Map(
+      [...designRequirements, ...designRequirementsHistory].map((record) => [
+        `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+        record,
+      ]),
+    )
+    const decisionRegisterByExact = new Map(
+      [...decisionRegisters, ...decisionRegisterHistory].map((record) => [
+        `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+        record,
+      ]),
+    )
+    for (const candidate of [...designToRequirementBindings, ...designToRequirementBindingHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        objectiveDigest: candidate.objectiveDigest,
+        finalizedSnapshot: candidate.finalizedSnapshot,
+        designRequirements: candidate.designRequirements,
+        decisionRegister: candidate.decisionRegister,
+        bindings: candidate.bindings,
+        designItemCoverage: candidate.designItemCoverage,
+        subjectCoverage: candidate.subjectCoverage,
+        conflicts: candidate.conflicts,
+        reconciliationDigest: candidate.reconciliationDigest,
+        reconciliationState: candidate.reconciliationState,
+        candidateCoverageState: candidate.candidateCoverageState,
+        provenanceState: candidate.provenanceState,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        relationshipTruthState: candidate.relationshipTruthState,
+        coverageCompletenessState: candidate.coverageCompletenessState,
+        requirementSatisfactionState: candidate.requirementSatisfactionState,
+        decisionEffectivenessState: candidate.decisionEffectivenessState,
+        externalCompletenessState: candidate.externalCompletenessState,
+        designValidityState: candidate.designValidityState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        figmaConnectionAuthorityState: candidate.figmaConnectionAuthorityState,
+        credentialAuthorityState: candidate.credentialAuthorityState,
+        permissionGrantState: candidate.permissionGrantState,
+        importExecutionState: candidate.importExecutionState,
+        writeExecutionState: candidate.writeExecutionState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Design-to-Requirement Binding ${candidate.id} membership digest is invalid`)
+      }
+      const finalizedSnapshot = finalizedSnapshotByExact.get(
+        `${candidate.finalizedSnapshot.recordId}:${candidate.finalizedSnapshot.revision}:${candidate.finalizedSnapshot.digest}`,
+      )
+      if (!finalizedSnapshot || finalizedSnapshot.productId !== candidate.productId ||
+          finalizedSnapshot.initiativeId !== candidate.initiativeId ||
+          finalizedSnapshot.membershipDigest !== candidate.finalizedSnapshot.membershipDigest ||
+          canonicalDigest(finalizedSnapshot.items) !== candidate.finalizedSnapshot.itemCatalogDigest) {
+        throw new Error(`Import Design-to-Requirement Binding ${candidate.id} has an unresolved exact Finalized Figma Snapshot Import binding`)
+      }
+      const requirements = designRequirementsByExact.get(
+        `${candidate.designRequirements.recordId}:${candidate.designRequirements.revision}:${candidate.designRequirements.digest}`,
+      )
+      if (!requirements || requirements.productId !== candidate.productId ||
+          requirements.initiativeId !== candidate.initiativeId ||
+          requirements.membershipDigest !== candidate.designRequirements.membershipDigest ||
+          canonicalDigest(requirements.requirements) !== candidate.designRequirements.requirementCatalogDigest) {
+        throw new Error(`Import Design-to-Requirement Binding ${candidate.id} has an unresolved exact Design Requirements binding`)
+      }
+      const decisions = decisionRegisterByExact.get(
+        `${candidate.decisionRegister.recordId}:${candidate.decisionRegister.revision}:${candidate.decisionRegister.digest}`,
+      )
+      if (!decisions || decisions.productId !== candidate.productId || decisions.initiativeId !== candidate.initiativeId ||
+          decisions.membershipDigest !== candidate.decisionRegister.membershipDigest ||
+          canonicalDigest(decisions.decisions) !== candidate.decisionRegister.decisionCatalogDigest) {
+        throw new Error(`Import Design-to-Requirement Binding ${candidate.id} has an unresolved exact Decision Register binding`)
+      }
+      const itemsByKey = new Map(finalizedSnapshot.items.map((entry) => [entry.key, entry]))
+      const exactItemKeys = [...itemsByKey.keys()].sort((left, right) => left.localeCompare(right))
+      const exactRequirementKeys = requirements.requirements.map((entry) => entry.key).sort((left, right) => left.localeCompare(right))
+      const exactDecisionKeys = decisions.decisions.map((entry) => entry.key).sort((left, right) => left.localeCompare(right))
+      const itemCoverageKeys = candidate.designItemCoverage.map((entry) => entry.itemKey)
+      const requirementCoverageKeys = candidate.subjectCoverage
+        .filter((entry) => entry.subjectType === "requirement").map((entry) => entry.subjectKey)
+      const decisionCoverageKeys = candidate.subjectCoverage
+        .filter((entry) => entry.subjectType === "decision").map((entry) => entry.subjectKey)
+      if (canonicalDigest(itemCoverageKeys) !== canonicalDigest(exactItemKeys) ||
+          canonicalDigest(requirementCoverageKeys) !== canonicalDigest(exactRequirementKeys) ||
+          canonicalDigest(decisionCoverageKeys) !== canonicalDigest(exactDecisionKeys)) {
+        throw new Error(`Import Design-to-Requirement Binding ${candidate.id} does not reconcile its exact design, Requirement, and Decision catalogs`)
+      }
+      const requirementKeySet = new Set(exactRequirementKeys)
+      const decisionKeySet = new Set(exactDecisionKeys)
+      for (const binding of candidate.bindings) {
+        const item = itemsByKey.get(binding.designItemKey)
+        if (!item || item.kind !== binding.designItemKind ||
+            binding.requirementKeys.some((key) => !requirementKeySet.has(key)) ||
+            binding.decisionKeys.some((key) => !decisionKeySet.has(key))) {
+          throw new Error(`Import Design-to-Requirement Binding ${candidate.id} contains an unresolved design, Requirement, or Decision key`)
+        }
+      }
+      const reconciliationReceipt = {
+        finalizedSnapshot: candidate.finalizedSnapshot,
+        designRequirements: candidate.designRequirements,
+        decisionRegister: candidate.decisionRegister,
+        bindingCatalogDigest: canonicalDigest(candidate.bindings),
+        designItemCoverageDigest: canonicalDigest(candidate.designItemCoverage),
+        subjectCoverageDigest: canonicalDigest(candidate.subjectCoverage),
+        conflictCatalogDigest: canonicalDigest(candidate.conflicts),
+      }
+      if (candidate.reconciliationDigest !== canonicalDigest(reconciliationReceipt)) {
+        throw new Error(`Import Design-to-Requirement Binding ${candidate.id} reconciliation receipt is invalid`)
+      }
+    }
+
     const plans = [...recordsByPath.entries()].filter(([path]) => path.startsWith("workflow-plans/"))
       .map(([, record]) => workflowPlanSchema.parse(record))
     for (const plan of plans) this.validateWorkflowInImport(plan, resolveExact)
@@ -8961,6 +9127,10 @@ export class ProductStudioService {
         /^finalized-figma-snapshot-import-history\/finalized-figma-snapshot-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "finalized-figma-snapshot-import-candidate"
     }
+    if (/^design-to-requirement-bindings\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-to-requirement-binding-history\/design-to-requirement-binding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "design-to-requirement-binding-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -9154,6 +9324,10 @@ export class ProductStudioService {
     if (/^finalized-figma-snapshot-imports\/[0-9a-f-]+\.json$/i.test(path) ||
         /^finalized-figma-snapshot-import-history\/finalized-figma-snapshot-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return finalizedFigmaSnapshotImportSchema
+    }
+    if (/^design-to-requirement-bindings\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-to-requirement-binding-history\/design-to-requirement-binding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return designToRequirementBindingSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||

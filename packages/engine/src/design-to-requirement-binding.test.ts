@@ -282,6 +282,13 @@ describe("Design-to-Requirement Binding service", () => {
     expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
     expect((await service.listHistory(candidate.id)).map((entry) => entry.revision)).toEqual([2, 1])
 
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `design-to-requirement-bindings/${candidate.id}.json`,
+      `design-to-requirement-binding-history/design-to-requirement-binding-${candidate.id}-r1.json`,
+      `design-to-requirement-binding-history/design-to-requirement-binding-${candidate.id}-r2.json`,
+    ]))
+
     const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
       .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
     expect(events.at(-1)).toMatchObject({
