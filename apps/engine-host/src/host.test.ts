@@ -1944,6 +1944,51 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "governed-figma-write-read-empty",
+      protocolVersion: 2,
+      method: "design.governedFigmaWrite.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "governed-figma-write-assess-empty",
+      protocolVersion: 2,
+      method: "design.governedFigmaWrite.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      selectedEntryCount: 0,
+      unresolvedDisclosureCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      previewState: "not-generated",
+      approvalState: "not-requested",
+      permissionEvidenceState: "not-assessed",
+      idempotencyState: "not-assessed",
+      replayProtectionState: "not-assessed",
+      recoveryPlanState: "not-assessed",
+      writePlanState: "draft",
+      reviewState: "draft",
+      writeExecutionState: "not-performed",
+      writeResultState: "not-recorded",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-materialize-or-transfer-context"),
+    })
+    const governedFigmaWriteProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "governed-figma-write-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.governedFigmaWrite.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: governedFigmaWriteDigest, ...governedFigmaWriteProjectionBody } = governedFigmaWriteProjection
+    expect(governedFigmaWriteDigest).toBe(canonicalDigest(governedFigmaWriteProjectionBody))
+    expect(governedFigmaWriteProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-brief-requirement-constraint-context-item"),
+      authorityBoundary: expect.stringContaining("does-not-materialize-or-transfer-context"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -2060,6 +2105,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "outbound-design-brief-package-v1-block",
       method: "design.outboundDesignBriefPackage.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "governed-figma-write-v1-block",
+      method: "design.governedFigmaWrite.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

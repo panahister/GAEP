@@ -279,6 +279,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.outboundDesignBriefPackage.revise",
   "design.outboundDesignBriefPackage.assess",
   "design.outboundDesignBriefPackage.snapshot",
+  "design.governedFigmaWrite.read",
+  "design.governedFigmaWrite.create",
+  "design.governedFigmaWrite.revise",
+  "design.governedFigmaWrite.assess",
+  "design.governedFigmaWrite.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1713,6 +1718,24 @@ export class EngineHost {
         return this.engine.outboundDesignBriefPackage.assess(request.params.initiativeId)
       case "design.outboundDesignBriefPackage.snapshot":
         return this.engine.outboundDesignBriefPackage.project(request.params.initiativeId)
+      case "design.governedFigmaWrite.read":
+        return await this.engine.governedFigmaWrite.readCurrent(request.params.initiativeId) ?? null
+      case "design.governedFigmaWrite.create":
+        return this.engine.governedFigmaWrite.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.governedFigmaWrite.revise":
+        return this.engine.governedFigmaWrite.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.governedFigmaWrite.assess":
+        return this.engine.governedFigmaWrite.assess(request.params.initiativeId)
+      case "design.governedFigmaWrite.snapshot":
+        return this.engine.governedFigmaWrite.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {
