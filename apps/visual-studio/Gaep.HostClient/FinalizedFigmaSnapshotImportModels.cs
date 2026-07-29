@@ -1,0 +1,58 @@
+namespace Gaep.HostClient;
+
+public sealed record FinalizedFigmaSnapshotImportGovernedWriteBindingView(
+    Guid RecordId,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    string RequestDigest,
+    string EffectDigest,
+    string ExternalFileIdentityDigest,
+    string ExpectedExternalVersionDigest);
+
+public sealed record FinalizedFigmaSnapshotImportRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    FinalizedFigmaSnapshotImportGovernedWriteBindingView GovernedWrite,
+    string ExternalFileIdentityDigest,
+    string ReturnedExternalVersionDigest,
+    string PayloadDigest,
+    string ReceiptDigest,
+    string ReconciliationDigest,
+    int ItemCount,
+    int ConflictCount,
+    string ReturnAuthorizationState,
+    string ReconciliationState,
+    string ProvenanceState,
+    string ReviewState,
+    string ImportExecutionState);
+
+public sealed record FinalizedFigmaSnapshotImportProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    string ReviewState,
+    string ReturnAuthorizationState,
+    string ReconciliationState,
+    string ProvenanceState,
+    string SnapshotCompletenessState,
+    string ImportExecutionState,
+    string ImportResultState,
+    IReadOnlyList<string> Reasons,
+    int ItemCount,
+    int HumanReviewedItemCount,
+    int SourceRecordedItemCount,
+    int NotAssessedItemCount,
+    int OpenConflictCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    int UnresolvedQuestionCount,
+    FinalizedFigmaSnapshotImportRecordView? Candidate,
+    string SnapshotDigest);

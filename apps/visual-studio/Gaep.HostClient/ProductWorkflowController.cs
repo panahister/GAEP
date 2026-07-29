@@ -2306,6 +2306,72 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadFinalizedFigmaSnapshotImportAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadFinalizedFigmaSnapshotImportAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Finalized Figma Snapshot Import was read. Refresh the exact records.");
+        }
+        return RenderFinalizedFigmaSnapshotImport(projection);
+    }
+
+    public static string RenderFinalizedFigmaSnapshotImport(FinalizedFigmaSnapshotImportProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP finalized Figma Snapshot Import review candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Reconciliation: {projection.ReconciliationState} · provenance {projection.ProvenanceState} · " +
+                $"completeness {projection.SnapshotCompletenessState}")
+            .AppendLine($"Return authorization: {projection.ReturnAuthorizationState}")
+            .AppendLine(
+                $"Inventory: {projection.ItemCount} items · {projection.HumanReviewedItemCount} human-reviewed · " +
+                $"{projection.SourceRecordedItemCount} source-recorded · {projection.NotAssessedItemCount} not assessed")
+            .AppendLine($"Execution: {projection.ImportExecutionState} · result {projection.ImportResultState}")
+            .AppendLine(
+                $"Candidate gaps: {projection.OpenConflictCount} open conflicts · {projection.UnresolvedQuestionCount} questions · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Candidate record: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Governed write: {candidate.GovernedWrite.RecordId:D}@{candidate.GovernedWrite.Revision} · " +
+                    $"request {candidate.GovernedWrite.RequestDigest} · effect {candidate.GovernedWrite.EffectDigest}")
+                .AppendLine(
+                    $"Return receipts: file {candidate.ExternalFileIdentityDigest} · returned version " +
+                    $"{candidate.ReturnedExternalVersionDigest} · payload {candidate.PayloadDigest} · receipt {candidate.ReceiptDigest}")
+                .AppendLine($"Reconciliation receipt: {candidate.ReconciliationDigest}")
+                .AppendLine(
+                    $"Candidate inventory: {candidate.ItemCount} items · {candidate.ConflictCount} conflicts · " +
+                    $"return authorization {candidate.ReturnAuthorizationState} · reconciliation {candidate.ReconciliationState} · " +
+                    $"provenance {candidate.ProvenanceState} · review {candidate.ReviewState} · execution {candidate.ImportExecutionState}");
+        }
+        else output.AppendLine("Candidate record: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and digests only; no content transfer or import, " +
+                "Figma connection or call, credential request, permission grant, external-completeness proof, target or design validation, " +
+                "design approval, baseline, readiness, implementation, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

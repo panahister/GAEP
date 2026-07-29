@@ -80,6 +80,7 @@ internal static class Program
     private static readonly Guid FigmaContextImportId = Guid.Parse("75757575-7575-4575-8575-757575757575");
     private static readonly Guid OutboundDesignBriefPackageId = Guid.Parse("76767676-7676-4676-8676-767676767676");
     private static readonly Guid GovernedFigmaWriteId = Guid.Parse("77777777-7777-4777-8777-777777777777");
+    private static readonly Guid FinalizedFigmaSnapshotImportId = Guid.Parse("78787878-7878-4878-8878-787878787878");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -249,6 +250,9 @@ internal static class Program
         var badGovernedFigmaWriteBindingRoot = Path.Combine(temporaryRoot, "bad-governed-figma-write-binding");
         var badGovernedFigmaWriteDigestRoot = Path.Combine(temporaryRoot, "bad-governed-figma-write-digest");
         var badGovernedFigmaWritePrivateRoot = Path.Combine(temporaryRoot, "bad-governed-figma-write-private");
+        var badFinalizedFigmaSnapshotImportBindingRoot = Path.Combine(temporaryRoot, "bad-finalized-figma-snapshot-import-binding");
+        var badFinalizedFigmaSnapshotImportDigestRoot = Path.Combine(temporaryRoot, "bad-finalized-figma-snapshot-import-digest");
+        var badFinalizedFigmaSnapshotImportPrivateRoot = Path.Combine(temporaryRoot, "bad-finalized-figma-snapshot-import-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -418,6 +422,9 @@ internal static class Program
         Directory.CreateDirectory(badGovernedFigmaWriteBindingRoot);
         Directory.CreateDirectory(badGovernedFigmaWriteDigestRoot);
         Directory.CreateDirectory(badGovernedFigmaWritePrivateRoot);
+        Directory.CreateDirectory(badFinalizedFigmaSnapshotImportBindingRoot);
+        Directory.CreateDirectory(badFinalizedFigmaSnapshotImportDigestRoot);
+        Directory.CreateDirectory(badFinalizedFigmaSnapshotImportPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2301,6 +2308,53 @@ internal static class Program
                 "Governed Figma Write rejects a projection rebound to a substituted Product revision");
         }
 
+        var finalizedImportProjection = await client.ReadFinalizedFigmaSnapshotImportAsync(InitiativeId);
+        Check(finalizedImportProjection.ProductId == product.Id &&
+              finalizedImportProjection.ProductRevision == product.Revision &&
+              finalizedImportProjection.ProductDigest == product.Digest &&
+              finalizedImportProjection.InitiativeId == resolved.Id &&
+              finalizedImportProjection.InitiativeRevision == resolved.Revision &&
+              finalizedImportProjection.InitiativeDigest == resolved.Digest &&
+              finalizedImportProjection.AssessmentState == "attention-required" &&
+              finalizedImportProjection.ReviewState == "held" &&
+              finalizedImportProjection.ReturnAuthorizationState == "missing" &&
+              finalizedImportProjection.ReconciliationState == "partial" &&
+              finalizedImportProjection.ProvenanceState == "partial" &&
+              finalizedImportProjection.SnapshotCompletenessState == "partial" &&
+              finalizedImportProjection.ImportExecutionState == "not-performed" &&
+              finalizedImportProjection.ImportResultState == "not-recorded" &&
+              finalizedImportProjection.ItemCount == 18 &&
+              finalizedImportProjection.HumanReviewedItemCount == 12 &&
+              finalizedImportProjection.SourceRecordedItemCount == 4 &&
+              finalizedImportProjection.NotAssessedItemCount == 2 &&
+              finalizedImportProjection.Candidate?.ConflictCount == 4,
+            "Typed Finalized Figma Snapshot Import preserves exact Product, Initiative, reconciliation, evidence, and privacy-safe receipt metadata");
+        var finalizedImportOutput = await initiativeController.ReadFinalizedFigmaSnapshotImportAsync(InitiativeId);
+        Check(finalizedImportOutput.Contains("GAEP finalized Figma Snapshot Import review candidate", StringComparison.Ordinal) &&
+              finalizedImportOutput.Contains("return authorization missing", StringComparison.Ordinal) &&
+              finalizedImportOutput.Contains("18 items · 4 conflicts", StringComparison.Ordinal) &&
+              finalizedImportOutput.Contains("no content transfer or import", StringComparison.Ordinal) &&
+              finalizedImportOutput.Contains("permission grant", StringComparison.Ordinal) &&
+              !finalizedImportOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !finalizedImportOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !finalizedImportOutput.Contains("authorizationActor=", StringComparison.Ordinal),
+            "Finalized Figma Snapshot Import workflow renders privacy-safe receipt metadata with explicit no-import and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badFinalizedFigmaSnapshotImportDigestRoot, badFinalizedFigmaSnapshotImportPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadFinalizedFigmaSnapshotImportAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Finalized Figma Snapshot Import rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badFinalizedFigmaSnapshotImportBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadFinalizedFigmaSnapshotImportAsync(InitiativeId),
+                "Finalized Figma Snapshot Import rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3651,6 +3705,9 @@ internal static class Program
         var badGovernedFigmaWriteBinding = Path.GetFileName(workspace) == "bad-governed-figma-write-binding";
         var badGovernedFigmaWriteDigest = Path.GetFileName(workspace) == "bad-governed-figma-write-digest";
         var badGovernedFigmaWritePrivate = Path.GetFileName(workspace) == "bad-governed-figma-write-private";
+        var badFinalizedFigmaSnapshotImportBinding = Path.GetFileName(workspace) == "bad-finalized-figma-snapshot-import-binding";
+        var badFinalizedFigmaSnapshotImportDigest = Path.GetFileName(workspace) == "bad-finalized-figma-snapshot-import-digest";
+        var badFinalizedFigmaSnapshotImportPrivate = Path.GetFileName(workspace) == "bad-finalized-figma-snapshot-import-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -4179,6 +4236,17 @@ internal static class Program
                         badGovernedFigmaWriteBinding,
                         badGovernedFigmaWriteDigest,
                         badGovernedFigmaWritePrivate);
+                    break;
+                case "design.finalizedFigmaSnapshotImport.snapshot":
+                    await HandleFinalizedFigmaSnapshotImportAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badFinalizedFigmaSnapshotImportBinding,
+                        badFinalizedFigmaSnapshotImportDigest,
+                        badFinalizedFigmaSnapshotImportPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -8124,6 +8192,124 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["selectedEntryCount"] = 9;
         if (includePrivateField) result["approvalActor"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleFinalizedFigmaSnapshotImportAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID FINALIZED FIGMA SNAPSHOT IMPORT");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-29T15:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('c', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var governedWrite = new Dictionary<string, object?>
+        {
+            ["recordId"] = GovernedFigmaWriteId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = $"sha256:{new string('1', 64)}",
+            ["membershipDigest"] = $"sha256:{new string('2', 64)}",
+            ["requestDigest"] = $"sha256:{new string('3', 64)}",
+            ["effectDigest"] = $"sha256:{new string('4', 64)}",
+            ["externalFileIdentityDigest"] = $"sha256:{new string('5', 64)}",
+            ["expectedExternalVersionDigest"] = $"sha256:{new string('6', 64)}",
+        };
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = FinalizedFigmaSnapshotImportId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('7', 64)}",
+            ["state"] = "candidate",
+            ["governedWrite"] = governedWrite,
+            ["externalFileIdentityDigest"] = $"sha256:{new string('5', 64)}",
+            ["returnedExternalVersionDigest"] = $"sha256:{new string('8', 64)}",
+            ["payloadDigest"] = $"sha256:{new string('9', 64)}",
+            ["receiptDigest"] = $"sha256:{new string('a', 64)}",
+            ["reconciliationDigest"] = $"sha256:{new string('b', 64)}",
+            ["itemCount"] = 18,
+            ["conflictCount"] = 4,
+            ["returnAuthorizationState"] = "missing",
+            ["reconciliationState"] = "partial",
+            ["provenanceState"] = "partial",
+            ["reviewState"] = "held",
+            ["importExecutionState"] = "not-performed",
+            ["updatedAt"] = "2026-07-29T15:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "finalized-figma-snapshot-import-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "finalized-figma-snapshot-import-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = FinalizedFigmaSnapshotImportId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["itemCount"] = 18,
+                ["humanReviewedItemCount"] = 12,
+                ["sourceRecordedItemCount"] = 4,
+                ["notAssessedItemCount"] = 2,
+                ["openConflictCount"] = 3,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedQuestionCount"] = 5,
+                ["returnAuthorizationState"] = "missing",
+                ["reconciliationState"] = "partial",
+                ["provenanceState"] = "partial",
+                ["snapshotCompletenessState"] = "partial",
+                ["reviewState"] = "held",
+                ["importExecutionState"] = "not-performed",
+                ["importResultState"] = "not-recorded",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "Exact return authorization is missing" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "finalized-figma-snapshot-import-status-is-observational-and-does-not-transfer-or-import-content-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-validate-or-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-content-names-external-identities-source-content-authorization-actor-personal-content-secrets-credentials-or-permissions",
+            ["authorityBoundary"] =
+                "finalized-figma-snapshot-import-projection-is-read-only-and-does-not-transfer-or-import-content-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-validate-or-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["itemCount"] = 19;
+        if (includePrivateField) result["authorizationActor"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

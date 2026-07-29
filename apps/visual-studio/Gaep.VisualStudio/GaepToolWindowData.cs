@@ -239,6 +239,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadFigmaContextImportCommand = new AsyncCommand(LoadFigmaContextImportAsync);
         LoadOutboundDesignBriefPackageCommand = new AsyncCommand(LoadOutboundDesignBriefPackageAsync);
         LoadGovernedFigmaWriteCommand = new AsyncCommand(LoadGovernedFigmaWriteAsync);
+        LoadFinalizedFigmaSnapshotImportCommand = new AsyncCommand(LoadFinalizedFigmaSnapshotImportAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -397,6 +398,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadGovernedFigmaWriteCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadFinalizedFigmaSnapshotImportCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -990,6 +994,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Figma Write candidate",
             (controller, _, token) => controller.ReadGovernedFigmaWriteAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadFinalizedFigmaSnapshotImportAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact finalized Figma Snapshot Import candidate",
+            (controller, _, token) => controller.ReadFinalizedFigmaSnapshotImportAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)
