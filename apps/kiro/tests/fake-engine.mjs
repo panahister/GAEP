@@ -66,6 +66,7 @@ const figmaContextImportId = "68686868-6868-4868-8868-686868686868"
 const outboundDesignBriefPackageId = "69696969-6969-4969-8969-696969696969"
 const governedFigmaWriteId = "70707070-7070-4070-8070-707070707070"
 const finalizedFigmaSnapshotImportId = "71717171-7171-4171-8171-717171717171"
+const designToRequirementBindingId = "72727272-7272-4272-8272-727272727272"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -179,6 +180,8 @@ input.on("line", (line) => {
       return readGovernedFigmaWrite(id, request.params)
     case "design.finalizedFigmaSnapshotImport.snapshot":
       return readFinalizedFigmaSnapshotImport(id, request.params)
+    case "design.designToRequirementBinding.snapshot":
+      return readDesignToRequirementBinding(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2810,6 +2813,99 @@ function readFinalizedFigmaSnapshotImport(id, params) {
   if (workspacePath.endsWith("bad-finalized-figma-snapshot-import-digest")) value.candidate.itemCount = 19
   if (workspacePath.endsWith("bad-finalized-figma-snapshot-import-private")) {
     value.authorizationActor = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readDesignToRequirementBinding(id, params) {
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"d".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "design-to-requirement-binding-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: designToRequirementBindingId, revision: 2, digest: candidateDigest },
+    bindingCount: 7,
+    humanReviewedBindingCount: 5,
+    designItemCount: 4,
+    boundDesignItemCount: 3,
+    unboundDesignItemCount: 1,
+    requirementCount: 3,
+    boundRequirementCount: 2,
+    unboundRequirementCount: 1,
+    decisionCount: 2,
+    boundDecisionCount: 1,
+    unboundDecisionCount: 1,
+    openConflictCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    reconciliationState: "partial",
+    candidateCoverageState: "partial",
+    provenanceState: "exact",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more governed subjects remain unbound"],
+    assessedAt: "2026-07-29T16:30:00.000Z",
+    authorityBoundary: "design-to-requirement-binding-status-is-observational-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "design-to-requirement-binding-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: designToRequirementBindingId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"e".repeat(64)}`,
+      state: "candidate",
+      finalizedSnapshot: {
+        recordId: finalizedFigmaSnapshotImportId,
+        revision: 2,
+        digest: `sha256:${"1".repeat(64)}`,
+        membershipDigest: `sha256:${"2".repeat(64)}`,
+        itemCatalogDigest: `sha256:${"3".repeat(64)}`,
+      },
+      designRequirements: {
+        recordId: designRequirementsId,
+        revision: 3,
+        digest: `sha256:${"4".repeat(64)}`,
+        membershipDigest: `sha256:${"5".repeat(64)}`,
+        requirementCatalogDigest: `sha256:${"6".repeat(64)}`,
+      },
+      decisionRegister: {
+        recordId: decisionRegisterId,
+        revision: 4,
+        digest: `sha256:${"7".repeat(64)}`,
+        membershipDigest: `sha256:${"8".repeat(64)}`,
+        decisionCatalogDigest: `sha256:${"9".repeat(64)}`,
+      },
+      reconciliationDigest: `sha256:${"a".repeat(64)}`,
+      bindingCount: 7,
+      designItemCoverageCount: 4,
+      subjectCoverageCount: 5,
+      conflictCount: 3,
+      reconciliationState: "partial",
+      candidateCoverageState: "partial",
+      provenanceState: "exact",
+      reviewState: "held",
+      updatedAt: "2026-07-29T16:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-content-external-identities-requirement-text-decision-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+    authorityBoundary: "design-to-requirement-binding-projection-is-read-only-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-design-to-requirement-binding-binding")) content.initiative.id = designToRequirementBindingId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-design-to-requirement-binding-digest")) value.candidate.bindingCount = 8
+  if (workspacePath.endsWith("bad-design-to-requirement-binding-private")) {
+    value.humanAttribution = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

@@ -40,6 +40,7 @@ import {
   type OutboundDesignBriefPackageProjection,
   type GovernedFigmaWriteProjection,
   type FinalizedFigmaSnapshotImportProjection,
+  type DesignToRequirementBindingProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -151,6 +152,7 @@ const commandIds = {
   outboundDesignBriefPackage: "gaepKiro.outboundDesignBriefPackage.inspect",
   governedFigmaWrite: "gaepKiro.governedFigmaWrite.inspect",
   finalizedFigmaSnapshotImport: "gaepKiro.finalizedFigmaSnapshotImport.inspect",
+  designToRequirementBinding: "gaepKiro.designToRequirementBinding.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -281,6 +283,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.outboundDesignBriefPackage, (input?: unknown) => runUserCommand(() => showOutboundDesignBriefPackage(pool, input))),
     vscode.commands.registerCommand(commandIds.governedFigmaWrite, (input?: unknown) => runUserCommand(() => showGovernedFigmaWrite(pool, input))),
     vscode.commands.registerCommand(commandIds.finalizedFigmaSnapshotImport, (input?: unknown) => runUserCommand(() => showFinalizedFigmaSnapshotImport(pool, input))),
+    vscode.commands.registerCommand(commandIds.designToRequirementBinding, (input?: unknown) => runUserCommand(() => showDesignToRequirementBinding(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -2128,6 +2131,51 @@ async function showFinalizedFigmaSnapshotImport(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and digests only; this does not transfer or import content, connect to or call Figma, request credentials, grant permissions, prove external completeness, validate targets or design, approve design, establish a baseline or readiness, or authorize implementation or action.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDesignToRequirementBinding(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DesignToRequirementBindingProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Design-to-Requirement Binding", "Initiative ID")
+  const projection = await client.readDesignToRequirementBinding(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP Design-to-Requirement Binding review candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Governance: reconciliation ${status.reconciliationState} · candidate coverage ${status.candidateCoverageState} · provenance ${status.provenanceState}`,
+    `Bindings: ${status.bindingCount} total · ${status.humanReviewedBindingCount} human-reviewed`,
+    `Coverage: ${status.boundDesignItemCount}/${status.designItemCount} design items · ${status.boundRequirementCount}/${status.requirementCount} Requirements · ${status.boundDecisionCount}/${status.decisionCount} Decisions`,
+    `Candidate gaps: ${status.unboundDesignItemCount} unbound design items · ${status.unboundRequirementCount} unbound Requirements · ${status.unboundDecisionCount} unbound Decisions · ${status.openConflictCount} open conflicts · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Finalized snapshot: ${record.finalizedSnapshot.recordId}@${record.finalizedSnapshot.revision} · catalog ${record.finalizedSnapshot.itemCatalogDigest}`,
+      `Design Requirements: ${record.designRequirements.recordId}@${record.designRequirements.revision} · catalog ${record.designRequirements.requirementCatalogDigest}`,
+      `Decision Register: ${record.decisionRegister.recordId}@${record.decisionRegister.revision} · catalog ${record.decisionRegister.decisionCatalogDigest}`,
+      `Reconciliation receipt: ${record.reconciliationDigest}`,
+      `Candidate inventory: ${record.bindingCount} bindings · ${record.designItemCoverageCount} design items · ${record.subjectCoverageCount} governed subjects · ${record.conflictCount} conflicts`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, exact dependency and catalog digests, counts, and statuses only; this does not prove relationship truth or coverage completeness, satisfy Requirements, establish Decision effectiveness or external completeness, validate or approve design, establish a baseline or readiness, connect to or call Figma, request credentials, grant permissions, execute imports or writes, or authorize implementation or action.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

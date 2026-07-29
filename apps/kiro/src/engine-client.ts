@@ -39,6 +39,7 @@ import {
   outboundDesignBriefPackageProjectionSchema,
   governedFigmaWriteProjectionSchema,
   finalizedFigmaSnapshotImportProjectionSchema,
+  designToRequirementBindingProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
@@ -85,6 +86,7 @@ import {
   type OutboundDesignBriefPackageProjection,
   type GovernedFigmaWriteProjection,
   type FinalizedFigmaSnapshotImportProjection,
+  type DesignToRequirementBindingProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -902,6 +904,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = finalizedFigmaSnapshotImportProjectionSchema.safeParse(
         await this.request("design.finalizedFigmaSnapshotImport.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readDesignToRequirementBinding(initiativeValue: string): Promise<DesignToRequirementBindingProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = designToRequirementBindingProjectionSchema.safeParse(
+        await this.request("design.designToRequirementBinding.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

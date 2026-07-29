@@ -2206,6 +2206,62 @@ test("protocol-v2 client validates privacy-safe Finalized Figma Snapshot Import 
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 client validates privacy-safe Design-to-Requirement Binding projections and rejects hostile responses", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-design-to-requirement-binding-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-design-to-requirement-binding-binding",
+    "bad-design-to-requirement-binding-digest",
+    "bad-design-to-requirement-binding-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readDesignToRequirementBinding(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.reconciliationState, "partial")
+    assert.equal(projection.status.candidateCoverageState, "partial")
+    assert.equal(projection.status.provenanceState, "exact")
+    assert.equal(projection.status.bindingCount, 7)
+    assert.equal(projection.status.humanReviewedBindingCount, 5)
+    assert.equal(projection.candidate?.designItemCoverageCount, 4)
+    assert.equal(projection.candidate?.subjectCoverageCount, 5)
+    assert.equal(projection.candidate?.conflictCount, 3)
+    assert.equal(
+      projection.authorityBoundary,
+      "design-to-requirement-binding-projection-is-read-only-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"humanAttribution":'), false)
+    assert.equal(serialized.includes('"bindings":'), false)
+    assert.equal(serialized.includes('"requirements":'), false)
+    assert.equal(serialized.includes('"decisions":'), false)
+    assert.equal(serialized.includes('"sources":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readDesignToRequirementBinding(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")

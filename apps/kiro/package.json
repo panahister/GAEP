@@ -90,6 +90,7 @@
     "onCommand:gaepKiro.outboundDesignBriefPackage.inspect",
     "onCommand:gaepKiro.governedFigmaWrite.inspect",
     "onCommand:gaepKiro.finalizedFigmaSnapshotImport.inspect",
+    "onCommand:gaepKiro.designToRequirementBinding.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -327,6 +328,10 @@
       {
         "command": "gaepKiro.finalizedFigmaSnapshotImport.inspect",
         "title": "GAEP for Kiro: Inspect Finalized Figma Snapshot Import Review Candidate"
+      },
+      {
+        "command": "gaepKiro.designToRequirementBinding.inspect",
+        "title": "GAEP for Kiro: Inspect Design-to-Requirement Binding Review Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",
