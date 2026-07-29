@@ -2093,6 +2093,64 @@ test("protocol-v2 client validates privacy-safe Outbound Design Brief Package pr
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 client validates privacy-safe Governed Figma Write projections and rejects hostile responses", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-governed-figma-write-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-governed-figma-write-binding",
+    "bad-governed-figma-write-digest",
+    "bad-governed-figma-write-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readGovernedFigmaWrite(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.writePlanState, "held")
+    assert.equal(projection.status.previewState, "candidate-generated")
+    assert.equal(projection.status.approvalState, "pending")
+    assert.equal(projection.status.permissionEvidenceState, "missing")
+    assert.equal(projection.status.idempotencyState, "defined")
+    assert.equal(projection.status.replayProtectionState, "defined")
+    assert.equal(projection.status.recoveryPlanState, "defined")
+    assert.equal(projection.status.writeExecutionState, "not-performed")
+    assert.equal(projection.status.writeResultState, "not-recorded")
+    assert.equal(projection.candidate?.requestFormat, "gaep-governed-figma-write-request-v1")
+    assert.equal(projection.candidate?.selectedEntryCount, 8)
+    assert.equal(
+      projection.authorityBoundary,
+      "governed-figma-write-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"approvalActor":'), false)
+    assert.equal(serialized.includes('"permissionKeys":'), false)
+    assert.equal(serialized.includes('"recoveryPlan":'), false)
+    assert.equal(serialized.includes('"tools":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readGovernedFigmaWrite(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")

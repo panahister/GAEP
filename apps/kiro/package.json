@@ -88,6 +88,7 @@
     "onCommand:gaepKiro.figmaReadSnapshot.inspect",
     "onCommand:gaepKiro.figmaContextImport.inspect",
     "onCommand:gaepKiro.outboundDesignBriefPackage.inspect",
+    "onCommand:gaepKiro.governedFigmaWrite.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -317,6 +318,10 @@
       {
         "command": "gaepKiro.outboundDesignBriefPackage.inspect",
         "title": "GAEP for Kiro: Inspect Governed Outbound Design Brief Package Candidate"
+      },
+      {
+        "command": "gaepKiro.governedFigmaWrite.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Figma Write Authorization-Review Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

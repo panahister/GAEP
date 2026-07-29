@@ -37,6 +37,7 @@ import {
   figmaReadSnapshotProjectionSchema,
   figmaContextImportProjectionSchema,
   outboundDesignBriefPackageProjectionSchema,
+  governedFigmaWriteProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
@@ -81,6 +82,7 @@ import {
   type FigmaReadSnapshotProjection,
   type FigmaContextImportProjection,
   type OutboundDesignBriefPackageProjection,
+  type GovernedFigmaWriteProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -864,6 +866,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = outboundDesignBriefPackageProjectionSchema.safeParse(
         await this.request("design.outboundDesignBriefPackage.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readGovernedFigmaWrite(initiativeValue: string): Promise<GovernedFigmaWriteProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = governedFigmaWriteProjectionSchema.safeParse(
+        await this.request("design.governedFigmaWrite.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

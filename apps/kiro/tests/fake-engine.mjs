@@ -64,6 +64,7 @@ const figmaMcpCapabilityDiscoveryId = "66666666-6666-4666-8666-666666666666"
 const figmaReadSnapshotId = "67676767-6767-4767-8767-676767676767"
 const figmaContextImportId = "68686868-6868-4868-8868-686868686868"
 const outboundDesignBriefPackageId = "69696969-6969-4969-8969-696969696969"
+const governedFigmaWriteId = "70707070-7070-4070-8070-707070707070"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -173,6 +174,8 @@ input.on("line", (line) => {
       return readFigmaContextImport(id, request.params)
     case "design.outboundDesignBriefPackage.snapshot":
       return readOutboundDesignBriefPackage(id, request.params)
+    case "design.governedFigmaWrite.snapshot":
+      return readGovernedFigmaWrite(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2641,6 +2644,87 @@ function readOutboundDesignBriefPackage(id, params) {
   if (workspacePath.endsWith("bad-outbound-design-brief-package-digest")) value.candidate.contextItemCount = 25
   if (workspacePath.endsWith("bad-outbound-design-brief-package-private")) {
     value.entries = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readGovernedFigmaWrite(id, params) {
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"1".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "governed-figma-write-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: governedFigmaWriteId, revision: 2, digest: candidateDigest },
+    selectedEntryCount: 8,
+    unresolvedDisclosureCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    previewState: "candidate-generated",
+    approvalState: "pending",
+    permissionEvidenceState: "missing",
+    idempotencyState: "defined",
+    replayProtectionState: "defined",
+    recoveryPlanState: "defined",
+    writePlanState: "held",
+    reviewState: "held",
+    writeExecutionState: "not-performed",
+    writeResultState: "not-recorded",
+    state: "attention-required",
+    reasons: ["Exact permission evidence is missing"],
+    assessedAt: "2026-07-29T14:00:00.000Z",
+    authorityBoundary: "governed-figma-write-status-is-observational-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "governed-figma-write-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: governedFigmaWriteId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"2".repeat(64)}`,
+      state: "candidate",
+      requestFormat: "gaep-governed-figma-write-request-v1",
+      requestDigest: `sha256:${"3".repeat(64)}`,
+      effectDigest: `sha256:${"4".repeat(64)}`,
+      outboundPackage: {
+        recordId: outboundDesignBriefPackageId,
+        revision: 2,
+        digest: `sha256:${"5".repeat(64)}`,
+        membershipDigest: `sha256:${"6".repeat(64)}`,
+        manifestDigest: `sha256:${"7".repeat(64)}`,
+        payloadDigest: `sha256:${"8".repeat(64)}`,
+      },
+      externalFileIdentityDigest: `sha256:${"9".repeat(64)}`,
+      expectedExternalVersionDigest: `sha256:${"a".repeat(64)}`,
+      selectedEntryCount: 8,
+      previewState: "candidate-generated",
+      previewDigest: `sha256:${"b".repeat(64)}`,
+      approvalState: "pending",
+      permissionEvidenceState: "missing",
+      idempotencyState: "defined",
+      recoveryPlanState: "defined",
+      reviewState: "held",
+      writeExecutionState: "not-performed",
+      updatedAt: "2026-07-29T13:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-approval-actor-permission-evidence-recovery-or-personal-content-secrets-or-credentials",
+    authorityBoundary: "governed-figma-write-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-governed-figma-write-binding")) content.initiative.id = governedFigmaWriteId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-governed-figma-write-digest")) value.candidate.selectedEntryCount = 9
+  if (workspacePath.endsWith("bad-governed-figma-write-private")) {
+    value.approvalActor = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

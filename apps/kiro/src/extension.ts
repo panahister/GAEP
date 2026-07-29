@@ -38,6 +38,7 @@ import {
   type FigmaReadSnapshotProjection,
   type FigmaContextImportProjection,
   type OutboundDesignBriefPackageProjection,
+  type GovernedFigmaWriteProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -147,6 +148,7 @@ const commandIds = {
   figmaReadSnapshot: "gaepKiro.figmaReadSnapshot.inspect",
   figmaContextImport: "gaepKiro.figmaContextImport.inspect",
   outboundDesignBriefPackage: "gaepKiro.outboundDesignBriefPackage.inspect",
+  governedFigmaWrite: "gaepKiro.governedFigmaWrite.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -275,6 +277,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.figmaReadSnapshot, (input?: unknown) => runUserCommand(() => showFigmaReadSnapshot(pool, input))),
     vscode.commands.registerCommand(commandIds.figmaContextImport, (input?: unknown) => runUserCommand(() => showFigmaContextImport(pool, input))),
     vscode.commands.registerCommand(commandIds.outboundDesignBriefPackage, (input?: unknown) => runUserCommand(() => showOutboundDesignBriefPackage(pool, input))),
+    vscode.commands.registerCommand(commandIds.governedFigmaWrite, (input?: unknown) => runUserCommand(() => showGovernedFigmaWrite(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -2027,6 +2030,52 @@ async function showOutboundDesignBriefPackage(
       `Manifest receipt: ${record.manifestFormat} · ${record.manifestDigest}`,
       `Payload receipt: ${record.payloadDigest}`,
       `Candidate inventory: ${record.contextPackCount} Context Packs · ${record.entryCount} entries · ${record.contextItemCount} Context Items · ${record.recipientCount} recipients · ${record.representedRequirementCount} represented Requirements · ${record.unresolvedDisclosureCount} unresolved disclosures · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and digests only; this does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a baseline or readiness, or authorize implementation or action.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showGovernedFigmaWrite(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<GovernedFigmaWriteProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Governed Figma Write", "Initiative ID")
+  const projection = await client.readGovernedFigmaWrite(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Figma Write authorization-review candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState} · plan ${status.writePlanState}`,
+    `Governance: preview ${status.previewState} · approval ${status.approvalState} · permission evidence ${status.permissionEvidenceState}`,
+    `Safety: idempotency ${status.idempotencyState} · replay ${status.replayProtectionState} · recovery ${status.recoveryPlanState}`,
+    `Execution: ${status.writeExecutionState} · result ${status.writeResultState}`,
+    `Candidate gaps: ${status.unresolvedDisclosureCount} disclosures · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Request receipt: ${record.requestFormat} · ${record.requestDigest}`,
+      `Effect receipt: ${record.effectDigest}`,
+      `Preview receipt: ${record.previewDigest ?? "not-generated"}`,
+      `Package receipt: ${record.outboundPackage.recordId}@${record.outboundPackage.revision} · manifest ${record.outboundPackage.manifestDigest} · payload ${record.outboundPackage.payloadDigest}`,
+      `Target receipts: file ${record.externalFileIdentityDigest} · expected version ${record.expectedExternalVersionDigest} · ${record.selectedEntryCount} selected entries`,
+      `Candidate states: preview ${record.previewState} · approval ${record.approvalState} · permission evidence ${record.permissionEvidenceState} · idempotency ${record.idempotencyState} · recovery ${record.recoveryPlanState} · review ${record.reviewState} · execution ${record.writeExecutionState}`,
       `Updated: ${record.updatedAt}`,
     ] : []),
     "",
