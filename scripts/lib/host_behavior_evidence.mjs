@@ -141,6 +141,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/FigmaMcpCapabilityDiscoveryProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/FigmaReadSnapshotModels.cs",
       "apps/visual-studio/Gaep.HostClient/FigmaReadSnapshotProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/FigmaContextImportModels.cs",
+      "apps/visual-studio/Gaep.HostClient/FigmaContextImportProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/EngineClient.cs",
       "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs",
       "apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj",
@@ -157,7 +159,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (500)",
+        "GAEP Visual Studio host-client tests: PASS (507)",
       ],
     }],
   },
