@@ -145,6 +145,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/FigmaContextImportProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/OutboundDesignBriefPackageModels.cs",
       "apps/visual-studio/Gaep.HostClient/OutboundDesignBriefPackageProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/GovernedFigmaWriteModels.cs",
+      "apps/visual-studio/Gaep.HostClient/GovernedFigmaWriteProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/EngineClient.cs",
       "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs",
       "apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj",
@@ -161,7 +163,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (514)",
+        "GAEP Visual Studio host-client tests: PASS (521)",
       ],
     }],
   },

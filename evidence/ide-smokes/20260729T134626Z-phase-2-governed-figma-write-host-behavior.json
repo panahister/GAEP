@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-0-host-behavior-evidence-v1",
+  "phase": "phase-0-local",
+  "recordedAt": "2026-07-29T13:46:26Z",
+  "definitionDigest": "sha256:d91857c751367132e9db6169fb3ba3682f20c16b3989f5ce35c344c1f7c8b08d",
+  "hosts": [
+    {
+      "id": "kiro",
+      "packageId": "gaep.gaep-kiro@0.1.0",
+      "runtimeLevel": "compatible-host-packaged-engine-workflow-local",
+      "sourceSnapshotDigest": "sha256:599bdc65b18239c85b343122e68e2f3ff12cf347e91f04bcfe9b91603c1d13ff",
+      "package": {
+        "status": "produced",
+        "artifactPath": "apps/kiro/dist/gaep-kiro.vsix",
+        "bytes": 829173,
+        "digest": "sha256:bee7d370ac4de8b3ff1d192a10ef875f3215465bf28b4db7c008ab453c1607ea"
+      },
+      "checks": [
+        {
+          "id": "compatible-host-vsix-lifecycle-and-engine-workflow",
+          "result": "pass",
+          "requiredMarkersVerified": 4
+        }
+      ],
+      "result": "pass"
+    },
+    {
+      "id": "rider",
+      "packageId": "dev.gaep.productstudio@0.1.0",
+      "runtimeLevel": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
+      "sourceSnapshotDigest": "sha256:97453194e55317e676e77c651617585997726d3942128bb368aedd90fcb96c37",
+      "package": {
+        "status": "produced",
+        "artifactPath": "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
+        "bytes": 1542457,
+        "digest": "sha256:8c0968e9ad4e11872aed9270a2634433fd372f892db950e5ee6c3466c28d8b9f"
+      },
+      "checks": [
+        {
+          "id": "clean-instrumented-package-and-client-workflow",
+          "result": "pass",
+          "requiredMarkersVerified": 2
+        },
+        {
+          "id": "bounded-native-rider-startup",
+          "result": "pass",
+          "requiredMarkersVerified": 1
+        }
+      ],
+      "result": "pass"
+    },
+    {
+      "id": "visual-studio",
+      "packageId": "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
+      "runtimeLevel": "cross-platform-packaged-engine-client-workflow-local",
+      "sourceSnapshotDigest": "sha256:c54292128d10fc7afb6ff6aa7366a545081de386b2a1420317e16bf74a14b022",
+      "package": {
+        "status": "not-produced-on-this-platform",
+        "artifactPath": "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix"
+      },
+      "checks": [
+        {
+          "id": "cross-platform-hostclient-remote-ui-and-embedded-engine",
+          "result": "pass",
+          "requiredMarkersVerified": 3
+        }
+      ],
+      "result": "pass"
+    },
+    {
+      "id": "vscode",
+      "packageId": "gaep.gaep-vscode@0.1.0",
+      "runtimeLevel": "installed-package-bundled-engine-workflow-local",
+      "sourceSnapshotDigest": "sha256:9360c11238b36bfe33fc054f31021c137f67a35d53e14e07490ed03962e1e07f",
+      "package": {
+        "status": "produced",
+        "artifactPath": "apps/vscode/dist/gaep-vscode.vsix",
+        "bytes": 871356,
+        "digest": "sha256:50ecb79f80beb0c97db25727f5197e694f00f137e72f480305d4ceb09bae3474"
+      },
+      "checks": [
+        {
+          "id": "installed-vsix-lifecycle-and-engine-workflow",
+          "result": "pass",
+          "requiredMarkersVerified": 3
+        }
+      ],
+      "result": "pass"
+    }
+  ],
+  "claimBoundary": "This receipt proves only the exact local automated host gates, source snapshots, and package bytes recorded here. It is not native-host acceptance for unexecuted hosts, real-provider acceptance, supported-platform certification, Product readiness, release approval, or security review."
+}

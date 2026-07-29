@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260729T123744Z-phase-2-outbound-design-brief-package-packages.json",
-  conformance: "evidence/ide-conformance/20260729T123744Z-phase-2-outbound-design-brief-package.json",
+  packages: "evidence/local-packages/20260729T134626Z-phase-2-governed-figma-write-packages.json",
+  conformance: "evidence/ide-conformance/20260729T134626Z-phase-2-governed-figma-write.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    outboundDesignBriefPackage
+    governedFigmaWrite
+      ? {
+          id: "phase-2-governed-figma-write-closure",
+          state: "not-established",
+          basis: "the governed Figma Write authorization-review candidate is implemented locally across the shared engine and four host projections; real Product research, attributable human package, target, request, effect, preview, approval, permission, idempotency, replay, recovery, disclosure, provenance and evidence review, actual package materialization or context transfer, a live Figma connection or request, credential and permission workflows, write authorization or execution, external-version, target and design validation, native-host interaction, design review and approval, Design Baseline and Product Owner acceptance remain incomplete",
+        }
+      : outboundDesignBriefPackage
       ? {
           id: "phase-2-outbound-design-brief-package-closure",
           state: "not-established",
@@ -389,6 +395,9 @@ export async function buildPhase0AcceptanceReport({
   const outboundDesignBriefPackage = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "outbound-design-brief-package" && capability.state === "implemented"))
+  const governedFigmaWrite = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "governed-figma-write" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -404,6 +413,7 @@ export async function buildPhase0AcceptanceReport({
     figmaReadSnapshot,
     figmaContextImport,
     outboundDesignBriefPackage,
+    governedFigmaWrite,
   })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
@@ -421,8 +431,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: outboundDesignBriefPackage
+    phase: governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: governedFigmaWrite
+      ? "phase-2-governed-figma-write-local"
+      : outboundDesignBriefPackage
       ? "phase-2-outbound-design-brief-package-local"
       : figmaContextImport
       ? "phase-2-figma-context-import-local"
@@ -492,7 +504,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: outboundDesignBriefPackage
+    claimBoundary: governedFigmaWrite
+      ? "This report binds the exact governed Figma Write authorization-review candidate lifecycle, exact Product, Initiative and Outbound Design Brief Package dependencies, bounded package, target, request, effect, preview, approval-state, permission-evidence-state, idempotency, replay, recovery, disclosure, provenance, evidence-state and gap metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate external versions, targets or design, approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : outboundDesignBriefPackage
       ? "This report binds the exact governed Outbound Design Brief Package manifest-only candidate lifecycle, exact Product, Initiative, Figma Context Import and Context Pack dependencies, bounded entry, Context Item, recipient, redaction, requirement-coverage, disclosure, provenance, evidence-state, manifest, payload and preview receipt metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : figmaContextImport
       ? "This report binds the exact governed Figma Context Import candidate lifecycle, exact Product, Initiative, Design Applicability, Design Requirements, Context Pack, Figma Read Snapshot and Figma MCP Capability Discovery dependencies, bounded section, Context Item, Figma target, redaction, requirement-coverage, provenance, evidence-state, candidate-ownership and gap metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not package or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."

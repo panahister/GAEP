@@ -67,7 +67,8 @@
     { "id": "figma-mcp-capability-discovery", "label": "Exact governed Figma MCP Capability Discovery candidate projection with bounded tool, advertised-availability, read/write effect, evidence, permission-gap, limit-gap, version-gap and ownership metadata, without connecting to or calling Figma, requesting credentials, granting permissions, establishing live tool availability or compatibility, authorizing writes, approving design, establishing a baseline or readiness, implementation, or action authority" },
     { "id": "figma-read-snapshot", "label": "Exact governed Figma Read Snapshot candidate projection with bounded file, component, variable-collection, variable, provenance, freshness, evidence, type-gap and ownership metadata, without connecting to or calling Figma, requesting credentials, granting permissions, proving external completeness, authorizing writes, validating or approving design, establishing a baseline or readiness, implementation, or action authority" },
     { "id": "figma-context-import", "label": "Exact governed Figma Context Import candidate projection with bounded Context Pack, section, Context Item, target, evidence, redaction, requirement-coverage, provenance and ownership metadata, without packaging or transferring context, connecting to or calling Figma, requesting credentials, granting permissions, authorizing or performing writes, validating targets or design, approving design, establishing a baseline or readiness, implementation, or action authority" },
-    { "id": "outbound-design-brief-package", "label": "Exact governed Outbound Design Brief Package manifest-only candidate projection with bounded Context Pack, entry, Context Item, recipient, evidence, redaction, requirement-coverage, disclosure and receipt metadata, without materializing or transferring context, connecting to or calling Figma, requesting credentials, granting permissions, authorizing or performing writes, validating targets or design, approving design, establishing a baseline or readiness, implementation, or action authority" }
+    { "id": "outbound-design-brief-package", "label": "Exact governed Outbound Design Brief Package manifest-only candidate projection with bounded Context Pack, entry, Context Item, recipient, evidence, redaction, requirement-coverage, disclosure and receipt metadata, without materializing or transferring context, connecting to or calling Figma, requesting credentials, granting permissions, authorizing or performing writes, validating targets or design, approving design, establishing a baseline or readiness, implementation, or action authority" },
+    { "id": "governed-figma-write", "label": "Exact governed Figma Write authorization-review candidate projection with bounded package, target, request, effect, preview, approval-state, permission-evidence-state, idempotency, replay, recovery and gap metadata, without materializing or transferring context, connecting to or calling Figma, requesting credentials, granting permissions, authorizing or performing writes, validating targets or design, approving design, establishing a baseline or readiness, implementation, or action authority" }
   ],
   "hosts": [
     {
@@ -78,7 +79,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T123511Z-phase-2-outbound-design-brief-package-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260729T134626Z-phase-2-governed-figma-write-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -284,6 +285,9 @@
         ] },
         { "capabilityId": "outbound-design-brief-package", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["outboundDesignBriefPackage?: {", "engine.outboundDesignBriefPackage!.project(initiative.id)", "id: \"outbound-design-brief-package\"", "no package materialization or context transfer, Figma connection or call, credential request, permission grant, write, target or design validation"] }
+        ] },
+        { "capabilityId": "governed-figma-write", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["governedFigmaWrite?: {", "engine.governedFigmaWrite!.project(initiative.id)", "id: \"governed-figma-write\"", "no package materialization or transfer, Figma connection or call, credential request, permission grant, write authorization or execution"] }
         ] }
       ]
     },
@@ -295,7 +299,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T123511Z-phase-2-outbound-design-brief-package-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260729T134626Z-phase-2-governed-figma-write-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -531,6 +535,10 @@
         { "capabilityId": "outbound-design-brief-package", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readOutboundDesignBriefPackage(", "this.request(\"design.outboundDesignBriefPackage.snapshot\"", "outboundDesignBriefPackageProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showOutboundDesignBriefPackage", "GAEP governed Outbound Design Brief Package candidate", "does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions"] }
+        ] },
+        { "capabilityId": "governed-figma-write", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readGovernedFigmaWrite(", "this.request(\"design.governedFigmaWrite.snapshot\"", "governedFigmaWriteProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showGovernedFigmaWrite", "GAEP governed Figma Write authorization-review candidate", "does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions"] }
         ] }
       ]
     },
@@ -542,7 +550,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T123511Z-phase-2-outbound-design-brief-package-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260729T134626Z-phase-2-governed-figma-write-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -826,6 +834,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readOutboundDesignBriefPackage(", "portableRequest(\"design.outboundDesignBriefPackage.snapshot\"", "parseOutboundDesignBriefPackageEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Outbound Design Brief Package candidate", "no package materialization or context transfer", "target or design validation"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["OutboundDesignBriefPackageProjection", "OUTBOUND_DESIGN_BRIEF_PACKAGE_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "governed-figma-write", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readGovernedFigmaWrite(", "portableRequest(\"design.governedFigmaWrite.snapshot\"", "parseGovernedFigmaWriteEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Figma Write authorization-review candidate", "no package materialization or context transfer", "write authorization or execution"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["GovernedFigmaWriteProjection", "GOVERNED_FIGMA_WRITE_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -837,7 +850,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T123511Z-phase-2-outbound-design-brief-package-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260729T134626Z-phase-2-governed-figma-write-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1133,6 +1146,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadOutboundDesignBriefPackageAsync(", "\"design.outboundDesignBriefPackage.snapshot\"", "ParseOutboundDesignBriefPackageResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Outbound Design Brief Package candidate", "no package materialization or context transfer", "target or design validation"] },
           { "path": "apps/visual-studio/Gaep.HostClient/OutboundDesignBriefPackageProtocol.cs", "contains": ["OutboundDesignBriefPackageProjection", "OutboundDesignBriefPackageProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "governed-figma-write", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadGovernedFigmaWriteAsync(", "\"design.governedFigmaWrite.snapshot\"", "ParseGovernedFigmaWriteResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Figma Write authorization-review candidate", "no package materialization or context transfer", "write authorization or execution"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/GovernedFigmaWriteProtocol.cs", "contains": ["GovernedFigmaWriteProjection", "GovernedFigmaWriteProjectionAuthorityBoundary"] }
         ] }
       ]
     }
