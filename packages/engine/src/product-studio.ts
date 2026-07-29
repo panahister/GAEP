@@ -28,6 +28,7 @@ import {
   governedFigmaWriteSchema,
   finalizedFigmaSnapshotImportSchema,
   designToRequirementBindingSchema,
+  designerReadyGateSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -112,6 +113,7 @@ import {
   type GovernedFigmaWrite,
   type FinalizedFigmaSnapshotImport,
   type DesignToRequirementBinding,
+  type DesignerReadyGate,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -165,6 +167,7 @@ import {
   type WorkspaceHealthIssue,
 } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
+import { designerReadyAssessmentReceiptDigest } from "./designer-ready-gate.js"
 import {
   canonicalDigest as portableDesignDigest,
   importPortableDesignBundle,
@@ -2353,6 +2356,16 @@ export class ProductStudioService {
       /^design-to-requirement-binding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       designToRequirementBindingSchema,
     )
+    const designerReadyGates = await this.listRecords(
+      "designer-ready-gates",
+      /^[0-9a-f-]+\.json$/i,
+      designerReadyGateSchema,
+    )
+    const designerReadyGateHistory = await this.listRecords(
+      "designer-ready-gate-history",
+      /^designer-ready-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      designerReadyGateSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2451,6 +2464,8 @@ export class ProductStudioService {
       ...finalizedFigmaSnapshotImportHistory,
       ...designToRequirementBindings,
       ...designToRequirementBindingHistory,
+      ...designerReadyGates,
+      ...designerReadyGateHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2819,6 +2834,13 @@ export class ProductStudioService {
       "design-to-requirement-binding-candidate",
       designToRequirementBindingHistory,
       (record) => `design-to-requirement-binding-history/design-to-requirement-binding-${record.id}-r${record.revision}.json`,
+    )
+    append("designer-ready-gates", "designer-ready-gate-candidate", designerReadyGates)
+    append(
+      "designer-ready-gate-history",
+      "designer-ready-gate-candidate",
+      designerReadyGateHistory,
+      (record) => `designer-ready-gate-history/designer-ready-gate-${record.id}-r${record.revision}.json`,
     )
     append(
       "candidates",
@@ -3334,6 +3356,13 @@ export class ProductStudioService {
           `design-to-requirement-binding-history/design-to-requirement-binding-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Design-to-Requirement Binding history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("designer-ready-gate-history/")) {
+        const record = validated as DesignerReadyGate
+        const expectedHistoryPath = `designer-ready-gate-history/designer-ready-gate-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Designer-Ready Gate history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4468,7 +4497,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4500,7 +4529,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -8523,6 +8552,90 @@ export class ProductStudioService {
       }
     }
 
+    const designerReadyGates = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("designer-ready-gates/"))
+      .map(([, record]) => designerReadyGateSchema.parse(record))
+    const designerReadyGateHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("designer-ready-gate-history/"))
+      .map(([, record]) => designerReadyGateSchema.parse(record))
+    validateVersionedBusinessRecords(designerReadyGates, designerReadyGateHistory, "Designer-Ready Gate")
+    const designerReadyPrerequisiteRecords = [
+      ...accessibilityDesignRules,
+      ...accessibilityDesignRulesHistory,
+      ...decisionRegisters,
+      ...decisionRegisterHistory,
+      ...designApplicability,
+      ...designApplicabilityHistory,
+      ...designPersonaRoleModels,
+      ...designPersonaRoleModelHistory,
+      ...designRequirements,
+      ...designRequirementsHistory,
+      ...designSystemTokenContracts,
+      ...designSystemTokenContractHistory,
+      ...figmaMcpCapabilityDiscoveries,
+      ...figmaMcpCapabilityDiscoveryHistory,
+      ...informationArchitectureModels,
+      ...informationArchitectureModelHistory,
+      ...manualFigmaExecutionPaths,
+      ...manualFigmaExecutionPathHistory,
+      ...responsiveMultiPlatformTargets,
+      ...responsiveMultiPlatformTargetsHistory,
+      ...screenStateInventories,
+      ...screenStateInventoryHistory,
+      ...userJourneyModels,
+      ...userJourneyModelHistory,
+    ]
+    const designerReadyPrerequisiteByExact = new Map(designerReadyPrerequisiteRecords.map((record) => [
+      `${record.kind}:${record.id}:${record.revision}:${canonicalDigest(record)}`,
+      record,
+    ]))
+    for (const candidate of [...designerReadyGates, ...designerReadyGateHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        objectiveDigest: candidate.objectiveDigest,
+        prerequisites: candidate.prerequisites,
+        evaluations: candidate.evaluations,
+        exceptions: candidate.exceptions,
+        assessmentDefinitionDigest: candidate.assessmentDefinitionDigest,
+        assessmentReceiptDigest: candidate.assessmentReceiptDigest,
+        candidateResult: candidate.candidateResult,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        designCompletenessState: candidate.designCompletenessState,
+        externalCompletenessState: candidate.externalCompletenessState,
+        designValidityState: candidate.designValidityState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        exceptionAuthorityState: candidate.exceptionAuthorityState,
+        figmaConnectionAuthorityState: candidate.figmaConnectionAuthorityState,
+        credentialAuthorityState: candidate.credentialAuthorityState,
+        permissionGrantState: candidate.permissionGrantState,
+        importExecutionState: candidate.importExecutionState,
+        writeExecutionState: candidate.writeExecutionState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Designer-Ready Gate ${candidate.id} membership digest is invalid`)
+      }
+      if (candidate.assessmentReceiptDigest !== designerReadyAssessmentReceiptDigest(candidate)) {
+        throw new Error(`Import Designer-Ready Gate ${candidate.id} assessment receipt digest is invalid`)
+      }
+      for (const prerequisite of candidate.prerequisites) {
+        const record = designerReadyPrerequisiteByExact.get(
+          `${prerequisite.kind}:${prerequisite.recordId}:${prerequisite.revision}:${prerequisite.digest}`,
+        )
+        if (!record || record.productId !== candidate.productId || record.initiativeId !== candidate.initiativeId ||
+            record.membershipDigest !== prerequisite.membershipDigest) {
+          throw new Error(`Import Designer-Ready Gate ${candidate.id} has an unresolved exact ${prerequisite.key} binding`)
+        }
+      }
+    }
+
     const plans = [...recordsByPath.entries()].filter(([path]) => path.startsWith("workflow-plans/"))
       .map(([, record]) => workflowPlanSchema.parse(record))
     for (const plan of plans) this.validateWorkflowInImport(plan, resolveExact)
@@ -9131,6 +9244,10 @@ export class ProductStudioService {
         /^design-to-requirement-binding-history\/design-to-requirement-binding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "design-to-requirement-binding-candidate"
     }
+    if (/^designer-ready-gates\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^designer-ready-gate-history\/designer-ready-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "designer-ready-gate-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -9328,6 +9445,10 @@ export class ProductStudioService {
     if (/^design-to-requirement-bindings\/[0-9a-f-]+\.json$/i.test(path) ||
         /^design-to-requirement-binding-history\/design-to-requirement-binding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return designToRequirementBindingSchema
+    }
+    if (/^designer-ready-gates\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^designer-ready-gate-history\/designer-ready-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return designerReadyGateSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||

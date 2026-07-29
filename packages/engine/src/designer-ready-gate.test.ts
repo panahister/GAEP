@@ -196,6 +196,13 @@ describe("Designer-Ready Gate service", () => {
     expect(revised.revision).toBe(2)
     expect((await service.listHistory(created.id)).map((entry) => entry.revision)).toEqual([2, 1])
     expect((await service.assess(initiative.id)).state).toBe("attention-required")
+
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `designer-ready-gates/${created.id}.json`,
+      `designer-ready-gate-history/designer-ready-gate-${created.id}-r1.json`,
+      `designer-ready-gate-history/designer-ready-gate-${created.id}-r2.json`,
+    ]))
   })
 
   it("fails closed on forged receipts and superseded prerequisite assessments", async () => {
