@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260729T205313Z-phase-2-finalized-figma-snapshot-import-packages.json",
-  conformance: "evidence/ide-conformance/20260729T205313Z-phase-2-finalized-figma-snapshot-import.json",
+  packages: "evidence/local-packages/20260729T214810Z-phase-2-design-to-requirement-binding-packages.json",
+  conformance: "evidence/ide-conformance/20260729T214810Z-phase-2-design-to-requirement-binding.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    finalizedFigmaSnapshotImport
+    designToRequirementBinding
+      ? {
+          id: "phase-2-design-to-requirement-binding-closure",
+          state: "not-established",
+          basis: "the Design-to-Requirement Binding review candidate is implemented locally across the shared engine and four host projections; real Product research, attributable human finalized-design, Requirement, Decision, relationship, provenance, coverage, conflict, reconciliation and evidence review, relationship truth, coverage completeness, Requirement satisfaction, Decision effectiveness, actual Figma content transfer or import, a live Figma connection or request, credential and permission workflows, import or write execution, external completeness, design validity, native-host interaction, design review and approval, Design Baseline and Product Owner acceptance remain incomplete",
+        }
+      : finalizedFigmaSnapshotImport
       ? {
           id: "phase-2-finalized-figma-snapshot-import-closure",
           state: "not-established",
@@ -407,6 +413,9 @@ export async function buildPhase0AcceptanceReport({
   const finalizedFigmaSnapshotImport = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "finalized-figma-snapshot-import" && capability.state === "implemented"))
+  const designToRequirementBinding = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "design-to-requirement-binding" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -424,6 +433,7 @@ export async function buildPhase0AcceptanceReport({
     outboundDesignBriefPackage,
     governedFigmaWrite,
     finalizedFigmaSnapshotImport,
+    designToRequirementBinding,
   })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
@@ -441,8 +451,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: finalizedFigmaSnapshotImport
+    phase: designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: designToRequirementBinding
+      ? "phase-2-design-to-requirement-binding-local"
+      : finalizedFigmaSnapshotImport
       ? "phase-2-finalized-figma-snapshot-import-local"
       : governedFigmaWrite
       ? "phase-2-governed-figma-write-local"
@@ -516,7 +528,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: finalizedFigmaSnapshotImport
+    claimBoundary: designToRequirementBinding
+      ? "This report binds the exact Design-to-Requirement Binding review-candidate lifecycle, exact Product, Initiative, Finalized Figma Snapshot Import, Design Requirements and Decision Register dependencies, bounded relationship, coverage, conflict, reconciliation, provenance, evidence-state and gap metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not establish relationship truth, coverage completeness, Requirement satisfaction, Decision effectiveness, transfer or import Figma content, connect to or call Figma, request credentials, grant permissions, authorize or perform writes or imports, prove external completeness, validate or approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : finalizedFigmaSnapshotImport
       ? "This report binds the exact Finalized Figma Snapshot Import review-candidate lifecycle, exact Product, Initiative and Governed Figma Write dependencies, bounded return-receipt, item, conflict, authorization, reconciliation, provenance, completeness, evidence-state and gap metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not transfer or import content, connect to or call Figma, request credentials, grant permissions, authorize or perform writes or imports, prove external completeness, validate external versions, targets or design, approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : governedFigmaWrite
       ? "This report binds the exact governed Figma Write authorization-review candidate lifecycle, exact Product, Initiative and Outbound Design Brief Package dependencies, bounded package, target, request, effect, preview, approval-state, permission-evidence-state, idempotency, replay, recovery, disclosure, provenance, evidence-state and gap metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. It does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate external versions, targets or design, approve design, establish a Design Baseline, prove real Product research, grant readiness, implementation or action authority, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."

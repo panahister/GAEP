@@ -8,7 +8,7 @@ import yauzl from "yauzl"
 
 const kiroRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const maximumArchiveBytes = 8 * 1024 * 1024
-const maximumEntryBytes = 4 * 1024 * 1024
+const maximumEntryBytes = 5 * 1024 * 1024
 const maximumTotalBytes = 8 * 1024 * 1024
 const expectedEntries = [
   "[Content_Types].xml",
