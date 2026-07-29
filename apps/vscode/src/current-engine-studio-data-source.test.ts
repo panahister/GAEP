@@ -37,6 +37,7 @@ import {
   type FigmaReadSnapshotProjection,
   type FigmaContextImportProjection,
   type OutboundDesignBriefPackageProjection,
+  type GovernedFigmaWriteProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2375,6 +2376,79 @@ function outboundDesignBriefPackageProjection(): OutboundDesignBriefPackageProje
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function governedFigmaWriteProjection(): GovernedFigmaWriteProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "governed-figma-write-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc", revision: 2, digest: `sha256:${"1".repeat(64)}` as const },
+    selectedEntryCount: 8,
+    unresolvedDisclosureCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    previewState: "candidate-generated" as const,
+    approvalState: "pending" as const,
+    permissionEvidenceState: "missing" as const,
+    idempotencyState: "defined" as const,
+    replayProtectionState: "defined" as const,
+    recoveryPlanState: "defined" as const,
+    writePlanState: "held" as const,
+    reviewState: "held" as const,
+    writeExecutionState: "not-performed" as const,
+    writeResultState: "not-recorded" as const,
+    state: "attention-required" as const,
+    reasons: ["Exact permission evidence is missing"],
+    assessedAt: "2026-07-29T14:00:00.000Z",
+    authorityBoundary: "governed-figma-write-status-is-observational-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority" as const,
+  }
+  const outboundPackage = {
+    recordId: "abababab-abab-4bab-8bab-abababababab",
+    revision: 2,
+    digest: `sha256:${"2".repeat(64)}` as const,
+    membershipDigest: `sha256:${"3".repeat(64)}` as const,
+    manifestDigest: `sha256:${"4".repeat(64)}` as const,
+    payloadDigest: `sha256:${"5".repeat(64)}` as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "governed-figma-write-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"6".repeat(64)}` as const,
+      state: "candidate" as const,
+      requestFormat: "gaep-governed-figma-write-request-v1" as const,
+      requestDigest: `sha256:${"7".repeat(64)}` as const,
+      effectDigest: `sha256:${"8".repeat(64)}` as const,
+      outboundPackage,
+      externalFileIdentityDigest: `sha256:${"9".repeat(64)}` as const,
+      expectedExternalVersionDigest: `sha256:${"a".repeat(64)}` as const,
+      selectedEntryCount: status.selectedEntryCount,
+      previewState: status.previewState,
+      previewDigest: `sha256:${"b".repeat(64)}` as const,
+      approvalState: status.approvalState,
+      permissionEvidenceState: status.permissionEvidenceState,
+      idempotencyState: status.idempotencyState,
+      recoveryPlanState: status.recoveryPlanState,
+      reviewState: status.reviewState,
+      writeExecutionState: status.writeExecutionState,
+      updatedAt: "2026-07-29T13:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-approval-actor-permission-evidence-recovery-or-personal-content-secrets-or-credentials" as const,
+    authorityBoundary: "governed-figma-write-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -3034,6 +3108,7 @@ interface HarnessOptions {
   figmaReadSnapshotProjection?: FigmaReadSnapshotProjection
   figmaContextImportProjection?: FigmaContextImportProjection
   outboundDesignBriefPackageProjection?: OutboundDesignBriefPackageProjection
+  governedFigmaWriteProjection?: GovernedFigmaWriteProjection
   commandResult?: unknown
 }
 
@@ -3304,6 +3379,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.outboundDesignBriefPackageProjection ? {
       outboundDesignBriefPackage: {
         project: async () => options.outboundDesignBriefPackageProjection!,
+      },
+    } : {}),
+    ...(options.governedFigmaWriteProjection ? {
+      governedFigmaWrite: {
+        project: async () => options.governedFigmaWriteProjection!,
       },
     } : {}),
   }
@@ -4250,6 +4330,33 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private brief|private requirement|private constraint|private context item|private figma target|private tool|private transformation|private disclosure|private source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe Governed Figma Write authorization-review metadata on the native scope page", async () => {
+    const projection = governedFigmaWriteProjection()
+    const { source } = harness({ governedFigmaWriteProjection: projection })
+    const snapshot = await source.readSnapshot("scope")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "governed-figma-write")).toMatchObject({
+      id: "governed-figma-write",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          receipts: `gaep-governed-figma-write-request-v1 · request ${projection.candidate?.requestDigest} · effect ${projection.candidate?.effectDigest} · preview ${projection.candidate?.previewDigest}`,
+          package: `${projection.candidate?.outboundPackage.recordId} · r2 · manifest ${projection.candidate?.outboundPackage.manifestDigest} · payload ${projection.candidate?.outboundPackage.payloadDigest}`,
+          target: `file ${projection.candidate?.externalFileIdentityDigest} · expected version ${projection.candidate?.expectedExternalVersionDigest} · 8 selected entries`,
+          governance: "preview candidate-generated · approval pending · permission evidence missing · idempotency defined/defined · recovery defined",
+          assessment: "attention-required · held · plan held · execution not-performed · result not-recorded",
+          gaps: "2 disclosures · 3 questions · 1 stale bindings · 2 stale Source references",
+          boundary: "Candidate identities, counts, statuses, and digests only; no brief, Requirement, constraint, Context Item, Figma target, tool, Source, approval actor, permission evidence, recovery detail, personal, secret, or credential content and no package materialization or transfer, Figma connection or call, credential request, permission grant, write authorization or execution, target or design validation, design approval, baseline, readiness, implementation, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private brief|private requirement|private constraint|private context item|private figma target|private tool|private approval actor|private permission evidence|private recovery detail|private source content|customer@example\.com|api_key/iu,
     )
   })
 

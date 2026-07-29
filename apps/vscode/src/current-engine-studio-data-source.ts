@@ -65,6 +65,7 @@ import type {
   FigmaReadSnapshotProjection,
   FigmaContextImportProjection,
   OutboundDesignBriefPackageProjection,
+  GovernedFigmaWriteProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -267,6 +268,9 @@ export interface CurrentStudioEngineReader {
   outboundDesignBriefPackage?: {
     project(initiativeId: string): Promise<OutboundDesignBriefPackageProjection>
   }
+  governedFigmaWrite?: {
+    project(initiativeId: string): Promise<GovernedFigmaWriteProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -341,6 +345,7 @@ interface ObservedStudioState {
   figmaReadSnapshotProjections: Map<string, FigmaReadSnapshotProjection>
   figmaContextImportProjections: Map<string, FigmaContextImportProjection>
   outboundDesignBriefPackageProjections: Map<string, OutboundDesignBriefPackageProjection>
+  governedFigmaWriteProjections: Map<string, GovernedFigmaWriteProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2350,6 +2355,59 @@ function outboundDesignBriefPackageTable(state: ObservedStudioState): StudioTabl
   }
 }
 
+function governedFigmaWriteTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.governedFigmaWriteProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        receipts: `${record.requestFormat} · request ${record.requestDigest} · effect ${record.effectDigest} · preview ${record.previewDigest ?? "not-generated"}`,
+        package: `${record.outboundPackage.recordId} · r${record.outboundPackage.revision} · manifest ${record.outboundPackage.manifestDigest} · payload ${record.outboundPackage.payloadDigest}`,
+        target: `file ${record.externalFileIdentityDigest} · expected version ${record.expectedExternalVersionDigest} · ${record.selectedEntryCount} selected entries`,
+        governance: `preview ${status.previewState} · approval ${status.approvalState} · permission evidence ${status.permissionEvidenceState} · idempotency ${status.idempotencyState}/${status.replayProtectionState} · recovery ${status.recoveryPlanState}`,
+        assessment: `${status.state} · ${status.reviewState} · plan ${status.writePlanState} · execution ${status.writeExecutionState} · result ${status.writeResultState}`,
+        gaps: `${status.unresolvedDisclosureCount} disclosures · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, counts, statuses, and digests only; no brief, Requirement, constraint, Context Item, Figma target, tool, Source, approval actor, permission evidence, recovery detail, personal, secret, or credential content and no package materialization or transfer, Figma connection or call, credential request, permission grant, write authorization or execution, target or design validation, design approval, baseline, readiness, implementation, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "governed-figma-write",
+    title: "Governed Figma Write Authorization-Review Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "receipts", label: "Request receipts" },
+      { key: "package", label: "Exact package binding" },
+      { key: "target", label: "Privacy-safe target" },
+      { key: "governance", label: "Approval and recovery states" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Figma Write candidate",
+        "Create an exact authorization-review candidate through the governed engine workflow. This view does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a baseline or readiness, or authorize implementation or action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2382,6 +2440,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     figmaReadSnapshotTable(state),
     figmaContextImportTable(state),
     outboundDesignBriefPackageTable(state),
+    governedFigmaWriteTable(state),
   )
   if (route === "architecture") {
     relatedRecords.push(
@@ -5038,6 +5097,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       figmaReadSnapshotProjections: new Map(),
       figmaContextImportProjections: new Map(),
       outboundDesignBriefPackageProjections: new Map(),
+      governedFigmaWriteProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -6670,6 +6730,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "outbound-design-brief-package-unavailable",
           "Outbound Design Brief Package metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "scope" && engine.governedFigmaWrite) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.governedFigmaWrite!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.governedFigmaWriteProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Governed Figma Write projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `governed-figma-write-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Governed Figma Write metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "governed-figma-write-unavailable",
+          "Governed Figma Write metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
