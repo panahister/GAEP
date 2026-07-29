@@ -49,6 +49,7 @@ private val manualFigmaExecutionPathId = UUID.fromString("72727272-7272-4272-827
 private val figmaMcpCapabilityDiscoveryId = UUID.fromString("73737373-7373-4373-8373-737373737373")
 private val figmaReadSnapshotId = UUID.fromString("74747474-7474-4474-8474-747474747474")
 private val figmaContextImportId = UUID.fromString("75757575-7575-4575-8575-757575757575")
+private val outboundDesignBriefPackageId = UUID.fromString("76767676-7676-4676-8676-767676767676")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -292,6 +293,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.figmaContextImport.snapshot" -> handleFigmaContextImport(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.outboundDesignBriefPackage.snapshot" -> handleOutboundDesignBriefPackage(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3665,6 +3671,107 @@ private fun handleFigmaContextImport(id: Long, params: JsonObject, workspacePath
         }
         workspacePath.endsWith("bad-figma-context-import-private") -> {
             value.addProperty("contextItems", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleOutboundDesignBriefPackage(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE OUTBOUND DESIGN BRIEF PACKAGE PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-outbound-design-brief-package-binding")) 8 else 7
+    val assessedAt = "2026-07-29T10:30:00.000Z"
+    val candidateDigest = "sha256:${"f".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "outbound-design-brief-package-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "outbound-design-brief-package-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", outboundDesignBriefPackageId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("contextPackCount", 2)
+            addProperty("entryCount", 8)
+            addProperty("contextItemCount", 24)
+            addProperty("recipientCount", 2)
+            addProperty("humanReviewedEntryCount", 5)
+            addProperty("sourceRecordedEntryCount", 2)
+            addProperty("notAssessedEntryCount", 1)
+            addProperty("unresolvedRedactionCount", 1)
+            addProperty("representedRequirementCount", 7)
+            addProperty("unresolvedRequirementCount", 2)
+            addProperty("unresolvedDisclosureCount", 3)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedQuestionCount", 3)
+            addProperty("manifestState", "partial")
+            addProperty("provenanceState", "partial")
+            addProperty("redactionReviewState", "partial")
+            addProperty("previewState", "candidate-generated")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more outbound package entries require human review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "outbound-design-brief-package-status-is-observational-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", outboundDesignBriefPackageId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"a".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("manifestFormat", "gaep-outbound-design-brief-package-v1")
+            addProperty("manifestDigest", "sha256:${"b".repeat(64)}")
+            addProperty("payloadDigest", "sha256:${"c".repeat(64)}")
+            addProperty("contextPackCount", 2)
+            addProperty("entryCount", 8)
+            addProperty("contextItemCount", 24)
+            addProperty("recipientCount", 2)
+            addProperty("representedRequirementCount", 7)
+            addProperty("unresolvedDisclosureCount", 3)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-29T10:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-transformation-disclosure-or-personal-content-secrets-credentials-or-permissions",
+        )
+        addProperty(
+            "authorityBoundary",
+            "outbound-design-brief-package-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-outbound-design-brief-package-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("contextItemCount", 25)
+        }
+        workspacePath.endsWith("bad-outbound-design-brief-package-private") -> {
+            value.addProperty("entries", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

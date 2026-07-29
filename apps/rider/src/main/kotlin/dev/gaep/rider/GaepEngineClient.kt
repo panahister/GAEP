@@ -411,6 +411,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readOutboundDesignBriefPackage(initiativeId: UUID): OutboundDesignBriefPackageProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("design.outboundDesignBriefPackage.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseOutboundDesignBriefPackageEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

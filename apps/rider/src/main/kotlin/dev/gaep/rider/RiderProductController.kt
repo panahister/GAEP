@@ -1892,6 +1892,68 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readOutboundDesignBriefPackage(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readOutboundDesignBriefPackage(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Outbound Design Brief Package was read. Refresh the exact records." }
+        return renderOutboundDesignBriefPackage(projection)
+    }
+
+    fun renderOutboundDesignBriefPackage(projection: OutboundDesignBriefPackageProjection): String = buildString {
+        appendLine("GAEP governed Outbound Design Brief Package candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine(
+            "Manifest: ${projection.manifestState} · provenance ${projection.provenanceState} · " +
+                "redaction ${projection.redactionReviewState} · preview ${projection.previewState}",
+        )
+        appendLine(
+            "Inventory: ${projection.contextPackCount} Context Packs · ${projection.entryCount} entries · " +
+                "${projection.contextItemCount} Context Items · ${projection.recipientCount} recipients",
+        )
+        appendLine(
+            "Evidence: ${projection.humanReviewedEntryCount} human-reviewed · " +
+                "${projection.sourceRecordedEntryCount} source-recorded · ${projection.notAssessedEntryCount} not assessed · " +
+                "${projection.unresolvedRedactionCount} redaction gaps",
+        )
+        appendLine(
+            "Requirement coverage: ${projection.representedRequirementCount} represented · " +
+                "${projection.unresolvedRequirementCount} unresolved · ${projection.unresolvedDisclosureCount} unresolved disclosures",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Outbound Design Brief Package candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine("Manifest receipt: ${record.manifestFormat} · ${record.manifestDigest}")
+            appendLine("Payload receipt: ${record.payloadDigest}")
+            appendLine(
+                "Candidate inventory: ${record.contextPackCount} Context Packs · ${record.entryCount} entries · " +
+                    "${record.contextItemCount} Context Items · ${record.recipientCount} recipients · " +
+                    "${record.representedRequirementCount} represented Requirements · " +
+                    "${record.unresolvedDisclosureCount} unresolved disclosures · ${record.reviewState}",
+            )
+        } ?: appendLine("Outbound Design Brief Package candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and digests only; no package materialization or context transfer, " +
+                "Figma connection or call, credential request, permission grant, write, target or design validation, design approval, " +
+                "baseline, readiness, implementation, or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

@@ -658,6 +658,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += figmaContextImportButton
         actions.add(figmaContextImportButton)
 
+        val outboundDesignBriefPackageButton = JButton("Inspect Outbound Design Brief Package…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Brief, Requirement, constraint, Context Item, Figma target, tool, Source, transformation, disclosure, personal data, local paths, secrets, credentials, permissions, and authority are withheld.",
+                    "GAEP Outbound Design Brief Package",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Outbound Design Brief Package", status, output, buttons) {
+                    controller.readOutboundDesignBriefPackage(initiativeId)
+                }
+            }
+        }
+        buttons += outboundDesignBriefPackageButton
+        actions.add(outboundDesignBriefPackageButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

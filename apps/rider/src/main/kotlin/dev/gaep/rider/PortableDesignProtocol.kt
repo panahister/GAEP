@@ -2300,6 +2300,56 @@ data class FigmaContextImportProjection(
     val snapshotDigest: String,
 )
 
+data class OutboundDesignBriefPackageRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val manifestFormat: String,
+    val manifestDigest: String,
+    val payloadDigest: String,
+    val contextPackCount: Int,
+    val entryCount: Int,
+    val contextItemCount: Int,
+    val recipientCount: Int,
+    val representedRequirementCount: Int,
+    val unresolvedDisclosureCount: Int,
+    val reviewState: String,
+)
+
+data class OutboundDesignBriefPackageProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reviewState: String,
+    val manifestState: String,
+    val provenanceState: String,
+    val redactionReviewState: String,
+    val previewState: String,
+    val reasons: List<String>,
+    val contextPackCount: Int,
+    val entryCount: Int,
+    val contextItemCount: Int,
+    val recipientCount: Int,
+    val humanReviewedEntryCount: Int,
+    val sourceRecordedEntryCount: Int,
+    val notAssessedEntryCount: Int,
+    val unresolvedRedactionCount: Int,
+    val representedRequirementCount: Int,
+    val unresolvedRequirementCount: Int,
+    val unresolvedDisclosureCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: OutboundDesignBriefPackageRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -2541,6 +2591,12 @@ internal object PortableDesignProtocol {
         "figma-context-import-projection-is-read-only-and-does-not-package-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority"
     private const val FIGMA_CONTEXT_IMPORT_STATUS_AUTHORITY_BOUNDARY =
         "figma-context-import-status-is-observational-and-does-not-package-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority"
+    private const val OUTBOUND_DESIGN_BRIEF_PACKAGE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-transformation-disclosure-or-personal-content-secrets-credentials-or-permissions"
+    private const val OUTBOUND_DESIGN_BRIEF_PACKAGE_PROJECTION_AUTHORITY_BOUNDARY =
+        "outbound-design-brief-package-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority"
+    private const val OUTBOUND_DESIGN_BRIEF_PACKAGE_STATUS_AUTHORITY_BOUNDARY =
+        "outbound-design-brief-package-status-is-observational-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -8222,6 +8278,149 @@ internal object PortableDesignProtocol {
             sourceRecordedSectionCount, notAssessedSectionCount, unresolvedRedactionCount, representedRequirementCount,
             unresolvedRequirementCount, unresolvedOwnershipCount, staleBindingCount, staleSourceReferenceCount,
             unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseOutboundDesignBriefPackageEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): OutboundDesignBriefPackageProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "outbound-design-brief-package-projection" ||
+            projection.requireString("privacyBoundary") != OUTBOUND_DESIGN_BRIEF_PACKAGE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != OUTBOUND_DESIGN_BRIEF_PACKAGE_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "contextPackCount", "entryCount", "contextItemCount", "recipientCount",
+                "humanReviewedEntryCount", "sourceRecordedEntryCount", "notAssessedEntryCount",
+                "unresolvedRedactionCount", "representedRequirementCount", "unresolvedRequirementCount",
+                "unresolvedDisclosureCount", "staleBindingCount", "staleSourceReferenceCount", "unresolvedQuestionCount",
+                "manifestState", "provenanceState", "redactionReviewState", "previewState", "reviewState", "state",
+                "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "outbound-design-brief-package-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != OUTBOUND_DESIGN_BRIEF_PACKAGE_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val contextPackCount = status.requireBoundedNonNegativeInt("contextPackCount", 32)
+        val entryCount = status.requireBoundedNonNegativeInt("entryCount", 4_096)
+        val contextItemCount = status.requireBoundedNonNegativeInt("contextItemCount", 16_384)
+        val recipientCount = status.requireBoundedNonNegativeInt("recipientCount", 256)
+        val humanReviewedEntryCount = status.requireBoundedNonNegativeInt("humanReviewedEntryCount", 4_096)
+        val sourceRecordedEntryCount = status.requireBoundedNonNegativeInt("sourceRecordedEntryCount", 4_096)
+        val notAssessedEntryCount = status.requireBoundedNonNegativeInt("notAssessedEntryCount", 4_096)
+        val unresolvedRedactionCount = status.requireBoundedNonNegativeInt("unresolvedRedactionCount", 4_096)
+        val representedRequirementCount = status.requireBoundedNonNegativeInt("representedRequirementCount", 4_096)
+        val unresolvedRequirementCount = status.requireBoundedNonNegativeInt("unresolvedRequirementCount", 4_096)
+        val unresolvedDisclosureCount = status.requireBoundedNonNegativeInt("unresolvedDisclosureCount", 4_096)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val manifestState = status.requireOneOf("manifestState", setOf("candidate-complete", "not-assessed", "partial"))
+        val provenanceState = status.requireOneOf("provenanceState", setOf("exact", "not-assessed", "partial"))
+        val redactionReviewState = status.requireOneOf("redactionReviewState", setOf("complete", "not-assessed", "partial"))
+        val previewState = status.requireOneOf("previewState", setOf("candidate-generated", "human-reviewed", "not-generated"))
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = sourceRecordedEntryCount + notAssessedEntryCount + unresolvedRedactionCount +
+            unresolvedRequirementCount + unresolvedDisclosureCount + staleBindingCount + staleSourceReferenceCount +
+            unresolvedQuestionCount
+        if ((assessmentState == "complete-for-review" &&
+                (gapCount > 0 || contextPackCount == 0 || entryCount == 0 || recipientCount == 0 ||
+                    manifestState != "candidate-complete" || provenanceState != "exact" ||
+                    redactionReviewState != "complete" || previewState != "human-reviewed" ||
+                    reviewState != "ready-for-human-review" || reasons.isNotEmpty() || reference == null)) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "manifestFormat", "manifestDigest",
+                "payloadDigest", "contextPackCount", "entryCount", "contextItemCount", "recipientCount",
+                "representedRequirementCount", "unresolvedDisclosureCount", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = OutboundDesignBriefPackageRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireOneOf("manifestFormat", setOf("gaep-outbound-design-brief-package-v1")),
+                value.requireDigest("manifestDigest"),
+                value.requireDigest("payloadDigest"),
+                value.requireBoundedNonNegativeInt("contextPackCount", 32),
+                value.requireBoundedNonNegativeInt("entryCount", 4_096),
+                value.requireBoundedNonNegativeInt("contextItemCount", 16_384),
+                value.requireBoundedNonNegativeInt("recipientCount", 256),
+                value.requireBoundedNonNegativeInt("representedRequirementCount", 4_096),
+                value.requireBoundedNonNegativeInt("unresolvedDisclosureCount", 4_096),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest ||
+                record.contextPackCount != contextPackCount || record.entryCount != entryCount ||
+                record.contextItemCount != contextItemCount || record.recipientCount != recipientCount ||
+                record.representedRequirementCount != representedRequirementCount ||
+                record.unresolvedDisclosureCount != unresolvedDisclosureCount || record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return OutboundDesignBriefPackageProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reviewState, manifestState, provenanceState, redactionReviewState,
+            previewState, reasons, contextPackCount, entryCount, contextItemCount, recipientCount,
+            humanReviewedEntryCount, sourceRecordedEntryCount, notAssessedEntryCount, unresolvedRedactionCount,
+            representedRequirementCount, unresolvedRequirementCount, unresolvedDisclosureCount, staleBindingCount,
+            staleSourceReferenceCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 

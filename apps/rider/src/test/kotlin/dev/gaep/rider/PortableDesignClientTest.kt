@@ -1870,6 +1870,59 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Outbound Design Brief Package projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("outbound-design-brief-package-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readOutboundDesignBriefPackage(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("partial", projection.manifestState)
+            assertEquals("partial", projection.provenanceState)
+            assertEquals("partial", projection.redactionReviewState)
+            assertEquals("candidate-generated", projection.previewState)
+            assertEquals(2, projection.contextPackCount)
+            assertEquals(8, projection.entryCount)
+            assertEquals(24, projection.contextItemCount)
+            assertEquals(2, projection.recipientCount)
+            assertEquals(5, projection.humanReviewedEntryCount)
+            assertEquals(7, projection.representedRequirementCount)
+            assertEquals("gaep-outbound-design-brief-package-v1", projection.candidate?.manifestFormat)
+
+            val rendered = RiderProductController(client).readOutboundDesignBriefPackage(entryId)
+            assertTrue(rendered.contains("GAEP governed Outbound Design Brief Package candidate"))
+            assertTrue(rendered.contains("2 Context Packs · 8 entries · 24 Context Items · 2 recipients"))
+            assertTrue(rendered.contains("5 human-reviewed"))
+            assertTrue(rendered.contains("no package materialization or context transfer"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("entries="))
+        }
+
+        listOf(
+            "bad-outbound-design-brief-package-digest",
+            "bad-outbound-design-brief-package-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readOutboundDesignBriefPackage(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-outbound-design-brief-package-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readOutboundDesignBriefPackage(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))
