@@ -153,6 +153,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/DesignToRequirementBindingProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/DesignerReadyGateModels.cs",
       "apps/visual-studio/Gaep.HostClient/DesignerReadyGateProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/DesignDeltaModels.cs",
+      "apps/visual-studio/Gaep.HostClient/DesignDeltaProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/EngineClient.cs",
       "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs",
       "apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj",
@@ -169,7 +171,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (542)",
+        "GAEP Visual Studio host-client tests: PASS (549)",
       ],
     }],
   },
