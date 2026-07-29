@@ -24,6 +24,7 @@ import {
   figmaMcpCapabilityDiscoverySchema,
   figmaReadSnapshotSchema,
   figmaContextImportSchema,
+  outboundDesignBriefPackageSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -104,6 +105,7 @@ import {
   type FigmaMcpCapabilityDiscovery,
   type FigmaReadSnapshot,
   type FigmaContextImport,
+  type OutboundDesignBriefPackage,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -2305,6 +2307,16 @@ export class ProductStudioService {
       /^figma-context-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       figmaContextImportSchema,
     )
+    const outboundDesignBriefPackages = await this.listRecords(
+      "outbound-design-brief-packages",
+      /^[0-9a-f-]+\.json$/i,
+      outboundDesignBriefPackageSchema,
+    )
+    const outboundDesignBriefPackageHistory = await this.listRecords(
+      "outbound-design-brief-package-history",
+      /^outbound-design-brief-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      outboundDesignBriefPackageSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2395,6 +2407,8 @@ export class ProductStudioService {
       ...figmaReadSnapshotHistory,
       ...figmaContextImports,
       ...figmaContextImportHistory,
+      ...outboundDesignBriefPackages,
+      ...outboundDesignBriefPackageHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2727,6 +2741,13 @@ export class ProductStudioService {
       "figma-context-import-candidate",
       figmaContextImportHistory,
       (record) => `figma-context-import-history/figma-context-import-${record.id}-r${record.revision}.json`,
+    )
+    append("outbound-design-brief-packages", "outbound-design-brief-package-candidate", outboundDesignBriefPackages)
+    append(
+      "outbound-design-brief-package-history",
+      "outbound-design-brief-package-candidate",
+      outboundDesignBriefPackageHistory,
+      (record) => `outbound-design-brief-package-history/outbound-design-brief-package-${record.id}-r${record.revision}.json`,
     )
     append(
       "candidates",
@@ -3210,6 +3231,14 @@ export class ProductStudioService {
           `figma-context-import-history/figma-context-import-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Figma Context Import history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("outbound-design-brief-package-history/")) {
+        const record = validated as OutboundDesignBriefPackage
+        const expectedHistoryPath =
+          `outbound-design-brief-package-history/outbound-design-brief-package-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Outbound Design Brief Package history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4344,7 +4373,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4376,7 +4405,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -7581,7 +7610,7 @@ export class ProductStudioService {
     const figmaContextImportHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("figma-context-import-history/"))
       .map(([, record]) => figmaContextImportSchema.parse(record))
-    validateVersionedBusinessRecords(
+    const exactFigmaContextImports = validateVersionedBusinessRecords(
       figmaContextImports,
       figmaContextImportHistory,
       "Figma Context Import",
@@ -7764,6 +7793,207 @@ export class ProductStudioService {
       }
       if (candidate.preview.previewDigest !== undefined && candidate.preview.previewDigest !== canonicalDigest(previewReceipt)) {
         throw new Error(`Import Figma Context Import ${candidate.id} preview digest is invalid`)
+      }
+    }
+
+    const outboundDesignBriefPackages = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("outbound-design-brief-packages/"))
+      .map(([, record]) => outboundDesignBriefPackageSchema.parse(record))
+    const outboundDesignBriefPackageHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("outbound-design-brief-package-history/"))
+      .map(([, record]) => outboundDesignBriefPackageSchema.parse(record))
+    validateVersionedBusinessRecords(
+      outboundDesignBriefPackages,
+      outboundDesignBriefPackageHistory,
+      "Outbound Design Brief Package",
+    )
+    for (const candidate of [...outboundDesignBriefPackages, ...outboundDesignBriefPackageHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        objectiveDigest: candidate.objectiveDigest,
+        figmaContextImport: candidate.figmaContextImport,
+        contextPacks: candidate.contextPacks,
+        manifestFormat: candidate.manifestFormat,
+        manifestDigest: candidate.manifestDigest,
+        payloadDigest: candidate.payloadDigest,
+        entries: candidate.entries,
+        recipients: candidate.recipients,
+        requirementCoverage: candidate.requirementCoverage,
+        disclosures: candidate.disclosures,
+        manifestState: candidate.manifestState,
+        provenanceState: candidate.provenanceState,
+        redactionReviewState: candidate.redactionReviewState,
+        preview: candidate.preview,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        packageMaterializationState: candidate.packageMaterializationState,
+        contextTransferState: candidate.contextTransferState,
+        figmaConnectionAuthorityState: candidate.figmaConnectionAuthorityState,
+        credentialAuthorityState: candidate.credentialAuthorityState,
+        permissionGrantState: candidate.permissionGrantState,
+        figmaWriteAuthorityState: candidate.figmaWriteAuthorityState,
+        targetValidityState: candidate.targetValidityState,
+        externalCompletenessState: candidate.externalCompletenessState,
+        designValidityState: candidate.designValidityState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Outbound Design Brief Package ${candidate.id} membership digest is invalid`)
+      }
+      const contextImport = exactFigmaContextImports.get(
+        `${candidate.figmaContextImport.recordId}:${candidate.figmaContextImport.revision}:${candidate.figmaContextImport.digest}`,
+      )
+      if (!contextImport || contextImport.initiativeId !== candidate.initiativeId ||
+          contextImport.membershipDigest !== candidate.figmaContextImport.membershipDigest) {
+        throw new Error(`Import Outbound Design Brief Package ${candidate.id} has an unresolved exact Figma Context Import binding`)
+      }
+      const packs = candidate.contextPacks.map((reference) => contextPackByExact.get(
+        `${reference.recordId}:${reference.revision}:${reference.digest}:${reference.packDigest}`,
+      ))
+      if (packs.some((pack) => !pack || pack.productId !== candidate.productId) ||
+          canonicalDigest(candidate.contextPacks) !== canonicalDigest(contextImport.contextPacks)) {
+        throw new Error(`Import Outbound Design Brief Package ${candidate.id} has an unresolved exact Context Pack catalog`)
+      }
+      const exactPacks = packs as ContextPack[]
+      const sectionByKey = new Map(contextImport.sections.map((section) => [section.key, section]))
+      const entryBySectionKey = new Map(candidate.entries.map((entry) => [entry.sourceSectionKey, entry]))
+      for (const entry of candidate.entries) {
+        const section = sectionByKey.get(entry.sourceSectionKey)
+        const pack = exactPacks.find((record) => record.id === entry.contextPackId)
+        if (!section || !pack || section.kind !== entry.kind || section.contextPackId !== entry.contextPackId ||
+            canonicalDigest(section.contextItemIds) !== canonicalDigest(entry.contextItemIds) ||
+            section.contentDigest !== entry.contentDigest || section.transformationDigest !== entry.transformationDigest ||
+            section.informationClassification !== entry.informationClassification || section.redactionState !== entry.redactionState ||
+            canonicalDigest(section.sources) !== canonicalDigest(entry.sources) ||
+            entry.contextItemIds.some((id) => !pack.items.some((item) => item.id === id))) {
+          throw new Error(`Import Outbound Design Brief Package ${candidate.id} entry does not preserve its exact selected section`)
+        }
+        if (entry.selectionReasonDigest !== canonicalDigest({
+          objectiveDigest: candidate.objectiveDigest,
+          sourceSectionKey: entry.sourceSectionKey,
+          requirementKeys: entry.requirementKeys,
+          recipientKeys: entry.recipientKeys,
+        })) throw new Error(`Import Outbound Design Brief Package ${candidate.id} entry selection receipt is invalid`)
+      }
+      if (candidate.manifestState === "candidate-complete" &&
+          (entryBySectionKey.size !== contextImport.sections.length ||
+           contextImport.sections.some((section) => !entryBySectionKey.has(section.key)))) {
+        throw new Error(`Import Outbound Design Brief Package ${candidate.id} omits a selected context section`)
+      }
+      const targetByKey = new Map(contextImport.targets.map((target) => [target.key, target]))
+      const recipientByTargetKey = new Map(candidate.recipients.map((recipient) => [recipient.sourceTargetKey, recipient]))
+      for (const recipient of candidate.recipients) {
+        const target = targetByKey.get(recipient.sourceTargetKey)
+        if (!target) throw new Error(`Import Outbound Design Brief Package ${candidate.id} recipient has no exact target`)
+        const expectedEntryKeys = target.sectionKeys.map((key) => entryBySectionKey.get(key)?.key)
+        if (expectedEntryKeys.some((key) => key === undefined) || target.designScopeKey !== recipient.designScopeKey ||
+            target.fileKey !== recipient.fileKey || target.externalFileIdentityDigest !== recipient.externalFileIdentityDigest ||
+            target.externalVersionDigest !== recipient.externalVersionDigest ||
+            target.plannedWriteToolKey !== recipient.plannedWriteToolKey || target.expectedEffect !== recipient.expectedEffect ||
+            target.permissionRequirementState !== recipient.permissionRequirementState ||
+            canonicalDigest(expectedEntryKeys) !== canonicalDigest(recipient.entryKeys) ||
+            canonicalDigest(target.sources) !== canonicalDigest(recipient.sources) ||
+            recipient.purposeDigest !== canonicalDigest({
+              objectiveDigest: candidate.objectiveDigest,
+              sourceTargetKey: recipient.sourceTargetKey,
+              entryKeys: recipient.entryKeys,
+            })) {
+          throw new Error(`Import Outbound Design Brief Package ${candidate.id} recipient binding is invalid`)
+        }
+      }
+      if (candidate.manifestState === "candidate-complete" &&
+          (recipientByTargetKey.size !== contextImport.targets.length ||
+           contextImport.targets.some((target) => !recipientByTargetKey.has(target.key)))) {
+        throw new Error(`Import Outbound Design Brief Package ${candidate.id} omits a selected Figma target`)
+      }
+      const coverageByRequirement = new Map(contextImport.requirementCoverage.map((coverage) => [coverage.requirementKey, coverage]))
+      for (const coverage of candidate.requirementCoverage) {
+        const imported = coverageByRequirement.get(coverage.requirementKey)
+        if (!imported) throw new Error(`Import Outbound Design Brief Package ${candidate.id} coverage has no exact Requirement`)
+        const expectedEntryKeys = imported.sectionKeys.map((key) => entryBySectionKey.get(key)?.key)
+        const expectedRecipientKeys = imported.targetKeys.map((key) => recipientByTargetKey.get(key)?.key)
+        if (expectedEntryKeys.some((key) => key === undefined) || expectedRecipientKeys.some((key) => key === undefined) ||
+            imported.state !== coverage.state || imported.rationaleDigest !== coverage.rationaleDigest ||
+            canonicalDigest(expectedEntryKeys) !== canonicalDigest(coverage.entryKeys) ||
+            canonicalDigest(expectedRecipientKeys) !== canonicalDigest(coverage.recipientKeys) ||
+            canonicalDigest(imported.sources) !== canonicalDigest(coverage.sources)) {
+          throw new Error(`Import Outbound Design Brief Package ${candidate.id} Requirement coverage is invalid`)
+        }
+      }
+      if (candidate.requirementCoverage.length !== contextImport.requirementCoverage.length) {
+        throw new Error(`Import Outbound Design Brief Package ${candidate.id} Requirement coverage is incomplete`)
+      }
+      const maximumClassification = exactPacks.reduce<keyof typeof classificationRank>((maximum, pack) =>
+        classificationRank[pack.classification.level] > classificationRank[maximum] ? pack.classification.level : maximum,
+      "public")
+      if (candidate.informationClassification !== maximumClassification) {
+        throw new Error(`Import Outbound Design Brief Package ${candidate.id} aggregate classification is invalid`)
+      }
+      const manifestReceipt = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        objectiveDigest: candidate.objectiveDigest,
+        figmaContextImport: candidate.figmaContextImport,
+        contextPacks: candidate.contextPacks,
+        manifestFormat: candidate.manifestFormat,
+        entries: candidate.entries,
+        recipients: candidate.recipients,
+        requirementCoverage: candidate.requirementCoverage,
+        disclosures: candidate.disclosures,
+      }
+      const payloadReceipt = {
+        entries: candidate.entries.map((entry) => ({
+          key: entry.key, sourceSectionKey: entry.sourceSectionKey, contextPackId: entry.contextPackId,
+          contextItemIds: entry.contextItemIds, contentDigest: entry.contentDigest,
+          transformationDigest: entry.transformationDigest, selectionReasonDigest: entry.selectionReasonDigest,
+          informationClassification: entry.informationClassification, redactionState: entry.redactionState,
+          requirementKeys: entry.requirementKeys, recipientKeys: entry.recipientKeys,
+        })),
+        recipients: candidate.recipients.map((recipient) => ({
+          key: recipient.key, sourceTargetKey: recipient.sourceTargetKey,
+          externalFileIdentityDigest: recipient.externalFileIdentityDigest,
+          externalVersionDigest: recipient.externalVersionDigest, entryKeys: recipient.entryKeys,
+          purposeDigest: recipient.purposeDigest, policyBasisDigest: recipient.policyBasisDigest,
+          retentionRuleDigest: recipient.retentionRuleDigest,
+        })),
+        requirementCoverage: candidate.requirementCoverage.map((coverage) => ({
+          requirementKey: coverage.requirementKey, state: coverage.state, entryKeys: coverage.entryKeys,
+          recipientKeys: coverage.recipientKeys, rationaleDigest: coverage.rationaleDigest,
+        })),
+        disclosures: candidate.disclosures.map((disclosure) => ({
+          key: disclosure.key, kind: disclosure.kind, materiality: disclosure.materiality, state: disclosure.state,
+          subjectDigest: disclosure.subjectDigest, rationaleDigest: disclosure.rationaleDigest,
+        })),
+      }
+      if (candidate.manifestDigest !== canonicalDigest(manifestReceipt) ||
+          candidate.payloadDigest !== canonicalDigest(payloadReceipt) ||
+          candidate.preview.manifestDigest !== candidate.manifestDigest ||
+          candidate.preview.payloadDigest !== candidate.payloadDigest) {
+        throw new Error(`Import Outbound Design Brief Package ${candidate.id} manifest or payload receipt is invalid`)
+      }
+      const previewReceipt = {
+        manifestDigest: candidate.manifestDigest,
+        payloadDigest: candidate.payloadDigest,
+        title: candidate.title,
+        informationClassification: candidate.informationClassification,
+        contextPackCount: candidate.contextPacks.length,
+        entryCount: candidate.entries.length,
+        contextItemCount: candidate.entries.reduce((total, entry) => total + entry.contextItemIds.length, 0),
+        recipientCount: candidate.recipients.length,
+        representedRequirementCount: candidate.requirementCoverage.filter((coverage) => coverage.state === "represented").length,
+        unresolvedDisclosureCount: candidate.disclosures.filter((disclosure) => disclosure.state === "unresolved").length,
+        limitations: candidate.limitations,
+      }
+      if (candidate.preview.previewDigest !== undefined && candidate.preview.previewDigest !== canonicalDigest(previewReceipt)) {
+        throw new Error(`Import Outbound Design Brief Package ${candidate.id} preview receipt is invalid`)
       }
     }
 
@@ -8359,6 +8589,10 @@ export class ProductStudioService {
         /^figma-context-import-history\/figma-context-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "figma-context-import-candidate"
     }
+    if (/^outbound-design-brief-packages\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^outbound-design-brief-package-history\/outbound-design-brief-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "outbound-design-brief-package-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -8540,6 +8774,10 @@ export class ProductStudioService {
     if (/^figma-context-imports\/[0-9a-f-]+\.json$/i.test(path) ||
         /^figma-context-import-history\/figma-context-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return figmaContextImportSchema
+    }
+    if (/^outbound-design-brief-packages\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^outbound-design-brief-package-history\/outbound-design-brief-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return outboundDesignBriefPackageSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
