@@ -34,6 +34,7 @@ import {
   figmaMcpCapabilityDiscoverySchema,
   figmaReadSnapshotSchema,
   figmaContextImportSchema,
+  outboundDesignBriefPackageSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -182,6 +183,8 @@ const directoryNames = [
   "figma-read-snapshot-history",
   "figma-context-imports",
   "figma-context-import-history",
+  "outbound-design-brief-packages",
+  "outbound-design-brief-package-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -1015,6 +1018,8 @@ export class GaepRepository {
       ["figma-read-snapshot-history", /^figma-read-snapshot-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["figma-context-imports", /^[0-9a-f-]+\.json$/i],
       ["figma-context-import-history", /^figma-context-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["outbound-design-brief-packages", /^[0-9a-f-]+\.json$/i],
+      ["outbound-design-brief-package-history", /^outbound-design-brief-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1234,6 +1239,10 @@ export class GaepRepository {
     if (/^figma-context-imports\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^figma-context-import-history\/figma-context-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, figmaContextImportSchema)
+    }
+    if (/^outbound-design-brief-packages\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^outbound-design-brief-package-history\/outbound-design-brief-package-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, outboundDesignBriefPackageSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

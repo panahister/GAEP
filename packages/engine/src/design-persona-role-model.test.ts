@@ -35,6 +35,7 @@ import {
   type InformationArchitectureModel,
   type ManualFigmaExecutionPathInput,
   type ManualFigmaExecutionPath,
+  type OutboundDesignBriefPackageInput,
   type OutcomeModel,
   type OutcomeModelInput,
   type Product,
@@ -2087,6 +2088,196 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  async function outboundDesignBriefPackageInput(
+    contextImport: Awaited<ReturnType<typeof engine.figmaContextImport.create>>,
+  ): Promise<OutboundDesignBriefPackageInput> {
+    const objectiveDigest = canonicalDigest({
+      objective: "Prepare the exact governed GAEP design brief manifest for bounded human review before any external action",
+    })
+    const entries = contextImport.sections.map((section) => {
+      const requirementKeys = contextImport.requirementCoverage
+        .filter((coverage) => coverage.sectionKeys.includes(section.key))
+        .map((coverage) => coverage.requirementKey)
+        .sort((left, right) => left.localeCompare(right))
+      const recipientKeys = contextImport.targets
+        .filter((target) => target.sectionKeys.includes(section.key))
+        .map((target) => target.key)
+        .sort((left, right) => left.localeCompare(right))
+      return {
+        key: section.key,
+        sourceSectionKey: section.key,
+        kind: section.kind,
+        contextPackId: section.contextPackId,
+        contextItemIds: section.contextItemIds,
+        contentDigest: section.contentDigest,
+        transformationDigest: section.transformationDigest,
+        selectionReasonDigest: canonicalDigest({
+          objectiveDigest,
+          sourceSectionKey: section.key,
+          requirementKeys,
+          recipientKeys,
+        }),
+        informationClassification: section.informationClassification,
+        redactionState: section.redactionState,
+        requirementKeys,
+        recipientKeys,
+        evidence: section.evidence,
+        sources: section.sources,
+      }
+    }).sort((left, right) => left.key.localeCompare(right.key))
+    const recipients = contextImport.targets.map((target) => {
+      const entryKeys = target.sectionKeys
+        .map((sectionKey) => entries.find((entry) => entry.sourceSectionKey === sectionKey)!.key)
+        .sort((left, right) => left.localeCompare(right))
+      return {
+        key: target.key,
+        sourceTargetKey: target.key,
+        designScopeKey: target.designScopeKey,
+        fileKey: target.fileKey,
+        targetKind: "figma-file-root" as const,
+        externalFileIdentityDigest: target.externalFileIdentityDigest,
+        externalVersionDigest: target.externalVersionDigest,
+        plannedWriteToolKey: target.plannedWriteToolKey,
+        expectedEffect: target.expectedEffect,
+        permissionRequirementState: target.permissionRequirementState,
+        entryKeys,
+        purposeDigest: canonicalDigest({ objectiveDigest, sourceTargetKey: target.key, entryKeys }),
+        policyBasisDigest: canonicalDigest({ policy: "gaep-context-window-and-external-transmission-boundary-v1" }),
+        retentionRuleDigest: canonicalDigest({ retention: "governed-product-revision-and-audit-controls" }),
+        destinationState: "not-connected" as const,
+        processorState: "not-selected" as const,
+        deliveryState: "not-performed" as const,
+        sources: target.sources,
+        limitations: target.limitations,
+      }
+    }).sort((left, right) => left.key.localeCompare(right.key))
+    const requirementCoverage = contextImport.requirementCoverage.map((coverage) => ({
+      requirementKey: coverage.requirementKey,
+      state: coverage.state,
+      entryKeys: coverage.sectionKeys
+        .map((sectionKey) => entries.find((entry) => entry.sourceSectionKey === sectionKey)!.key)
+        .sort((left, right) => left.localeCompare(right)),
+      recipientKeys: coverage.targetKeys
+        .map((targetKey) => recipients.find((recipient) => recipient.sourceTargetKey === targetKey)!.key)
+        .sort((left, right) => left.localeCompare(right)),
+      rationaleDigest: coverage.rationaleDigest,
+      sources: coverage.sources,
+    })).sort((left, right) => left.requirementKey.localeCompare(right.requirementKey))
+    const limitations = [
+      "This manifest-only candidate does not materialize or transfer context, connect to Figma, request credentials, grant permissions, write, validate, approve, establish a baseline, establish readiness, or grant implementation authority",
+    ]
+    const base = {
+      initiativeId: initiative.id,
+      context: await exactContext(),
+      informationClassification: "internal" as const,
+      title: "Customer portal outbound design brief package candidate",
+      objectiveDigest,
+      figmaContextImport: {
+        recordId: contextImport.id,
+        revision: contextImport.revision,
+        digest: canonicalDigest(contextImport),
+        membershipDigest: contextImport.membershipDigest,
+      },
+      contextPacks: contextImport.contextPacks,
+      manifestFormat: "gaep-outbound-design-brief-package-v1" as const,
+      entries,
+      recipients,
+      requirementCoverage,
+      disclosures: [],
+      manifestState: "candidate-complete" as const,
+      provenanceState: "exact" as const,
+      redactionReviewState: "complete" as const,
+      unresolvedQuestions: [],
+      limitations,
+      reviewState: "ready-for-human-review" as const,
+      packageMaterializationState: "manifest-only" as const,
+      contextTransferState: "not-performed" as const,
+      figmaConnectionAuthorityState: "not-granted" as const,
+      credentialAuthorityState: "not-granted" as const,
+      permissionGrantState: "not-granted" as const,
+      figmaWriteAuthorityState: "not-granted" as const,
+      targetValidityState: "not-established" as const,
+      externalCompletenessState: "not-established" as const,
+      designValidityState: "not-established" as const,
+      designApprovalState: "not-established" as const,
+      designBaselineState: "not-established" as const,
+      readinessState: "not-established" as const,
+      implementationAuthorityState: "not-granted" as const,
+    }
+    const manifestDigest = canonicalDigest({
+      initiativeId: base.initiativeId,
+      context: base.context,
+      informationClassification: base.informationClassification,
+      objectiveDigest: base.objectiveDigest,
+      figmaContextImport: base.figmaContextImport,
+      contextPacks: base.contextPacks,
+      manifestFormat: base.manifestFormat,
+      entries: base.entries,
+      recipients: base.recipients,
+      requirementCoverage: base.requirementCoverage,
+      disclosures: base.disclosures,
+    })
+    const payloadDigest = canonicalDigest({
+      entries: entries.map((entry) => ({
+        key: entry.key,
+        sourceSectionKey: entry.sourceSectionKey,
+        contextPackId: entry.contextPackId,
+        contextItemIds: entry.contextItemIds,
+        contentDigest: entry.contentDigest,
+        transformationDigest: entry.transformationDigest,
+        selectionReasonDigest: entry.selectionReasonDigest,
+        informationClassification: entry.informationClassification,
+        redactionState: entry.redactionState,
+        requirementKeys: entry.requirementKeys,
+        recipientKeys: entry.recipientKeys,
+      })),
+      recipients: recipients.map((recipient) => ({
+        key: recipient.key,
+        sourceTargetKey: recipient.sourceTargetKey,
+        externalFileIdentityDigest: recipient.externalFileIdentityDigest,
+        externalVersionDigest: recipient.externalVersionDigest,
+        entryKeys: recipient.entryKeys,
+        purposeDigest: recipient.purposeDigest,
+        policyBasisDigest: recipient.policyBasisDigest,
+        retentionRuleDigest: recipient.retentionRuleDigest,
+      })),
+      requirementCoverage: requirementCoverage.map((coverage) => ({
+        requirementKey: coverage.requirementKey,
+        state: coverage.state,
+        entryKeys: coverage.entryKeys,
+        recipientKeys: coverage.recipientKeys,
+        rationaleDigest: coverage.rationaleDigest,
+      })),
+      disclosures: base.disclosures,
+    })
+    return {
+      ...base,
+      manifestDigest,
+      payloadDigest,
+      preview: {
+        manifestDigest,
+        payloadDigest,
+        previewDigest: canonicalDigest({
+          manifestDigest,
+          payloadDigest,
+          title: base.title,
+          informationClassification: base.informationClassification,
+          contextPackCount: base.contextPacks.length,
+          entryCount: base.entries.length,
+          contextItemCount: base.entries.reduce((total, entry) => total + entry.contextItemIds.length, 0),
+          recipientCount: base.recipients.length,
+          representedRequirementCount: base.requirementCoverage.filter((entry) => entry.state === "represented").length,
+          unresolvedDisclosureCount: 0,
+          limitations,
+        }),
+        state: "human-reviewed",
+        evidenceDigests: [digest("7")],
+        reviewedBy: { kind: "human", id: actorId },
+        reviewedAt: "2026-07-29T09:00:00.000Z",
+      },
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -4121,6 +4312,197 @@ describe("Design Persona and Role service", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "figma-context-import.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, audits, and revises immutable manifest-only Outbound Design Brief Packages", async () => {
+    const prerequisites = await createFigmaContextImportPrerequisites()
+    const contextImport = await engine.figmaContextImport.create(
+      await figmaContextImportInput(prerequisites), actorId,
+    )
+    const input = await outboundDesignBriefPackageInput(contextImport)
+    const candidate = await engine.outboundDesignBriefPackage.create(input, actorId)
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      manifestFormat: "gaep-outbound-design-brief-package-v1",
+      manifestDigest: input.manifestDigest,
+      payloadDigest: input.payloadDigest,
+      figmaContextImport: {
+        recordId: contextImport.id,
+        revision: contextImport.revision,
+        digest: canonicalDigest(contextImport),
+        membershipDigest: contextImport.membershipDigest,
+      },
+      entries: [
+        { key: "design-brief", evidence: { state: "human-reviewed" }, redactionState: "not-required" },
+        { key: "design-requirements", evidence: { state: "human-reviewed" }, redactionState: "not-required" },
+      ],
+      recipients: [{
+        key: "primary-design-file",
+        targetKind: "figma-file-root",
+        destinationState: "not-connected",
+        processorState: "not-selected",
+        deliveryState: "not-performed",
+      }],
+      manifestState: "candidate-complete",
+      provenanceState: "exact",
+      redactionReviewState: "complete",
+      packageMaterializationState: "manifest-only",
+      contextTransferState: "not-performed",
+      figmaConnectionAuthorityState: "not-granted",
+      credentialAuthorityState: "not-granted",
+      permissionGrantState: "not-granted",
+      figmaWriteAuthorityState: "not-granted",
+      targetValidityState: "not-established",
+      externalCompletenessState: "not-established",
+      designValidityState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-granted",
+      authorityBoundary: expect.stringContaining("manifest-only-candidate"),
+    })
+    expect(await engine.outboundDesignBriefPackage.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      contextPackCount: 1,
+      entryCount: 2,
+      contextItemCount: 2,
+      recipientCount: 1,
+      humanReviewedEntryCount: 2,
+      sourceRecordedEntryCount: 0,
+      notAssessedEntryCount: 0,
+      unresolvedRedactionCount: 0,
+      representedRequirementCount: 1,
+      unresolvedRequirementCount: 0,
+      unresolvedDisclosureCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      manifestState: "candidate-complete",
+      provenanceState: "exact",
+      redactionReviewState: "complete",
+      previewState: "human-reviewed",
+      reviewState: "ready-for-human-review",
+      state: "complete-for-review",
+      reasons: [],
+    })
+    const projection = await engine.outboundDesignBriefPackage.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: {
+        id: candidate.id,
+        revision: 1,
+        manifestDigest: input.manifestDigest,
+        payloadDigest: input.payloadDigest,
+        contextPackCount: 1,
+        entryCount: 2,
+        contextItemCount: 2,
+        recipientCount: 1,
+        representedRequirementCount: 1,
+        unresolvedDisclosureCount: 0,
+      },
+      privacyBoundary: expect.stringContaining("not-brief-requirement-constraint-context-item"),
+      authorityBoundary: expect.stringContaining("does-not-materialize-or-transfer-context"),
+    })
+    expect(JSON.stringify(projection)).not.toContain(prerequisites.contextContent.brief)
+    expect(JSON.stringify(projection)).not.toContain("figma-file-1")
+    expect(JSON.stringify(projection)).not.toContain("write-design-node")
+
+    const revised = await engine.outboundDesignBriefPackage.revise(candidate.id, candidate.revision, input, actorId)
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.outboundDesignBriefPackage.listHistory(candidate.id)).map((record) => record.revision))
+      .toEqual([2, 1])
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "outbound-design-brief-package.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        objectiveDigest: revised.objectiveDigest,
+        figmaContextImport: revised.figmaContextImport,
+        contextPackCount: 1,
+        manifestFormat: "gaep-outbound-design-brief-package-v1",
+        manifestDigest: revised.manifestDigest,
+        payloadDigest: revised.payloadDigest,
+        entryCount: 2,
+        contextItemCount: 2,
+        recipientCount: 1,
+        requirementCoverageCount: 1,
+        disclosureCount: 0,
+        previewDigest: revised.preview.previewDigest,
+        previewState: "human-reviewed",
+        manifestState: "candidate-complete",
+        provenanceState: "exact",
+        redactionReviewState: "complete",
+        reviewState: "ready-for-human-review",
+        packageMaterializationState: "manifest-only",
+        contextTransferState: "not-performed",
+        figmaConnectionAuthorityState: "not-granted",
+        credentialAuthorityState: "not-granted",
+        permissionGrantState: "not-granted",
+        figmaWriteAuthorityState: "not-granted",
+        targetValidityState: "not-established",
+        externalCompletenessState: "not-established",
+        designValidityState: "not-established",
+        designApprovalState: "not-established",
+        designBaselineState: "not-established",
+        readinessState: "not-established",
+        implementationAuthorityState: "not-granted",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+    expect(JSON.stringify(events.at(-1))).not.toContain(prerequisites.contextContent.brief)
+    expect(JSON.stringify(events.at(-1))).not.toContain("figma-file-1")
+    expect(JSON.stringify(events.at(-1))).not.toContain("write-design-node")
+  })
+
+  it("fails Outbound Design Brief Packages closed on stale imports, altered sections, or forged digest receipts", async () => {
+    const prerequisites = await createFigmaContextImportPrerequisites()
+    const contextImport = await engine.figmaContextImport.create(
+      await figmaContextImportInput(prerequisites), actorId,
+    )
+
+    const staleImport = await outboundDesignBriefPackageInput(contextImport)
+    staleImport.figmaContextImport.digest = digest("f")
+    await expect(engine.outboundDesignBriefPackage.create(staleImport, actorId))
+      .rejects.toThrow("exact current Figma Context Import identity, revision, digest, and membership")
+
+    const forgedEntry = await outboundDesignBriefPackageInput(contextImport)
+    forgedEntry.entries[0]!.contentDigest = digest("e")
+    await expect(engine.outboundDesignBriefPackage.create(forgedEntry, actorId))
+      .rejects.toThrow("exactly preserve its selected Figma Context Import section")
+
+    const forgedManifest = await outboundDesignBriefPackageInput(contextImport)
+    forgedManifest.manifestDigest = digest("d")
+    forgedManifest.preview.manifestDigest = digest("d")
+    await expect(engine.outboundDesignBriefPackage.create(forgedManifest, actorId))
+      .rejects.toThrow("manifest digest must bind the exact governed manifest")
+
+    const candidate = await engine.outboundDesignBriefPackage.create(
+      await outboundDesignBriefPackageInput(contextImport), actorId,
+    )
+    await engine.figmaContextImport.revise(
+      contextImport.id,
+      contextImport.revision,
+      await figmaContextImportInput(prerequisites),
+      actorId,
+    )
+    expect(await engine.outboundDesignBriefPackage.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "outbound-design-brief-package.binding-review-required",
       severity: "warning",
     }))
   })
