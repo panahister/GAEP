@@ -63,6 +63,7 @@ import type {
   ManualFigmaExecutionPathProjection,
   FigmaMcpCapabilityDiscoveryProjection,
   FigmaReadSnapshotProjection,
+  FigmaContextImportProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -259,6 +260,9 @@ export interface CurrentStudioEngineReader {
   figmaReadSnapshot?: {
     project(initiativeId: string): Promise<FigmaReadSnapshotProjection>
   }
+  figmaContextImport?: {
+    project(initiativeId: string): Promise<FigmaContextImportProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -331,6 +335,7 @@ interface ObservedStudioState {
   manualFigmaExecutionPathProjections: Map<string, ManualFigmaExecutionPathProjection>
   figmaMcpCapabilityDiscoveryProjections: Map<string, FigmaMcpCapabilityDiscoveryProjection>
   figmaReadSnapshotProjections: Map<string, FigmaReadSnapshotProjection>
+  figmaContextImportProjections: Map<string, FigmaContextImportProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2236,6 +2241,57 @@ function figmaReadSnapshotTable(state: ObservedStudioState): StudioTableSnapshot
   }
 }
 
+function figmaContextImportTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.figmaContextImportProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        selection: `${status.contextPackCount} Context Packs · ${status.sectionCount} sections · ${status.contextItemCount} Context Items · ${status.targetCount} Figma targets`,
+        evidence: `${status.humanReviewedSectionCount} human-reviewed · ${status.sourceRecordedSectionCount} source-recorded · ${status.notAssessedSectionCount} not assessed · ${status.unresolvedRedactionCount} redaction gaps`,
+        requirements: `${status.representedRequirementCount} represented · ${status.unresolvedRequirementCount} unresolved`,
+        assessment: `${status.state} · ${status.reviewState} · selection ${status.contextSelectionState} · provenance ${status.provenanceState} · preview ${status.previewState}`,
+        gaps: `${status.unresolvedOwnershipCount} ownership gaps · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, counts, statuses, and digests only; no brief, Requirement, constraint, Context Item, Figma target, tool, Source, personal, secret, credential, or permission content and no context packaging or transfer, Figma connection or call, credential request, permission grant, write, target or design validation, design approval, baseline, readiness, implementation, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "figma-context-import",
+    title: "Governed Figma Context Import Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "selection", label: "Privacy-safe selection" },
+      { key: "evidence", label: "Evidence and redaction" },
+      { key: "requirements", label: "Requirement coverage" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Figma Context Import candidate",
+        "Create a source-backed context selection through the governed engine workflow. This view does not package or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a baseline or readiness, or authorize implementation or action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2266,6 +2322,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     manualFigmaExecutionPathTable(state),
     figmaMcpCapabilityDiscoveryTable(state),
     figmaReadSnapshotTable(state),
+    figmaContextImportTable(state),
   )
   if (route === "architecture") {
     relatedRecords.push(
@@ -4920,6 +4977,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       manualFigmaExecutionPathProjections: new Map(),
       figmaMcpCapabilityDiscoveryProjections: new Map(),
       figmaReadSnapshotProjections: new Map(),
+      figmaContextImportProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -6468,6 +6526,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "figma-read-snapshot-unavailable",
           "Figma Read Snapshot metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "scope" && engine.figmaContextImport) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.figmaContextImport!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.figmaContextImportProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Figma Context Import projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `figma-context-import-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Figma Context Import metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "figma-context-import-unavailable",
+          "Figma Context Import metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

@@ -35,6 +35,7 @@ import {
   type ManualFigmaExecutionPathProjection,
   type FigmaMcpCapabilityDiscoveryProjection,
   type FigmaReadSnapshotProjection,
+  type FigmaContextImportProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2250,6 +2251,65 @@ function figmaReadSnapshotProjection(): FigmaReadSnapshotProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function figmaContextImportProjection(): FigmaContextImportProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "figma-context-import-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "fafafafa-fafa-4afa-8afa-fafafafafafa", revision: 2, digest: `sha256:${"c".repeat(64)}` as const },
+    contextPackCount: 2,
+    sectionCount: 8,
+    contextItemCount: 24,
+    targetCount: 2,
+    humanReviewedSectionCount: 5,
+    sourceRecordedSectionCount: 2,
+    notAssessedSectionCount: 1,
+    unresolvedRedactionCount: 1,
+    representedRequirementCount: 7,
+    unresolvedRequirementCount: 2,
+    unresolvedOwnershipCount: 1,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    contextSelectionState: "partial" as const,
+    provenanceState: "partial" as const,
+    previewState: "candidate-generated" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more selected sections require human review"],
+    assessedAt: "2026-07-29T09:30:00.000Z",
+    authorityBoundary: "figma-context-import-status-is-observational-and-does-not-package-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "figma-context-import-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"d".repeat(64)}` as const,
+      state: "candidate" as const,
+      contextPackCount: status.contextPackCount,
+      sectionCount: status.sectionCount,
+      contextItemCount: status.contextItemCount,
+      targetCount: status.targetCount,
+      representedRequirementCount: status.representedRequirementCount,
+      reviewState: status.reviewState,
+      updatedAt: "2026-07-29T09:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-or-personal-content-secrets-credentials-or-permissions" as const,
+    authorityBoundary: "figma-context-import-projection-is-read-only-and-does-not-package-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -2907,6 +2967,7 @@ interface HarnessOptions {
   manualFigmaExecutionPathProjection?: ManualFigmaExecutionPathProjection
   figmaMcpCapabilityDiscoveryProjection?: FigmaMcpCapabilityDiscoveryProjection
   figmaReadSnapshotProjection?: FigmaReadSnapshotProjection
+  figmaContextImportProjection?: FigmaContextImportProjection
   commandResult?: unknown
 }
 
@@ -3167,6 +3228,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.figmaReadSnapshotProjection ? {
       figmaReadSnapshot: {
         project: async () => options.figmaReadSnapshotProjection!,
+      },
+    } : {}),
+    ...(options.figmaContextImportProjection ? {
+      figmaContextImport: {
+        project: async () => options.figmaContextImportProjection!,
       },
     } : {}),
   }
@@ -4060,6 +4126,32 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private figma file|private component|private collection|private variable|private external identity|private value|private source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe governed Figma Context Import metadata on the native scope page", async () => {
+    const projection = figmaContextImportProjection()
+    const { source } = harness({ figmaContextImportProjection: projection })
+    const snapshot = await source.readSnapshot("scope")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "figma-context-import")).toMatchObject({
+      id: "figma-context-import",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          selection: "2 Context Packs · 8 sections · 24 Context Items · 2 Figma targets",
+          evidence: "5 human-reviewed · 2 source-recorded · 1 not assessed · 1 redaction gaps",
+          requirements: "7 represented · 2 unresolved",
+          assessment: "attention-required · held · selection partial · provenance partial · preview candidate-generated",
+          gaps: "1 ownership gaps · 3 questions · 0 stale bindings · 2 stale Source references",
+          boundary: "Candidate identities, counts, statuses, and digests only; no brief, Requirement, constraint, Context Item, Figma target, tool, Source, personal, secret, credential, or permission content and no context packaging or transfer, Figma connection or call, credential request, permission grant, write, target or design validation, design approval, baseline, readiness, implementation, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private brief|private requirement|private constraint|private context item|private figma target|private tool|private source content|customer@example\.com|api_key/iu,
     )
   })
 
