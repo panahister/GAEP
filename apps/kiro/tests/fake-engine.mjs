@@ -63,6 +63,7 @@ const manualFigmaExecutionPathId = "65656565-6565-4565-8565-656565656565"
 const figmaMcpCapabilityDiscoveryId = "66666666-6666-4666-8666-666666666666"
 const figmaReadSnapshotId = "67676767-6767-4767-8767-676767676767"
 const figmaContextImportId = "68686868-6868-4868-8868-686868686868"
+const outboundDesignBriefPackageId = "69696969-6969-4969-8969-696969696969"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -170,6 +171,8 @@ input.on("line", (line) => {
       return readFigmaReadSnapshot(id, request.params)
     case "design.figmaContextImport.snapshot":
       return readFigmaContextImport(id, request.params)
+    case "design.outboundDesignBriefPackage.snapshot":
+      return readOutboundDesignBriefPackage(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2565,6 +2568,79 @@ function readFigmaContextImport(id, params) {
   if (workspacePath.endsWith("bad-figma-context-import-digest")) value.candidate.contextItemCount = 25
   if (workspacePath.endsWith("bad-figma-context-import-private")) {
     value.contextItems = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readOutboundDesignBriefPackage(id, params) {
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"f".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "outbound-design-brief-package-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: outboundDesignBriefPackageId, revision: 2, digest: candidateDigest },
+    contextPackCount: 2,
+    entryCount: 8,
+    contextItemCount: 24,
+    recipientCount: 2,
+    humanReviewedEntryCount: 5,
+    sourceRecordedEntryCount: 2,
+    notAssessedEntryCount: 1,
+    unresolvedRedactionCount: 1,
+    representedRequirementCount: 7,
+    unresolvedRequirementCount: 2,
+    unresolvedDisclosureCount: 3,
+    staleBindingCount: 0,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    manifestState: "partial",
+    provenanceState: "partial",
+    redactionReviewState: "partial",
+    previewState: "candidate-generated",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more outbound package entries require human review"],
+    assessedAt: "2026-07-29T10:30:00.000Z",
+    authorityBoundary: "outbound-design-brief-package-status-is-observational-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "outbound-design-brief-package-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: outboundDesignBriefPackageId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"a".repeat(64)}`,
+      state: "candidate",
+      manifestFormat: "gaep-outbound-design-brief-package-v1",
+      manifestDigest: `sha256:${"b".repeat(64)}`,
+      payloadDigest: `sha256:${"c".repeat(64)}`,
+      contextPackCount: 2,
+      entryCount: 8,
+      contextItemCount: 24,
+      recipientCount: 2,
+      representedRequirementCount: 7,
+      unresolvedDisclosureCount: 3,
+      reviewState: "held",
+      updatedAt: "2026-07-29T10:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-transformation-disclosure-or-personal-content-secrets-credentials-or-permissions",
+    authorityBoundary: "outbound-design-brief-package-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-outbound-design-brief-package-binding")) content.initiative.id = outboundDesignBriefPackageId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-outbound-design-brief-package-digest")) value.candidate.contextItemCount = 25
+  if (workspacePath.endsWith("bad-outbound-design-brief-package-private")) {
+    value.entries = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

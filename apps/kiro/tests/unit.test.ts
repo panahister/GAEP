@@ -2038,6 +2038,61 @@ test("protocol-v2 client validates privacy-safe Figma Context Import projections
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 client validates privacy-safe Outbound Design Brief Package projections and rejects hostile responses", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-outbound-design-brief-package-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-outbound-design-brief-package-binding",
+    "bad-outbound-design-brief-package-digest",
+    "bad-outbound-design-brief-package-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readOutboundDesignBriefPackage(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.manifestState, "partial")
+    assert.equal(projection.status.contextPackCount, 2)
+    assert.equal(projection.status.entryCount, 8)
+    assert.equal(projection.status.contextItemCount, 24)
+    assert.equal(projection.status.recipientCount, 2)
+    assert.equal(projection.status.humanReviewedEntryCount, 5)
+    assert.equal(projection.status.representedRequirementCount, 7)
+    assert.equal(projection.candidate?.manifestFormat, "gaep-outbound-design-brief-package-v1")
+    assert.equal(
+      projection.authorityBoundary,
+      "outbound-design-brief-package-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"entries":'), false)
+    assert.equal(serialized.includes('"recipients":'), false)
+    assert.equal(serialized.includes('"disclosures":'), false)
+    assert.equal(serialized.includes('"tools":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readOutboundDesignBriefPackage(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")

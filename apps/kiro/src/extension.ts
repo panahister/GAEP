@@ -37,6 +37,7 @@ import {
   type FigmaMcpCapabilityDiscoveryProjection,
   type FigmaReadSnapshotProjection,
   type FigmaContextImportProjection,
+  type OutboundDesignBriefPackageProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -145,6 +146,7 @@ const commandIds = {
   figmaMcpCapabilityDiscovery: "gaepKiro.figmaMcpCapabilityDiscovery.inspect",
   figmaReadSnapshot: "gaepKiro.figmaReadSnapshot.inspect",
   figmaContextImport: "gaepKiro.figmaContextImport.inspect",
+  outboundDesignBriefPackage: "gaepKiro.outboundDesignBriefPackage.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -272,6 +274,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.figmaMcpCapabilityDiscovery, (input?: unknown) => runUserCommand(() => showFigmaMcpCapabilityDiscovery(pool, input))),
     vscode.commands.registerCommand(commandIds.figmaReadSnapshot, (input?: unknown) => runUserCommand(() => showFigmaReadSnapshot(pool, input))),
     vscode.commands.registerCommand(commandIds.figmaContextImport, (input?: unknown) => runUserCommand(() => showFigmaContextImport(pool, input))),
+    vscode.commands.registerCommand(commandIds.outboundDesignBriefPackage, (input?: unknown) => runUserCommand(() => showOutboundDesignBriefPackage(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -1984,6 +1987,50 @@ async function showFigmaContextImport(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and digests only; this does not package or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a baseline or readiness, or authorize implementation or action.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showOutboundDesignBriefPackage(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<OutboundDesignBriefPackageProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Outbound Design Brief Package", "Initiative ID")
+  const projection = await client.readOutboundDesignBriefPackage(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Outbound Design Brief Package candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Manifest: ${status.manifestState} · provenance ${status.provenanceState} · redaction ${status.redactionReviewState} · preview ${status.previewState}`,
+    `Inventory: ${status.contextPackCount} Context Packs · ${status.entryCount} entries · ${status.contextItemCount} Context Items · ${status.recipientCount} recipients`,
+    `Evidence: ${status.humanReviewedEntryCount} human-reviewed · ${status.sourceRecordedEntryCount} source-recorded · ${status.notAssessedEntryCount} not assessed · ${status.unresolvedRedactionCount} redaction gaps`,
+    `Requirement coverage: ${status.representedRequirementCount} represented · ${status.unresolvedRequirementCount} unresolved · ${status.unresolvedDisclosureCount} unresolved disclosures`,
+    `Candidate gaps: ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Manifest receipt: ${record.manifestFormat} · ${record.manifestDigest}`,
+      `Payload receipt: ${record.payloadDigest}`,
+      `Candidate inventory: ${record.contextPackCount} Context Packs · ${record.entryCount} entries · ${record.contextItemCount} Context Items · ${record.recipientCount} recipients · ${record.representedRequirementCount} represented Requirements · ${record.unresolvedDisclosureCount} unresolved disclosures · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and digests only; this does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a baseline or readiness, or authorize implementation or action.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

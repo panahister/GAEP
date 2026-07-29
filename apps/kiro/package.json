@@ -87,6 +87,7 @@
     "onCommand:gaepKiro.figmaMcpCapabilityDiscovery.inspect",
     "onCommand:gaepKiro.figmaReadSnapshot.inspect",
     "onCommand:gaepKiro.figmaContextImport.inspect",
+    "onCommand:gaepKiro.outboundDesignBriefPackage.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -312,6 +313,10 @@
       {
         "command": "gaepKiro.figmaContextImport.inspect",
         "title": "GAEP for Kiro: Inspect Governed Figma Context Import Candidate"
+      },
+      {
+        "command": "gaepKiro.outboundDesignBriefPackage.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Outbound Design Brief Package Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

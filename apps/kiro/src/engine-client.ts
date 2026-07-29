@@ -36,6 +36,7 @@ import {
   figmaMcpCapabilityDiscoveryProjectionSchema,
   figmaReadSnapshotProjectionSchema,
   figmaContextImportProjectionSchema,
+  outboundDesignBriefPackageProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
@@ -79,6 +80,7 @@ import {
   type FigmaMcpCapabilityDiscoveryProjection,
   type FigmaReadSnapshotProjection,
   type FigmaContextImportProjection,
+  type OutboundDesignBriefPackageProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -845,6 +847,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = figmaContextImportProjectionSchema.safeParse(
         await this.request("design.figmaContextImport.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readOutboundDesignBriefPackage(initiativeValue: string): Promise<OutboundDesignBriefPackageProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = outboundDesignBriefPackageProjectionSchema.safeParse(
+        await this.request("design.outboundDesignBriefPackage.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data
