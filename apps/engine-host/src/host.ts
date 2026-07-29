@@ -294,6 +294,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.designToRequirementBinding.revise",
   "design.designToRequirementBinding.assess",
   "design.designToRequirementBinding.snapshot",
+  "design.designerReadyGate.read",
+  "design.designerReadyGate.create",
+  "design.designerReadyGate.revise",
+  "design.designerReadyGate.assess",
+  "design.designerReadyGate.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1782,6 +1787,21 @@ export class EngineHost {
         return this.engine.designToRequirementBinding.assess(request.params.initiativeId)
       case "design.designToRequirementBinding.snapshot":
         return this.engine.designToRequirementBinding.project(request.params.initiativeId)
+      case "design.designerReadyGate.read":
+        return await this.engine.designerReadyGate.readCurrent(request.params.initiativeId) ?? null
+      case "design.designerReadyGate.create":
+        return this.engine.designerReadyGate.create(request.params.record, actorId(request.params.actorId))
+      case "design.designerReadyGate.revise":
+        return this.engine.designerReadyGate.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.designerReadyGate.assess":
+        return this.engine.designerReadyGate.assess(request.params.initiativeId)
+      case "design.designerReadyGate.snapshot":
+        return this.engine.designerReadyGate.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

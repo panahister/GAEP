@@ -2089,6 +2089,52 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "designer-ready-gate-read-empty",
+      protocolVersion: 2,
+      method: "design.designerReadyGate.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "designer-ready-gate-assess-empty",
+      protocolVersion: 2,
+      method: "design.designerReadyGate.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      prerequisiteCount: 0,
+      satisfiedCount: 0,
+      notApplicableCount: 0,
+      unsatisfiedCount: 0,
+      notAssessedCount: 0,
+      staleOrUnknownCount: 0,
+      humanReviewedCount: 0,
+      pendingExceptionCount: 0,
+      grantedExceptionCandidateCount: 0,
+      invalidExceptionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      candidateResult: "not-assessed",
+      reviewState: "draft",
+      state: "attention-required",
+      gateBoundary: expect.stringContaining("evaluation-result-not-permission-or-readiness"),
+      authorityBoundary: expect.stringContaining("does-not-establish-design-completeness"),
+    })
+    const designerReadyGateProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "designer-ready-gate-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.designerReadyGate.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: designerReadyGateDigest, ...designerReadyGateProjectionBody } = designerReadyGateProjection
+    expect(designerReadyGateDigest).toBe(canonicalDigest(designerReadyGateProjectionBody))
+    expect(designerReadyGateProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-design-content-criteria-findings-exception-rationale"),
+      authorityBoundary: expect.stringContaining("does-not-establish-design-completeness"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -2223,6 +2269,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "design-to-requirement-binding-v1-block",
       method: "design.designToRequirementBinding.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "designer-ready-gate-v1-block",
+      method: "design.designerReadyGate.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

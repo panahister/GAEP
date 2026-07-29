@@ -65,6 +65,7 @@ import { outboundDesignBriefPackageInputSchema } from "./outbound-design-brief-p
 import { governedFigmaWriteInputSchema } from "./governed-figma-write.js"
 import { finalizedFigmaSnapshotImportInputSchema } from "./finalized-figma-snapshot-import.js"
 import { designToRequirementBindingInputSchema } from "./design-to-requirement-binding.js"
+import { designerReadyGateInputSchema } from "./designer-ready-gate.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -721,6 +722,18 @@ export const hostDesignToRequirementBindingReviseParamsSchema = z.object({
   record: designToRequirementBindingInputSchema,
 }).strict()
 
+export const hostDesignerReadyGateCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: designerReadyGateInputSchema,
+}).strict()
+
+export const hostDesignerReadyGateReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: designerReadyGateInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -973,6 +986,11 @@ export const hostMethodSchema = z.enum([
   "design.designToRequirementBinding.revise",
   "design.designToRequirementBinding.assess",
   "design.designToRequirementBinding.snapshot",
+  "design.designerReadyGate.read",
+  "design.designerReadyGate.create",
+  "design.designerReadyGate.revise",
+  "design.designerReadyGate.assess",
+  "design.designerReadyGate.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1234,6 +1252,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.designToRequirementBinding.revise", hostDesignToRequirementBindingReviseParamsSchema),
   requestVariant("design.designToRequirementBinding.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.designToRequirementBinding.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designerReadyGate.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designerReadyGate.create", hostDesignerReadyGateCreateParamsSchema),
+  requestVariant("design.designerReadyGate.revise", hostDesignerReadyGateReviseParamsSchema),
+  requestVariant("design.designerReadyGate.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designerReadyGate.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
