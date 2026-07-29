@@ -1,0 +1,58 @@
+namespace Gaep.HostClient;
+
+public sealed record GovernedFigmaWritePackageBindingView(
+    Guid RecordId,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    string ManifestDigest,
+    string PayloadDigest);
+
+public sealed record GovernedFigmaWriteRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    string RequestFormat,
+    string RequestDigest,
+    string EffectDigest,
+    GovernedFigmaWritePackageBindingView OutboundPackage,
+    string ExternalFileIdentityDigest,
+    string ExpectedExternalVersionDigest,
+    int SelectedEntryCount,
+    string PreviewState,
+    string? PreviewDigest,
+    string ApprovalState,
+    string PermissionEvidenceState,
+    string IdempotencyState,
+    string RecoveryPlanState,
+    string ReviewState,
+    string WriteExecutionState);
+
+public sealed record GovernedFigmaWriteProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    string ReviewState,
+    string WritePlanState,
+    string PreviewState,
+    string ApprovalState,
+    string PermissionEvidenceState,
+    string IdempotencyState,
+    string ReplayProtectionState,
+    string RecoveryPlanState,
+    string WriteExecutionState,
+    string WriteResultState,
+    IReadOnlyList<string> Reasons,
+    int SelectedEntryCount,
+    int UnresolvedDisclosureCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    int UnresolvedQuestionCount,
+    GovernedFigmaWriteRecordView? Candidate,
+    string SnapshotDigest);

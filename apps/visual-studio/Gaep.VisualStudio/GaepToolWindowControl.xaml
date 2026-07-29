@@ -168,6 +168,10 @@
                 Command="{Binding LoadOutboundDesignBriefPackageCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds brief, Requirement, constraint, Context Item, Figma target, tool, Source, transformation, disclosure, personal, secret, credential, and permission content, and does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a baseline or readiness, or authorize implementation or action."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadGovernedFigmaWriteButton" Content="Inspect governed Figma Write"
+                Command="{Binding LoadGovernedFigmaWriteCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds brief, Requirement, constraint, Context Item, Figma target, tool, Source, approval actor, permission evidence, recovery, personal, secret, and credential content, and does not materialize or transfer context, connect to or call Figma, request credentials, grant permissions, authorize or perform writes, validate targets or design, approve design, establish a baseline or readiness, or authorize implementation or action."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

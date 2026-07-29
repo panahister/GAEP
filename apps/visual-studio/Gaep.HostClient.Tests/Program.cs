@@ -79,6 +79,7 @@ internal static class Program
     private static readonly Guid FigmaReadSnapshotId = Guid.Parse("74747474-7474-4474-8474-747474747474");
     private static readonly Guid FigmaContextImportId = Guid.Parse("75757575-7575-4575-8575-757575757575");
     private static readonly Guid OutboundDesignBriefPackageId = Guid.Parse("76767676-7676-4676-8676-767676767676");
+    private static readonly Guid GovernedFigmaWriteId = Guid.Parse("77777777-7777-4777-8777-777777777777");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -245,6 +246,9 @@ internal static class Program
         var badOutboundDesignBriefPackageBindingRoot = Path.Combine(temporaryRoot, "bad-outbound-design-brief-package-binding");
         var badOutboundDesignBriefPackageDigestRoot = Path.Combine(temporaryRoot, "bad-outbound-design-brief-package-digest");
         var badOutboundDesignBriefPackagePrivateRoot = Path.Combine(temporaryRoot, "bad-outbound-design-brief-package-private");
+        var badGovernedFigmaWriteBindingRoot = Path.Combine(temporaryRoot, "bad-governed-figma-write-binding");
+        var badGovernedFigmaWriteDigestRoot = Path.Combine(temporaryRoot, "bad-governed-figma-write-digest");
+        var badGovernedFigmaWritePrivateRoot = Path.Combine(temporaryRoot, "bad-governed-figma-write-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -411,6 +415,9 @@ internal static class Program
         Directory.CreateDirectory(badOutboundDesignBriefPackageBindingRoot);
         Directory.CreateDirectory(badOutboundDesignBriefPackageDigestRoot);
         Directory.CreateDirectory(badOutboundDesignBriefPackagePrivateRoot);
+        Directory.CreateDirectory(badGovernedFigmaWriteBindingRoot);
+        Directory.CreateDirectory(badGovernedFigmaWriteDigestRoot);
+        Directory.CreateDirectory(badGovernedFigmaWritePrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2246,6 +2253,54 @@ internal static class Program
                 "Outbound Design Brief Package rejects a projection rebound to a substituted Product revision");
         }
 
+        var governedWriteProjection = await client.ReadGovernedFigmaWriteAsync(InitiativeId);
+        Check(governedWriteProjection.ProductId == product.Id &&
+              governedWriteProjection.ProductRevision == product.Revision &&
+              governedWriteProjection.ProductDigest == product.Digest &&
+              governedWriteProjection.InitiativeId == resolved.Id &&
+              governedWriteProjection.InitiativeRevision == resolved.Revision &&
+              governedWriteProjection.InitiativeDigest == resolved.Digest &&
+              governedWriteProjection.AssessmentState == "attention-required" &&
+              governedWriteProjection.ReviewState == "held" &&
+              governedWriteProjection.WritePlanState == "held" &&
+              governedWriteProjection.PreviewState == "candidate-generated" &&
+              governedWriteProjection.ApprovalState == "pending" &&
+              governedWriteProjection.PermissionEvidenceState == "missing" &&
+              governedWriteProjection.IdempotencyState == "defined" &&
+              governedWriteProjection.ReplayProtectionState == "defined" &&
+              governedWriteProjection.RecoveryPlanState == "defined" &&
+              governedWriteProjection.WriteExecutionState == "not-performed" &&
+              governedWriteProjection.WriteResultState == "not-recorded" &&
+              governedWriteProjection.SelectedEntryCount == 8 &&
+              governedWriteProjection.Candidate?.RequestFormat == "gaep-governed-figma-write-request-v1" &&
+              governedWriteProjection.Candidate?.OutboundPackage.Revision == 2,
+            "Typed Governed Figma Write preserves exact Product, Initiative, governance, safety, and privacy-safe receipt metadata");
+        var governedWriteOutput = await initiativeController.ReadGovernedFigmaWriteAsync(InitiativeId);
+        Check(governedWriteOutput.Contains("GAEP governed Figma Write authorization-review candidate", StringComparison.Ordinal) &&
+              governedWriteOutput.Contains("approval pending · permission evidence missing", StringComparison.Ordinal) &&
+              governedWriteOutput.Contains("8 selected entries", StringComparison.Ordinal) &&
+              governedWriteOutput.Contains("no package materialization or context transfer", StringComparison.Ordinal) &&
+              governedWriteOutput.Contains("permission grant", StringComparison.Ordinal) &&
+              !governedWriteOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !governedWriteOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !governedWriteOutput.Contains("approvalActor=", StringComparison.Ordinal),
+            "Governed Figma Write workflow renders privacy-safe receipt metadata with explicit no-effect and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badGovernedFigmaWriteDigestRoot, badGovernedFigmaWritePrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadGovernedFigmaWriteAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Governed Figma Write rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badGovernedFigmaWriteBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadGovernedFigmaWriteAsync(InitiativeId),
+                "Governed Figma Write rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3593,6 +3648,9 @@ internal static class Program
         var badOutboundDesignBriefPackageBinding = Path.GetFileName(workspace) == "bad-outbound-design-brief-package-binding";
         var badOutboundDesignBriefPackageDigest = Path.GetFileName(workspace) == "bad-outbound-design-brief-package-digest";
         var badOutboundDesignBriefPackagePrivate = Path.GetFileName(workspace) == "bad-outbound-design-brief-package-private";
+        var badGovernedFigmaWriteBinding = Path.GetFileName(workspace) == "bad-governed-figma-write-binding";
+        var badGovernedFigmaWriteDigest = Path.GetFileName(workspace) == "bad-governed-figma-write-digest";
+        var badGovernedFigmaWritePrivate = Path.GetFileName(workspace) == "bad-governed-figma-write-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -4110,6 +4168,17 @@ internal static class Program
                         badOutboundDesignBriefPackageBinding,
                         badOutboundDesignBriefPackageDigest,
                         badOutboundDesignBriefPackagePrivate);
+                    break;
+                case "design.governedFigmaWrite.snapshot":
+                    await HandleGovernedFigmaWriteAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badGovernedFigmaWriteBinding,
+                        badGovernedFigmaWriteDigest,
+                        badGovernedFigmaWritePrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -7938,6 +8007,123 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["contextItemCount"] = 25;
         if (includePrivateField) result["entries"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleGovernedFigmaWriteAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID GOVERNED FIGMA WRITE");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-29T14:00:00.000Z";
+        var candidateDigest = $"sha256:{new string('1', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = GovernedFigmaWriteId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('2', 64)}",
+            ["state"] = "candidate",
+            ["requestFormat"] = "gaep-governed-figma-write-request-v1",
+            ["requestDigest"] = $"sha256:{new string('3', 64)}",
+            ["effectDigest"] = $"sha256:{new string('4', 64)}",
+            ["outboundPackage"] = new Dictionary<string, object?>
+            {
+                ["recordId"] = OutboundDesignBriefPackageId.ToString("D"),
+                ["revision"] = 2,
+                ["digest"] = $"sha256:{new string('5', 64)}",
+                ["membershipDigest"] = $"sha256:{new string('6', 64)}",
+                ["manifestDigest"] = $"sha256:{new string('7', 64)}",
+                ["payloadDigest"] = $"sha256:{new string('8', 64)}",
+            },
+            ["externalFileIdentityDigest"] = $"sha256:{new string('9', 64)}",
+            ["expectedExternalVersionDigest"] = $"sha256:{new string('a', 64)}",
+            ["selectedEntryCount"] = 8,
+            ["previewState"] = "candidate-generated",
+            ["previewDigest"] = $"sha256:{new string('b', 64)}",
+            ["approvalState"] = "pending",
+            ["permissionEvidenceState"] = "missing",
+            ["idempotencyState"] = "defined",
+            ["recoveryPlanState"] = "defined",
+            ["reviewState"] = "held",
+            ["writeExecutionState"] = "not-performed",
+            ["updatedAt"] = "2026-07-29T13:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "governed-figma-write-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "governed-figma-write-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = GovernedFigmaWriteId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["selectedEntryCount"] = 8,
+                ["unresolvedDisclosureCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedQuestionCount"] = 3,
+                ["previewState"] = "candidate-generated",
+                ["approvalState"] = "pending",
+                ["permissionEvidenceState"] = "missing",
+                ["idempotencyState"] = "defined",
+                ["replayProtectionState"] = "defined",
+                ["recoveryPlanState"] = "defined",
+                ["writePlanState"] = "held",
+                ["reviewState"] = "held",
+                ["writeExecutionState"] = "not-performed",
+                ["writeResultState"] = "not-recorded",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "Exact permission evidence is missing" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "governed-figma-write-status-is-observational-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-approval-actor-permission-evidence-recovery-or-personal-content-secrets-or-credentials",
+            ["authorityBoundary"] =
+                "governed-figma-write-projection-is-read-only-and-does-not-materialize-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["selectedEntryCount"] = 9;
+        if (includePrivateField) result["approvalActor"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
