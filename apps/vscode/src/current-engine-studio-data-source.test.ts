@@ -39,6 +39,7 @@ import {
   type OutboundDesignBriefPackageProjection,
   type GovernedFigmaWriteProjection,
   type FinalizedFigmaSnapshotImportProjection,
+  type DesignToRequirementBindingProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2523,6 +2524,90 @@ function finalizedFigmaSnapshotImportProjection(): FinalizedFigmaSnapshotImportP
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function designToRequirementBindingProjection(): DesignToRequirementBindingProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "design-to-requirement-binding-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "dededede-dede-4ede-8ede-dededededede", revision: 2, digest: `sha256:${"d".repeat(64)}` as const },
+    bindingCount: 7,
+    humanReviewedBindingCount: 5,
+    designItemCount: 4,
+    boundDesignItemCount: 3,
+    unboundDesignItemCount: 1,
+    requirementCount: 3,
+    boundRequirementCount: 2,
+    unboundRequirementCount: 1,
+    decisionCount: 2,
+    boundDecisionCount: 1,
+    unboundDecisionCount: 1,
+    openConflictCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    reconciliationState: "partial" as const,
+    candidateCoverageState: "partial" as const,
+    provenanceState: "exact" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more governed subjects remain unbound"],
+    assessedAt: "2026-07-29T16:30:00.000Z",
+    authorityBoundary: "design-to-requirement-binding-status-is-observational-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "design-to-requirement-binding-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"e".repeat(64)}` as const,
+      state: "candidate" as const,
+      finalizedSnapshot: {
+        recordId: "cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd",
+        revision: 2,
+        digest: `sha256:${"1".repeat(64)}` as const,
+        membershipDigest: `sha256:${"2".repeat(64)}` as const,
+        itemCatalogDigest: `sha256:${"3".repeat(64)}` as const,
+      },
+      designRequirements: {
+        recordId: "abababab-abab-4bab-8bab-abababababab",
+        revision: 3,
+        digest: `sha256:${"4".repeat(64)}` as const,
+        membershipDigest: `sha256:${"5".repeat(64)}` as const,
+        requirementCatalogDigest: `sha256:${"6".repeat(64)}` as const,
+      },
+      decisionRegister: {
+        recordId: "bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc",
+        revision: 4,
+        digest: `sha256:${"7".repeat(64)}` as const,
+        membershipDigest: `sha256:${"8".repeat(64)}` as const,
+        decisionCatalogDigest: `sha256:${"9".repeat(64)}` as const,
+      },
+      reconciliationDigest: `sha256:${"a".repeat(64)}` as const,
+      bindingCount: status.bindingCount,
+      designItemCoverageCount: status.designItemCount,
+      subjectCoverageCount: status.requirementCount + status.decisionCount,
+      conflictCount: 3,
+      reconciliationState: status.reconciliationState,
+      candidateCoverageState: status.candidateCoverageState,
+      provenanceState: status.provenanceState,
+      reviewState: status.reviewState,
+      updatedAt: "2026-07-29T16:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-content-external-identities-requirement-text-decision-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions" as const,
+    authorityBoundary: "design-to-requirement-binding-projection-is-read-only-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -3184,6 +3269,7 @@ interface HarnessOptions {
   outboundDesignBriefPackageProjection?: OutboundDesignBriefPackageProjection
   governedFigmaWriteProjection?: GovernedFigmaWriteProjection
   finalizedFigmaSnapshotImportProjection?: FinalizedFigmaSnapshotImportProjection
+  designToRequirementBindingProjection?: DesignToRequirementBindingProjection
   commandResult?: unknown
 }
 
@@ -3464,6 +3550,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.finalizedFigmaSnapshotImportProjection ? {
       finalizedFigmaSnapshotImport: {
         project: async () => options.finalizedFigmaSnapshotImportProjection!,
+      },
+    } : {}),
+    ...(options.designToRequirementBindingProjection ? {
+      designToRequirementBinding: {
+        project: async () => options.designToRequirementBindingProjection!,
       },
     } : {}),
   }
@@ -4464,6 +4555,33 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private figma content|private figma name|private external identity|private authorization actor|private source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects privacy-safe Design-to-Requirement Binding metadata on the native scope page", async () => {
+    const projection = designToRequirementBindingProjection()
+    const { source } = harness({ designToRequirementBindingProjection: projection })
+    const snapshot = await source.readSnapshot("scope")
+    expect(snapshot.page.kind === "record-form" && snapshot.page.relatedRecords?.find((table) => table.id === "design-to-requirement-binding")).toMatchObject({
+      id: "design-to-requirement-binding",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          dependencies: `snapshot ${projection.candidate?.finalizedSnapshot.recordId} · r2 · Requirements ${projection.candidate?.designRequirements.recordId} · r3 · Decisions ${projection.candidate?.decisionRegister.recordId} · r4`,
+          catalogs: `items ${projection.candidate?.finalizedSnapshot.itemCatalogDigest} · Requirements ${projection.candidate?.designRequirements.requirementCatalogDigest} · Decisions ${projection.candidate?.decisionRegister.decisionCatalogDigest}`,
+          inventory: "7 bindings · 4 design items · 5 governed subjects · 3 conflicts",
+          governance: "reconciliation partial · candidate coverage partial · provenance exact",
+          assessment: "attention-required · held · 5/7 human-reviewed bindings",
+          gaps: "1 unbound design items · 1 unbound Requirements · 1 unbound Decisions · 2 open conflicts · 3 questions · 1 stale bindings · 2 stale Source references",
+          boundary: "Candidate identities, exact dependency and catalog digests, counts, and statuses only; no Figma content, external identities, Requirement text, Decision content, Source content, human attribution, personal, secret, credential, or permission content and no relationship-truth or coverage-completeness proof, Requirement satisfaction, Decision effectiveness, external-completeness proof, design validation, approval, baseline, readiness, Figma connection or call, credential request, permission grant, import or write execution, implementation, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private figma content|private external identity|private requirement text|private decision content|private source content|private human attribution|customer@example\.com|api_key/iu,
     )
   })
 

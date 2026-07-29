@@ -67,6 +67,7 @@ import type {
   OutboundDesignBriefPackageProjection,
   GovernedFigmaWriteProjection,
   FinalizedFigmaSnapshotImportProjection,
+  DesignToRequirementBindingProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -275,6 +276,9 @@ export interface CurrentStudioEngineReader {
   finalizedFigmaSnapshotImport?: {
     project(initiativeId: string): Promise<FinalizedFigmaSnapshotImportProjection>
   }
+  designToRequirementBinding?: {
+    project(initiativeId: string): Promise<DesignToRequirementBindingProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -351,6 +355,7 @@ interface ObservedStudioState {
   outboundDesignBriefPackageProjections: Map<string, OutboundDesignBriefPackageProjection>
   governedFigmaWriteProjections: Map<string, GovernedFigmaWriteProjection>
   finalizedFigmaSnapshotImportProjections: Map<string, FinalizedFigmaSnapshotImportProjection>
+  designToRequirementBindingProjections: Map<string, DesignToRequirementBindingProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2466,6 +2471,59 @@ function finalizedFigmaSnapshotImportTable(state: ObservedStudioState): StudioTa
   }
 }
 
+function designToRequirementBindingTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.designToRequirementBindingProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        dependencies: `snapshot ${record.finalizedSnapshot.recordId} · r${record.finalizedSnapshot.revision} · Requirements ${record.designRequirements.recordId} · r${record.designRequirements.revision} · Decisions ${record.decisionRegister.recordId} · r${record.decisionRegister.revision}`,
+        catalogs: `items ${record.finalizedSnapshot.itemCatalogDigest} · Requirements ${record.designRequirements.requirementCatalogDigest} · Decisions ${record.decisionRegister.decisionCatalogDigest}`,
+        inventory: `${record.bindingCount} bindings · ${record.designItemCoverageCount} design items · ${record.subjectCoverageCount} governed subjects · ${record.conflictCount} conflicts`,
+        governance: `reconciliation ${status.reconciliationState} · candidate coverage ${status.candidateCoverageState} · provenance ${status.provenanceState}`,
+        assessment: `${status.state} · ${status.reviewState} · ${status.humanReviewedBindingCount}/${status.bindingCount} human-reviewed bindings`,
+        gaps: `${status.unboundDesignItemCount} unbound design items · ${status.unboundRequirementCount} unbound Requirements · ${status.unboundDecisionCount} unbound Decisions · ${status.openConflictCount} open conflicts · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, exact dependency and catalog digests, counts, and statuses only; no Figma content, external identities, Requirement text, Decision content, Source content, human attribution, personal, secret, credential, or permission content and no relationship-truth or coverage-completeness proof, Requirement satisfaction, Decision effectiveness, external-completeness proof, design validation, approval, baseline, readiness, Figma connection or call, credential request, permission grant, import or write execution, implementation, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "design-to-requirement-binding",
+    title: "Design-to-Requirement Binding Review Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "dependencies", label: "Exact governed dependencies" },
+      { key: "catalogs", label: "Exact catalog digests" },
+      { key: "inventory", label: "Privacy-safe inventory" },
+      { key: "governance", label: "Reconciliation and evidence" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No Design-to-Requirement Binding candidate",
+        "Create an exact candidate registry through the governed engine workflow. This view does not prove relationships or completeness, satisfy Requirements, validate Decisions or design, connect to Figma, grant permissions, execute imports or writes, approve a baseline or readiness, or authorize implementation or action.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -2500,6 +2558,7 @@ function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordF
     outboundDesignBriefPackageTable(state),
     governedFigmaWriteTable(state),
     finalizedFigmaSnapshotImportTable(state),
+    designToRequirementBindingTable(state),
   )
   if (route === "architecture") {
     relatedRecords.push(
@@ -5158,6 +5217,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       outboundDesignBriefPackageProjections: new Map(),
       governedFigmaWriteProjections: new Map(),
       finalizedFigmaSnapshotImportProjections: new Map(),
+      designToRequirementBindingProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -6874,6 +6934,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "finalized-figma-snapshot-import-unavailable",
           "Finalized Figma Snapshot Import metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "scope" && engine.designToRequirementBinding) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.designToRequirementBinding!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.designToRequirementBindingProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Design-to-Requirement Binding projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `design-to-requirement-binding-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Design-to-Requirement Binding metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "design-to-requirement-binding-unavailable",
+          "Design-to-Requirement Binding metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
