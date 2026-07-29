@@ -40,6 +40,7 @@ import {
   designToRequirementBindingSchema,
   designerReadyGateSchema,
   designDeltaSchema,
+  designConflictResolutionSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -200,6 +201,8 @@ const directoryNames = [
   "designer-ready-gate-history",
   "design-deltas",
   "design-delta-history",
+  "design-conflict-resolutions",
+  "design-conflict-resolution-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -1045,6 +1048,8 @@ export class GaepRepository {
       ["designer-ready-gate-history", /^designer-ready-gate-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["design-deltas", /^[0-9a-f-]+\.json$/i],
       ["design-delta-history", /^design-delta-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["design-conflict-resolutions", /^[0-9a-f-]+\.json$/i],
+      ["design-conflict-resolution-history", /^design-conflict-resolution-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1288,6 +1293,10 @@ export class GaepRepository {
     if (/^design-deltas\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^design-delta-history\/design-delta-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, designDeltaSchema)
+    }
+    if (/^design-conflict-resolutions\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^design-conflict-resolution-history\/design-conflict-resolution-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, designConflictResolutionSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
