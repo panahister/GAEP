@@ -263,6 +263,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
           pagination: { offset: 0, limit: 50, total: 1, hasPrevious: false, hasNext: false },
         },
         designerReadyGates: table("designer-ready-gates"),
+        designDeltas: table("design-deltas"),
         portability: [{
           term: "Upstream source review",
           value: "The preserved claim is not GAEP approval, a Design Baseline, implementation readiness, or release readiness.",

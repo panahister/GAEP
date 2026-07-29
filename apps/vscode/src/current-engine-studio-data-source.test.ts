@@ -41,6 +41,7 @@ import {
   type FinalizedFigmaSnapshotImportProjection,
   type DesignToRequirementBindingProjection,
   type DesignerReadyGateProjection,
+  type DesignDeltaProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2668,6 +2669,90 @@ function designerReadyGateProjection(): DesignerReadyGateProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function designDeltaProjection(): DesignDeltaProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "design-delta-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "81818181-8181-4181-8181-818181818181", revision: 2, digest: `sha256:${"1".repeat(64)}` as const },
+    sourceItemCount: 12,
+    targetItemCount: 14,
+    deltaCount: 6,
+    addedCount: 2,
+    changedCount: 1,
+    conflictingCount: 1,
+    missingCount: 1,
+    staleCount: 1,
+    unmappedCount: 0,
+    humanReviewedCount: 3,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 2,
+    unresolvedMappingCount: 2,
+    unresolvedQuestionCount: 3,
+    comparisonState: "partial" as const,
+    provenanceState: "partial" as const,
+    candidateResult: "conflict-candidate" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["The candidate contains an unresolved conflicting delta"],
+    assessedAt: "2026-07-29T23:12:00.000Z",
+    authorityBoundary: "design-delta-status-is-observational-and-does-not-establish-delta-completeness-external-completeness-design-validity-approval-baseline-readiness-conflict-resolution-synchronization-implementation-write-import-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "design-delta-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"2".repeat(64)}` as const,
+      state: "candidate" as const,
+      designerReadyGate: {
+        recordId: "efefefef-efef-4fef-8fef-efefefefefef", revision: 2,
+        digest: `sha256:${"3".repeat(64)}` as const, membershipDigest: `sha256:${"4".repeat(64)}` as const,
+        prerequisiteCatalogDigest: `sha256:${"5".repeat(64)}` as const,
+        assessmentReceiptDigest: `sha256:${"6".repeat(64)}` as const,
+        candidateResult: "incomplete" as const,
+      },
+      finalizedSnapshot: {
+        recordId: "cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd", revision: 2,
+        digest: `sha256:${"7".repeat(64)}` as const, membershipDigest: `sha256:${"8".repeat(64)}` as const,
+        itemCatalogDigest: `sha256:${"9".repeat(64)}` as const,
+        reconciliationDigest: `sha256:${"a".repeat(64)}` as const,
+        reviewState: "held" as const,
+      },
+      designBinding: {
+        recordId: "dededede-dede-4ede-8ede-dededededede", revision: 2,
+        digest: `sha256:${"b".repeat(64)}` as const, membershipDigest: `sha256:${"c".repeat(64)}` as const,
+        bindingCatalogDigest: `sha256:${"d".repeat(64)}` as const,
+        reconciliationDigest: `sha256:${"e".repeat(64)}` as const,
+        reviewState: "held" as const,
+      },
+      sourceSnapshotDigest: `sha256:${"f".repeat(64)}` as const,
+      targetSnapshotDigest: `sha256:${"0".repeat(64)}` as const,
+      comparisonDefinitionDigest: `sha256:${"1".repeat(64)}` as const,
+      comparisonReceiptDigest: `sha256:${"2".repeat(64)}` as const,
+      deltaCatalogDigest: `sha256:${"3".repeat(64)}` as const,
+      deltaCount: status.deltaCount,
+      comparisonState: status.comparisonState,
+      provenanceState: status.provenanceState,
+      candidateResult: status.candidateResult,
+      reviewState: status.reviewState,
+      updatedAt: "2026-07-29T23:11:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-delta-content-external-identities-evidence-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions" as const,
+    authorityBoundary: "design-delta-projection-is-read-only-and-does-not-establish-delta-completeness-external-completeness-design-validity-approval-baseline-readiness-conflict-resolution-synchronization-implementation-write-import-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -3331,6 +3416,8 @@ interface HarnessOptions {
   finalizedFigmaSnapshotImportProjection?: FinalizedFigmaSnapshotImportProjection
   designToRequirementBindingProjection?: DesignToRequirementBindingProjection
   designerReadyGateProjection?: DesignerReadyGateProjection
+  designDeltaProjection?: DesignDeltaProjection
+  designDeltaProjectionError?: Error
   commandResult?: unknown
 }
 
@@ -3621,6 +3708,14 @@ function harness(options: HarnessOptions = {}) {
     ...(options.designerReadyGateProjection ? {
       designerReadyGate: {
         project: async () => options.designerReadyGateProjection!,
+      },
+    } : {}),
+    ...(options.designDeltaProjection || options.designDeltaProjectionError ? {
+      designDelta: {
+        project: async () => {
+          if (options.designDeltaProjectionError) throw options.designDeltaProjectionError
+          return options.designDeltaProjection!
+        },
       },
     } : {}),
   }
@@ -4676,6 +4771,63 @@ describe("current-engine Product Studio data source", () => {
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private design content|private criteria|private finding|private exception rationale|private decision content|private source content|private human attribution|customer@example\.com|api_key/iu,
     )
+  })
+
+  it("projects privacy-safe Design Delta metadata on the native readiness page", async () => {
+    const projection = designDeltaProjection()
+    const { source } = harness({ designDeltaProjection: projection })
+    const snapshot = await source.readSnapshot("readiness")
+    expect(snapshot.page.kind === "readiness" && snapshot.page.designDeltas).toMatchObject({
+      id: "design-delta",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          dependencies: `Designer-Ready ${projection.candidate?.designerReadyGate.recordId} · r2 · finalized snapshot ${projection.candidate?.finalizedSnapshot.recordId} · r2 · design binding ${projection.candidate?.designBinding.recordId} · r2`,
+          snapshots: `source ${projection.candidate?.sourceSnapshotDigest} · target ${projection.candidate?.targetSnapshotDigest}`,
+          comparison: `definition ${projection.candidate?.comparisonDefinitionDigest} · receipt ${projection.candidate?.comparisonReceiptDigest} · catalog ${projection.candidate?.deltaCatalogDigest}`,
+          result: "conflict-candidate · attention-required · held",
+          inventory: "12 source items · 14 target items · 6 deltas",
+          deltas: "2 added · 1 changed · 1 conflicting · 1 missing · 1 stale · 0 unmapped · 3/6 human-reviewed",
+          governance: "comparison partial · provenance partial",
+          gaps: "2 unresolved mappings · 3 questions · 1 stale bindings · 2 stale Source references",
+          boundary: expect.stringContaining("no delta completeness"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private design content|private delta content|private external identity|private evidence content|private source content|private human attribution|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("fails closed when Design Delta metadata is unavailable or binds a different exact Product", async () => {
+    const unavailable = harness({ designDeltaProjectionError: new Error("private upstream failure") })
+    const unavailableSnapshot = await unavailable.source.readSnapshot("readiness")
+    expect(unavailableSnapshot.page.kind === "readiness" && unavailableSnapshot.page.designDeltas.rows).toEqual([])
+    expect(unavailableSnapshot.page.kind === "readiness" && unavailableSnapshot.page.gaps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: `design-delta-${initiative.id}-unavailable`, severity: "warning" }),
+    ]))
+    expect(unavailable.diagnostics.join(" ")).not.toContain("private upstream failure")
+
+    const projection = designDeltaProjection()
+    const body = { ...projection, product: { ...projection.product, digest: `sha256:${"a".repeat(64)}` as const } }
+    const mismatched = harness({ designDeltaProjection: { ...body, snapshotDigest: canonicalDigest(body) } })
+    const mismatchedSnapshot = await mismatched.source.readSnapshot("readiness")
+    expect(mismatchedSnapshot.page.kind === "readiness" && mismatchedSnapshot.page.designDeltas.rows).toEqual([])
+    expect(mismatched.diagnostics).toEqual(expect.arrayContaining([
+      expect.stringContaining("did not bind the exact Product and Initiative revisions"),
+    ]))
+  })
+
+  it("withholds Design Delta metadata when the audit chain is invalid", async () => {
+    const { source } = harness({ audit: { valid: false, events: 1 }, designDeltaProjection: designDeltaProjection() })
+    const snapshot = await source.readSnapshot("readiness")
+    expect(snapshot.page.kind === "readiness" && snapshot.page.designDeltas.rows).toEqual([])
+    expect(snapshot.page.kind === "readiness" && snapshot.page.gaps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "design-delta-unavailable", severity: "blocker" }),
+    ]))
   })
 
   it("projects privacy-safe governed Decision Register metadata on the native risks and decisions page", async () => {

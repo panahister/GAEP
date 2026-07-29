@@ -109,6 +109,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         productRevisions: table("product-revisions"),
         portableDesignSnapshots: table("portable-design-snapshots"),
         designerReadyGates: table("designer-ready-gates"),
+        designDeltas: table("design-deltas"),
         portability: [],
       }
   }

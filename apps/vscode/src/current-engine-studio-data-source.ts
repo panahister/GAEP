@@ -69,6 +69,7 @@ import type {
   FinalizedFigmaSnapshotImportProjection,
   DesignToRequirementBindingProjection,
   DesignerReadyGateProjection,
+  DesignDeltaProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -283,6 +284,9 @@ export interface CurrentStudioEngineReader {
   designerReadyGate?: {
     project(initiativeId: string): Promise<DesignerReadyGateProjection>
   }
+  designDelta?: {
+    project(initiativeId: string): Promise<DesignDeltaProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -361,6 +365,7 @@ interface ObservedStudioState {
   finalizedFigmaSnapshotImportProjections: Map<string, FinalizedFigmaSnapshotImportProjection>
   designToRequirementBindingProjections: Map<string, DesignToRequirementBindingProjection>
   designerReadyGateProjections: Map<string, DesignerReadyGateProjection>
+  designDeltaProjections: Map<string, DesignDeltaProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2582,6 +2587,63 @@ function designerReadyGateTable(state: ObservedStudioState): StudioTableSnapshot
   }
 }
 
+function designDeltaTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.designDeltaProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        dependencies: `Designer-Ready ${record.designerReadyGate.recordId} · r${record.designerReadyGate.revision} · finalized snapshot ${record.finalizedSnapshot.recordId} · r${record.finalizedSnapshot.revision} · design binding ${record.designBinding.recordId} · r${record.designBinding.revision}`,
+        snapshots: `source ${record.sourceSnapshotDigest} · target ${record.targetSnapshotDigest}`,
+        comparison: `definition ${record.comparisonDefinitionDigest} · receipt ${record.comparisonReceiptDigest} · catalog ${record.deltaCatalogDigest}`,
+        result: `${status.candidateResult} · ${status.state} · ${status.reviewState}`,
+        inventory: `${status.sourceItemCount} source items · ${status.targetItemCount} target items · ${status.deltaCount} deltas`,
+        deltas: `${status.addedCount} added · ${status.changedCount} changed · ${status.conflictingCount} conflicting · ${status.missingCount} missing · ${status.staleCount} stale · ${status.unmappedCount} unmapped · ${status.humanReviewedCount}/${status.deltaCount} human-reviewed`,
+        governance: `comparison ${status.comparisonState} · provenance ${status.provenanceState}`,
+        gaps: `${status.unresolvedMappingCount} unresolved mappings · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, exact dependency, snapshot, comparison, receipt, catalog, counts, and results only; no design content, delta content, external identities, evidence content, Source content, human attribution, personal, secret, credential, or permission content. This comparison is observational and establishes no delta completeness, external completeness, design validity, approval, baseline, readiness, conflict-resolution or synchronization authority, Figma connection or call, credential request, permission grant, import or write execution, implementation, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "design-delta",
+    title: "Design Delta Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "dependencies", label: "Exact governed dependencies" },
+      { key: "snapshots", label: "Exact snapshots" },
+      { key: "comparison", label: "Comparison evidence" },
+      { key: "result", label: "Candidate result" },
+      { key: "inventory", label: "Compared inventory" },
+      { key: "deltas", label: "Delta counts" },
+      { key: "governance", label: "Comparison governance" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No Design Delta candidate",
+        "Create an exact comparison candidate through the governed engine workflow. This view does not establish delta or external completeness, design validity, approval, baseline, readiness, conflict resolution, synchronization, Figma access, import or write execution, implementation, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -4290,6 +4352,7 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
   const portableDesignImportEnabled = state.audit?.valid === true && portableDesignPage !== undefined
   const portableDesignSnapshots = portableDesignSnapshotTable(state.portableDesignSnapshots, portableDesignImportEnabled)
   const designerReadyGates = designerReadyGateTable(state)
+  const designDeltas = designDeltaTable(state)
   const portableDesignInventory = portableDesignPage
     ? `${portableDesignPage.total} governed record${portableDesignPage.total === 1 ? "" : "s"}; every validated import remains pending human review.`
     : "Unavailable until audit and governed snapshot inventory verification both succeed."
@@ -4318,6 +4381,7 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
     productRevisions,
     portableDesignSnapshots,
     designerReadyGates,
+    designDeltas,
     portability: [
       { term: "Export", value: "Portable bundle only; authority, readiness, runtime bindings, credentials, and implementation approval are not conferred." },
       { term: "Product export preview", value: state.importPreview ? `${state.importPreview.status}; preview only; no mutation performed.` : "No Product export preview is loaded; that preview workflow never mutates Product state." },
@@ -4418,6 +4482,7 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       productRevisions: capTable(page.productRevisions),
       portableDesignSnapshots: capTable(page.portableDesignSnapshots),
       designerReadyGates: capTable(page.designerReadyGates),
+      designDeltas: capTable(page.designDeltas),
     }
   }
 }
@@ -4499,6 +4564,7 @@ function addDomainPagination(page: StudioPageSnapshot, state: ObservedStudioStat
       productRevisions: pageTable(page.productRevisions, "product-revision"),
       portableDesignSnapshots: pageTable(page.portableDesignSnapshots, "portable-design-snapshot"),
       designerReadyGates: page.designerReadyGates,
+      designDeltas: page.designDeltas,
     }
   }
 }
@@ -5281,6 +5347,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       finalizedFigmaSnapshotImportProjections: new Map(),
       designToRequirementBindingProjections: new Map(),
       designerReadyGateProjections: new Map(),
+      designDeltaProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -7081,6 +7148,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "designer-ready-gate-unavailable",
           "Designer-Ready Gate metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "readiness" && engine.designDelta) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.designDelta!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.designDeltaProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Design Delta projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `design-delta-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Design Delta metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "design-delta-unavailable",
+          "Design Delta metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
