@@ -5130,6 +5130,17 @@ describe("Design Persona and Role service", () => {
     expect((await engine.finalizedFigmaSnapshotImport.listHistory(candidate.id)).map((record) => record.revision))
       .toEqual([2, 1])
 
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `finalized-figma-snapshot-imports/${candidate.id}.json`,
+      `finalized-figma-snapshot-import-history/finalized-figma-snapshot-import-${candidate.id}-r1.json`,
+      `finalized-figma-snapshot-import-history/finalized-figma-snapshot-import-${candidate.id}-r2.json`,
+    ]))
+    await expect(engine.productStudio.previewImportBundle(bundle)).resolves.toMatchObject({
+      status: "compatible",
+      importMutation: "not-performed",
+    })
+
     const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
       .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
     expect(events.at(-1)).toMatchObject({
