@@ -77,6 +77,7 @@ internal static class Program
     private static readonly Guid ManualFigmaExecutionPathId = Guid.Parse("72727272-7272-4272-8272-727272727272");
     private static readonly Guid FigmaMcpCapabilityDiscoveryId = Guid.Parse("73737373-7373-4373-8373-737373737373");
     private static readonly Guid FigmaReadSnapshotId = Guid.Parse("74747474-7474-4474-8474-747474747474");
+    private static readonly Guid FigmaContextImportId = Guid.Parse("75757575-7575-4575-8575-757575757575");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -237,6 +238,9 @@ internal static class Program
         var badFigmaReadSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-figma-read-snapshot-binding");
         var badFigmaReadSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-figma-read-snapshot-digest");
         var badFigmaReadSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-figma-read-snapshot-private");
+        var badFigmaContextImportBindingRoot = Path.Combine(temporaryRoot, "bad-figma-context-import-binding");
+        var badFigmaContextImportDigestRoot = Path.Combine(temporaryRoot, "bad-figma-context-import-digest");
+        var badFigmaContextImportPrivateRoot = Path.Combine(temporaryRoot, "bad-figma-context-import-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -397,6 +401,9 @@ internal static class Program
         Directory.CreateDirectory(badFigmaReadSnapshotBindingRoot);
         Directory.CreateDirectory(badFigmaReadSnapshotDigestRoot);
         Directory.CreateDirectory(badFigmaReadSnapshotPrivateRoot);
+        Directory.CreateDirectory(badFigmaContextImportBindingRoot);
+        Directory.CreateDirectory(badFigmaContextImportDigestRoot);
+        Directory.CreateDirectory(badFigmaContextImportPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2141,6 +2148,51 @@ internal static class Program
                 "Figma Read Snapshot rejects a projection rebound to a substituted Product revision");
         }
 
+        var figmaContextImportProjection = await client.ReadFigmaContextImportAsync(InitiativeId);
+        Check(figmaContextImportProjection.ProductId == product.Id &&
+              figmaContextImportProjection.ProductRevision == product.Revision &&
+              figmaContextImportProjection.ProductDigest == product.Digest &&
+              figmaContextImportProjection.InitiativeId == resolved.Id &&
+              figmaContextImportProjection.InitiativeRevision == resolved.Revision &&
+              figmaContextImportProjection.InitiativeDigest == resolved.Digest &&
+              figmaContextImportProjection.AssessmentState == "attention-required" &&
+              figmaContextImportProjection.ReviewState == "held" &&
+              figmaContextImportProjection.ContextSelectionState == "partial" &&
+              figmaContextImportProjection.ProvenanceState == "partial" &&
+              figmaContextImportProjection.PreviewState == "candidate-generated" &&
+              figmaContextImportProjection.ContextPackCount == 2 &&
+              figmaContextImportProjection.SectionCount == 8 &&
+              figmaContextImportProjection.ContextItemCount == 24 &&
+              figmaContextImportProjection.TargetCount == 2 &&
+              figmaContextImportProjection.HumanReviewedSectionCount == 5 &&
+              figmaContextImportProjection.RepresentedRequirementCount == 7 &&
+              figmaContextImportProjection.Candidate?.ContextPackCount == 2,
+            "Typed Figma Context Import preserves exact Product, Initiative, assessment, selection, and privacy-safe inventory metadata");
+        var figmaContextImportOutput = await initiativeController.ReadFigmaContextImportAsync(InitiativeId);
+        Check(figmaContextImportOutput.Contains("GAEP governed Figma Context Import candidate", StringComparison.Ordinal) &&
+              figmaContextImportOutput.Contains("2 Context Packs · 8 sections · 24 Context Items · 2 Figma targets", StringComparison.Ordinal) &&
+              figmaContextImportOutput.Contains("5 human-reviewed", StringComparison.Ordinal) &&
+              figmaContextImportOutput.Contains("no context packaging or transfer", StringComparison.Ordinal) &&
+              !figmaContextImportOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !figmaContextImportOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !figmaContextImportOutput.Contains("contextItems", StringComparison.Ordinal),
+            "Figma Context Import workflow renders privacy-safe metadata with explicit no-transfer and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badFigmaContextImportDigestRoot, badFigmaContextImportPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadFigmaContextImportAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Figma Context Import rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badFigmaContextImportBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadFigmaContextImportAsync(InitiativeId),
+                "Figma Context Import rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3482,6 +3534,9 @@ internal static class Program
         var badFigmaReadSnapshotBinding = Path.GetFileName(workspace) == "bad-figma-read-snapshot-binding";
         var badFigmaReadSnapshotDigest = Path.GetFileName(workspace) == "bad-figma-read-snapshot-digest";
         var badFigmaReadSnapshotPrivate = Path.GetFileName(workspace) == "bad-figma-read-snapshot-private";
+        var badFigmaContextImportBinding = Path.GetFileName(workspace) == "bad-figma-context-import-binding";
+        var badFigmaContextImportDigest = Path.GetFileName(workspace) == "bad-figma-context-import-digest";
+        var badFigmaContextImportPrivate = Path.GetFileName(workspace) == "bad-figma-context-import-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -3977,6 +4032,17 @@ internal static class Program
                         badFigmaReadSnapshotBinding,
                         badFigmaReadSnapshotDigest,
                         badFigmaReadSnapshotPrivate);
+                    break;
+                case "design.figmaContextImport.snapshot":
+                    await HandleFigmaContextImportAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badFigmaContextImportBinding,
+                        badFigmaContextImportDigest,
+                        badFigmaContextImportPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -7594,6 +7660,109 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["fileCount"] = 3;
         if (includePrivateField) result["fileNames"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleFigmaContextImportAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID FIGMA CONTEXT IMPORT");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-29T09:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('d', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = FigmaContextImportId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('e', 64)}",
+            ["state"] = "candidate",
+            ["contextPackCount"] = 2,
+            ["sectionCount"] = 8,
+            ["contextItemCount"] = 24,
+            ["targetCount"] = 2,
+            ["representedRequirementCount"] = 7,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-29T09:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "figma-context-import-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "figma-context-import-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = FigmaContextImportId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["contextPackCount"] = 2,
+                ["sectionCount"] = 8,
+                ["contextItemCount"] = 24,
+                ["targetCount"] = 2,
+                ["humanReviewedSectionCount"] = 5,
+                ["sourceRecordedSectionCount"] = 2,
+                ["notAssessedSectionCount"] = 1,
+                ["unresolvedRedactionCount"] = 1,
+                ["representedRequirementCount"] = 7,
+                ["unresolvedRequirementCount"] = 2,
+                ["unresolvedOwnershipCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedQuestionCount"] = 3,
+                ["contextSelectionState"] = "partial",
+                ["provenanceState"] = "partial",
+                ["previewState"] = "candidate-generated",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more selected sections require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "figma-context-import-status-is-observational-and-does-not-package-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-digests-only-not-brief-requirement-constraint-context-item-figma-target-tool-source-or-personal-content-secrets-credentials-or-permissions",
+            ["authorityBoundary"] =
+                "figma-context-import-projection-is-read-only-and-does-not-package-or-transfer-context-connect-to-or-call-figma-request-credentials-grant-permissions-authorize-or-perform-write-validate-targets-or-design-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["contextItemCount"] = 25;
+        if (includePrivateField) result["contextItems"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
