@@ -82,6 +82,7 @@ internal static class Program
     private static readonly Guid GovernedFigmaWriteId = Guid.Parse("77777777-7777-4777-8777-777777777777");
     private static readonly Guid FinalizedFigmaSnapshotImportId = Guid.Parse("78787878-7878-4878-8878-787878787878");
     private static readonly Guid DesignToRequirementBindingId = Guid.Parse("79797979-7979-4979-8979-797979797979");
+    private static readonly Guid DesignerReadyGateId = Guid.Parse("80808080-8080-4080-8080-808080808080");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -257,6 +258,9 @@ internal static class Program
         var badDesignToRequirementBindingBindingRoot = Path.Combine(temporaryRoot, "bad-design-to-requirement-binding-binding");
         var badDesignToRequirementBindingDigestRoot = Path.Combine(temporaryRoot, "bad-design-to-requirement-binding-digest");
         var badDesignToRequirementBindingPrivateRoot = Path.Combine(temporaryRoot, "bad-design-to-requirement-binding-private");
+        var badDesignerReadyGateBindingRoot = Path.Combine(temporaryRoot, "bad-designer-ready-gate-binding");
+        var badDesignerReadyGateDigestRoot = Path.Combine(temporaryRoot, "bad-designer-ready-gate-digest");
+        var badDesignerReadyGatePrivateRoot = Path.Combine(temporaryRoot, "bad-designer-ready-gate-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -432,6 +436,9 @@ internal static class Program
         Directory.CreateDirectory(badDesignToRequirementBindingBindingRoot);
         Directory.CreateDirectory(badDesignToRequirementBindingDigestRoot);
         Directory.CreateDirectory(badDesignToRequirementBindingPrivateRoot);
+        Directory.CreateDirectory(badDesignerReadyGateBindingRoot);
+        Directory.CreateDirectory(badDesignerReadyGateDigestRoot);
+        Directory.CreateDirectory(badDesignerReadyGatePrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2406,6 +2413,47 @@ internal static class Program
                 "Design-to-Requirement Binding rejects a projection rebound to a substituted Product revision");
         }
 
+        var designerReadyGateProjection = await client.ReadDesignerReadyGateAsync(InitiativeId);
+        Check(designerReadyGateProjection.ProductId == product.Id &&
+              designerReadyGateProjection.ProductRevision == product.Revision &&
+              designerReadyGateProjection.ProductDigest == product.Digest &&
+              designerReadyGateProjection.InitiativeId == resolved.Id &&
+              designerReadyGateProjection.InitiativeRevision == resolved.Revision &&
+              designerReadyGateProjection.InitiativeDigest == resolved.Digest &&
+              designerReadyGateProjection.AssessmentState == "attention-required" &&
+              designerReadyGateProjection.CandidateResult == "incomplete" &&
+              designerReadyGateProjection.ReviewState == "held" &&
+              designerReadyGateProjection.PrerequisiteCount == 12 &&
+              designerReadyGateProjection.SatisfiedCount == 9 &&
+              designerReadyGateProjection.HumanReviewedCount == 10 &&
+              designerReadyGateProjection.Candidate?.PrerequisiteCount == 12,
+            "Typed Designer-Ready Gate preserves exact Product, Initiative, prerequisite, assessment, and privacy-safe candidate metadata");
+        var designerReadyGateOutput = await initiativeController.ReadDesignerReadyGateAsync(InitiativeId);
+        Check(designerReadyGateOutput.Contains("GAEP Designer-Ready Gate candidate", StringComparison.Ordinal) &&
+              designerReadyGateOutput.Contains("9 satisfied · 1 not-applicable candidates · 10/12 human-reviewed", StringComparison.Ordinal) &&
+              designerReadyGateOutput.Contains("12 exact", StringComparison.Ordinal) &&
+              designerReadyGateOutput.Contains("evaluation result, not permission or readiness", StringComparison.Ordinal) &&
+              designerReadyGateOutput.Contains("implementation, or action authority", StringComparison.Ordinal) &&
+              !designerReadyGateOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !designerReadyGateOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !designerReadyGateOutput.Contains("criteria=", StringComparison.Ordinal),
+            "Designer-Ready Gate workflow renders privacy-safe exact assessment metadata with explicit no-readiness and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badDesignerReadyGateDigestRoot, badDesignerReadyGatePrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDesignerReadyGateAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Designer-Ready Gate rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badDesignerReadyGateBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDesignerReadyGateAsync(InitiativeId),
+                "Designer-Ready Gate rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3762,6 +3810,9 @@ internal static class Program
         var badDesignToRequirementBindingBinding = Path.GetFileName(workspace) == "bad-design-to-requirement-binding-binding";
         var badDesignToRequirementBindingDigest = Path.GetFileName(workspace) == "bad-design-to-requirement-binding-digest";
         var badDesignToRequirementBindingPrivate = Path.GetFileName(workspace) == "bad-design-to-requirement-binding-private";
+        var badDesignerReadyGateBinding = Path.GetFileName(workspace) == "bad-designer-ready-gate-binding";
+        var badDesignerReadyGateDigest = Path.GetFileName(workspace) == "bad-designer-ready-gate-digest";
+        var badDesignerReadyGatePrivate = Path.GetFileName(workspace) == "bad-designer-ready-gate-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -4312,6 +4363,17 @@ internal static class Program
                         badDesignToRequirementBindingBinding,
                         badDesignToRequirementBindingDigest,
                         badDesignToRequirementBindingPrivate);
+                    break;
+                case "design.designerReadyGate.snapshot":
+                    await HandleDesignerReadyGateAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDesignerReadyGateBinding,
+                        badDesignerReadyGateDigest,
+                        badDesignerReadyGatePrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -8499,6 +8561,110 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["bindingCount"] = 8;
         if (includePrivateField) result["humanAttribution"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDesignerReadyGateAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DESIGNER READY GATE");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-29T22:25:00.000Z";
+        var candidateDigest = $"sha256:{new string('1', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DesignerReadyGateId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('2', 64)}",
+            ["state"] = "candidate",
+            ["prerequisiteCount"] = 12,
+            ["prerequisiteCatalogDigest"] = $"sha256:{new string('3', 64)}",
+            ["evaluationCatalogDigest"] = $"sha256:{new string('4', 64)}",
+            ["exceptionCatalogDigest"] = $"sha256:{new string('5', 64)}",
+            ["assessmentDefinitionDigest"] = $"sha256:{new string('6', 64)}",
+            ["assessmentReceiptDigest"] = $"sha256:{new string('7', 64)}",
+            ["candidateResult"] = "incomplete",
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-29T22:24:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "designer-ready-gate-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "designer-ready-gate-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DesignerReadyGateId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["prerequisiteCount"] = 12,
+                ["satisfiedCount"] = 9,
+                ["notApplicableCount"] = 1,
+                ["unsatisfiedCount"] = 1,
+                ["notAssessedCount"] = 1,
+                ["staleOrUnknownCount"] = 2,
+                ["humanReviewedCount"] = 10,
+                ["pendingExceptionCount"] = 1,
+                ["grantedExceptionCandidateCount"] = 1,
+                ["invalidExceptionCount"] = 1,
+                ["staleBindingCount"] = 2,
+                ["staleSourceReferenceCount"] = 3,
+                ["unresolvedQuestionCount"] = 4,
+                ["candidateResult"] = "incomplete",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more prerequisites remain incomplete" },
+                ["assessedAt"] = assessedAt,
+                ["gateBoundary"] =
+                    "a-passing-designer-ready-gate-candidate-is-an-evaluation-result-not-permission-or-readiness",
+                ["authorityBoundary"] =
+                    "designer-ready-gate-status-is-observational-and-does-not-establish-design-completeness-external-completeness-design-validity-approval-baseline-readiness-exception-waiver-acceptance-phase-entry-implementation-write-import-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-criteria-findings-exception-rationale-decision-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+            ["authorityBoundary"] =
+                "designer-ready-gate-projection-is-read-only-and-does-not-establish-design-completeness-external-completeness-design-validity-approval-baseline-readiness-exception-waiver-acceptance-phase-entry-implementation-write-import-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["prerequisiteCount"] = 11;
+        if (includePrivateField) result["criteria"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

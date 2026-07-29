@@ -2443,6 +2443,64 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDesignerReadyGateAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDesignerReadyGateAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Designer-Ready Gate was read. Refresh the exact records.");
+        }
+        return RenderDesignerReadyGate(projection);
+    }
+
+    public static string RenderDesignerReadyGate(DesignerReadyGateProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP Designer-Ready Gate candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate result: {projection.CandidateResult} · {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Coverage: {projection.SatisfiedCount} satisfied · {projection.NotApplicableCount} not-applicable candidates · " +
+                $"{projection.HumanReviewedCount}/{projection.PrerequisiteCount} human-reviewed")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnsatisfiedCount} unsatisfied · {projection.NotAssessedCount} not assessed · " +
+                $"{projection.StaleOrUnknownCount} stale/unknown · {projection.PendingExceptionCount} pending exceptions · " +
+                $"{projection.InvalidExceptionCount} invalid exceptions · {projection.UnresolvedQuestionCount} questions · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Candidate record: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine($"Prerequisites: {candidate.PrerequisiteCount} exact · {candidate.PrerequisiteCatalogDigest}")
+                .AppendLine(
+                    $"Assessment: definition {candidate.AssessmentDefinitionDigest} · receipt {candidate.AssessmentReceiptDigest} · " +
+                    $"evaluations {candidate.EvaluationCatalogDigest}")
+                .AppendLine($"Exception catalog: {candidate.ExceptionCatalogDigest}");
+        }
+        else output.AppendLine("Candidate record: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, exact digests, counts, and results only; a passing candidate is an " +
+                "evaluation result, not permission or readiness, and grants no completeness, validity, approval, baseline, " +
+                "exception, waiver, acceptance, phase-entry, Figma connection, credential, permission, import, write, " +
+                "implementation, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

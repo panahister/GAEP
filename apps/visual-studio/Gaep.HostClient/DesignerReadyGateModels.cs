@@ -1,0 +1,43 @@
+namespace Gaep.HostClient;
+
+public sealed record DesignerReadyGateRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    int PrerequisiteCount,
+    string PrerequisiteCatalogDigest,
+    string EvaluationCatalogDigest,
+    string ExceptionCatalogDigest,
+    string AssessmentDefinitionDigest,
+    string AssessmentReceiptDigest,
+    string CandidateResult,
+    string ReviewState);
+
+public sealed record DesignerReadyGateProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string CandidateResult,
+    string ReviewState,
+    string AssessmentState,
+    IReadOnlyList<string> Reasons,
+    int PrerequisiteCount,
+    int SatisfiedCount,
+    int NotApplicableCount,
+    int UnsatisfiedCount,
+    int NotAssessedCount,
+    int StaleOrUnknownCount,
+    int HumanReviewedCount,
+    int PendingExceptionCount,
+    int GrantedExceptionCandidateCount,
+    int InvalidExceptionCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    int UnresolvedQuestionCount,
+    DesignerReadyGateRecordView? Candidate,
+    string SnapshotDigest);

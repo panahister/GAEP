@@ -180,6 +180,10 @@
                 Command="{Binding LoadDesignToRequirementBindingCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, exact dependency and catalog digests, counts, and statuses only; it withholds Figma content, external identities, Requirement text, Decision content, Source content, human attribution, personal, secret, credential, and permission content, and does not prove relationships or completeness, satisfy Requirements, establish Decision effectiveness, validate or approve design, establish a baseline or readiness, connect to or call Figma, request credentials, grant permissions, execute imports or writes, or authorize implementation or action."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadDesignerReadyGateButton" Content="Inspect Designer-Ready Gate"
+                Command="{Binding LoadDesignerReadyGateCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate identities, exact digests, counts, and results only; it withholds design content, criteria, findings, exception rationale, Decision content, Source content, human attribution, personal, secret, credential, and permission content. A passing candidate is an evaluation result, not permission or readiness, and grants no completeness, validity, approval, baseline, exception, waiver, acceptance, phase-entry, Figma access, implementation, or action authority."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />
