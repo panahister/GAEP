@@ -2314,6 +2314,58 @@ test("protocol-v2 client validates privacy-safe Designer-Ready Gate projections 
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 client validates privacy-safe Design Delta projections and rejects hostile responses", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-design-delta-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-design-delta-binding",
+    "bad-design-delta-digest",
+    "bad-design-delta-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readDesignDelta(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.candidateResult, "conflict-candidate")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.deltaCount, 6)
+    assert.equal(projection.status.conflictingCount, 1)
+    assert.equal(projection.status.humanReviewedCount, 3)
+    assert.equal(projection.candidate?.deltaCount, 6)
+    assert.equal(
+      projection.authorityBoundary,
+      "design-delta-projection-is-read-only-and-does-not-establish-delta-completeness-external-completeness-design-validity-approval-baseline-readiness-conflict-resolution-synchronization-implementation-write-import-or-action-authority",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"deltaContent":'), false)
+    assert.equal(serialized.includes('"evidence":'), false)
+    assert.equal(serialized.includes('"sources":'), false)
+    assert.equal(serialized.includes('"reviewedBy":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readDesignDelta(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")

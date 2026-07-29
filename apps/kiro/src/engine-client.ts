@@ -41,6 +41,7 @@ import {
   finalizedFigmaSnapshotImportProjectionSchema,
   designToRequirementBindingProjectionSchema,
   designerReadyGateProjectionSchema,
+  designDeltaProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
@@ -89,6 +90,7 @@ import {
   type FinalizedFigmaSnapshotImportProjection,
   type DesignToRequirementBindingProjection,
   type DesignerReadyGateProjection,
+  type DesignDeltaProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -940,6 +942,21 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = designerReadyGateProjectionSchema.safeParse(
         await this.request("design.designerReadyGate.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId ||
+          snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readDesignDelta(initiativeValue: string): Promise<DesignDeltaProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = designDeltaProjectionSchema.safeParse(
+        await this.request("design.designDelta.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

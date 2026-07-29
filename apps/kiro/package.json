@@ -92,6 +92,7 @@
     "onCommand:gaepKiro.finalizedFigmaSnapshotImport.inspect",
     "onCommand:gaepKiro.designToRequirementBinding.inspect",
     "onCommand:gaepKiro.designerReadyGate.inspect",
+    "onCommand:gaepKiro.designDelta.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -337,6 +338,10 @@
       {
         "command": "gaepKiro.designerReadyGate.inspect",
         "title": "GAEP for Kiro: Inspect Designer-Ready Gate Candidate"
+      },
+      {
+        "command": "gaepKiro.designDelta.inspect",
+        "title": "GAEP for Kiro: Inspect Design Delta Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",

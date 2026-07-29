@@ -68,6 +68,7 @@ const governedFigmaWriteId = "70707070-7070-4070-8070-707070707070"
 const finalizedFigmaSnapshotImportId = "71717171-7171-4171-8171-717171717171"
 const designToRequirementBindingId = "72727272-7272-4272-8272-727272727272"
 const designerReadyGateId = "73737373-7373-4373-8373-737373737373"
+const designDeltaId = "74747474-7474-4474-8474-747474747474"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -185,6 +186,8 @@ input.on("line", (line) => {
       return readDesignToRequirementBinding(id, request.params)
     case "design.designerReadyGate.snapshot":
       return readDesignerReadyGate(id, request.params)
+    case "design.designDelta.snapshot":
+      return readDesignDelta(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2976,6 +2979,97 @@ function readDesignerReadyGate(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-designer-ready-gate-digest")) value.candidate.prerequisiteCount = 11
   if (workspacePath.endsWith("bad-designer-ready-gate-private")) value.criteria = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readDesignDelta(id, params) {
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"8".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "design-delta-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: designDeltaId, revision: 2, digest: candidateDigest },
+    sourceItemCount: 12,
+    targetItemCount: 14,
+    deltaCount: 6,
+    addedCount: 2,
+    changedCount: 1,
+    conflictingCount: 1,
+    missingCount: 1,
+    staleCount: 1,
+    unmappedCount: 0,
+    humanReviewedCount: 3,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 2,
+    unresolvedMappingCount: 2,
+    unresolvedQuestionCount: 3,
+    comparisonState: "partial",
+    provenanceState: "partial",
+    candidateResult: "conflict-candidate",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["The candidate contains an unresolved conflicting delta"],
+    assessedAt: "2026-07-29T23:12:00.000Z",
+    authorityBoundary: "design-delta-status-is-observational-and-does-not-establish-delta-completeness-external-completeness-design-validity-approval-baseline-readiness-conflict-resolution-synchronization-implementation-write-import-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "design-delta-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: designDeltaId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"9".repeat(64)}`,
+      state: "candidate",
+      designerReadyGate: {
+        recordId: designerReadyGateId, revision: 2, digest: `sha256:${"1".repeat(64)}`,
+        membershipDigest: `sha256:${"2".repeat(64)}`,
+        prerequisiteCatalogDigest: `sha256:${"3".repeat(64)}`,
+        assessmentReceiptDigest: `sha256:${"4".repeat(64)}`,
+        candidateResult: "incomplete",
+      },
+      finalizedSnapshot: {
+        recordId: finalizedFigmaSnapshotImportId, revision: 2, digest: `sha256:${"5".repeat(64)}`,
+        membershipDigest: `sha256:${"6".repeat(64)}`,
+        itemCatalogDigest: `sha256:${"7".repeat(64)}`,
+        reconciliationDigest: `sha256:${"8".repeat(64)}`,
+        reviewState: "held",
+      },
+      designBinding: {
+        recordId: designToRequirementBindingId, revision: 2, digest: `sha256:${"9".repeat(64)}`,
+        membershipDigest: `sha256:${"a".repeat(64)}`,
+        bindingCatalogDigest: `sha256:${"b".repeat(64)}`,
+        reconciliationDigest: `sha256:${"c".repeat(64)}`,
+        reviewState: "held",
+      },
+      sourceSnapshotDigest: `sha256:${"d".repeat(64)}`,
+      targetSnapshotDigest: `sha256:${"e".repeat(64)}`,
+      comparisonDefinitionDigest: `sha256:${"f".repeat(64)}`,
+      comparisonReceiptDigest: `sha256:${"0".repeat(64)}`,
+      deltaCatalogDigest: `sha256:${"1".repeat(64)}`,
+      deltaCount: 6,
+      comparisonState: "partial",
+      provenanceState: "partial",
+      candidateResult: "conflict-candidate",
+      reviewState: "held",
+      updatedAt: "2026-07-29T23:11:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-delta-content-external-identities-evidence-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+    authorityBoundary: "design-delta-projection-is-read-only-and-does-not-establish-delta-completeness-external-completeness-design-validity-approval-baseline-readiness-conflict-resolution-synchronization-implementation-write-import-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-design-delta-binding")) content.initiative.id = designDeltaId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-design-delta-digest")) value.status.deltaCount = 5
+  if (workspacePath.endsWith("bad-design-delta-private")) value.deltaContent = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }
 

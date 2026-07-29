@@ -42,6 +42,7 @@ import {
   type FinalizedFigmaSnapshotImportProjection,
   type DesignToRequirementBindingProjection,
   type DesignerReadyGateProjection,
+  type DesignDeltaProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -155,6 +156,7 @@ const commandIds = {
   finalizedFigmaSnapshotImport: "gaepKiro.finalizedFigmaSnapshotImport.inspect",
   designToRequirementBinding: "gaepKiro.designToRequirementBinding.inspect",
   designerReadyGate: "gaepKiro.designerReadyGate.inspect",
+  designDelta: "gaepKiro.designDelta.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -287,6 +289,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.finalizedFigmaSnapshotImport, (input?: unknown) => runUserCommand(() => showFinalizedFigmaSnapshotImport(pool, input))),
     vscode.commands.registerCommand(commandIds.designToRequirementBinding, (input?: unknown) => runUserCommand(() => showDesignToRequirementBinding(pool, input))),
     vscode.commands.registerCommand(commandIds.designerReadyGate, (input?: unknown) => runUserCommand(() => showDesignerReadyGate(pool, input))),
+    vscode.commands.registerCommand(commandIds.designDelta, (input?: unknown) => runUserCommand(() => showDesignDelta(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -2220,6 +2223,49 @@ async function showDesignerReadyGate(
     ] : []),
     "",
     "Candidate identities, exact digests, counts, and results only; a passing candidate is an evaluation result, not permission or readiness, and grants no completeness, validity, approval, baseline, exception, waiver, acceptance, phase-entry, Figma connection, credential, permission, import, write, implementation, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDesignDelta(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DesignDeltaProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Design Delta", "Initiative ID")
+  const projection = await client.readDesignDelta(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP Design Delta candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate result: ${status.candidateResult} · ${status.state} · review state: ${status.reviewState}`,
+    `Compared inventory: ${status.sourceItemCount} source items · ${status.targetItemCount} target items · ${status.deltaCount} deltas`,
+    `Deltas: ${status.addedCount} added · ${status.changedCount} changed · ${status.conflictingCount} conflicting · ${status.missingCount} missing · ${status.staleCount} stale · ${status.unmappedCount} unmapped · ${status.humanReviewedCount}/${status.deltaCount} human-reviewed`,
+    `Comparison governance: comparison ${status.comparisonState} · provenance ${status.provenanceState}`,
+    `Candidate gaps: ${status.unresolvedMappingCount} unresolved mappings · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Dependencies: Designer-Ready ${record.designerReadyGate.recordId}@${record.designerReadyGate.revision} · finalized snapshot ${record.finalizedSnapshot.recordId}@${record.finalizedSnapshot.revision} · design binding ${record.designBinding.recordId}@${record.designBinding.revision}`,
+      `Snapshots: source ${record.sourceSnapshotDigest} · target ${record.targetSnapshotDigest}`,
+      `Comparison: definition ${record.comparisonDefinitionDigest} · receipt ${record.comparisonReceiptDigest} · catalog ${record.deltaCatalogDigest}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, exact dependency, snapshot, comparison, receipt, catalog, counts, and results only; this comparison is observational and establishes no delta or external completeness, design validity, approval, baseline, readiness, conflict-resolution or synchronization authority, Figma connection, credential, permission, import, write, implementation, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,
