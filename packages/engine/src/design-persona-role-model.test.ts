@@ -36,6 +36,8 @@ import {
   type ManualFigmaExecutionPathInput,
   type ManualFigmaExecutionPath,
   type OutboundDesignBriefPackageInput,
+  type OutboundDesignBriefPackage,
+  type GovernedFigmaWriteInput,
   type OutcomeModel,
   type OutcomeModelInput,
   type Product,
@@ -2278,6 +2280,174 @@ describe("Design Persona and Role service", () => {
     }
   }
 
+  async function governedFigmaWriteInput(
+    outboundPackage: OutboundDesignBriefPackage,
+  ): Promise<GovernedFigmaWriteInput> {
+    const recipient = outboundPackage.recipients[0]!
+    const outboundPackageReference = {
+      recordId: outboundPackage.id,
+      revision: outboundPackage.revision,
+      digest: canonicalDigest(outboundPackage),
+      membershipDigest: outboundPackage.membershipDigest,
+      manifestDigest: outboundPackage.manifestDigest,
+      payloadDigest: outboundPackage.payloadDigest,
+    }
+    const target = {
+      recipientKey: recipient.key,
+      sourceTargetKey: recipient.sourceTargetKey,
+      designScopeKey: recipient.designScopeKey,
+      fileKey: recipient.fileKey,
+      targetKind: recipient.targetKind,
+      externalFileIdentityDigest: recipient.externalFileIdentityDigest,
+      expectedExternalVersionDigest: recipient.externalVersionDigest,
+      plannedWriteToolKey: recipient.plannedWriteToolKey,
+      selectedEntryKeys: recipient.entryKeys,
+      intendedEffect: "figma-write" as const,
+      destinationState: "not-connected" as const,
+      targetValidityState: "not-established" as const,
+      sources: recipient.sources,
+    }
+    const requestFormat = "gaep-governed-figma-write-request-v1" as const
+    const objectiveDigest = canonicalDigest({
+      objective: "Prepare an exact governed write authorization review without connecting to or writing to Figma",
+    })
+    const context = await exactContext()
+    const requestDigest = canonicalDigest({
+      initiativeId: initiative.id,
+      context,
+      informationClassification: outboundPackage.informationClassification,
+      objectiveDigest,
+      outboundPackage: outboundPackageReference,
+      target: {
+        recipientKey: target.recipientKey,
+        sourceTargetKey: target.sourceTargetKey,
+        designScopeKey: target.designScopeKey,
+        fileKey: target.fileKey,
+        targetKind: target.targetKind,
+        externalFileIdentityDigest: target.externalFileIdentityDigest,
+        expectedExternalVersionDigest: target.expectedExternalVersionDigest,
+        plannedWriteToolKey: target.plannedWriteToolKey,
+        selectedEntryKeys: target.selectedEntryKeys,
+        intendedEffect: target.intendedEffect,
+      },
+      requestFormat,
+    })
+    const idempotencyScopeDigest = canonicalDigest({
+      outboundPackage: outboundPackageReference,
+      recipientKey: target.recipientKey,
+      externalFileIdentityDigest: target.externalFileIdentityDigest,
+      expectedExternalVersionDigest: target.expectedExternalVersionDigest,
+    })
+    const idempotencyKeyDigest = canonicalDigest({ scopeDigest: idempotencyScopeDigest, requestDigest })
+    const effectDigest = canonicalDigest({
+      requestDigest,
+      packageManifestDigest: outboundPackage.manifestDigest,
+      packagePayloadDigest: outboundPackage.payloadDigest,
+      externalFileIdentityDigest: target.externalFileIdentityDigest,
+      expectedExternalVersionDigest: target.expectedExternalVersionDigest,
+      plannedWriteToolKey: target.plannedWriteToolKey,
+      selectedEntryKeys: target.selectedEntryKeys,
+      intendedEffect: target.intendedEffect,
+      idempotencyKeyDigest,
+      idempotencyScopeDigest,
+    })
+    const permissionKeys = ["figma.file.write"]
+    const permissionEvidenceDigests = [digest("8")]
+    const permissionVerificationDigest = canonicalDigest({
+      plannedWriteToolKey: target.plannedWriteToolKey,
+      externalFileIdentityDigest: target.externalFileIdentityDigest,
+      permissionKeys,
+      evidenceDigests: permissionEvidenceDigests,
+    })
+    const limitations = [
+      "This authorization-review candidate does not materialize or transfer context, connect to Figma, request credentials, grant permissions, perform a write, validate design, approve a baseline, or grant implementation authority",
+    ]
+    const previewReceipt = {
+      packageManifestDigest: outboundPackage.manifestDigest,
+      packagePayloadDigest: outboundPackage.payloadDigest,
+      requestDigest,
+      effectDigest,
+      title: "Customer portal governed Figma write candidate",
+      informationClassification: outboundPackage.informationClassification,
+      externalFileIdentityDigest: target.externalFileIdentityDigest,
+      expectedExternalVersionDigest: target.expectedExternalVersionDigest,
+      selectedEntryCount: target.selectedEntryKeys.length,
+      approvalState: "pending",
+      permissionEvidenceState: "verified",
+      idempotencyState: "defined",
+      recoveryPlanState: "defined",
+      limitations,
+    }
+    return {
+      initiativeId: initiative.id,
+      context,
+      informationClassification: outboundPackage.informationClassification,
+      title: previewReceipt.title,
+      objectiveDigest,
+      outboundPackage: outboundPackageReference,
+      target,
+      requestFormat,
+      requestDigest,
+      effectDigest,
+      preview: {
+        packageManifestDigest: outboundPackage.manifestDigest,
+        packagePayloadDigest: outboundPackage.payloadDigest,
+        requestDigest,
+        effectDigest,
+        previewDigest: canonicalDigest(previewReceipt),
+        state: "human-reviewed",
+        evidenceDigests: [digest("7")],
+        reviewedBy: { kind: "human", id: actorId },
+        reviewedAt: "2026-07-29T13:30:00.000Z",
+      },
+      approval: { state: "pending", evidenceDigests: [] },
+      permissionEvidence: {
+        state: "verified",
+        permissionKeys,
+        evidenceDigests: permissionEvidenceDigests,
+        verificationDigest: permissionVerificationDigest,
+        verifiedBy: { kind: "human", id: actorId },
+        verifiedAt: "2026-07-29T13:30:00.000Z",
+      },
+      idempotency: {
+        keyDigest: idempotencyKeyDigest,
+        scopeDigest: idempotencyScopeDigest,
+        requestDigest,
+        state: "defined",
+        replayProtectionState: "defined",
+      },
+      recoveryPlan: {
+        state: "defined",
+        strategyDigest: canonicalDigest({ strategy: "stop-and-reconcile-exact-write-result" }),
+        rollbackScopeDigest: canonicalDigest({ scope: "exact-target-version-and-request" }),
+        partialFailureRuleDigest: canonicalDigest({ rule: "hold-and-require-attributable-human-reconciliation" }),
+        unknownResultRuleDigest: canonicalDigest({ rule: "never-replay-until-exact-result-is-known" }),
+        evidenceDigests: [digest("9")],
+      },
+      disclosures: [],
+      sources: recipient.sources,
+      unresolvedQuestions: [],
+      limitations,
+      reviewState: "ready-for-human-review",
+      writePlanState: "complete-for-authorization-review",
+      packageMaterializationState: "manifest-only",
+      contextTransferState: "not-performed",
+      figmaConnectionAuthorityState: "not-granted",
+      credentialAuthorityState: "not-granted",
+      permissionGrantState: "not-granted",
+      figmaWriteAuthorityState: "not-granted",
+      writeExecutionState: "not-performed",
+      writeResultState: "not-recorded",
+      externalVersionValidationState: "not-established",
+      targetValidityState: "not-established",
+      designValidityState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-granted",
+    }
+  }
+
   it("persists, assesses, projects, and revises immutable candidate guidance without persona, appointment, or design authority", async () => {
     const firstInput = await input()
     const candidate = await engine.designPersonaRoleModel.create(firstInput, actorId)
@@ -4514,6 +4684,237 @@ describe("Design Persona and Role service", () => {
     })
     expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
       code: "outbound-design-brief-package.binding-review-required",
+      severity: "warning",
+    }))
+  })
+
+  it("persists, assesses, projects, audits, and revises immutable Governed Figma Write authorization-review candidates", async () => {
+    const prerequisites = await createFigmaContextImportPrerequisites()
+    const contextImport = await engine.figmaContextImport.create(
+      await figmaContextImportInput(prerequisites), actorId,
+    )
+    const outboundPackage = await engine.outboundDesignBriefPackage.create(
+      await outboundDesignBriefPackageInput(contextImport), actorId,
+    )
+    const input = await governedFigmaWriteInput(outboundPackage)
+    const candidate = await engine.governedFigmaWrite.create(input, actorId)
+
+    expect(candidate).toMatchObject({
+      revision: 1,
+      state: "candidate",
+      requestFormat: "gaep-governed-figma-write-request-v1",
+      requestDigest: input.requestDigest,
+      effectDigest: input.effectDigest,
+      outboundPackage: {
+        recordId: outboundPackage.id,
+        revision: outboundPackage.revision,
+        digest: canonicalDigest(outboundPackage),
+        membershipDigest: outboundPackage.membershipDigest,
+        manifestDigest: outboundPackage.manifestDigest,
+        payloadDigest: outboundPackage.payloadDigest,
+      },
+      target: {
+        recipientKey: "primary-design-file",
+        intendedEffect: "figma-write",
+        destinationState: "not-connected",
+        targetValidityState: "not-established",
+      },
+      preview: { state: "human-reviewed" },
+      approval: { state: "pending" },
+      permissionEvidence: { state: "verified" },
+      idempotency: { state: "defined", replayProtectionState: "defined" },
+      recoveryPlan: { state: "defined" },
+      writePlanState: "complete-for-authorization-review",
+      packageMaterializationState: "manifest-only",
+      contextTransferState: "not-performed",
+      figmaConnectionAuthorityState: "not-granted",
+      credentialAuthorityState: "not-granted",
+      permissionGrantState: "not-granted",
+      figmaWriteAuthorityState: "not-granted",
+      writeExecutionState: "not-performed",
+      writeResultState: "not-recorded",
+      externalVersionValidationState: "not-established",
+      targetValidityState: "not-established",
+      designValidityState: "not-established",
+      designApprovalState: "not-established",
+      designBaselineState: "not-established",
+      readinessState: "not-established",
+      implementationAuthorityState: "not-granted",
+      authorityBoundary: expect.stringContaining("authorization-review-candidate"),
+    })
+    expect(await engine.governedFigmaWrite.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id, revision: 1, digest: canonicalDigest(candidate) },
+      selectedEntryCount: 2,
+      unresolvedDisclosureCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      previewState: "human-reviewed",
+      approvalState: "pending",
+      permissionEvidenceState: "verified",
+      idempotencyState: "defined",
+      replayProtectionState: "defined",
+      recoveryPlanState: "defined",
+      writePlanState: "complete-for-authorization-review",
+      reviewState: "ready-for-human-review",
+      writeExecutionState: "not-performed",
+      writeResultState: "not-recorded",
+      state: "complete-for-authorization-review",
+      reasons: [],
+    })
+    const projection = await engine.governedFigmaWrite.project(initiative.id)
+    const { snapshotDigest, ...projectionBody } = projection
+    expect(snapshotDigest).toBe(canonicalDigest(projectionBody))
+    expect(projection).toMatchObject({
+      candidate: {
+        id: candidate.id,
+        revision: 1,
+        requestFormat: "gaep-governed-figma-write-request-v1",
+        requestDigest: input.requestDigest,
+        effectDigest: input.effectDigest,
+        selectedEntryCount: 2,
+        previewState: "human-reviewed",
+        approvalState: "pending",
+        permissionEvidenceState: "verified",
+        idempotencyState: "defined",
+        recoveryPlanState: "defined",
+        writeExecutionState: "not-performed",
+      },
+      privacyBoundary: expect.stringContaining("not-brief-requirement-constraint-context-item"),
+      authorityBoundary: expect.stringContaining("does-not-materialize-or-transfer-context"),
+    })
+    expect(JSON.stringify(projection)).not.toContain(prerequisites.contextContent.brief)
+    expect(JSON.stringify(projection)).not.toContain("figma-file-1")
+    expect(JSON.stringify(projection)).not.toContain("write-design-node")
+    expect(JSON.stringify(projection)).not.toContain(actorId)
+
+    const revised = await engine.governedFigmaWrite.revise(candidate.id, candidate.revision, input, actorId)
+    expect(revised).toMatchObject({ id: candidate.id, revision: 2, predecessorDigest: canonicalDigest(candidate) })
+    expect((await engine.governedFigmaWrite.listHistory(candidate.id)).map((record) => record.revision)).toEqual([2, 1])
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    expect(events.at(-1)).toMatchObject({
+      eventType: "governed-figma-write.revised",
+      payload: {
+        revision: 2,
+        recordDigest: canonicalDigest(revised),
+        membershipDigest: revised.membershipDigest,
+        predecessorDigest: canonicalDigest(candidate),
+        objectiveDigest: revised.objectiveDigest,
+        outboundPackage: revised.outboundPackage,
+        requestFormat: "gaep-governed-figma-write-request-v1",
+        requestDigest: revised.requestDigest,
+        effectDigest: revised.effectDigest,
+        selectedEntryCount: 2,
+        previewDigest: revised.preview.previewDigest,
+        previewState: "human-reviewed",
+        approvalState: "pending",
+        permissionEvidenceState: "verified",
+        idempotencyKeyDigest: revised.idempotency.keyDigest,
+        idempotencyScopeDigest: revised.idempotency.scopeDigest,
+        idempotencyState: "defined",
+        replayProtectionState: "defined",
+        recoveryPlanState: "defined",
+        disclosureCount: 0,
+        reviewState: "ready-for-human-review",
+        writePlanState: "complete-for-authorization-review",
+        packageMaterializationState: "manifest-only",
+        contextTransferState: "not-performed",
+        figmaConnectionAuthorityState: "not-granted",
+        credentialAuthorityState: "not-granted",
+        permissionGrantState: "not-granted",
+        figmaWriteAuthorityState: "not-granted",
+        writeExecutionState: "not-performed",
+        writeResultState: "not-recorded",
+        externalVersionValidationState: "not-established",
+        targetValidityState: "not-established",
+        designValidityState: "not-established",
+        designApprovalState: "not-established",
+        designBaselineState: "not-established",
+        readinessState: "not-established",
+        implementationAuthorityState: "not-granted",
+        writeAuthorityState: "not-granted",
+        actionAuthorityState: "not-granted",
+      },
+    })
+    expect(JSON.stringify(events.at(-1))).not.toContain(prerequisites.contextContent.brief)
+    expect(JSON.stringify(events.at(-1))).not.toContain("figma-file-1")
+    expect(JSON.stringify(events.at(-1))).not.toContain("write-design-node")
+  })
+
+  it("fails Governed Figma Writes closed on stale packages, target drift, forged receipts, or invented approval scope", async () => {
+    const prerequisites = await createFigmaContextImportPrerequisites()
+    const contextImport = await engine.figmaContextImport.create(
+      await figmaContextImportInput(prerequisites), actorId,
+    )
+    const outboundInput = await outboundDesignBriefPackageInput(contextImport)
+    const outboundPackage = await engine.outboundDesignBriefPackage.create(outboundInput, actorId)
+
+    const stalePackage = await governedFigmaWriteInput(outboundPackage)
+    stalePackage.outboundPackage.digest = digest("f")
+    await expect(engine.governedFigmaWrite.create(stalePackage, actorId))
+      .rejects.toThrow("exact current Outbound Design Brief Package")
+
+    const targetDrift = await governedFigmaWriteInput(outboundPackage)
+    targetDrift.target.expectedExternalVersionDigest = digest("e")
+    await expect(engine.governedFigmaWrite.create(targetDrift, actorId))
+      .rejects.toThrow("exactly preserve one current outbound package recipient")
+
+    const forgedRequest = await governedFigmaWriteInput(outboundPackage)
+    forgedRequest.requestDigest = digest("d")
+    forgedRequest.preview.requestDigest = digest("d")
+    forgedRequest.idempotency.requestDigest = digest("d")
+    await expect(engine.governedFigmaWrite.create(forgedRequest, actorId))
+      .rejects.toThrow("request digest must bind the exact governed write request")
+
+    const forgedPermission = await governedFigmaWriteInput(outboundPackage)
+    forgedPermission.permissionEvidence.verificationDigest = digest("c")
+    await expect(engine.governedFigmaWrite.create(forgedPermission, actorId))
+      .rejects.toThrow("permission verification digest")
+
+    const inventedApproval = await governedFigmaWriteInput(outboundPackage)
+    inventedApproval.approval = {
+      state: "granted",
+      scopeDigest: digest("b"),
+      decisionDigest: digest("a"),
+      evidenceDigests: [digest("9")],
+      decidedBy: { kind: "human", id: actorId },
+      decidedAt: "2026-07-29T13:30:00.000Z",
+      expiresAt: "2026-07-30T13:30:00.000Z",
+    }
+    inventedApproval.preview.previewDigest = canonicalDigest({
+      packageManifestDigest: inventedApproval.outboundPackage.manifestDigest,
+      packagePayloadDigest: inventedApproval.outboundPackage.payloadDigest,
+      requestDigest: inventedApproval.requestDigest,
+      effectDigest: inventedApproval.effectDigest,
+      title: inventedApproval.title,
+      informationClassification: inventedApproval.informationClassification,
+      externalFileIdentityDigest: inventedApproval.target.externalFileIdentityDigest,
+      expectedExternalVersionDigest: inventedApproval.target.expectedExternalVersionDigest,
+      selectedEntryCount: inventedApproval.target.selectedEntryKeys.length,
+      approvalState: "granted",
+      permissionEvidenceState: inventedApproval.permissionEvidence.state,
+      idempotencyState: inventedApproval.idempotency.state,
+      recoveryPlanState: inventedApproval.recoveryPlan.state,
+      limitations: inventedApproval.limitations,
+    })
+    await expect(engine.governedFigmaWrite.create(inventedApproval, actorId))
+      .rejects.toThrow("approval must bind the exact package")
+
+    const candidate = await engine.governedFigmaWrite.create(
+      await governedFigmaWriteInput(outboundPackage), actorId,
+    )
+    await engine.outboundDesignBriefPackage.revise(
+      outboundPackage.id, outboundPackage.revision, outboundInput, actorId,
+    )
+    expect(await engine.governedFigmaWrite.assess(initiative.id)).toMatchObject({
+      candidate: { recordId: candidate.id },
+      staleBindingCount: 1,
+      state: "attention-required",
+    })
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "governed-figma-write.binding-review-required",
       severity: "warning",
     }))
   })
