@@ -2574,6 +2574,78 @@ data class DesignerReadyGateProjection(
     val snapshotDigest: String,
 )
 
+data class DesignDeltaDesignerReadyBindingView(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val prerequisiteCatalogDigest: String,
+    val assessmentReceiptDigest: String,
+    val candidateResult: String,
+)
+
+data class DesignDeltaDependencyBindingView(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val catalogDigest: String,
+    val reconciliationDigest: String,
+    val reviewState: String,
+)
+
+data class DesignDeltaRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val designerReadyGate: DesignDeltaDesignerReadyBindingView,
+    val finalizedSnapshot: DesignDeltaDependencyBindingView,
+    val designBinding: DesignDeltaDependencyBindingView,
+    val sourceSnapshotDigest: String,
+    val targetSnapshotDigest: String,
+    val comparisonDefinitionDigest: String,
+    val comparisonReceiptDigest: String,
+    val deltaCatalogDigest: String,
+    val deltaCount: Int,
+    val comparisonState: String,
+    val provenanceState: String,
+    val candidateResult: String,
+    val reviewState: String,
+)
+
+data class DesignDeltaProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val candidateResult: String,
+    val reviewState: String,
+    val assessmentState: String,
+    val comparisonState: String,
+    val provenanceState: String,
+    val reasons: List<String>,
+    val sourceItemCount: Int,
+    val targetItemCount: Int,
+    val deltaCount: Int,
+    val addedCount: Int,
+    val changedCount: Int,
+    val conflictingCount: Int,
+    val missingCount: Int,
+    val staleCount: Int,
+    val unmappedCount: Int,
+    val humanReviewedCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedMappingCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: DesignDeltaRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -2847,6 +2919,12 @@ internal object PortableDesignProtocol {
         "designer-ready-gate-status-is-observational-and-does-not-establish-design-completeness-external-completeness-design-validity-approval-baseline-readiness-exception-waiver-acceptance-phase-entry-implementation-write-import-or-action-authority"
     private const val DESIGNER_READY_GATE_BOUNDARY =
         "a-passing-designer-ready-gate-candidate-is-an-evaluation-result-not-permission-or-readiness"
+    private const val DESIGN_DELTA_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-delta-content-external-identities-evidence-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions"
+    private const val DESIGN_DELTA_PROJECTION_AUTHORITY_BOUNDARY =
+        "design-delta-projection-is-read-only-and-does-not-establish-delta-completeness-external-completeness-design-validity-approval-baseline-readiness-conflict-resolution-synchronization-implementation-write-import-or-action-authority"
+    private const val DESIGN_DELTA_STATUS_AUTHORITY_BOUNDARY =
+        "design-delta-status-is-observational-and-does-not-establish-delta-completeness-external-completeness-design-validity-approval-baseline-readiness-conflict-resolution-synchronization-implementation-write-import-or-action-authority"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -9285,6 +9363,186 @@ internal object PortableDesignProtocol {
             satisfiedCount, notApplicableCount, unsatisfiedCount, notAssessedCount, staleOrUnknownCount,
             humanReviewedCount, pendingExceptionCount, grantedExceptionCandidateCount, invalidExceptionCount,
             staleBindingCount, staleSourceReferenceCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseDesignDeltaEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): DesignDeltaProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "design-delta-projection" ||
+            projection.requireString("privacyBoundary") != DESIGN_DELTA_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != DESIGN_DELTA_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "sourceItemCount", "targetItemCount", "deltaCount", "addedCount", "changedCount",
+                "conflictingCount", "missingCount", "staleCount", "unmappedCount", "humanReviewedCount",
+                "staleBindingCount", "staleSourceReferenceCount", "unresolvedMappingCount",
+                "unresolvedQuestionCount", "comparisonState", "provenanceState", "candidateResult",
+                "reviewState", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "design-delta-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != DESIGN_DELTA_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val sourceItemCount = status.requireBoundedNonNegativeInt("sourceItemCount", 131_072)
+        val targetItemCount = status.requireBoundedNonNegativeInt("targetItemCount", 131_072)
+        val deltaCount = status.requireBoundedNonNegativeInt("deltaCount", 65_536)
+        val addedCount = status.requireBoundedNonNegativeInt("addedCount", 65_536)
+        val changedCount = status.requireBoundedNonNegativeInt("changedCount", 65_536)
+        val conflictingCount = status.requireBoundedNonNegativeInt("conflictingCount", 65_536)
+        val missingCount = status.requireBoundedNonNegativeInt("missingCount", 65_536)
+        val staleCount = status.requireBoundedNonNegativeInt("staleCount", 65_536)
+        val unmappedCount = status.requireBoundedNonNegativeInt("unmappedCount", 65_536)
+        val humanReviewedCount = status.requireBoundedNonNegativeInt("humanReviewedCount", 65_536)
+        if (addedCount + changedCount + conflictingCount + missingCount + staleCount + unmappedCount != deltaCount ||
+            humanReviewedCount > deltaCount
+        ) throw invalidResponse()
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedMappingCount = status.requireBoundedNonNegativeInt("unresolvedMappingCount", 4_096)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val comparisonState = status.requireOneOf("comparisonState", setOf("exact", "not-assessed", "partial"))
+        val provenanceState = status.requireOneOf("provenanceState", setOf("exact", "not-assessed", "partial"))
+        val candidateResult = status.requireOneOf(
+            "candidateResult",
+            setOf("blocked", "conflict-candidate", "delta-detected-candidate", "incomplete", "no-delta-candidate", "not-assessed"),
+        )
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = staleBindingCount + staleSourceReferenceCount + unresolvedMappingCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-review" &&
+                (reference == null || reasons.isNotEmpty() || comparisonState != "exact" || provenanceState != "exact" ||
+                    gapCount > 0 || reviewState != "ready-for-human-review" ||
+                    candidateResult in setOf("blocked", "incomplete", "not-assessed"))) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        fun designerReadyBinding(value: JsonObject): DesignDeltaDesignerReadyBindingView {
+            value.requireExactKeys(
+                "recordId", "revision", "digest", "membershipDigest", "prerequisiteCatalogDigest",
+                "assessmentReceiptDigest", "candidateResult",
+            )
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            return DesignDeltaDesignerReadyBindingView(
+                value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"), value.requireDigest("prerequisiteCatalogDigest"),
+                value.requireDigest("assessmentReceiptDigest"),
+                value.requireOneOf(
+                    "candidateResult",
+                    setOf("blocked", "conditional-pass-candidate", "incomplete", "not-applicable-candidate", "pass-candidate"),
+                ),
+            )
+        }
+
+        fun deltaDependency(value: JsonObject, catalogKey: String): DesignDeltaDependencyBindingView {
+            value.requireExactKeys(
+                "recordId", "revision", "digest", "membershipDigest", catalogKey, "reconciliationDigest", "reviewState",
+            )
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            return DesignDeltaDependencyBindingView(
+                value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"), value.requireDigest(catalogKey),
+                value.requireDigest("reconciliationDigest"),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+        }
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "designerReadyGate",
+                "finalizedSnapshot", "designBinding", "sourceSnapshotDigest", "targetSnapshotDigest",
+                "comparisonDefinitionDigest", "comparisonReceiptDigest", "deltaCatalogDigest", "deltaCount",
+                "comparisonState", "provenanceState", "candidateResult", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = DesignDeltaRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                designerReadyBinding(value.get("designerReadyGate").requireObject()),
+                deltaDependency(value.get("finalizedSnapshot").requireObject(), "itemCatalogDigest"),
+                deltaDependency(value.get("designBinding").requireObject(), "bindingCatalogDigest"),
+                value.requireDigest("sourceSnapshotDigest"),
+                value.requireDigest("targetSnapshotDigest"),
+                value.requireDigest("comparisonDefinitionDigest"),
+                value.requireDigest("comparisonReceiptDigest"),
+                value.requireDigest("deltaCatalogDigest"),
+                value.requireBoundedNonNegativeInt("deltaCount", 65_536),
+                value.requireOneOf("comparisonState", setOf("exact", "not-assessed", "partial")),
+                value.requireOneOf("provenanceState", setOf("exact", "not-assessed", "partial")),
+                value.requireOneOf(
+                    "candidateResult",
+                    setOf("blocked", "conflict-candidate", "delta-detected-candidate", "incomplete", "no-delta-candidate"),
+                ),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest ||
+                record.deltaCount != deltaCount || record.comparisonState != comparisonState ||
+                record.provenanceState != provenanceState || record.candidateResult != candidateResult ||
+                record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return DesignDeltaProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, candidateResult, reviewState, assessmentState, comparisonState, provenanceState,
+            reasons, sourceItemCount, targetItemCount, deltaCount, addedCount, changedCount, conflictingCount,
+            missingCount, staleCount, unmappedCount, humanReviewedCount, staleBindingCount,
+            staleSourceReferenceCount, unresolvedMappingCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 

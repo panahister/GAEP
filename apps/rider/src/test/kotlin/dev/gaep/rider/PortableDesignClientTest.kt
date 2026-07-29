@@ -2128,6 +2128,52 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Design Delta projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("design-delta-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDesignDelta(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("conflict-candidate", projection.candidateResult)
+            assertEquals("held", projection.reviewState)
+            assertEquals(6, projection.deltaCount)
+            assertEquals(1, projection.conflictingCount)
+            assertEquals(3, projection.humanReviewedCount)
+            assertEquals(6, projection.candidate?.deltaCount)
+
+            val rendered = RiderProductController(client).readDesignDelta(entryId)
+            assertTrue(rendered.contains("GAEP Design Delta candidate"))
+            assertTrue(rendered.contains("12 source items · 14 target items · 6 deltas"))
+            assertTrue(rendered.contains("2 added · 1 changed · 1 conflicting"))
+            assertTrue(rendered.contains("comparison partial · provenance partial"))
+            assertTrue(rendered.contains("no delta or external completeness"))
+            assertTrue(rendered.contains("implementation, or action authority"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("deltaContent="))
+        }
+
+        listOf("bad-design-delta-digest", "bad-design-delta-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDesignDelta(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-design-delta-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDesignDelta(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

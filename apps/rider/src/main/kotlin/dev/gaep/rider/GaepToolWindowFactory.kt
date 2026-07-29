@@ -738,6 +738,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += designerReadyGateButton
         actions.add(designerReadyGateButton)
 
+        val designDeltaButton = JButton("Inspect Design Delta…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Design and delta content, external identities, evidence, Source content, human attribution, personal data, local paths, secrets, credentials, permissions, and authority are withheld.",
+                    "GAEP Design Delta",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Design Delta", status, output, buttons) {
+                    controller.readDesignDelta(initiativeId)
+                }
+            }
+        }
+        buttons += designDeltaButton
+        actions.add(designDeltaButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

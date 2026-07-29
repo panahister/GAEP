@@ -54,6 +54,7 @@ private val governedFigmaWriteId = UUID.fromString("77777777-7777-4777-8777-7777
 private val finalizedFigmaSnapshotImportId = UUID.fromString("78787878-7878-4878-8878-787878787878")
 private val designToRequirementBindingId = UUID.fromString("79797979-7979-4979-8979-797979797979")
 private val designerReadyGateId = UUID.fromString("80808080-8080-4080-8080-808080808080")
+private val designDeltaId = UUID.fromString("81818181-8181-4181-8181-818181818181")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -322,6 +323,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.designerReadyGate.snapshot" -> handleDesignerReadyGate(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.designDelta.snapshot" -> handleDesignDelta(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4220,6 +4226,133 @@ private fun handleDesignerReadyGate(id: Long, params: JsonObject, workspacePath:
         }
         workspacePath.endsWith("bad-designer-ready-gate-private") -> {
             value.addProperty("criteria", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDesignDelta(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN DELTA PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-design-delta-binding")) 8 else 7
+    val assessedAt = "2026-07-29T23:12:00.000Z"
+    val candidateDigest = "sha256:${"8".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "design-delta-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "design-delta-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", designDeltaId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("sourceItemCount", 12)
+            addProperty("targetItemCount", 14)
+            addProperty("deltaCount", 6)
+            addProperty("addedCount", 2)
+            addProperty("changedCount", 1)
+            addProperty("conflictingCount", 1)
+            addProperty("missingCount", 1)
+            addProperty("staleCount", 1)
+            addProperty("unmappedCount", 0)
+            addProperty("humanReviewedCount", 3)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedMappingCount", 2)
+            addProperty("unresolvedQuestionCount", 3)
+            addProperty("comparisonState", "partial")
+            addProperty("provenanceState", "partial")
+            addProperty("candidateResult", "conflict-candidate")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("The candidate contains an unresolved conflicting delta") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "design-delta-status-is-observational-and-does-not-establish-delta-completeness-external-completeness-design-validity-approval-baseline-readiness-conflict-resolution-synchronization-implementation-write-import-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", designDeltaId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"9".repeat(64)}")
+            addProperty("state", "candidate")
+            add("designerReadyGate", JsonObject().apply {
+                addProperty("recordId", designerReadyGateId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", "sha256:${"1".repeat(64)}")
+                addProperty("membershipDigest", "sha256:${"2".repeat(64)}")
+                addProperty("prerequisiteCatalogDigest", "sha256:${"3".repeat(64)}")
+                addProperty("assessmentReceiptDigest", "sha256:${"4".repeat(64)}")
+                addProperty("candidateResult", "incomplete")
+            })
+            add("finalizedSnapshot", JsonObject().apply {
+                addProperty("recordId", finalizedFigmaSnapshotImportId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", "sha256:${"5".repeat(64)}")
+                addProperty("membershipDigest", "sha256:${"6".repeat(64)}")
+                addProperty("itemCatalogDigest", "sha256:${"7".repeat(64)}")
+                addProperty("reconciliationDigest", "sha256:${"8".repeat(64)}")
+                addProperty("reviewState", "held")
+            })
+            add("designBinding", JsonObject().apply {
+                addProperty("recordId", designToRequirementBindingId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", "sha256:${"9".repeat(64)}")
+                addProperty("membershipDigest", "sha256:${"a".repeat(64)}")
+                addProperty("bindingCatalogDigest", "sha256:${"b".repeat(64)}")
+                addProperty("reconciliationDigest", "sha256:${"c".repeat(64)}")
+                addProperty("reviewState", "held")
+            })
+            addProperty("sourceSnapshotDigest", "sha256:${"d".repeat(64)}")
+            addProperty("targetSnapshotDigest", "sha256:${"e".repeat(64)}")
+            addProperty("comparisonDefinitionDigest", "sha256:${"f".repeat(64)}")
+            addProperty("comparisonReceiptDigest", "sha256:${"0".repeat(64)}")
+            addProperty("deltaCatalogDigest", "sha256:${"1".repeat(64)}")
+            addProperty("deltaCount", 6)
+            addProperty("comparisonState", "partial")
+            addProperty("provenanceState", "partial")
+            addProperty("candidateResult", "conflict-candidate")
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-29T23:11:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-delta-content-external-identities-evidence-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+        )
+        addProperty(
+            "authorityBoundary",
+            "design-delta-projection-is-read-only-and-does-not-establish-delta-completeness-external-completeness-design-validity-approval-baseline-readiness-conflict-resolution-synchronization-implementation-write-import-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-design-delta-digest") -> {
+            value.getAsJsonObject("status").addProperty("deltaCount", 5)
+        }
+        workspacePath.endsWith("bad-design-delta-private") -> {
+            value.addProperty("deltaContent", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)
