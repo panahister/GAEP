@@ -1989,6 +1989,54 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "finalized-figma-snapshot-import-read-empty",
+      protocolVersion: 2,
+      method: "design.finalizedFigmaSnapshotImport.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "finalized-figma-snapshot-import-assess-empty",
+      protocolVersion: 2,
+      method: "design.finalizedFigmaSnapshotImport.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      itemCount: 0,
+      humanReviewedItemCount: 0,
+      sourceRecordedItemCount: 0,
+      notAssessedItemCount: 0,
+      openConflictCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      returnAuthorizationState: "not-assessed",
+      reconciliationState: "not-assessed",
+      provenanceState: "not-assessed",
+      snapshotCompletenessState: "not-assessed",
+      reviewState: "draft",
+      importExecutionState: "not-performed",
+      importResultState: "not-recorded",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-transfer-or-import-content"),
+    })
+    const finalizedFigmaSnapshotImportProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "finalized-figma-snapshot-import-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.finalizedFigmaSnapshotImport.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const {
+      snapshotDigest: finalizedFigmaSnapshotImportDigest,
+      ...finalizedFigmaSnapshotImportProjectionBody
+    } = finalizedFigmaSnapshotImportProjection
+    expect(finalizedFigmaSnapshotImportDigest).toBe(canonicalDigest(finalizedFigmaSnapshotImportProjectionBody))
+    expect(finalizedFigmaSnapshotImportProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-figma-content-names-external-identities"),
+      authorityBoundary: expect.stringContaining("does-not-transfer-or-import-content"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -2111,6 +2159,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "governed-figma-write-v1-block",
       method: "design.governedFigmaWrite.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "finalized-figma-snapshot-import-v1-block",
+      method: "design.finalizedFigmaSnapshotImport.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

@@ -284,6 +284,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.governedFigmaWrite.revise",
   "design.governedFigmaWrite.assess",
   "design.governedFigmaWrite.snapshot",
+  "design.finalizedFigmaSnapshotImport.read",
+  "design.finalizedFigmaSnapshotImport.create",
+  "design.finalizedFigmaSnapshotImport.revise",
+  "design.finalizedFigmaSnapshotImport.assess",
+  "design.finalizedFigmaSnapshotImport.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1736,6 +1741,24 @@ export class EngineHost {
         return this.engine.governedFigmaWrite.assess(request.params.initiativeId)
       case "design.governedFigmaWrite.snapshot":
         return this.engine.governedFigmaWrite.project(request.params.initiativeId)
+      case "design.finalizedFigmaSnapshotImport.read":
+        return await this.engine.finalizedFigmaSnapshotImport.readCurrent(request.params.initiativeId) ?? null
+      case "design.finalizedFigmaSnapshotImport.create":
+        return this.engine.finalizedFigmaSnapshotImport.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.finalizedFigmaSnapshotImport.revise":
+        return this.engine.finalizedFigmaSnapshotImport.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.finalizedFigmaSnapshotImport.assess":
+        return this.engine.finalizedFigmaSnapshotImport.assess(request.params.initiativeId)
+      case "design.finalizedFigmaSnapshotImport.snapshot":
+        return this.engine.finalizedFigmaSnapshotImport.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {
