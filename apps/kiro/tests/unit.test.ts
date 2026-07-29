@@ -2262,6 +2262,58 @@ test("protocol-v2 client validates privacy-safe Design-to-Requirement Binding pr
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 client validates privacy-safe Designer-Ready Gate projections and rejects hostile responses", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-designer-ready-gate-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-designer-ready-gate-binding",
+    "bad-designer-ready-gate-digest",
+    "bad-designer-ready-gate-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readDesignerReadyGate(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.candidateResult, "incomplete")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.prerequisiteCount, 12)
+    assert.equal(projection.status.satisfiedCount, 9)
+    assert.equal(projection.status.humanReviewedCount, 10)
+    assert.equal(projection.candidate?.prerequisiteCount, 12)
+    assert.equal(
+      projection.authorityBoundary,
+      "designer-ready-gate-projection-is-read-only-and-does-not-establish-design-completeness-external-completeness-design-validity-approval-baseline-readiness-exception-waiver-acceptance-phase-entry-implementation-write-import-or-action-authority",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"criteria":'), false)
+    assert.equal(serialized.includes('"evaluations":'), false)
+    assert.equal(serialized.includes('"exceptions":'), false)
+    assert.equal(serialized.includes('"sources":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readDesignerReadyGate(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")

@@ -64,6 +64,7 @@ const commands = [
   "gaepKiro.governedFigmaWrite.inspect",
   "gaepKiro.finalizedFigmaSnapshotImport.inspect",
   "gaepKiro.designToRequirementBinding.inspect",
+  "gaepKiro.designerReadyGate.inspect",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",

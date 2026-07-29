@@ -41,6 +41,7 @@ import {
   type GovernedFigmaWriteProjection,
   type FinalizedFigmaSnapshotImportProjection,
   type DesignToRequirementBindingProjection,
+  type DesignerReadyGateProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -153,6 +154,7 @@ const commandIds = {
   governedFigmaWrite: "gaepKiro.governedFigmaWrite.inspect",
   finalizedFigmaSnapshotImport: "gaepKiro.finalizedFigmaSnapshotImport.inspect",
   designToRequirementBinding: "gaepKiro.designToRequirementBinding.inspect",
+  designerReadyGate: "gaepKiro.designerReadyGate.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -284,6 +286,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.governedFigmaWrite, (input?: unknown) => runUserCommand(() => showGovernedFigmaWrite(pool, input))),
     vscode.commands.registerCommand(commandIds.finalizedFigmaSnapshotImport, (input?: unknown) => runUserCommand(() => showFinalizedFigmaSnapshotImport(pool, input))),
     vscode.commands.registerCommand(commandIds.designToRequirementBinding, (input?: unknown) => runUserCommand(() => showDesignToRequirementBinding(pool, input))),
+    vscode.commands.registerCommand(commandIds.designerReadyGate, (input?: unknown) => runUserCommand(() => showDesignerReadyGate(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -2176,6 +2179,47 @@ async function showDesignToRequirementBinding(
     ] : []),
     "",
     "Candidate identities, exact dependency and catalog digests, counts, and statuses only; this does not prove relationship truth or coverage completeness, satisfy Requirements, establish Decision effectiveness or external completeness, validate or approve design, establish a baseline or readiness, connect to or call Figma, request credentials, grant permissions, execute imports or writes, or authorize implementation or action.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDesignerReadyGate(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DesignerReadyGateProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Designer-Ready Gate", "Initiative ID")
+  const projection = await client.readDesignerReadyGate(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP Designer-Ready Gate candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate result: ${status.candidateResult} · ${status.state} · review state: ${status.reviewState}`,
+    `Coverage: ${status.satisfiedCount} satisfied · ${status.notApplicableCount} not-applicable candidates · ${status.humanReviewedCount}/${status.prerequisiteCount} human-reviewed`,
+    `Candidate gaps: ${status.unsatisfiedCount} unsatisfied · ${status.notAssessedCount} not assessed · ${status.staleOrUnknownCount} stale/unknown · ${status.pendingExceptionCount} pending exceptions · ${status.invalidExceptionCount} invalid exceptions · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Prerequisites: ${record.prerequisiteCount} exact · ${record.prerequisiteCatalogDigest}`,
+      `Assessment: definition ${record.assessmentDefinitionDigest} · receipt ${record.assessmentReceiptDigest} · evaluations ${record.evaluationCatalogDigest}`,
+      `Exception catalog: ${record.exceptionCatalogDigest}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, exact digests, counts, and results only; a passing candidate is an evaluation result, not permission or readiness, and grants no completeness, validity, approval, baseline, exception, waiver, acceptance, phase-entry, Figma connection, credential, permission, import, write, implementation, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

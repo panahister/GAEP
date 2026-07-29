@@ -67,6 +67,7 @@ const outboundDesignBriefPackageId = "69696969-6969-4969-8969-696969696969"
 const governedFigmaWriteId = "70707070-7070-4070-8070-707070707070"
 const finalizedFigmaSnapshotImportId = "71717171-7171-4171-8171-717171717171"
 const designToRequirementBindingId = "72727272-7272-4272-8272-727272727272"
+const designerReadyGateId = "73737373-7373-4373-8373-737373737373"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -182,6 +183,8 @@ input.on("line", (line) => {
       return readFinalizedFigmaSnapshotImport(id, request.params)
     case "design.designToRequirementBinding.snapshot":
       return readDesignToRequirementBinding(id, request.params)
+    case "design.designerReadyGate.snapshot":
+      return readDesignerReadyGate(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -2907,6 +2910,72 @@ function readDesignToRequirementBinding(id, params) {
   if (workspacePath.endsWith("bad-design-to-requirement-binding-private")) {
     value.humanAttribution = `${privateRoot}/${privateCredential}`
   }
+  return writeResult(id, value)
+}
+
+function readDesignerReadyGate(id, params) {
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"1".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "designer-ready-gate-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: designerReadyGateId, revision: 2, digest: candidateDigest },
+    prerequisiteCount: 12,
+    satisfiedCount: 9,
+    notApplicableCount: 1,
+    unsatisfiedCount: 1,
+    notAssessedCount: 1,
+    staleOrUnknownCount: 2,
+    humanReviewedCount: 10,
+    pendingExceptionCount: 1,
+    grantedExceptionCandidateCount: 1,
+    invalidExceptionCount: 1,
+    staleBindingCount: 2,
+    staleSourceReferenceCount: 3,
+    unresolvedQuestionCount: 4,
+    candidateResult: "incomplete",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more prerequisites remain incomplete"],
+    assessedAt: "2026-07-29T22:25:00.000Z",
+    gateBoundary: "a-passing-designer-ready-gate-candidate-is-an-evaluation-result-not-permission-or-readiness",
+    authorityBoundary: "designer-ready-gate-status-is-observational-and-does-not-establish-design-completeness-external-completeness-design-validity-approval-baseline-readiness-exception-waiver-acceptance-phase-entry-implementation-write-import-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "designer-ready-gate-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: designerReadyGateId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"2".repeat(64)}`,
+      state: "candidate",
+      prerequisiteCount: 12,
+      prerequisiteCatalogDigest: `sha256:${"3".repeat(64)}`,
+      evaluationCatalogDigest: `sha256:${"4".repeat(64)}`,
+      exceptionCatalogDigest: `sha256:${"5".repeat(64)}`,
+      assessmentDefinitionDigest: `sha256:${"6".repeat(64)}`,
+      assessmentReceiptDigest: `sha256:${"7".repeat(64)}`,
+      candidateResult: "incomplete",
+      reviewState: "held",
+      updatedAt: "2026-07-29T22:24:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-criteria-findings-exception-rationale-decision-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+    authorityBoundary: "designer-ready-gate-projection-is-read-only-and-does-not-establish-design-completeness-external-completeness-design-validity-approval-baseline-readiness-exception-waiver-acceptance-phase-entry-implementation-write-import-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-designer-ready-gate-binding")) content.initiative.id = designerReadyGateId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-designer-ready-gate-digest")) value.candidate.prerequisiteCount = 11
+  if (workspacePath.endsWith("bad-designer-ready-gate-private")) value.criteria = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }
 

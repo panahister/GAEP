@@ -40,6 +40,7 @@ import {
   governedFigmaWriteProjectionSchema,
   finalizedFigmaSnapshotImportProjectionSchema,
   designToRequirementBindingProjectionSchema,
+  designerReadyGateProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
@@ -87,6 +88,7 @@ import {
   type GovernedFigmaWriteProjection,
   type FinalizedFigmaSnapshotImportProjection,
   type DesignToRequirementBindingProjection,
+  type DesignerReadyGateProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -929,6 +931,21 @@ export class GaepEngineClient {
         projection.initiative.id.toLowerCase() !== initiativeId ||
         snapshotDigest !== canonicalDigest(projectionBody)
       ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readDesignerReadyGate(initiativeValue: string): Promise<DesignerReadyGateProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = designerReadyGateProjectionSchema.safeParse(
+        await this.request("design.designerReadyGate.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId ||
+          snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
       return projection
     })
   }

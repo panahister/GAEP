@@ -91,6 +91,7 @@
     "onCommand:gaepKiro.governedFigmaWrite.inspect",
     "onCommand:gaepKiro.finalizedFigmaSnapshotImport.inspect",
     "onCommand:gaepKiro.designToRequirementBinding.inspect",
+    "onCommand:gaepKiro.designerReadyGate.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -332,6 +333,10 @@
       {
         "command": "gaepKiro.designToRequirementBinding.inspect",
         "title": "GAEP for Kiro: Inspect Design-to-Requirement Binding Review Candidate"
+      },
+      {
+        "command": "gaepKiro.designerReadyGate.inspect",
+        "title": "GAEP for Kiro: Inspect Designer-Ready Gate Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",
