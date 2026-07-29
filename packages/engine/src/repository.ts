@@ -37,6 +37,7 @@ import {
   outboundDesignBriefPackageSchema,
   governedFigmaWriteSchema,
   finalizedFigmaSnapshotImportSchema,
+  designToRequirementBindingSchema,
   architectureRecordSchema,
   authorizationModelSchema,
   eventIntegrationModelSchema,
@@ -191,6 +192,8 @@ const directoryNames = [
   "governed-figma-write-history",
   "finalized-figma-snapshot-imports",
   "finalized-figma-snapshot-import-history",
+  "design-to-requirement-bindings",
+  "design-to-requirement-binding-history",
   "stakeholder-models",
   "stakeholder-model-history",
   "outcome-models",
@@ -1030,6 +1033,8 @@ export class GaepRepository {
       ["governed-figma-write-history", /^governed-figma-write-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["finalized-figma-snapshot-imports", /^[0-9a-f-]+\.json$/i],
       ["finalized-figma-snapshot-import-history", /^finalized-figma-snapshot-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["design-to-requirement-bindings", /^[0-9a-f-]+\.json$/i],
+      ["design-to-requirement-binding-history", /^design-to-requirement-binding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["stakeholder-models", /^[0-9a-f-]+\.json$/i],
       ["stakeholder-model-history", /^stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["outcome-models", /^[0-9a-f-]+\.json$/i],
@@ -1261,6 +1266,10 @@ export class GaepRepository {
     if (/^finalized-figma-snapshot-imports\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^finalized-figma-snapshot-import-history\/finalized-figma-snapshot-import-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, finalizedFigmaSnapshotImportSchema)
+    }
+    if (/^design-to-requirement-bindings\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^design-to-requirement-binding-history\/design-to-requirement-binding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, designToRequirementBindingSchema)
     }
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
