@@ -2470,6 +2470,66 @@ data class FinalizedFigmaSnapshotImportProjection(
     val snapshotDigest: String,
 )
 
+data class DesignToRequirementDependencyBindingView(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val catalogDigest: String,
+)
+
+data class DesignToRequirementBindingRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val finalizedSnapshot: DesignToRequirementDependencyBindingView,
+    val designRequirements: DesignToRequirementDependencyBindingView,
+    val decisionRegister: DesignToRequirementDependencyBindingView,
+    val reconciliationDigest: String,
+    val bindingCount: Int,
+    val designItemCoverageCount: Int,
+    val subjectCoverageCount: Int,
+    val conflictCount: Int,
+    val reconciliationState: String,
+    val candidateCoverageState: String,
+    val provenanceState: String,
+    val reviewState: String,
+)
+
+data class DesignToRequirementBindingProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reviewState: String,
+    val reconciliationState: String,
+    val candidateCoverageState: String,
+    val provenanceState: String,
+    val reasons: List<String>,
+    val bindingCount: Int,
+    val humanReviewedBindingCount: Int,
+    val designItemCount: Int,
+    val boundDesignItemCount: Int,
+    val unboundDesignItemCount: Int,
+    val requirementCount: Int,
+    val boundRequirementCount: Int,
+    val unboundRequirementCount: Int,
+    val decisionCount: Int,
+    val boundDecisionCount: Int,
+    val unboundDecisionCount: Int,
+    val openConflictCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: DesignToRequirementBindingRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -2729,6 +2789,12 @@ internal object PortableDesignProtocol {
         "finalized-figma-snapshot-import-projection-is-read-only-and-does-not-transfer-or-import-content-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-validate-or-approve-design-establish-a-baseline-readiness-implementation-write-or-action-authority"
     private const val FINALIZED_FIGMA_SNAPSHOT_IMPORT_STATUS_AUTHORITY_BOUNDARY =
         "finalized-figma-snapshot-import-status-is-observational-and-does-not-transfer-or-import-content-connect-to-or-call-figma-request-credentials-grant-permissions-prove-external-completeness-validate-or-approve-design-establish-a-baseline-readiness-implementation-or-action-authority"
+    private const val DESIGN_TO_REQUIREMENT_BINDING_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-content-external-identities-requirement-text-decision-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions"
+    private const val DESIGN_TO_REQUIREMENT_BINDING_PROJECTION_AUTHORITY_BOUNDARY =
+        "design-to-requirement-binding-projection-is-read-only-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority"
+    private const val DESIGN_TO_REQUIREMENT_BINDING_STATUS_AUTHORITY_BOUNDARY =
+        "design-to-requirement-binding-status-is-observational-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -8869,6 +8935,164 @@ internal object PortableDesignProtocol {
             provenanceState, snapshotCompletenessState, importExecutionState, importResultState, reasons,
             itemCount, humanReviewedItemCount, sourceRecordedItemCount, notAssessedItemCount, openConflictCount,
             staleBindingCount, staleSourceReferenceCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseDesignToRequirementBindingEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): DesignToRequirementBindingProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "design-to-requirement-binding-projection" ||
+            projection.requireString("privacyBoundary") != DESIGN_TO_REQUIREMENT_BINDING_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != DESIGN_TO_REQUIREMENT_BINDING_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "bindingCount", "humanReviewedBindingCount", "designItemCount", "boundDesignItemCount",
+                "unboundDesignItemCount", "requirementCount", "boundRequirementCount", "unboundRequirementCount",
+                "decisionCount", "boundDecisionCount", "unboundDecisionCount", "openConflictCount",
+                "staleBindingCount", "staleSourceReferenceCount", "unresolvedQuestionCount", "reconciliationState",
+                "candidateCoverageState", "provenanceState", "reviewState", "state", "reasons", "assessedAt",
+                "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "design-to-requirement-binding-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != DESIGN_TO_REQUIREMENT_BINDING_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val bindingCount = status.requireBoundedNonNegativeInt("bindingCount", 131_072)
+        val humanReviewedBindingCount = status.requireBoundedNonNegativeInt("humanReviewedBindingCount", 131_072)
+        val designItemCount = status.requireBoundedNonNegativeInt("designItemCount", 131_072)
+        val boundDesignItemCount = status.requireBoundedNonNegativeInt("boundDesignItemCount", 131_072)
+        val unboundDesignItemCount = status.requireBoundedNonNegativeInt("unboundDesignItemCount", 131_072)
+        val requirementCount = status.requireBoundedNonNegativeInt("requirementCount", 131_072)
+        val boundRequirementCount = status.requireBoundedNonNegativeInt("boundRequirementCount", 131_072)
+        val unboundRequirementCount = status.requireBoundedNonNegativeInt("unboundRequirementCount", 131_072)
+        val decisionCount = status.requireBoundedNonNegativeInt("decisionCount", 131_072)
+        val boundDecisionCount = status.requireBoundedNonNegativeInt("boundDecisionCount", 131_072)
+        val unboundDecisionCount = status.requireBoundedNonNegativeInt("unboundDecisionCount", 131_072)
+        if (humanReviewedBindingCount > bindingCount || boundDesignItemCount + unboundDesignItemCount != designItemCount ||
+            boundRequirementCount + unboundRequirementCount != requirementCount ||
+            boundDecisionCount + unboundDecisionCount != decisionCount
+        ) throw invalidResponse()
+        val openConflictCount = status.requireBoundedNonNegativeInt("openConflictCount", 1_024)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val reconciliationState = status.requireOneOf("reconciliationState", setOf("exact", "partial", "not-assessed"))
+        val candidateCoverageState = status.requireOneOf("candidateCoverageState", setOf("candidate-complete", "partial", "not-assessed"))
+        val provenanceState = status.requireOneOf("provenanceState", setOf("exact", "partial", "not-assessed"))
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = (bindingCount - humanReviewedBindingCount) + unboundDesignItemCount + unboundRequirementCount +
+            unboundDecisionCount + openConflictCount + staleBindingCount + staleSourceReferenceCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-review" &&
+                (gapCount > 0 || bindingCount == 0 || reconciliationState != "exact" ||
+                    candidateCoverageState != "candidate-complete" || provenanceState != "exact" ||
+                    reviewState != "ready-for-human-review" || reasons.isNotEmpty() || reference == null)) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        fun dependency(value: JsonObject, catalogKey: String): DesignToRequirementDependencyBindingView {
+            value.requireExactKeys("recordId", "revision", "digest", "membershipDigest", catalogKey)
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            return DesignToRequirementDependencyBindingView(
+                value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"), value.requireDigest(catalogKey),
+            )
+        }
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "finalizedSnapshot",
+                "designRequirements", "decisionRegister", "reconciliationDigest", "bindingCount",
+                "designItemCoverageCount", "subjectCoverageCount", "conflictCount", "reconciliationState",
+                "candidateCoverageState", "provenanceState", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = DesignToRequirementBindingRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                dependency(value.get("finalizedSnapshot").requireObject(), "itemCatalogDigest"),
+                dependency(value.get("designRequirements").requireObject(), "requirementCatalogDigest"),
+                dependency(value.get("decisionRegister").requireObject(), "decisionCatalogDigest"),
+                value.requireDigest("reconciliationDigest"),
+                value.requireBoundedNonNegativeInt("bindingCount", 131_072),
+                value.requireBoundedNonNegativeInt("designItemCoverageCount", 131_072),
+                value.requireBoundedNonNegativeInt("subjectCoverageCount", 262_144),
+                value.requireBoundedNonNegativeInt("conflictCount", 1_024),
+                value.requireOneOf("reconciliationState", setOf("exact", "partial", "not-assessed")),
+                value.requireOneOf("candidateCoverageState", setOf("candidate-complete", "partial", "not-assessed")),
+                value.requireOneOf("provenanceState", setOf("exact", "partial", "not-assessed")),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest ||
+                record.bindingCount != bindingCount || record.designItemCoverageCount != designItemCount ||
+                record.subjectCoverageCount != requirementCount + decisionCount ||
+                record.reconciliationState != reconciliationState || record.candidateCoverageState != candidateCoverageState ||
+                record.provenanceState != provenanceState || record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return DesignToRequirementBindingProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reviewState, reconciliationState, candidateCoverageState,
+            provenanceState, reasons, bindingCount, humanReviewedBindingCount, designItemCount,
+            boundDesignItemCount, unboundDesignItemCount, requirementCount, boundRequirementCount,
+            unboundRequirementCount, decisionCount, boundDecisionCount, unboundDecisionCount,
+            openConflictCount, staleBindingCount, staleSourceReferenceCount, unresolvedQuestionCount,
+            candidate, snapshotDigest,
         )
     }
 

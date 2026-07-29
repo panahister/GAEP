@@ -438,6 +438,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readDesignToRequirementBinding(initiativeId: UUID): DesignToRequirementBindingProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("design.designToRequirementBinding.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseDesignToRequirementBindingEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

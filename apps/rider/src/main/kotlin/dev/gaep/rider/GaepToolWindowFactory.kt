@@ -706,6 +706,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += finalizedFigmaSnapshotImportButton
         actions.add(finalizedFigmaSnapshotImportButton)
 
+        val designToRequirementBindingButton = JButton("Inspect Design-to-Requirement Binding…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Figma content, external identities, Requirement text, Decision content, Source content, human attribution, personal data, local paths, secrets, credentials, permissions, and authority are withheld.",
+                    "GAEP Design-to-Requirement Binding",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Design-to-Requirement Binding", status, output, buttons) {
+                    controller.readDesignToRequirementBinding(initiativeId)
+                }
+            }
+        }
+        buttons += designToRequirementBindingButton
+        actions.add(designToRequirementBindingButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

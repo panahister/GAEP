@@ -52,6 +52,7 @@ private val figmaContextImportId = UUID.fromString("75757575-7575-4575-8575-7575
 private val outboundDesignBriefPackageId = UUID.fromString("76767676-7676-4676-8676-767676767676")
 private val governedFigmaWriteId = UUID.fromString("77777777-7777-4777-8777-777777777777")
 private val finalizedFigmaSnapshotImportId = UUID.fromString("78787878-7878-4878-8878-787878787878")
+private val designToRequirementBindingId = UUID.fromString("79797979-7979-4979-8979-797979797979")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -310,6 +311,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.finalizedFigmaSnapshotImport.snapshot" -> handleFinalizedFigmaSnapshotImport(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.designToRequirementBinding.snapshot" -> handleDesignToRequirementBinding(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4002,6 +4008,116 @@ private fun handleFinalizedFigmaSnapshotImport(id: Long, params: JsonObject, wor
         }
         workspacePath.endsWith("bad-finalized-figma-snapshot-import-private") -> {
             value.addProperty("authorizationActor", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDesignToRequirementBinding(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN TO REQUIREMENT BINDING PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-design-to-requirement-binding-binding")) 8 else 7
+    val assessedAt = "2026-07-29T16:30:00.000Z"
+    val candidateDigest = "sha256:${"d".repeat(64)}"
+    fun dependency(recordId: UUID, revision: Int, catalogKey: String, digestSeed: String): JsonObject = JsonObject().apply {
+        addProperty("recordId", recordId.toString())
+        addProperty("revision", revision)
+        addProperty("digest", "sha256:${digestSeed.repeat(64)}")
+        addProperty("membershipDigest", "sha256:${(digestSeed.first().digitToIntOrNull()?.plus(1) ?: 14).toString(16).repeat(64)}")
+        addProperty(catalogKey, "sha256:${(digestSeed.first().digitToIntOrNull()?.plus(2) ?: 15).toString(16).repeat(64)}")
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "design-to-requirement-binding-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "design-to-requirement-binding-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", designToRequirementBindingId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("bindingCount", 7)
+            addProperty("humanReviewedBindingCount", 5)
+            addProperty("designItemCount", 4)
+            addProperty("boundDesignItemCount", 3)
+            addProperty("unboundDesignItemCount", 1)
+            addProperty("requirementCount", 3)
+            addProperty("boundRequirementCount", 2)
+            addProperty("unboundRequirementCount", 1)
+            addProperty("decisionCount", 2)
+            addProperty("boundDecisionCount", 1)
+            addProperty("unboundDecisionCount", 1)
+            addProperty("openConflictCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedQuestionCount", 3)
+            addProperty("reconciliationState", "partial")
+            addProperty("candidateCoverageState", "partial")
+            addProperty("provenanceState", "exact")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more governed subjects remain unbound") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "design-to-requirement-binding-status-is-observational-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", designToRequirementBindingId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"e".repeat(64)}")
+            addProperty("state", "candidate")
+            add("finalizedSnapshot", dependency(finalizedFigmaSnapshotImportId, 2, "itemCatalogDigest", "1"))
+            add("designRequirements", dependency(designRequirementsId, 3, "requirementCatalogDigest", "4"))
+            add("decisionRegister", dependency(decisionRegisterId, 4, "decisionCatalogDigest", "7"))
+            addProperty("reconciliationDigest", "sha256:${"a".repeat(64)}")
+            addProperty("bindingCount", 7)
+            addProperty("designItemCoverageCount", 4)
+            addProperty("subjectCoverageCount", 5)
+            addProperty("conflictCount", 3)
+            addProperty("reconciliationState", "partial")
+            addProperty("candidateCoverageState", "partial")
+            addProperty("provenanceState", "exact")
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-29T16:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-digests-only-not-figma-content-external-identities-requirement-text-decision-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+        )
+        addProperty(
+            "authorityBoundary",
+            "design-to-requirement-binding-projection-is-read-only-and-does-not-establish-relationship-truth-coverage-completeness-requirement-satisfaction-decision-effectiveness-external-completeness-design-validity-or-approval-baseline-readiness-implementation-write-import-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-design-to-requirement-binding-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("bindingCount", 8)
+        }
+        workspacePath.endsWith("bad-design-to-requirement-binding-private") -> {
+            value.addProperty("humanAttribution", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

@@ -2032,6 +2032,57 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Design-to-Requirement Binding projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("design-to-requirement-binding-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDesignToRequirementBinding(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("partial", projection.reconciliationState)
+            assertEquals("partial", projection.candidateCoverageState)
+            assertEquals("exact", projection.provenanceState)
+            assertEquals(7, projection.bindingCount)
+            assertEquals(5, projection.humanReviewedBindingCount)
+            assertEquals(4, projection.candidate?.designItemCoverageCount)
+            assertEquals(5, projection.candidate?.subjectCoverageCount)
+            assertEquals(3, projection.candidate?.conflictCount)
+
+            val rendered = RiderProductController(client).readDesignToRequirementBinding(entryId)
+            assertTrue(rendered.contains("GAEP Design-to-Requirement Binding review candidate"))
+            assertTrue(rendered.contains("reconciliation partial"))
+            assertTrue(rendered.contains("7 bindings · 4 design items · 5 governed subjects · 3 conflicts"))
+            assertTrue(rendered.contains("no relationship-truth or coverage-completeness proof"))
+            assertTrue(rendered.contains("permission grant"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("humanAttribution="))
+        }
+
+        listOf(
+            "bad-design-to-requirement-binding-digest",
+            "bad-design-to-requirement-binding-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDesignToRequirementBinding(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-design-to-requirement-binding-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDesignToRequirementBinding(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))
