@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type { AcceptanceCriteriaInput, BacklogHierarchyInput, DefinitionOfDoneInput, DefinitionOfReadyInput, MvpSliceDefinitionInput, PrioritizationModelInput } from "@gaep/contracts"
+import type { AcceptanceCriteriaInput, BacklogHierarchyInput, DefinitionOfDoneInput, DefinitionOfReadyInput, ImplementationUnitModelInput, MvpSliceDefinitionInput, PrioritizationModelInput } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -402,6 +402,81 @@ describe("MVP and Slice Definition engine", () => {
       deploymentReadinessState: "not-established",
       assignmentExecutionState: "not-established",
       acceptanceDecisionState: "not-established",
+      actionAuthorityState: "not-granted",
+    }
+  }
+
+  function implementationUnitModelInput(
+    initiativeId: string,
+    context: MvpSliceDefinitionInput["context"],
+    hierarchy: Awaited<ReturnType<typeof engine.backlogHierarchy.create>>,
+    mvp: Awaited<ReturnType<typeof engine.mvpSliceDefinition.create>>,
+    criteria: Awaited<ReturnType<typeof engine.acceptanceCriteria.create>>,
+    ready: Awaited<ReturnType<typeof engine.definitionOfReady.create>>,
+    done: Awaited<ReturnType<typeof engine.definitionOfDone.create>>,
+  ): ImplementationUnitModelInput {
+    const subjects = hierarchy.nodes.filter((node) => node.level === "story" || node.level === "task")
+    const apiUnitId = randomUUID()
+    const webUnitId = randomUUID()
+    return {
+      initiativeId,
+      context,
+      informationClassification: "internal",
+      title: "Atlas implementation unit model candidate",
+      hierarchy: { recordId: hierarchy.id, revision: hierarchy.revision, digest: canonicalDigest(hierarchy) },
+      mvpSliceDefinition: { recordId: mvp.id, revision: mvp.revision, digest: canonicalDigest(mvp) },
+      acceptanceCriteria: { recordId: criteria.id, revision: criteria.revision, digest: canonicalDigest(criteria) },
+      definitionOfReady: { recordId: ready.id, revision: ready.revision, digest: canonicalDigest(ready) },
+      definitionOfDone: { recordId: done.id, revision: done.revision, digest: canonicalDigest(done) },
+      units: [
+        {
+          id: apiUnitId, ordinal: 1, key: "api-service", kind: "service",
+          title: "Atlas API service candidate", boundary: "Owns the candidate governed API interaction boundary",
+          subjectNodeIds: [subjects[0]!.id], requirementReferences: structuredClone(subjects[0]!.requirements),
+          repository: {
+            repositoryKey: "gaep", modulePath: "apps/api", placementState: "candidate-not-verified",
+            evidenceReferences: [],
+          },
+          ownerCandidate: { kind: "human", id: "api-maintainer-candidate" },
+          dependencyUnitIds: [],
+          blastRadius: {
+            assessmentState: "candidate-assessed", affectedUnitIds: [webUnitId], affectedSurfaceKeys: ["api"],
+            rationale: "API behavior may affect the candidate web application integration surface",
+            assessedBy: { kind: "human", id: "architecture-reviewer" }, assessedAt: "2026-07-30T00:00:00.000Z",
+          },
+        },
+        {
+          id: webUnitId, ordinal: 2, key: "web-application", kind: "application",
+          title: "Atlas web application candidate", boundary: "Owns the candidate governed browser presentation boundary",
+          subjectNodeIds: [subjects[1]!.id], requirementReferences: structuredClone(subjects[1]!.requirements),
+          repository: {
+            repositoryKey: "gaep", modulePath: "apps/web", placementState: "candidate-not-verified",
+            evidenceReferences: [],
+          },
+          ownerCandidate: { kind: "human", id: "web-maintainer-candidate" },
+          dependencyUnitIds: [apiUnitId],
+          blastRadius: {
+            assessmentState: "candidate-assessed", affectedUnitIds: [], affectedSurfaceKeys: ["browser-ui"],
+            rationale: "Presentation changes are assessed against the candidate browser interaction surface",
+            assessedBy: { kind: "human", id: "architecture-reviewer" }, assessedAt: "2026-07-30T00:00:00.000Z",
+          },
+        },
+      ],
+      unresolvedQuestions: [],
+      limitations: ["Repository, owner, dependency, and impact claims remain candidates for human review."],
+      reviewState: "ready-for-human-review",
+      repositoryTruthState: "not-established",
+      ownershipAppointmentState: "not-established",
+      dependencyCompletenessState: "not-established",
+      impactCompletenessState: "not-established",
+      implementationReadinessState: "not-established",
+      implementationCompletenessState: "not-established",
+      assignmentExecutionState: "not-established",
+      approvalState: "not-established",
+      acceptanceDecisionState: "not-established",
+      mergeReadinessState: "not-established",
+      releaseReadinessState: "not-established",
+      deploymentReadinessState: "not-established",
       actionAuthorityState: "not-granted",
     }
   }
@@ -866,5 +941,90 @@ describe("MVP and Slice Definition engine", () => {
         record: { type: done.kind, id: done.id, revision: done.revision },
       }),
     ])
+  })
+
+  it("persists, revises, assesses, and privately projects exact implementation-unit candidates", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteria = await engine.acceptanceCriteria.create(
+      acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority), actorId,
+    )
+    const ready = await engine.definitionOfReady.create(
+      definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria), actorId,
+    )
+    const doneInput = definitionOfDoneInput(initiative.id, input.context, hierarchy, mvp, priority, criteria, ready)
+    const done = await engine.definitionOfDone.create(doneInput, actorId)
+    const unitInput = implementationUnitModelInput(initiative.id, input.context, hierarchy, mvp, criteria, ready, done)
+    const created = await engine.implementationUnitModel.create(unitInput, actorId)
+    const revised = await engine.implementationUnitModel.revise(created.id, created.revision, {
+      ...unitInput,
+      title: "Atlas reviewed implementation unit model candidate",
+    }, actorId)
+    expect(revised).toMatchObject({ revision: 2, predecessorDigest: canonicalDigest(created) })
+    expect((await engine.implementationUnitModel.listHistory(created.id)).map((record) => record.revision)).toEqual([2, 1])
+    expect((await engine.implementationUnitModel.readRevision(created.id, 1)).title).toBe(unitInput.title)
+
+    const status = await engine.implementationUnitModel.assess(initiative.id)
+    expect(status).toMatchObject({
+      state: "candidate-complete", unitCount: 2, subjectCount: 2, requirementReferenceCount: 2,
+      repositoryCandidateCount: 2, ownerCandidateCount: 2, dependencyEdgeCount: 1,
+      candidateAssessedBlastRadiusCount: 2, missingSubjectCount: 0, invalidUnitCount: 0,
+      staleDefinitionOfDoneCount: 0,
+    })
+    const projection = await engine.implementationUnitModel.project(initiative.id)
+    expect(projection.candidate).toMatchObject({ id: revised.id, revision: 2, unitCount: 2, subjectCount: 2 })
+    expect(projection.snapshotDigest).toMatch(/^sha256:[0-9a-f]{64}$/u)
+    const serialized = JSON.stringify(projection)
+    expect(serialized).not.toContain(unitInput.title)
+    expect(serialized).not.toContain(unitInput.units[0]!.repository.modulePath)
+    expect(serialized).not.toContain(unitInput.units[0]!.ownerCandidate.id)
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    const event = events.findLast((entry) => entry.eventType === "implementation-unit-model.revised")
+    expect(event?.payload).toMatchObject({
+      revision: 2, unitCount: 2, subjectCount: 2, requirementReferenceCount: 2,
+      repositoryTruthState: "not-established", ownershipAppointmentState: "not-established",
+      dependencyCompletenessState: "not-established", impactCompletenessState: "not-established",
+      implementationReadinessState: "not-established", implementationCompletenessState: "not-established",
+      assignmentExecutionState: "not-established", approvalState: "not-established",
+      acceptanceDecisionState: "not-established", mergeReadinessState: "not-established",
+      releaseReadinessState: "not-established", deploymentReadinessState: "not-established",
+      actionAuthorityState: "not-granted",
+    })
+    expect(JSON.stringify(event)).not.toContain(unitInput.title)
+    expect(JSON.stringify(event)).not.toContain(unitInput.units[0]!.repository.modulePath)
+    expect((await engine.repository.verifyAudit()).valid).toBe(true)
+
+    await engine.definitionOfDone.revise(done.id, done.revision, {
+      ...doneInput,
+      title: "Superseding Atlas item Definition of Done candidate",
+    }, actorId)
+    expect(await engine.implementationUnitModel.assess(initiative.id)).toMatchObject({
+      state: "attention-required", staleDefinitionOfDoneCount: 1,
+    })
+    expect(await engine.implementationUnitModel.healthIssues()).toEqual([
+      expect.objectContaining({ code: "implementation-unit-model.binding-review-required", severity: "warning" }),
+    ])
+  })
+
+  it("fails closed when a review-ready implementation-unit candidate omits an exact MVP subject", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteria = await engine.acceptanceCriteria.create(
+      acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority), actorId,
+    )
+    const ready = await engine.definitionOfReady.create(
+      definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria), actorId,
+    )
+    const done = await engine.definitionOfDone.create(
+      definitionOfDoneInput(initiative.id, input.context, hierarchy, mvp, priority, criteria, ready), actorId,
+    )
+    const unitInput = implementationUnitModelInput(initiative.id, input.context, hierarchy, mvp, criteria, ready, done)
+    unitInput.units = [unitInput.units[0]!]
+    unitInput.units[0]!.blastRadius.affectedUnitIds = []
+    await expect(engine.implementationUnitModel.create(unitInput, actorId)).rejects.toThrow(/assign every exact MVP Story and Task/u)
   })
 })

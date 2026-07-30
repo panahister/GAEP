@@ -78,6 +78,7 @@ import { PrioritizationModelService } from "./prioritization-model.js"
 import { AcceptanceCriteriaService } from "./acceptance-criteria.js"
 import { DefinitionOfReadyService } from "./definition-of-ready.js"
 import { DefinitionOfDoneService } from "./definition-of-done.js"
+import { ImplementationUnitModelService } from "./implementation-unit-model.js"
 import { BusinessArchitectureBaselineService } from "./business-architecture-baseline.js"
 import { BusinessRuleCatalogService } from "./business-rule-catalog.js"
 import { BusinessUnderstandingService } from "./business-understanding.js"
@@ -289,6 +290,7 @@ export class GaepEngine {
   readonly acceptanceCriteria: AcceptanceCriteriaService
   readonly definitionOfReady: DefinitionOfReadyService
   readonly definitionOfDone: DefinitionOfDoneService
+  readonly implementationUnitModel: ImplementationUnitModelService
   readonly valueStreamModel: ValueStreamModelService
   readonly operatingModel: OperatingModelService
   readonly businessRuleCatalog: BusinessRuleCatalogService
@@ -390,6 +392,16 @@ export class GaepEngine {
       this.prioritizationModel,
       this.acceptanceCriteria,
       this.definitionOfReady,
+    )
+    this.implementationUnitModel = new ImplementationUnitModelService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.backlogHierarchy,
+      this.mvpSliceDefinition,
+      this.acceptanceCriteria,
+      this.definitionOfReady,
+      this.definitionOfDone,
     )
     this.sourceGovernance = new SourceGovernanceService(
       this.repository,
@@ -916,10 +928,11 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [acceptanceCriteriaIssues, definitionOfReadyIssues, definitionOfDoneIssues] = await Promise.all([
+      const [acceptanceCriteriaIssues, definitionOfReadyIssues, definitionOfDoneIssues, implementationUnitModelIssues] = await Promise.all([
         this.acceptanceCriteria.healthIssues(),
         this.definitionOfReady.healthIssues(),
         this.definitionOfDone.healthIssues(),
+        this.implementationUnitModel.healthIssues(),
       ])
       const [productIssues, backlogHierarchyIssues, mvpSliceDefinitionIssues, prioritizationModelIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues, figmaContextImportIssues, outboundDesignBriefPackageIssues, governedFigmaWriteIssues, finalizedFigmaSnapshotImportIssues, designToRequirementBindingIssues, designerReadyGateIssues, designDeltaIssues, designConflictResolutionIssues, humanDesignApprovalIssues, designBaselineIssues, designDriftDetectionIssues] = await Promise.all([
         this.productStudio.healthIssues(),
@@ -980,6 +993,7 @@ export class GaepEngine {
         ...acceptanceCriteriaIssues,
         ...definitionOfReadyIssues,
         ...definitionOfDoneIssues,
+        ...implementationUnitModelIssues,
         ...sourceIssues,
         ...businessIssues,
         ...capabilityMapIssues,
