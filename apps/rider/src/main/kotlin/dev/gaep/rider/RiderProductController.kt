@@ -2340,6 +2340,123 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readBoilerplateCompatibilityValidation(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val units = client.readImplementationUnitModel(initiativeId)
+        val dependencyMapping = client.readDependencyMapping(initiativeId)
+        val technologyProfile = client.readTechnologyProfile(initiativeId)
+        val boilerplateRegistry = client.readBoilerplateRegistry(initiativeId)
+        val selectionBinding = client.readBoilerplateSelectionBinding(initiativeId)
+        val projection = client.readBoilerplateCompatibilityValidation(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Boilerplate Compatibility Validation was read. Refresh the exact records." }
+        projection.candidate?.let {
+            val currentUnits = requireNotNull(units.candidate) {
+                "The current Implementation Unit Model candidate is unavailable. Refresh the exact records."
+            }
+            val currentDependencyMapping = requireNotNull(dependencyMapping.candidate) {
+                "The current Dependency Mapping candidate is unavailable. Refresh the exact records."
+            }
+            val currentTechnologyProfile = requireNotNull(technologyProfile.candidate) {
+                "The current Technology Profile candidate is unavailable. Refresh the exact records."
+            }
+            val currentBoilerplateRegistry = requireNotNull(boilerplateRegistry.candidate) {
+                "The current Boilerplate Registry candidate is unavailable. Refresh the exact records."
+            }
+            val currentSelectionBinding = requireNotNull(selectionBinding.candidate) {
+                "The current Boilerplate Selection and Binding candidate is unavailable. Refresh the exact records."
+            }
+            require(
+                projection.implementationUnitModelRecordId == currentUnits.id &&
+                    projection.implementationUnitModelRevision == currentUnits.revision &&
+                    projection.implementationUnitModelDigest == currentUnits.digest
+            ) { "The Implementation Unit Model changed while Boilerplate Compatibility Validation was read. Refresh the exact records." }
+            require(
+                projection.dependencyMappingRecordId == currentDependencyMapping.id &&
+                    projection.dependencyMappingRevision == currentDependencyMapping.revision &&
+                    projection.dependencyMappingDigest == currentDependencyMapping.digest
+            ) { "The Dependency Mapping changed while Boilerplate Compatibility Validation was read. Refresh the exact records." }
+            require(
+                projection.technologyProfileRecordId == currentTechnologyProfile.id &&
+                    projection.technologyProfileRevision == currentTechnologyProfile.revision &&
+                    projection.technologyProfileDigest == currentTechnologyProfile.digest
+            ) { "The Technology Profile changed while Boilerplate Compatibility Validation was read. Refresh the exact records." }
+            require(
+                projection.boilerplateRegistryRecordId == currentBoilerplateRegistry.id &&
+                    projection.boilerplateRegistryRevision == currentBoilerplateRegistry.revision &&
+                    projection.boilerplateRegistryDigest == currentBoilerplateRegistry.digest
+            ) { "The Boilerplate Registry changed while Boilerplate Compatibility Validation was read. Refresh the exact records." }
+            require(
+                projection.boilerplateSelectionBindingRecordId == currentSelectionBinding.id &&
+                    projection.boilerplateSelectionBindingRevision == currentSelectionBinding.revision &&
+                    projection.boilerplateSelectionBindingDigest == currentSelectionBinding.digest
+            ) { "The Boilerplate Selection and Binding changed while Boilerplate Compatibility Validation was read. Refresh the exact records." }
+        }
+        return renderBoilerplateCompatibilityValidation(projection)
+    }
+
+    fun renderBoilerplateCompatibilityValidation(projection: BoilerplateCompatibilityValidationProjection): String = buildString {
+        appendLine("GAEP governed Boilerplate Compatibility Validation candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine(
+            "Candidate coverage: ${projection.selectedBindingCount} selected bindings · ${projection.subjectCount} subjects · " +
+                "${projection.dimensionAssessmentCount} dimension assessments",
+        )
+        appendLine(
+            "Candidate outcomes: ${projection.compatibleCandidateCount} compatible · " +
+                "${projection.incompatibleCandidateCount} incompatible · ${projection.exceptionCandidateCount} exception candidates · " +
+                "${projection.notAssessedCount} not assessed",
+        )
+        appendLine(
+            "Candidate validation gaps: ${projection.missingSubjectCount} missing subjects · " +
+                "${projection.invalidSubjectCount} invalid subjects · ${projection.missingDimensionCount} missing dimensions · " +
+                "${projection.missingEvidenceCount} missing evidence · ${projection.expiredAssessmentCount} expired assessments · " +
+                "${projection.conflictingOutcomeCount} conflicting outcomes · ${projection.selectionBindingGapCount} selection-binding gaps",
+        )
+        appendLine(
+            "Candidate freshness gaps: ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleImplementationUnitModelCount} stale Implementation Unit Models · " +
+                "${projection.staleDependencyMappingCount} stale Dependency Mappings · " +
+                "${projection.staleTechnologyProfileCount} stale Technology Profiles · " +
+                "${projection.staleBoilerplateRegistryCount} stale Boilerplate Registries · " +
+                "${projection.staleSelectionBindingCount} stale Selection Bindings · " +
+                "${projection.invalidCandidateCount} invalid candidates · ${projection.unresolvedQuestionCount} questions",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Boilerplate Compatibility Validation candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Validation subject catalog digest: ${record.validationSubjectCatalogDigest}")
+            appendLine("Dimension catalog digest: ${record.dimensionCatalogDigest}")
+            appendLine("Evidence receipt digest: ${record.evidenceReceiptDigest}")
+            appendLine("Validation receipt digest: ${record.validationReceiptDigest}")
+            appendLine("Assessment receipt digest: ${record.assessmentReceiptDigest}")
+            appendLine(
+                "Candidate coverage: ${record.subjectCount} subjects · ${record.compatibleCandidateCount} compatible · " +
+                    "${record.incompatibleCandidateCount} incompatible · ${record.exceptionCandidateCount} exception candidates · " +
+                    "${record.notAssessedCount} not assessed · ${record.dimensionAssessmentCount} dimensions · ${record.reviewState}",
+            )
+        }
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and subject, dimension, evidence, validation, " +
+                "assessment, and snapshot digests only; no boilerplate names, locators, versions, unit, profile, entry, or " +
+                "binding identities, claims, evidence, assessors, or personal data. Candidate completeness does not establish " +
+                "compatibility truth or completeness, a validation decision, actual asset behavior, test execution, design " +
+                "validity, security, privacy, or licensing approval, exception or waiver, effective selection or binding, " +
+                "source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, " +
+                "assignment, execution, acceptance, merge, release, deployment, or action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)

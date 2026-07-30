@@ -53,6 +53,7 @@ private val dependencyMappingId = UUID.fromString("98989898-9898-4898-8898-98989
 private val technologyProfileId = UUID.fromString("89898989-8989-4989-8989-898989898989")
 private val boilerplateRegistryId = UUID.fromString("90909090-9090-4090-8090-909090909090")
 private val boilerplateSelectionBindingId = UUID.fromString("a9a9a9a9-a9a9-49a9-89a9-a9a9a9a9a9a9")
+private val boilerplateCompatibilityValidationId = UUID.fromString("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -333,6 +334,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.boilerplateSelectionBinding.snapshot" -> handleBoilerplateSelectionBinding(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.boilerplateCompatibilityValidation.snapshot" -> handleBoilerplateCompatibilityValidation(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4331,6 +4337,124 @@ private fun handleBoilerplateSelectionBinding(id: Long, params: JsonObject, work
         }
         workspacePath.endsWith("bad-boilerplate-selection-binding-snapshot-private") -> {
             value.addProperty("rationale", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleBoilerplateCompatibilityValidation(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BOILERPLATE COMPATIBILITY VALIDATION PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-boilerplate-compatibility-validation-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T19:30:00.000Z"
+    val candidateDigest = "sha256:${"d".repeat(64)}"
+    fun reference(recordId: UUID, digest: String) = JsonObject().apply {
+        addProperty("recordId", recordId.toString())
+        addProperty("revision", 2)
+        addProperty("digest", digest)
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "boilerplate-compatibility-validation-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "boilerplate-compatibility-validation-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", reference(boilerplateCompatibilityValidationId, candidateDigest))
+            add("implementationUnitModel", reference(
+                implementationUnitModelId,
+                if (workspacePath.endsWith("bad-boilerplate-compatibility-validation-unit-model-binding")) "sha256:${"4".repeat(64)}" else "sha256:${"5".repeat(64)}",
+            ))
+            add("dependencyMapping", reference(
+                dependencyMappingId,
+                if (workspacePath.endsWith("bad-boilerplate-compatibility-validation-dependency-mapping-binding")) "sha256:${"8".repeat(64)}" else "sha256:${"9".repeat(64)}",
+            ))
+            add("technologyProfile", reference(
+                technologyProfileId,
+                if (workspacePath.endsWith("bad-boilerplate-compatibility-validation-technology-profile-binding")) "sha256:${"7".repeat(64)}" else "sha256:${"6".repeat(64)}",
+            ))
+            add("boilerplateRegistry", reference(
+                boilerplateRegistryId,
+                if (workspacePath.endsWith("bad-boilerplate-compatibility-validation-registry-binding")) "sha256:${"2".repeat(64)}" else "sha256:${"3".repeat(64)}",
+            ))
+            add("boilerplateSelectionBinding", reference(
+                boilerplateSelectionBindingId,
+                if (workspacePath.endsWith("bad-boilerplate-compatibility-validation-selection-binding")) "sha256:${"7".repeat(64)}" else "sha256:${"8".repeat(64)}",
+            ))
+            addProperty("selectedBindingCount", 2)
+            addProperty("subjectCount", 2)
+            addProperty("compatibleCandidateCount", 1)
+            addProperty("incompatibleCandidateCount", 0)
+            addProperty("exceptionCandidateCount", 1)
+            addProperty("notAssessedCount", 0)
+            addProperty("dimensionAssessmentCount", 28)
+            addProperty("missingSubjectCount", 0)
+            addProperty("invalidSubjectCount", 1)
+            addProperty("missingDimensionCount", 0)
+            addProperty("missingEvidenceCount", 1)
+            addProperty("expiredAssessmentCount", 1)
+            addProperty("conflictingOutcomeCount", 0)
+            addProperty("selectionBindingGapCount", 0)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleImplementationUnitModelCount", 0)
+            addProperty("staleDependencyMappingCount", 0)
+            addProperty("staleTechnologyProfileCount", 0)
+            addProperty("staleBoilerplateRegistryCount", 0)
+            addProperty("staleSelectionBindingCount", 0)
+            addProperty("invalidCandidateCount", 0)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Boilerplate Compatibility Validation subjects require human review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("authorityBoundary", "boilerplate-compatibility-validation-status-is-observational-and-does-not-establish-compatibility-truth-or-completeness-validation-decision-actual-asset-behavior-test-execution-design-validity-security-privacy-or-licensing-approval-exception-waiver-selection-binding-effectiveness-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority")
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", boilerplateCompatibilityValidationId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("state", "candidate")
+            addProperty("validationSubjectCatalogDigest", "sha256:${"1".repeat(64)}")
+            addProperty("dimensionCatalogDigest", "sha256:${"2".repeat(64)}")
+            addProperty("evidenceReceiptDigest", "sha256:${"3".repeat(64)}")
+            addProperty("validationReceiptDigest", "sha256:${"4".repeat(64)}")
+            addProperty("assessmentReceiptDigest", "sha256:${"5".repeat(64)}")
+            addProperty("subjectCount", 2)
+            addProperty("compatibleCandidateCount", 1)
+            addProperty("incompatibleCandidateCount", 0)
+            addProperty("exceptionCandidateCount", 1)
+            addProperty("notAssessedCount", 0)
+            addProperty("dimensionAssessmentCount", 28)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T19:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-subject-dimension-evidence-validation-assessment-snapshot-digests-only-not-boilerplate-names-locators-versions-unit-profile-entry-or-binding-identities-claims-evidence-assessors-personal-data-secrets-credentials-or-machine-paths")
+        addProperty("authorityBoundary", "boilerplate-compatibility-validation-projection-is-read-only-and-does-not-establish-compatibility-truth-or-completeness-validation-decision-actual-asset-behavior-test-execution-design-validity-security-privacy-or-licensing-approval-exception-waiver-selection-binding-effectiveness-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-boilerplate-compatibility-validation-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("subjectCount", 3)
+        }
+        workspacePath.endsWith("bad-boilerplate-compatibility-validation-snapshot-private") -> {
+            value.addProperty("claim", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

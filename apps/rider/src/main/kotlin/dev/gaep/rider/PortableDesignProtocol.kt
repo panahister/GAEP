@@ -2714,6 +2714,76 @@ data class BoilerplateSelectionBindingProjection(
     val snapshotDigest: String,
 )
 
+data class BoilerplateCompatibilityValidationRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val validationSubjectCatalogDigest: String,
+    val dimensionCatalogDigest: String,
+    val evidenceReceiptDigest: String,
+    val validationReceiptDigest: String,
+    val assessmentReceiptDigest: String,
+    val subjectCount: Int,
+    val compatibleCandidateCount: Int,
+    val incompatibleCandidateCount: Int,
+    val exceptionCandidateCount: Int,
+    val notAssessedCount: Int,
+    val dimensionAssessmentCount: Int,
+    val reviewState: String,
+)
+
+data class BoilerplateCompatibilityValidationProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val state: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val implementationUnitModelRecordId: UUID?,
+    val implementationUnitModelRevision: Long?,
+    val implementationUnitModelDigest: String?,
+    val dependencyMappingRecordId: UUID?,
+    val dependencyMappingRevision: Long?,
+    val dependencyMappingDigest: String?,
+    val technologyProfileRecordId: UUID?,
+    val technologyProfileRevision: Long?,
+    val technologyProfileDigest: String?,
+    val boilerplateRegistryRecordId: UUID?,
+    val boilerplateRegistryRevision: Long?,
+    val boilerplateRegistryDigest: String?,
+    val boilerplateSelectionBindingRecordId: UUID?,
+    val boilerplateSelectionBindingRevision: Long?,
+    val boilerplateSelectionBindingDigest: String?,
+    val selectedBindingCount: Int,
+    val subjectCount: Int,
+    val compatibleCandidateCount: Int,
+    val incompatibleCandidateCount: Int,
+    val exceptionCandidateCount: Int,
+    val notAssessedCount: Int,
+    val dimensionAssessmentCount: Int,
+    val missingSubjectCount: Int,
+    val invalidSubjectCount: Int,
+    val missingDimensionCount: Int,
+    val missingEvidenceCount: Int,
+    val expiredAssessmentCount: Int,
+    val conflictingOutcomeCount: Int,
+    val selectionBindingGapCount: Int,
+    val staleBindingCount: Int,
+    val staleImplementationUnitModelCount: Int,
+    val staleDependencyMappingCount: Int,
+    val staleTechnologyProfileCount: Int,
+    val staleBoilerplateRegistryCount: Int,
+    val staleSelectionBindingCount: Int,
+    val invalidCandidateCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: BoilerplateCompatibilityValidationRecordView?,
+    val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -3923,6 +3993,12 @@ internal object PortableDesignProtocol {
         "boilerplate-selection-binding-projection-is-read-only-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-selection-decision-effectiveness-binding-effectiveness-compatibility-truth-or-completeness-or-validation-licensing-or-security-approval-exception-waiver-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
     private const val BOILERPLATE_SELECTION_BINDING_STATUS_AUTHORITY_BOUNDARY =
         "boilerplate-selection-binding-status-is-observational-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-selection-decision-effectiveness-binding-effectiveness-compatibility-truth-or-completeness-or-validation-licensing-or-security-approval-exception-waiver-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
+    private const val BOILERPLATE_COMPATIBILITY_VALIDATION_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-subject-dimension-evidence-validation-assessment-snapshot-digests-only-not-boilerplate-names-locators-versions-unit-profile-entry-or-binding-identities-claims-evidence-assessors-personal-data-secrets-credentials-or-machine-paths"
+    private const val BOILERPLATE_COMPATIBILITY_VALIDATION_PROJECTION_AUTHORITY_BOUNDARY =
+        "boilerplate-compatibility-validation-projection-is-read-only-and-does-not-establish-compatibility-truth-or-completeness-validation-decision-actual-asset-behavior-test-execution-design-validity-security-privacy-or-licensing-approval-exception-waiver-selection-binding-effectiveness-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
+    private const val BOILERPLATE_COMPATIBILITY_VALIDATION_STATUS_AUTHORITY_BOUNDARY =
+        "boilerplate-compatibility-validation-status-is-observational-and-does-not-establish-compatibility-truth-or-completeness-validation-decision-actual-asset-behavior-test-execution-design-validity-security-privacy-or-licensing-approval-exception-waiver-selection-binding-effectiveness-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -10374,6 +10450,178 @@ internal object PortableDesignProtocol {
             unitScopeMismatchCount, versionMismatchCount, missingEvidenceCount, staleBindingCount,
             staleImplementationUnitModelCount, staleDependencyMappingCount, staleTechnologyProfileCount,
             staleBoilerplateRegistryCount, invalidCandidateCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseBoilerplateCompatibilityValidationEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): BoilerplateCompatibilityValidationProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "boilerplate-compatibility-validation-projection" ||
+            projection.requireString("privacyBoundary") != BOILERPLATE_COMPATIBILITY_VALIDATION_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != BOILERPLATE_COMPATIBILITY_VALIDATION_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "selectedBindingCount", "subjectCount", "compatibleCandidateCount", "incompatibleCandidateCount",
+                "exceptionCandidateCount", "notAssessedCount", "dimensionAssessmentCount", "missingSubjectCount",
+                "invalidSubjectCount", "missingDimensionCount", "missingEvidenceCount", "expiredAssessmentCount",
+                "conflictingOutcomeCount", "selectionBindingGapCount", "staleBindingCount",
+                "staleImplementationUnitModelCount", "staleDependencyMappingCount", "staleTechnologyProfileCount",
+                "staleBoilerplateRegistryCount", "staleSelectionBindingCount", "invalidCandidateCount",
+                "unresolvedQuestionCount", "reviewState", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf(
+                "candidate", "implementationUnitModel", "dependencyMapping", "technologyProfile",
+                "boilerplateRegistry", "boilerplateSelectionBinding",
+            ),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "boilerplate-compatibility-validation-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != BOILERPLATE_COMPATIBILITY_VALIDATION_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        fun reference(name: String): Reference? = status.get(name)?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val candidateReference = reference("candidate")
+        val implementationUnitModelReference = reference("implementationUnitModel")
+        val dependencyMappingReference = reference("dependencyMapping")
+        val technologyProfileReference = reference("technologyProfile")
+        val boilerplateRegistryReference = reference("boilerplateRegistry")
+        val boilerplateSelectionBindingReference = reference("boilerplateSelectionBinding")
+        val selectedBindingCount = status.requireBoundedNonNegativeInt("selectedBindingCount", 10_000)
+        val subjectCount = status.requireBoundedNonNegativeInt("subjectCount", 10_000)
+        val compatibleCandidateCount = status.requireBoundedNonNegativeInt("compatibleCandidateCount", 10_000)
+        val incompatibleCandidateCount = status.requireBoundedNonNegativeInt("incompatibleCandidateCount", 10_000)
+        val exceptionCandidateCount = status.requireBoundedNonNegativeInt("exceptionCandidateCount", 10_000)
+        val notAssessedCount = status.requireBoundedNonNegativeInt("notAssessedCount", 10_000)
+        if (compatibleCandidateCount + incompatibleCandidateCount + exceptionCandidateCount + notAssessedCount != subjectCount) {
+            throw invalidResponse()
+        }
+        val dimensionAssessmentCount = status.requireBoundedNonNegativeInt("dimensionAssessmentCount", 140_000)
+        val missingSubjectCount = status.requireBoundedNonNegativeInt("missingSubjectCount", 10_000)
+        val invalidSubjectCount = status.requireBoundedNonNegativeInt("invalidSubjectCount", 10_000)
+        val missingDimensionCount = status.requireBoundedNonNegativeInt("missingDimensionCount", 140_000)
+        val missingEvidenceCount = status.requireBoundedNonNegativeInt("missingEvidenceCount", 140_000)
+        val expiredAssessmentCount = status.requireBoundedNonNegativeInt("expiredAssessmentCount", 140_000)
+        val conflictingOutcomeCount = status.requireBoundedNonNegativeInt("conflictingOutcomeCount", 10_000)
+        val selectionBindingGapCount = status.requireBoundedNonNegativeInt("selectionBindingGapCount", 1)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 1)
+        val staleImplementationUnitModelCount = status.requireBoundedNonNegativeInt("staleImplementationUnitModelCount", 1)
+        val staleDependencyMappingCount = status.requireBoundedNonNegativeInt("staleDependencyMappingCount", 1)
+        val staleTechnologyProfileCount = status.requireBoundedNonNegativeInt("staleTechnologyProfileCount", 1)
+        val staleBoilerplateRegistryCount = status.requireBoundedNonNegativeInt("staleBoilerplateRegistryCount", 1)
+        val staleSelectionBindingCount = status.requireBoundedNonNegativeInt("staleSelectionBindingCount", 1)
+        val invalidCandidateCount = status.requireBoundedNonNegativeInt("invalidCandidateCount", 1)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val state = status.requireOneOf("state", setOf("attention-required", "candidate-complete"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gaps = missingSubjectCount + invalidSubjectCount + missingDimensionCount + missingEvidenceCount +
+            expiredAssessmentCount + conflictingOutcomeCount + selectionBindingGapCount + notAssessedCount +
+            staleBindingCount + staleImplementationUnitModelCount + staleDependencyMappingCount +
+            staleTechnologyProfileCount + staleBoilerplateRegistryCount + staleSelectionBindingCount +
+            invalidCandidateCount + unresolvedQuestionCount
+        val allReferencesPresent = implementationUnitModelReference != null && dependencyMappingReference != null &&
+            technologyProfileReference != null && boilerplateRegistryReference != null &&
+            boilerplateSelectionBindingReference != null
+        if ((state == "candidate-complete" &&
+                (gaps > 0 || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || candidateReference == null ||
+                    !allReferencesPresent || subjectCount != selectedBindingCount ||
+                    dimensionAssessmentCount != subjectCount * 14)) ||
+            (state == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "validationSubjectCatalogDigest", "dimensionCatalogDigest",
+                "evidenceReceiptDigest", "validationReceiptDigest", "assessmentReceiptDigest", "subjectCount",
+                "compatibleCandidateCount", "incompatibleCandidateCount", "exceptionCandidateCount", "notAssessedCount",
+                "dimensionAssessmentCount", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = BoilerplateCompatibilityValidationRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("validationSubjectCatalogDigest"),
+                value.requireDigest("dimensionCatalogDigest"), value.requireDigest("evidenceReceiptDigest"),
+                value.requireDigest("validationReceiptDigest"), value.requireDigest("assessmentReceiptDigest"),
+                value.requireBoundedNonNegativeInt("subjectCount", 10_000),
+                value.requireBoundedNonNegativeInt("compatibleCandidateCount", 10_000),
+                value.requireBoundedNonNegativeInt("incompatibleCandidateCount", 10_000),
+                value.requireBoundedNonNegativeInt("exceptionCandidateCount", 10_000),
+                value.requireBoundedNonNegativeInt("notAssessedCount", 10_000),
+                value.requireBoundedNonNegativeInt("dimensionAssessmentCount", 140_000),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                candidateReference == null || candidateReference.id != id || candidateReference.revision != revision ||
+                candidateReference.digest != record.digest || record.subjectCount != subjectCount ||
+                record.compatibleCandidateCount != compatibleCandidateCount ||
+                record.incompatibleCandidateCount != incompatibleCandidateCount ||
+                record.exceptionCandidateCount != exceptionCandidateCount || record.notAssessedCount != notAssessedCount ||
+                record.dimensionAssessmentCount != dimensionAssessmentCount || record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((candidateReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) {
+            throw invalidResponse()
+        }
+        return BoilerplateCompatibilityValidationProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, state, reviewState, reasons,
+            implementationUnitModelReference?.id, implementationUnitModelReference?.revision,
+            implementationUnitModelReference?.digest, dependencyMappingReference?.id,
+            dependencyMappingReference?.revision, dependencyMappingReference?.digest,
+            technologyProfileReference?.id, technologyProfileReference?.revision, technologyProfileReference?.digest,
+            boilerplateRegistryReference?.id, boilerplateRegistryReference?.revision, boilerplateRegistryReference?.digest,
+            boilerplateSelectionBindingReference?.id, boilerplateSelectionBindingReference?.revision,
+            boilerplateSelectionBindingReference?.digest, selectedBindingCount, subjectCount, compatibleCandidateCount,
+            incompatibleCandidateCount, exceptionCandidateCount, notAssessedCount, dimensionAssessmentCount,
+            missingSubjectCount, invalidSubjectCount, missingDimensionCount, missingEvidenceCount, expiredAssessmentCount,
+            conflictingOutcomeCount, selectionBindingGapCount, staleBindingCount, staleImplementationUnitModelCount,
+            staleDependencyMappingCount, staleTechnologyProfileCount, staleBoilerplateRegistryCount,
+            staleSelectionBindingCount, invalidCandidateCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 

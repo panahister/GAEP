@@ -2144,6 +2144,69 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Boilerplate Compatibility Validation projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("boilerplate-compatibility-validation-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readBoilerplateCompatibilityValidation(entryId)
+            assertEquals("attention-required", projection.state)
+            assertEquals("held", projection.reviewState)
+            assertEquals(2, projection.selectedBindingCount)
+            assertEquals(2, projection.subjectCount)
+            assertEquals(28, projection.dimensionAssessmentCount)
+            assertEquals(1, projection.compatibleCandidateCount)
+            assertEquals(1, projection.exceptionCandidateCount)
+            assertEquals(1, projection.invalidSubjectCount)
+            assertEquals(1, projection.missingEvidenceCount)
+            assertEquals(1, projection.expiredAssessmentCount)
+            assertEquals(0, projection.selectionBindingGapCount)
+
+            val rendered = RiderProductController(client).readBoilerplateCompatibilityValidation(entryId)
+            assertTrue(rendered.contains("GAEP governed Boilerplate Compatibility Validation candidate"))
+            assertTrue(rendered.contains("2 selected bindings · 2 subjects · 28 dimension assessments"))
+            assertTrue(rendered.contains("1 compatible · 0 incompatible · 1 exception candidates · 0 not assessed"))
+            assertTrue(rendered.contains("1 invalid subjects · 0 missing dimensions · 1 missing evidence"))
+            assertTrue(rendered.contains("no boilerplate names, locators, versions, unit, profile, entry, or binding identities"))
+            assertTrue(rendered.contains("does not establish compatibility truth or completeness"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("boilerplateRegistryEntryId"))
+            assertFalse(rendered.contains("bindingDecisionId"))
+            assertFalse(rendered.contains("private claim"))
+        }
+
+        listOf(
+            "bad-boilerplate-compatibility-validation-snapshot-digest",
+            "bad-boilerplate-compatibility-validation-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readBoilerplateCompatibilityValidation(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf(
+            "bad-boilerplate-compatibility-validation-snapshot-binding",
+            "bad-boilerplate-compatibility-validation-unit-model-binding",
+            "bad-boilerplate-compatibility-validation-dependency-mapping-binding",
+            "bad-boilerplate-compatibility-validation-technology-profile-binding",
+            "bad-boilerplate-compatibility-validation-registry-binding",
+            "bad-boilerplate-compatibility-validation-selection-binding",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readBoilerplateCompatibilityValidation(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

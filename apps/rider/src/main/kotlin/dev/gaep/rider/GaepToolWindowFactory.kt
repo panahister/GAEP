@@ -722,6 +722,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += boilerplateSelectionBindingButton
         actions.add(boilerplateSelectionBindingButton)
 
+        val boilerplateCompatibilityValidationButton = JButton("Inspect Boilerplate Compatibility Validation…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Boilerplate names, locators, versions, unit, profile, entry, or binding identities, claims, evidence, assessors, personal data, local paths, secrets, credentials, compatibility truth or completeness, validation decisions, actual asset behavior, test execution, design validity, security, privacy, or licensing approval, exception or waiver authority, effective selection or binding, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, and action authority are withheld.",
+                    "GAEP Boilerplate Compatibility Validation",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Boilerplate Compatibility Validation", status, output, buttons) {
+                    controller.readBoilerplateCompatibilityValidation(initiativeId)
+                }
+            }
+        }
+        buttons += boilerplateCompatibilityValidationButton
+        actions.add(boilerplateCompatibilityValidationButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

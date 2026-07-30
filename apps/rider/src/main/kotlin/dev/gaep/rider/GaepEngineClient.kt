@@ -447,6 +447,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readBoilerplateCompatibilityValidation(initiativeId: UUID): BoilerplateCompatibilityValidationProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("planning.boilerplateCompatibilityValidation.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseBoilerplateCompatibilityValidationEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
