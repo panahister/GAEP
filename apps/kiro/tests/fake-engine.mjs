@@ -3823,6 +3823,9 @@ function readPhase2UxFigmaDashboard(id, params) {
     authorityBoundary: "phase-2-dashboard-is-a-derived-read-only-view-not-a-second-source-of-truth-or-completeness-validity-approval-baseline-readiness-remediation-figma-implementation-or-action-authority",
   }
   if (workspacePath.endsWith("bad-phase2-dashboard-private")) content.privateRoot = `${privateRoot}/${privateCredential}`
+  if (workspacePath.endsWith("bad-phase2-dashboard-catalog")) {
+    content.phaseStatus.sourceCatalogDigest = `sha256:${"0".repeat(64)}`
+  }
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-phase2-dashboard-digest")) value.phaseStatus.unavailableSourceCount = 22
   return writeResult(id, value)

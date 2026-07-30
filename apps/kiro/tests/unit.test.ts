@@ -2586,7 +2586,11 @@ test("protocol-v2 client validates privacy-safe Design Drift Detection projectio
 test("protocol-v2 client validates the exact derived Phase 2 UX/Figma dashboard and rejects hostile responses", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-phase2-dashboard-"))
   const workspace = join(root, "workspace")
-  const hostileRoots = ["bad-phase2-dashboard-digest", "bad-phase2-dashboard-private"].map((name) => join(root, name))
+  const hostileRoots = [
+    "bad-phase2-dashboard-catalog",
+    "bad-phase2-dashboard-digest",
+    "bad-phase2-dashboard-private",
+  ].map((name) => join(root, name))
   await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
   const createClient = (workspacePath: string) => GaepEngineClient.create({
     workspacePath,

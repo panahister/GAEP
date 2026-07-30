@@ -1134,7 +1134,9 @@ export class GaepEngineClient {
       }))
       if (!parsed.success) throw invalidHostResponse()
       const { snapshotDigest, ...content } = parsed.data
-      if (snapshotDigest !== canonicalDigest(content) || parsed.data.product.recordId.toLowerCase() !== productId ||
+      if (snapshotDigest !== canonicalDigest(content) ||
+          parsed.data.phaseStatus.sourceCatalogDigest !== canonicalDigest(parsed.data.sources) ||
+          parsed.data.product.recordId.toLowerCase() !== productId ||
           parsed.data.product.revision !== productRevision || parsed.data.product.digest !== productDigest ||
           parsed.data.initiative.recordId.toLowerCase() !== initiative.id.toLowerCase() ||
           parsed.data.initiative.revision !== initiativeRevision || parsed.data.initiative.digest !== initiativeDigest ||

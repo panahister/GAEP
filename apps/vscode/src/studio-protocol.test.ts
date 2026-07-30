@@ -381,6 +381,12 @@ describe("Product Studio protocol", () => {
     if (!forged.phase2UxFigma) throw new Error("Expected Phase 2 dashboard fixture")
     forged.phase2UxFigma.phaseStatus.unavailableSourceCount = 22
     expect(isStudioSnapshot(forged)).toBe(false)
+    const forgedCatalog = structuredClone(candidate)
+    if (!forgedCatalog.phase2UxFigma) throw new Error("Expected Phase 2 dashboard fixture")
+    forgedCatalog.phase2UxFigma.phaseStatus.sourceCatalogDigest = `sha256:${"0".repeat(64)}`
+    const { snapshotDigest: _snapshotDigest, ...forgedCatalogContent } = forgedCatalog.phase2UxFigma
+    forgedCatalog.phase2UxFigma.snapshotDigest = canonicalDigest(forgedCatalogContent)
+    expect(isStudioSnapshot(forgedCatalog)).toBe(false)
     const wrongPhase = structuredClone(candidate)
     if (!wrongPhase.dashboard) throw new Error("Expected dashboard fixture")
     wrongPhase.dashboard.phase = { id: "phase-0-1a-foundation", label: "Phase 0 / 1A — Four-IDE Platform Foundation" }

@@ -291,6 +291,7 @@ internal static class Program
         var badDashboardPrivateRoot = Path.Combine(temporaryRoot, "bad-dashboard-private");
         var badPhase2DashboardDigestRoot = Path.Combine(temporaryRoot, "bad-phase2-dashboard-digest");
         var badPhase2DashboardPrivateRoot = Path.Combine(temporaryRoot, "bad-phase2-dashboard-private");
+        var badPhase2DashboardCatalogRoot = Path.Combine(temporaryRoot, "bad-phase2-dashboard-catalog");
         var badChangeCatalogBindingRoot = Path.Combine(temporaryRoot, "bad-change-catalog-binding");
         var badChangeCatalogDigestRoot = Path.Combine(temporaryRoot, "bad-change-catalog-digest");
         var badChangeCatalogPrivateRoot = Path.Combine(temporaryRoot, "bad-change-catalog-private");
@@ -486,6 +487,7 @@ internal static class Program
         Directory.CreateDirectory(badDashboardPrivateRoot);
         Directory.CreateDirectory(badPhase2DashboardDigestRoot);
         Directory.CreateDirectory(badPhase2DashboardPrivateRoot);
+        Directory.CreateDirectory(badPhase2DashboardCatalogRoot);
         Directory.CreateDirectory(badChangeCatalogBindingRoot);
         Directory.CreateDirectory(badChangeCatalogDigestRoot);
         Directory.CreateDirectory(badChangeCatalogPrivateRoot);
@@ -2762,7 +2764,7 @@ internal static class Program
               phase2Tables.All(table => table.SnapshotDigest == phase2Dashboard.SnapshotDigest) &&
               phase2Tables.All(table => table.AuthorityBoundary.Contains("not-a-second-source-of-truth", StringComparison.Ordinal)),
             "Accessible Phase 2 tables preserve the exact source rows, digest, and authority boundary");
-        foreach (var hostileRoot in new[] { badPhase2DashboardDigestRoot, badPhase2DashboardPrivateRoot })
+        foreach (var hostileRoot in new[] { badPhase2DashboardCatalogRoot, badPhase2DashboardDigestRoot, badPhase2DashboardPrivateRoot })
         {
             await using var hostileDashboardClient = new EngineClient(hostileRoot, executable);
             var hostileProduct = await hostileDashboardClient.ReadProductBindingAsync();
@@ -4132,6 +4134,7 @@ internal static class Program
         var badDashboardPrivate = Path.GetFileName(workspace) == "bad-dashboard-private";
         var badPhase2DashboardDigest = Path.GetFileName(workspace) == "bad-phase2-dashboard-digest";
         var badPhase2DashboardPrivate = Path.GetFileName(workspace) == "bad-phase2-dashboard-private";
+        var badPhase2DashboardCatalog = Path.GetFileName(workspace) == "bad-phase2-dashboard-catalog";
         var badChangeCatalogBinding = Path.GetFileName(workspace) == "bad-change-catalog-binding";
         var badChangeCatalogDigest = Path.GetFileName(workspace) == "bad-change-catalog-digest";
         var badChangeCatalogPrivate = Path.GetFileName(workspace) == "bad-change-catalog-private";
@@ -4758,6 +4761,7 @@ internal static class Program
                         initiativeRevision,
                         initiativeClassification,
                         initiativeApplicability,
+                        badPhase2DashboardCatalog,
                         badPhase2DashboardDigest,
                         badPhase2DashboardPrivate);
                     break;
@@ -10907,6 +10911,7 @@ internal static class Program
         long initiativeRevision,
         Dictionary<string, object?>? classification,
         Dictionary<string, object?>? applicability,
+        bool invalidateCatalogDigest,
         bool invalidateDigest,
         bool includePrivateField)
     {
@@ -11037,6 +11042,10 @@ internal static class Program
                 "phase-2-dashboard-is-a-derived-read-only-view-not-a-second-source-of-truth-or-completeness-validity-approval-baseline-readiness-remediation-figma-implementation-or-action-authority",
         };
         if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        if (invalidateCatalogDigest)
+        {
+            ((Dictionary<string, object?>)dashboard["phaseStatus"]!)["sourceCatalogDigest"] = $"sha256:{new string('0', 64)}";
+        }
         RefreshCanonicalDigest(dashboard, "snapshotDigest");
         if (invalidateDigest) ((Dictionary<string, object?>)dashboard["phaseStatus"]!)["unavailableSourceCount"] = 22;
         await WriteResultAsync(id, dashboard);

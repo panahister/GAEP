@@ -5305,6 +5305,9 @@ private fun handlePhase2UxFigmaDashboard(id: Long, params: JsonObject, workspace
     if (workspacePath.endsWith("bad-phase2-dashboard-private")) {
         content.addProperty("sourceRoot", "$privateRoot/$privateCredential")
     }
+    if (workspacePath.endsWith("bad-phase2-dashboard-catalog")) {
+        content.getAsJsonObject("phaseStatus").addProperty("sourceCatalogDigest", "sha256:${"0".repeat(64)}")
+    }
     val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
     if (workspacePath.endsWith("bad-phase2-dashboard-digest")) {
         value.getAsJsonObject("phaseStatus").addProperty("unavailableSourceCount", 22)

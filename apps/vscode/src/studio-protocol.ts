@@ -666,7 +666,8 @@ function isPhase2UxFigmaDashboard(value: unknown): value is Phase2UxFigmaDashboa
   const parsed = phase2UxFigmaDashboardSchema.safeParse(value)
   if (!parsed.success) return false
   const { snapshotDigest, ...content } = parsed.data
-  return snapshotDigest === canonicalStudioDigest(content)
+  return snapshotDigest === canonicalStudioDigest(content) &&
+    parsed.data.phaseStatus.sourceCatalogDigest === canonicalStudioDigest(parsed.data.sources)
 }
 
 function isPhase1ChangeImpactDashboard(value: unknown): value is Phase1ChangeImpactDashboard {

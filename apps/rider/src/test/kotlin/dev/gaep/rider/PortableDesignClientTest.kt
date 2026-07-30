@@ -2399,7 +2399,7 @@ class PortableDesignClientTest {
             assertTrue(tables.all { it.authorityBoundary.contains("not-a-second-source-of-truth") })
         }
 
-        listOf("bad-phase2-dashboard-digest", "bad-phase2-dashboard-private").forEach { name ->
+        listOf("bad-phase2-dashboard-catalog", "bad-phase2-dashboard-digest", "bad-phase2-dashboard-private").forEach { name ->
             val root = Files.createDirectory(temporaryRoot.resolve(name))
             GaepEngineClient(root, executable.toString()).use { client ->
                 val product = client.readProductBinding()
