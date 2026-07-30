@@ -22,6 +22,7 @@ import type {
   BoilerplateCompatibilityValidationProjection,
   FigmaToBoilerplateMappingProjection,
   DesignToCodeBindingRegistryProjection,
+  RouteScreenComponentMappingProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -235,6 +236,9 @@ export interface CurrentStudioEngineReader {
   designToCodeBindingRegistry?: {
     project(initiativeId: string): Promise<DesignToCodeBindingRegistryProjection>
   }
+  routeScreenComponentMapping?: {
+    project(initiativeId: string): Promise<RouteScreenComponentMappingProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -418,6 +422,7 @@ interface ObservedStudioState {
   boilerplateCompatibilityValidationProjections: Map<string, BoilerplateCompatibilityValidationProjection>
   figmaToBoilerplateMappingProjections: Map<string, FigmaToBoilerplateMappingProjection>
   designToCodeBindingRegistryProjections: Map<string, DesignToCodeBindingRegistryProjection>
+  routeScreenComponentMappingProjections: Map<string, RouteScreenComponentMappingProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3848,6 +3853,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     boilerplateCompatibilityValidations: boilerplateCompatibilityValidationTable(state),
     figmaToBoilerplateMappings: figmaToBoilerplateMappingTable(state),
     designToCodeBindingRegistries: designToCodeBindingRegistryTable(state),
+    routeScreenComponentMappings: routeScreenComponentMappingTable(state),
   }
 }
 
@@ -4689,6 +4695,67 @@ function designToCodeBindingRegistryTable(state: ObservedStudioState): StudioTab
       emptyState: emptySurface(
         "No governed Design-to-Code Binding Registry candidate",
         "Create the candidate through the governed engine workflow after all eight exact design, mapping, implementation-unit, technology, selection, and compatibility candidates exist. This view does not connect to Figma, expose returned Figma or source content, validate or approve design, designate a baseline, establish mapping, binding, repository, path, or symbol truth, create or change code targets, retrieve, import, instantiate, generate, execute, accept, merge, release, deploy, or grant action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function routeScreenComponentMappingTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.routeScreenComponentMappingProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        subjects: record.subjectCatalogDigest,
+        relationships: record.relationshipCatalogDigest,
+        traceReceipt: record.traceReceiptDigest,
+        mappingReceipt: record.mappingReceiptDigest,
+        assessmentReceipt: record.assessmentReceiptDigest,
+        coverage: `${status.sourceRouteCount} routes · ${status.sourceScreenCount} screens · ${status.sourceStateCount} states · ${status.sourceComponentCount} components · ${status.subjectCount} mapping subjects`,
+        outcomes: `${status.mappedCandidateCount} mapped · ${status.conflictCandidateCount} conflicts · ${status.unmappedCandidateCount} unmapped · ${status.notAssessedCount} not assessed`,
+        relationshipCoverage: `${status.relationshipCount} relationships · ${status.definedRelationshipCount} defined · ${status.conflictRelationshipCount} conflicts · ${status.notAssessedRelationshipCount} not assessed`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        mappingGaps: `${status.missingSubjectCount} missing subjects · ${status.extraSubjectCount} extra subjects · ${status.invalidSubjectCount} invalid subjects · ${status.missingRelationshipCount} missing relationships · ${status.invalidRelationshipCount} invalid relationships · ${status.traceGapCount} trace gaps · ${status.evidenceGapCount} evidence gaps · ${status.componentPlacementGapCount} component placement gaps · ${status.testHookGapCount} test-hook gaps`,
+        staleGaps: `${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+        boundary: "Candidate identities, counts, statuses, and subject, relationship, trace, mapping, assessment, and snapshot digests only; no route patterns, screen/state/component details, design, Requirement, criterion, unit, repository, module, path, symbol, test hook, evidence, reviewer, or personal data. This view does not establish navigation, UI, responsive, platform, mapping, repository, test, readiness, acceptance, release, deployment, or action authority and cannot create or change code or design targets.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "route-screen-component-mapping",
+    title: "Governed Route, Screen, and Component Mapping Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "subjects", label: "Subject catalog digest" },
+      { key: "relationships", label: "Relationship catalog digest" },
+      { key: "traceReceipt", label: "Trace receipt" },
+      { key: "mappingReceipt", label: "Mapping receipt" },
+      { key: "assessmentReceipt", label: "Assessment receipt" },
+      { key: "coverage", label: "Privacy-safe source coverage" },
+      { key: "outcomes", label: "Candidate outcomes" },
+      { key: "relationshipCoverage", label: "Candidate relationships" },
+      { key: "assessment", label: "Candidate assessment" },
+      { key: "mappingGaps", label: "Candidate mapping gaps" },
+      { key: "staleGaps", label: "Candidate freshness gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Route, Screen, and Component Mapping candidate",
+        "Create the candidate through the governed engine workflow after all nine exact information-architecture, screen/state, design, mapping, binding, implementation-unit, and acceptance-criteria candidates exist. This view does not connect to Figma, expose source content, establish navigation or UI truth, mutate code or design targets, establish readiness, accept, release, deploy, or grant action authority.",
       ),
     } : {}),
   }
@@ -6542,6 +6609,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       boilerplateCompatibilityValidationProjections: new Map(),
       figmaToBoilerplateMappingProjections: new Map(),
       designToCodeBindingRegistryProjections: new Map(),
+      routeScreenComponentMappingProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -7542,6 +7610,74 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "design-to-code-binding-registry-unavailable",
           "Design-to-Code Binding Registry metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.routeScreenComponentMapping) {
+      if (auditSemanticsVerified) {
+        const dependencyReaders = [
+          engine.informationArchitectureModel, engine.screenStateInventory, engine.designRequirements,
+          engine.designBaseline, engine.designToRequirementBinding, engine.figmaToBoilerplateMapping,
+          engine.designToCodeBindingRegistry, engine.implementationUnitModel, engine.acceptanceCriteria,
+        ]
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const mapping = await engine.routeScreenComponentMapping!.project(initiative.id)
+          const dependencies = dependencyReaders.every((reader) => reader !== undefined)
+            ? await Promise.all(dependencyReaders.map((reader) => reader!.project(initiative.id)))
+            : undefined
+          return { mapping, dependencies }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.mapping
+            const { snapshotDigest, ...projectionBody } = value
+            const references = [
+              value.status.informationArchitecture, value.status.screenStateInventory,
+              value.status.designRequirements, value.status.designBaseline,
+              value.status.designToRequirementBinding, value.status.figmaToBoilerplateMapping,
+              value.status.designToCodeBindingRegistry, value.status.implementationUnitModel,
+              value.status.acceptanceCriteria,
+            ]
+            const exactDependencies = !value.candidate || (
+              projection.value.dependencies !== undefined &&
+              references.every((reference, dependencyIndex) => {
+                const dependency = projection.value.dependencies?.[dependencyIndex]?.candidate
+                return reference !== undefined && dependency !== undefined &&
+                  reference.recordId === dependency.id && reference.revision === dependency.revision &&
+                  reference.digest === dependency.digest
+              })
+            )
+            if (
+              value.product.id === empty.product?.id &&
+              value.product.revision === (empty.product.revision ?? 1) &&
+              value.product.digest === canonicalDigest(empty.product) &&
+              value.initiative.id === initiative.id &&
+              value.initiative.revision === (initiative.revision ?? 1) &&
+              value.initiative.digest === canonicalDigest(initiative) &&
+              exactDependencies && snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.routeScreenComponentMappingProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Route, Screen, and Component Mapping projection was unavailable or did not bind all 9 exact current governed dependencies",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `route-screen-component-mapping-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Route, Screen, and Component Mapping metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "route-screen-component-mapping-unavailable",
+          "Route, Screen, and Component Mapping metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

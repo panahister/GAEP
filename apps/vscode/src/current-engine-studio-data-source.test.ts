@@ -61,6 +61,7 @@ import {
   type BoilerplateCompatibilityValidationProjection,
   type FigmaToBoilerplateMappingProjection,
   type DesignToCodeBindingRegistryProjection,
+  type RouteScreenComponentMappingProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -2942,6 +2943,69 @@ function designToCodeBindingRegistryProjection(
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function routeScreenComponentMappingProjection(
+  informationArchitecture: InformationArchitectureModelProjection,
+  screenStateInventory: ScreenStateInventoryProjection,
+  designRequirements: DesignRequirementsProjection,
+  designBaseline: DesignBaselineProjection,
+  designToRequirementBinding: DesignToRequirementBindingProjection,
+  figmaToBoilerplateMapping: FigmaToBoilerplateMappingProjection,
+  designToCodeBindingRegistry: DesignToCodeBindingRegistryProjection,
+  units: ImplementationUnitModelProjection,
+  acceptanceCriteria: AcceptanceCriteriaProjection,
+): RouteScreenComponentMappingProjection {
+  const exact = (candidate: { id: string; revision: number; digest: string }) => ({
+    recordId: candidate.id, revision: candidate.revision, digest: candidate.digest,
+  })
+  const status = {
+    schemaVersion: 1 as const, kind: "route-screen-component-mapping-status" as const,
+    productId: product.id, productRevision: product.revision ?? 1,
+    initiativeId: initiative.id, initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "f5f5f5f5-f5f5-45f5-85f5-f5f5f5f5f5f5", revision: 2, digest: `sha256:${"1".repeat(64)}` as const },
+    informationArchitecture: exact(informationArchitecture.candidate!),
+    screenStateInventory: exact(screenStateInventory.candidate!),
+    designRequirements: exact(designRequirements.candidate!), designBaseline: exact(designBaseline.candidate!),
+    designToRequirementBinding: exact(designToRequirementBinding.candidate!),
+    figmaToBoilerplateMapping: exact(figmaToBoilerplateMapping.candidate!),
+    designToCodeBindingRegistry: exact(designToCodeBindingRegistry.candidate!),
+    implementationUnitModel: exact(units.candidate!), acceptanceCriteria: exact(acceptanceCriteria.candidate!),
+    sourceRouteCount: 2, sourceScreenCount: 3, sourceStateCount: 5, sourceComponentCount: 4,
+    subjectCount: 14, routeSubjectCount: 2, screenSubjectCount: 3, stateSubjectCount: 5, componentSubjectCount: 4,
+    mappedCandidateCount: 12, conflictCandidateCount: 1, unmappedCandidateCount: 1, notAssessedCount: 0,
+    relationshipCount: 18, definedRelationshipCount: 16, conflictRelationshipCount: 1, notAssessedRelationshipCount: 1,
+    missingSubjectCount: 1, extraSubjectCount: 1, invalidSubjectCount: 1,
+    missingRelationshipCount: 2, invalidRelationshipCount: 1, traceGapCount: 2, evidenceGapCount: 1,
+    componentPlacementGapCount: 1, testHookGapCount: 1, staleBindingCount: 0, staleDependencyCount: 0,
+    invalidCandidateCount: 1, unresolvedQuestionCount: 2, reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more Route, Screen, and Component Mapping subjects require human review"],
+    assessedAt: "2026-07-31T00:30:00.000Z",
+    authorityBoundary: "route-screen-component-mapping-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-navigation-route-screen-state-component-responsive-platform-requirement-acceptance-criteria-test-coverage-repository-path-symbol-or-mapping-truth-or-completeness-create-or-change-code-or-design-targets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const, kind: "route-screen-component-mapping-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId, revision: status.candidate.revision, digest: status.candidate.digest,
+      state: "candidate" as const, subjectCatalogDigest: `sha256:${"2".repeat(64)}` as const,
+      relationshipCatalogDigest: `sha256:${"3".repeat(64)}` as const,
+      traceReceiptDigest: `sha256:${"4".repeat(64)}` as const,
+      mappingReceiptDigest: `sha256:${"5".repeat(64)}` as const,
+      assessmentReceiptDigest: `sha256:${"6".repeat(64)}` as const,
+      subjectCount: 14, routeSubjectCount: 2, screenSubjectCount: 3, stateSubjectCount: 5,
+      componentSubjectCount: 4, mappedCandidateCount: 12, conflictCandidateCount: 1,
+      unmappedCandidateCount: 1, notAssessedCount: 0, relationshipCount: 18,
+      definedRelationshipCount: 16, reviewState: "held" as const, updatedAt: "2026-07-31T00:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-subject-relationship-trace-mapping-assessment-snapshot-digests-only-not-route-pattern-screen-state-component-design-requirement-criterion-unit-repository-module-path-symbol-test-hook-evidence-reviewer-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "route-screen-component-mapping-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-navigation-route-screen-state-component-responsive-platform-requirement-acceptance-criteria-test-coverage-repository-path-symbol-or-mapping-truth-or-completeness-create-or-change-code-or-design-targets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -4743,6 +4807,7 @@ interface HarnessOptions {
   boilerplateCompatibilityValidationProjection?: BoilerplateCompatibilityValidationProjection
   figmaToBoilerplateMappingProjection?: FigmaToBoilerplateMappingProjection
   designToCodeBindingRegistryProjection?: DesignToCodeBindingRegistryProjection
+  routeScreenComponentMappingProjection?: RouteScreenComponentMappingProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -4963,6 +5028,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.designToCodeBindingRegistryProjection ? {
       designToCodeBindingRegistry: {
         project: async () => options.designToCodeBindingRegistryProjection!,
+      },
+    } : {}),
+    ...(options.routeScreenComponentMappingProjection ? {
+      routeScreenComponentMapping: {
+        project: async () => options.routeScreenComponentMappingProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -6129,6 +6199,104 @@ describe("current-engine Product Studio data source", () => {
     expect(hostileSnapshot.page.kind === "delivery" && hostileSnapshot.page.designToCodeBindingRegistries?.rows).toEqual([])
     expect(hostileSnapshot.surface.issues).toContainEqual(expect.objectContaining({
       id: `design-to-code-binding-registry-${initiative.id}-unavailable`, severity: "warning",
+    }))
+  })
+
+  it("projects exact privacy-safe Route, Screen, and Component Mapping metadata only across all 9 current dependencies", async () => {
+    const informationArchitecture = informationArchitectureProjection()
+    const screenInventory = screenStateInventoryProjection()
+    const designRequirements = designRequirementsProjection()
+    const designBaseline = designBaselineProjection()
+    const finalizedSnapshot = finalizedFigmaSnapshotImportProjection()
+    const designBinding = designToRequirementBindingProjection()
+    const designApplicability = designApplicabilityProjection()
+    const designSystem = designSystemTokenContractProjection()
+    const responsiveTargets = responsiveMultiPlatformTargetsProjection()
+    const hierarchy = backlogHierarchyProjection()
+    const mvp = mvpSliceDefinitionProjection(hierarchy)
+    const priority = prioritizationModelProjection(mvp)
+    const acceptance = acceptanceCriteriaProjection(hierarchy, mvp, priority)
+    const units = implementationUnitModelProjection()
+    const dependencyMapping = dependencyMappingProjection(undefined, undefined, undefined, undefined, undefined, undefined, units)
+    const technologyProfile = technologyProfileProjection(units, dependencyMapping)
+    const boilerplateRegistry = boilerplateRegistryProjection(units, technologyProfile)
+    const selectionBinding = boilerplateSelectionBindingProjection(units, dependencyMapping, technologyProfile, boilerplateRegistry)
+    const compatibilityValidation = boilerplateCompatibilityValidationProjection(
+      units, dependencyMapping, technologyProfile, boilerplateRegistry, selectionBinding,
+    )
+    const figmaMapping = figmaToBoilerplateMappingProjection(
+      designApplicability, designSystem, responsiveTargets, finalizedSnapshot, designBinding,
+      designBaseline, units, technologyProfile, boilerplateRegistry, selectionBinding, compatibilityValidation,
+    )
+    const designCodeBinding = designToCodeBindingRegistryProjection(
+      designBaseline, finalizedSnapshot, designBinding, figmaMapping, units, technologyProfile,
+      selectionBinding, compatibilityValidation,
+    )
+    const projection = routeScreenComponentMappingProjection(
+      informationArchitecture, screenInventory, designRequirements, designBaseline, designBinding,
+      figmaMapping, designCodeBinding, units, acceptance,
+    )
+    const options = {
+      informationArchitectureProjection: informationArchitecture,
+      screenStateInventoryProjection: screenInventory,
+      designRequirementsProjection: designRequirements,
+      designBaselineProjection: designBaseline,
+      finalizedFigmaSnapshotImportProjection: finalizedSnapshot,
+      designToRequirementBindingProjection: designBinding,
+      designApplicabilityProjection: designApplicability,
+      designSystemTokenContractProjection: designSystem,
+      responsiveMultiPlatformTargetsProjection: responsiveTargets,
+      backlogHierarchyProjection: hierarchy,
+      mvpSliceDefinitionProjection: mvp,
+      prioritizationModelProjection: priority,
+      acceptanceCriteriaProjection: acceptance,
+      implementationUnitModelProjection: units,
+      dependencyMappingProjection: dependencyMapping,
+      technologyProfileProjection: technologyProfile,
+      boilerplateRegistryProjection: boilerplateRegistry,
+      boilerplateSelectionBindingProjection: selectionBinding,
+      boilerplateCompatibilityValidationProjection: compatibilityValidation,
+      figmaToBoilerplateMappingProjection: figmaMapping,
+      designToCodeBindingRegistryProjection: designCodeBinding,
+      routeScreenComponentMappingProjection: projection,
+    }
+    const snapshot = await harness(options).source.readSnapshot("delivery")
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.kind === "delivery" && snapshot.page.routeScreenComponentMappings).toMatchObject({
+      id: "route-screen-component-mapping",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id, revision: "2",
+          subjects: projection.candidate?.subjectCatalogDigest,
+          relationships: projection.candidate?.relationshipCatalogDigest,
+          traceReceipt: projection.candidate?.traceReceiptDigest,
+          mappingReceipt: projection.candidate?.mappingReceiptDigest,
+          assessmentReceipt: projection.candidate?.assessmentReceiptDigest,
+          coverage: "2 routes · 3 screens · 5 states · 4 components · 14 mapping subjects",
+          outcomes: "12 mapped · 1 conflicts · 1 unmapped · 0 not assessed",
+          relationshipCoverage: "18 relationships · 16 defined · 1 conflicts · 1 not assessed",
+          assessment: "attention-required · held",
+          mappingGaps: "1 missing subjects · 1 extra subjects · 1 invalid subjects · 2 missing relationships · 1 invalid relationships · 2 trace gaps · 1 evidence gaps · 1 component placement gaps · 1 test-hook gaps",
+          staleGaps: "0 stale bindings · 0 stale dependencies · 1 invalid candidates · 2 questions",
+          boundary: expect.stringContaining("no route patterns, screen/state/component details"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private route|private screen|private component|private test hook|private path|private reviewer|customer@example\.com|api_key/iu,
+    )
+
+    const hostileBody = { ...projection, status: {
+      ...projection.status,
+      informationArchitecture: { ...projection.status.informationArchitecture!, digest: `sha256:${"0".repeat(64)}` as const },
+    } }
+    const { snapshotDigest: _oldDigest, ...hostileWithoutDigest } = hostileBody
+    const hostile = { ...hostileWithoutDigest, snapshotDigest: canonicalDigest(hostileWithoutDigest) }
+    const hostileSnapshot = await harness({ ...options, routeScreenComponentMappingProjection: hostile }).source.readSnapshot("delivery")
+    expect(hostileSnapshot.page.kind === "delivery" && hostileSnapshot.page.routeScreenComponentMappings?.rows).toEqual([])
+    expect(hostileSnapshot.surface.issues).toContainEqual(expect.objectContaining({
+      id: `route-screen-component-mapping-${initiative.id}-unavailable`, severity: "warning",
     }))
   })
 
