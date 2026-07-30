@@ -5,7 +5,12 @@ import { JSDOM } from "jsdom"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import type { Initiative, Product } from "@gaep/contracts"
-import { composePhase2UxFigmaDashboard } from "@gaep/engine"
+import {
+  composePhase1AgentModelDashboard,
+  composePhase2ChangeImpactAgentModelDashboard,
+  composePhase2UxFigmaDashboard,
+  composePhaseDashboardFramework,
+} from "@gaep/engine"
 
 import { installStudioClient } from "./studio-client.js"
 import { createStudioDocument } from "./studio-document.js"
@@ -584,6 +589,104 @@ function agentModelDashboard(): NonNullable<StudioSnapshot["agentModel"]> {
   return { ...content, snapshotDigest: canonicalDigest(content) }
 }
 
+function phase2IntegratedDashboards(): Pick<
+  StudioSnapshot,
+  "dashboard" | "phase2UxFigma" | "phase1AgentModel" | "phase2ChangeImpactAgentModel"
+> {
+  const product: Product = {
+    schemaVersion: 1,
+    id: "00000000-0000-4000-8000-000000000001",
+    kind: "product",
+    revision: 2,
+    name: "Accessible Phase 2 Product",
+    summary: "An exact, accessible Phase 2 UX and Figma projection fixture",
+    problem: "Phase 2 evidence is distributed across governed projections.",
+    affectedUsers: "Product owners, designers, reviewers, and engineers",
+    desiredOutcome: "Expose bounded Phase 2 state without synthesizing authority.",
+    successSignals: ["The derived view remains exact and accessible"],
+    firstWorkflow: "Inspect source coverage and governance candidates.",
+    exclusions: ["Automatic approval, Figma effects, or implementation effects"],
+    profile: "internal-tool",
+    lifecycleState: "active",
+    createdAt: "2026-07-30T03:00:00.000Z",
+    updatedAt: "2026-07-30T03:00:00.000Z",
+  }
+  const initiative: Initiative = {
+    schemaVersion: 1,
+    id: "00000000-0000-4000-8000-000000000002",
+    kind: "initiative",
+    revision: 3,
+    productId: product.id,
+    title: "Accessible Phase 2 Initiative",
+    outcome: "Inspect exact UX and Figma evidence without granting readiness.",
+    scope: ["P2-01 through P2-23 derived state"],
+    exclusions: ["Approval, baseline, readiness, Figma, remediation, or implementation authority"],
+    state: "active",
+    createdAt: "2026-07-30T03:00:00.000Z",
+    updatedAt: "2026-07-30T03:00:00.000Z",
+  }
+  const productDigest = canonicalDigest(product)
+  const initiativeDigest = canonicalDigest(initiative)
+  const phase2Request = {
+    expectedProductId: product.id,
+    expectedProductRevision: product.revision ?? 1,
+    expectedProductDigest: productDigest,
+    expectedInitiativeId: initiative.id,
+    expectedInitiativeRevision: initiative.revision ?? 1,
+    expectedInitiativeDigest: initiativeDigest,
+  }
+  const phase2UxFigma = composePhase2UxFigmaDashboard(
+    product,
+    initiative,
+    [],
+    phase2Request,
+    "2026-07-30T03:10:00.000Z",
+  )
+  const dashboard = composePhaseDashboardFramework(product, {
+    phase: "phase-2-design",
+    expectedProductId: product.id,
+    expectedProductRevision: product.revision ?? 1,
+    expectedProductDigest: productDigest,
+  }, "2026-07-30T03:09:00.000Z")
+  const { snapshotDigest: _agentDigest, ...agentContent } = agentModelDashboard()
+  const exactAgentContent = {
+    ...agentContent,
+    product: {
+      recordType: "product" as const,
+      recordId: product.id,
+      revision: product.revision ?? 1,
+      digest: productDigest,
+    },
+  }
+  const exactAgentModel = { ...exactAgentContent, snapshotDigest: canonicalDigest(exactAgentContent) }
+  const agentModelRequest = {
+    expectedProductId: product.id,
+    expectedProductRevision: product.revision ?? 1,
+    expectedProductDigest: productDigest,
+    expectedSelection: { status: "unselected" as const },
+    expectedCapabilities: exactAgentModel.capabilities.map((capability) => ({
+      adapterId: capability.adapterId,
+      agentId: capability.agentId,
+      capabilityDigest: capability.capabilityDigest,
+    })),
+  }
+  const phase1AgentModel = composePhase1AgentModelDashboard(product, initiative, exactAgentModel, {
+    expectedInitiativeId: initiative.id,
+    expectedInitiativeRevision: initiative.revision ?? 1,
+    expectedInitiativeDigest: initiativeDigest,
+    agentModel: agentModelRequest,
+  }, "2026-07-30T03:11:00.000Z")
+  const phase2ChangeImpactAgentModel = composePhase2ChangeImpactAgentModelDashboard(
+    product,
+    initiative,
+    phase2UxFigma,
+    exactAgentModel,
+    { ...phase2Request, agentModel: agentModelRequest },
+    "2026-07-30T03:12:00.000Z",
+  )
+  return { dashboard, phase2UxFigma, phase1AgentModel, phase2ChangeImpactAgentModel }
+}
+
 function exposeGlobal(name: string, value: unknown): void {
   if (!originalGlobals.has(name)) originalGlobals.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
   Object.defineProperty(globalThis, name, { configurable: true, writable: true, value })
@@ -800,6 +903,30 @@ describe("Product Studio rendered accessibility", () => {
     expect(document.body.textContent).toMatch(/Product Owner acceptance.*not established/i)
     const labels = Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (button) => button.textContent ?? "")
     expect(labels.some((label) => /approve|set baseline|write figma|import figma|apply remediation/i.test(label))).toBe(false)
+
+    const result = await axe.run(document.documentElement, {
+      rules: { "color-contrast": { enabled: false } },
+    })
+    expect(result.violations.map((violation) => ({ id: violation.id, nodes: violation.nodes.map((node) => node.target) }))).toEqual([])
+  })
+
+  it("renders the integrated Phase 2 change, impact, agent, and model views without action authority", async () => {
+    const candidate: StudioSnapshot = {
+      ...snapshot("agents-tools", 97),
+      ...phase2IntegratedDashboards(),
+    }
+    expect(isStudioSnapshot(candidate)).toBe(true)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
+
+    const document = dom.window.document
+    expect(document.querySelector('[aria-label="Phase 2 Change Impact Agent and Model dashboard"]')).not.toBeNull()
+    expect(document.body.textContent).toMatch(/Synchronization change evidence/i)
+    expect(document.body.textContent).toMatch(/Bounded impact signals/i)
+    expect(document.body.textContent).toMatch(/Initiative-scoped agent and model execution truth/i)
+    expect(document.body.textContent).toMatch(/not a second source of truth/i)
+    expect(document.body.textContent).toMatch(/No Run launch or effect authority/i)
+    const labels = Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (button) => button.textContent ?? "")
+    expect(labels.some((label) => /approve|set baseline|select agent|launch run|authorize effect|apply remediation/i.test(label))).toBe(false)
 
     const result = await axe.run(document.documentElement, {
       rules: { "color-contrast": { enabled: false } },

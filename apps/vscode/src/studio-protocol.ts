@@ -3,6 +3,7 @@ import {
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
   phase2UxFigmaDashboardSchema,
+  phase2ChangeImpactAgentModelDashboardSchema,
   type AgentModelDashboard,
   type ChangeImpactDashboard,
   type Phase1SummaryDashboard,
@@ -10,6 +11,7 @@ import {
   type Phase1AgentModelDashboard,
   type PhaseDashboardFramework,
   type Phase2UxFigmaDashboard,
+  type Phase2ChangeImpactAgentModelDashboard,
 } from "@gaep/contracts"
 
 import { canonicalStudioDigest } from "./studio-digest.js"
@@ -435,6 +437,7 @@ export interface StudioSnapshot {
   surface: StudioSurfaceState
   dashboard?: PhaseDashboardFramework
   phase2UxFigma?: Phase2UxFigmaDashboard
+  phase2ChangeImpactAgentModel?: Phase2ChangeImpactAgentModelDashboard
   phase1Summary?: Phase1SummaryDashboard
   phase1ChangeImpact?: Phase1ChangeImpactDashboard
   changeImpact?: ChangeImpactDashboard
@@ -668,6 +671,13 @@ function isPhase2UxFigmaDashboard(value: unknown): value is Phase2UxFigmaDashboa
   const { snapshotDigest, ...content } = parsed.data
   return snapshotDigest === canonicalStudioDigest(content) &&
     parsed.data.phaseStatus.sourceCatalogDigest === canonicalStudioDigest(parsed.data.sources)
+}
+
+function isPhase2ChangeImpactAgentModelDashboard(value: unknown): value is Phase2ChangeImpactAgentModelDashboard {
+  const parsed = phase2ChangeImpactAgentModelDashboardSchema.safeParse(value)
+  if (!parsed.success) return false
+  const { snapshotDigest, ...content } = parsed.data
+  return snapshotDigest === canonicalStudioDigest(content)
 }
 
 function isPhase1ChangeImpactDashboard(value: unknown): value is Phase1ChangeImpactDashboard {
@@ -1466,7 +1476,7 @@ function routeMatchesPage(route: StudioRoute, page: Record<string, unknown>): bo
 
 export function isStudioSnapshot(value: unknown): value is StudioSnapshot {
   if (!isRecord(value) || !hasOnlyKeys(value, [
-    "protocolVersion", "contextGeneration", "snapshotRevision", "route", "workspace", "navigation", "surface", "dashboard", "phase2UxFigma", "phase1Summary", "phase1ChangeImpact", "changeImpact", "agentModel", "phase1AgentModel", "page", "inspector", "footer",
+    "protocolVersion", "contextGeneration", "snapshotRevision", "route", "workspace", "navigation", "surface", "dashboard", "phase2UxFigma", "phase2ChangeImpactAgentModel", "phase1Summary", "phase1ChangeImpact", "changeImpact", "agentModel", "phase1AgentModel", "page", "inspector", "footer",
   ])) return false
   if (value.protocolVersion !== studioProtocolVersion || !isOpaqueContextGeneration(value.contextGeneration) ||
     !isNonNegativeInteger(value.snapshotRevision) || !isStudioRoute(value.route)) {
@@ -1482,6 +1492,12 @@ export function isStudioSnapshot(value: unknown): value is StudioSnapshot {
   if (value.phase2UxFigma !== undefined &&
       (!isPhase2UxFigmaDashboard(value.phase2UxFigma) || !isRecord(value.dashboard) ||
        !isRecord(value.dashboard.phase) || value.dashboard.phase.id !== "phase-2-design")) return false
+  if (value.phase2ChangeImpactAgentModel !== undefined &&
+      (value.route !== "agents-tools" || !isPhase2ChangeImpactAgentModelDashboard(value.phase2ChangeImpactAgentModel) ||
+       !isPhase2UxFigmaDashboard(value.phase2UxFigma) || !isPhase1AgentModelDashboard(value.phase1AgentModel) ||
+       value.phase2ChangeImpactAgentModel.sources.phase2UxFigmaSnapshotDigest !== value.phase2UxFigma.snapshotDigest ||
+       value.phase2ChangeImpactAgentModel.sources.phase2SourceCatalogDigest !== value.phase2UxFigma.phaseStatus.sourceCatalogDigest ||
+       value.phase2ChangeImpactAgentModel.sources.agentModelSnapshotDigest !== value.phase1AgentModel.agentModel.snapshotDigest)) return false
   if (value.phase1Summary !== undefined && !isPhase1SummaryDashboard(value.phase1Summary)) return false
   if (value.phase1ChangeImpact !== undefined && (value.route !== "delivery" || !isPhase1ChangeImpactDashboard(value.phase1ChangeImpact))) return false
   if (value.changeImpact !== undefined && (value.route !== "delivery" || !isChangeImpactDashboard(value.changeImpact))) return false

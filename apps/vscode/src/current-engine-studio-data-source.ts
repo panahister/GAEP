@@ -90,6 +90,7 @@ import type {
   Phase1AgentModelDashboard,
   PhaseDashboardFramework,
   Phase2UxFigmaDashboard,
+  Phase2ChangeImpactAgentModelDashboard,
 } from "@gaep/contracts"
 import { containsSecretShapedValue } from "@gaep/contracts"
 import { canonicalDigest, capabilityDigest } from "@gaep/agent-sdk"
@@ -101,6 +102,7 @@ import {
   composePhase1AgentModelDashboard,
   composePhaseDashboardFramework,
   composePhase2UxFigmaDashboard,
+  composePhase2ChangeImpactAgentModelDashboard,
 } from "@gaep/engine"
 import type {
   ManagedRunListPage,
@@ -5203,6 +5205,36 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         }
       }
     }
+    let phase2ChangeImpactAgentModel: Phase2ChangeImpactAgentModelDashboard | undefined
+    if (route === "agents-tools" && deliveryPhase === "phase-2-design" && observed.product && phase2UxFigma && phase1AgentModel) {
+      const initiative = currentInitiative(observed.initiatives)
+      if (initiative) {
+        try {
+          phase2ChangeImpactAgentModel = composePhase2ChangeImpactAgentModelDashboard(
+            observed.product,
+            initiative,
+            phase2UxFigma,
+            phase1AgentModel.agentModel,
+            {
+              expectedProductId: observed.product.id,
+              expectedProductRevision: observed.product.revision ?? 1,
+              expectedProductDigest: canonicalDigest(observed.product),
+              expectedInitiativeId: initiative.id,
+              expectedInitiativeRevision: initiative.revision ?? 1,
+              expectedInitiativeDigest: canonicalDigest(initiative),
+              agentModel: this.agentModelDashboardRequest(observed),
+            },
+          )
+        } catch (error) {
+          this.context.logDiagnostic("Product Studio exact Phase 2 Change, Impact, Agent and Model composition failed; stale or private detail was withheld", error)
+          observed.issues.push(issue(
+            "phase-2-change-impact-agent-model-unavailable",
+            "The integrated Phase 2 Change, Impact, Agent and Model view could not be revalidated against the exact Phase 2 dashboard and Initiative-scoped execution metadata.",
+            "warning",
+          ))
+        }
+      }
+    }
     let phase1Summary: Phase1SummaryDashboard | undefined
     let phase1ChangeImpact: Phase1ChangeImpactDashboard | undefined
     if (observed.product) {
@@ -5294,6 +5326,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       surface: surfaceFor(route, this.context, observed),
       ...(dashboard ? { dashboard } : {}),
       ...(phase2UxFigma ? { phase2UxFigma } : {}),
+      ...(phase2ChangeImpactAgentModel ? { phase2ChangeImpactAgentModel } : {}),
       ...(phase1Summary ? { phase1Summary } : {}),
       ...(phase1ChangeImpact ? { phase1ChangeImpact } : {}),
       ...(changeImpact ? { changeImpact } : {}),

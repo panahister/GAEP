@@ -8,6 +8,7 @@ import type {
   Phase1SummaryDashboard,
   PhaseDashboardFramework,
   Phase2UxFigmaDashboard,
+  Phase2ChangeImpactAgentModelDashboard,
 } from "@gaep/contracts"
 
 import {
@@ -219,6 +220,7 @@ class StudioShell {
       main.append(this.renderPage(snapshot))
       if (snapshot.dashboard) main.append(this.renderPhaseDashboard(snapshot.dashboard))
       if (snapshot.phase2UxFigma) main.append(this.renderPhase2UxFigmaDashboard(snapshot.phase2UxFigma))
+      if (snapshot.phase2ChangeImpactAgentModel) main.append(this.renderPhase2ChangeImpactAgentModelDashboard(snapshot.phase2ChangeImpactAgentModel))
       if (snapshot.phase1Summary) main.append(this.renderPhase1Summary(snapshot.phase1Summary))
       if (snapshot.phase1ChangeImpact) main.append(this.renderPhase1ChangeImpact(snapshot.phase1ChangeImpact))
       if (snapshot.changeImpact) main.append(this.renderChangeImpactDashboard(snapshot.changeImpact))
@@ -1496,6 +1498,134 @@ class StudioShell {
       this.renderStringList("Phase 1 Agent and model limits", dashboard.limitations),
       this.renderAgentModelDashboard(dashboard.agentModel),
     )
+    return section
+  }
+
+  private renderPhase2ChangeImpactAgentModelDashboard(
+    dashboard: Phase2ChangeImpactAgentModelDashboard,
+  ): HTMLElement {
+    const section = element("section", "section phase2-change-impact-agent-model-dashboard")
+    section.setAttribute("aria-label", "Phase 2 Change Impact Agent and Model dashboard")
+    section.append(
+      element("h3", undefined, "Phase 2 Change, Impact, Agent and Model"),
+      element(
+        "p",
+        "prose",
+        `Exact Initiative ${dashboard.initiative.recordId} at revision ${dashboard.initiative.revision} · ${dashboard.freshness.state}.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        "These derived read-only views are not a second source of truth and do not establish impact completeness, design validity, provider quality, approval, a Baseline Set, readiness, remediation, implementation, Run launch, selection, effects, or action authority.",
+      ),
+    )
+    section.append(this.renderTable({
+      id: "phase2-synchronization-change",
+      title: "Synchronization change evidence",
+      columns: [
+        { key: "source", label: "Governed source", identifier: true },
+        { key: "state", label: "Availability" },
+        { key: "effect", label: "Effect boundary" },
+      ],
+      rows: [
+        ["design-delta", "Design delta", dashboard.synchronizationChange.designDelta],
+        ["conflict-resolution", "Conflict resolution", dashboard.synchronizationChange.conflictResolution],
+        ["human-approval", "Human design approval", dashboard.synchronizationChange.humanDesignApproval],
+        ["design-baseline", "Design baseline", dashboard.synchronizationChange.designBaseline],
+        ["design-drift", "Design drift detection", dashboard.synchronizationChange.designDriftDetection],
+      ].map(([id, source, state]) => ({
+        id: id!, cells: { source: source!, state: state!, effect: "Not applied" }, actions: [],
+      })),
+      actions: [],
+    }))
+    section.append(this.renderTable({
+      id: "phase2-bounded-impact",
+      title: "Bounded impact signals",
+      columns: [
+        { key: "area", label: "Area", identifier: true },
+        { key: "observed", label: "Observed counts" },
+        { key: "boundary", label: "Coverage boundary" },
+      ],
+      rows: [
+        {
+          id: "design-trace",
+          cells: {
+            area: "Design and trace",
+            observed: `${dashboard.impact.requirementCount} requirements · ${dashboard.impact.designBindingCount} bindings · ${dashboard.impact.unboundDesignItemCount} unbound items`,
+            boundary: "Impact completeness and design validity are not established.",
+          },
+          actions: [],
+        },
+        {
+          id: "drift",
+          cells: {
+            area: "Drift",
+            observed: `${dashboard.impact.driftObservationCount} observations · ${dashboard.impact.driftCount} drift · ${dashboard.impact.unassessedCount} unassessed · ${dashboard.impact.blockerCount} blocker · ${dashboard.impact.highSeverityCount} high`,
+            boundary: `${dashboard.impact.remediationCandidateCount} remediation candidates; no remediation or revalidation effect is applied.`,
+          },
+          actions: [],
+        },
+        {
+          id: "freshness",
+          cells: {
+            area: "Freshness",
+            observed: `${dashboard.impact.staleBindingCount} stale bindings · ${dashboard.impact.staleSourceReferenceCount} stale sources · ${dashboard.impact.unresolvedQuestionCount} unresolved questions`,
+            boundary: `Coverage is ${dashboard.impact.coverage}.`,
+          },
+          actions: [],
+        },
+      ],
+      actions: [],
+    }))
+    section.append(this.renderTable({
+      id: "phase2-agent-model-execution",
+      title: "Initiative-scoped agent and model execution truth",
+      columns: [
+        { key: "area", label: "Area", identifier: true },
+        { key: "counts", label: "Bounded counts" },
+        { key: "authority", label: "Authority boundary" },
+      ],
+      rows: [
+        {
+          id: "capabilities",
+          cells: {
+            area: "Capabilities and selection",
+            counts: `${dashboard.agentModel.capabilities.shown}/${dashboard.agentModel.capabilities.total} shown · ${dashboard.agentModel.capabilities.detected} detected · ${dashboard.agentModel.capabilities.selected} selected · selection ${dashboard.agentModel.selectionState}`,
+            authority: "No automatic selection or provider preference authority.",
+          },
+          actions: [],
+        },
+        {
+          id: "runs",
+          cells: {
+            area: "Runs and Managed Runs",
+            counts: `${dashboard.agentModel.runs.shown}/${dashboard.agentModel.runs.total} Runs shown · ${dashboard.agentModel.runs.terminal} terminal · ${dashboard.agentModel.runs.managedObserved} managed observed · ${dashboard.agentModel.runs.resultBound} results bound · ${dashboard.agentModel.runs.actualEffectCount} recorded actual effects`,
+            authority: "No Run launch or effect authority.",
+          },
+          actions: [],
+        },
+        {
+          id: "handoffs",
+          cells: {
+            area: "Handoffs and provider truth",
+            counts: `${dashboard.agentModel.handoffs.shown}/${dashboard.agentModel.handoffs.total} handoffs shown · ${dashboard.agentModel.handoffs.pendingAcknowledgement} pending · ${dashboard.agentModel.handoffs.acknowledged} acknowledged`,
+            authority: "Usage and cost unavailable; live and semantic provider quality not assessed.",
+          },
+          actions: [],
+        },
+      ],
+      actions: [],
+    }))
+    section.append(this.renderDefinitionGroup("Exact source and governance bindings", [
+      { term: "Phase 2 UX/Figma snapshot", value: dashboard.sources.phase2UxFigmaSnapshotDigest },
+      { term: "Phase 2 source catalog", value: dashboard.sources.phase2SourceCatalogDigest },
+      { term: "Agent/Model snapshot", value: dashboard.sources.agentModelSnapshotDigest },
+      { term: "Product Owner acceptance", value: dashboard.governance.productOwnerAcceptance },
+      { term: "Baseline designation", value: dashboard.governance.baselineDesignation },
+      { term: "Phase readiness", value: dashboard.governance.phaseReadinessAuthority },
+      { term: "Snapshot digest", value: dashboard.snapshotDigest },
+    ]))
+    section.append(this.renderStringList("Integrated view limits", dashboard.limitations))
     return section
   }
 

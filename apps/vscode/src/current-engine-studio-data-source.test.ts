@@ -4209,6 +4209,31 @@ describe("current-engine Product Studio data source", () => {
     const { snapshotDigest: phase1Digest, ...phase1Content } = phase1AgentModel
     expect(phase1Digest).toBe(canonicalDigest(phase1Content))
     expect(JSON.stringify(phase1AgentModel)).not.toContain("must-redact")
+    const { source: phase2Source } = harness({ deliveryPhase: "phase-2-design" })
+    const phase2Agents = await phase2Source.readSnapshot("agents-tools")
+    expect(isStudioSnapshot(phase2Agents)).toBe(true)
+    expect(phase2Agents.phase2ChangeImpactAgentModel).toMatchObject({
+      kind: "phase-2-change-impact-agent-model-dashboard",
+      product: { recordId: product.id, revision: product.revision },
+      initiative: { recordId: initiative.id, revision: initiative.revision, state: initiative.state },
+      synchronizationChange: { state: "attention-required", synchronizationEffectState: "not-applied" },
+      impact: { coverage: "bounded-not-complete", impactCompleteness: "not-established", designValidity: "not-established" },
+      agentModel: {
+        capabilities: { shown: 2, total: 2, omitted: 0, selected: 1 },
+        runs: { shown: 1, total: 1, omitted: 0, terminal: 1, nonTerminal: 0 },
+        providerMetrics: { usage: "unavailable", cost: "unavailable" },
+      },
+      governance: { runLaunchAuthority: "not-granted", effectAuthority: "not-granted", productOwnerAcceptance: "not-established" },
+    })
+    const phase2Integrated = phase2Agents.phase2ChangeImpactAgentModel
+    if (!phase2Integrated) throw new Error("Expected exact Phase 2 integrated dashboard")
+    const { snapshotDigest: phase2IntegratedDigest, ...phase2IntegratedContent } = phase2Integrated
+    expect(phase2IntegratedDigest).toBe(canonicalDigest(phase2IntegratedContent))
+    expect(phase2Integrated.sources).toMatchObject({
+      phase2UxFigmaSnapshotDigest: phase2Agents.phase2UxFigma?.snapshotDigest,
+      agentModelSnapshotDigest: phase2Agents.phase1AgentModel?.agentModel.snapshotDigest,
+    })
+    expect(JSON.stringify(phase2Integrated)).not.toContain("must-redact")
     const tampered = structuredClone(agents)
     if (!tampered.phase1AgentModel) throw new Error("Expected Phase 1 Agent/Model dashboard to tamper")
     tampered.phase1AgentModel.executionTruth.runs.terminal = 0
