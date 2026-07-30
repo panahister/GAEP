@@ -9,6 +9,7 @@ import { acceptanceCriteriaInputSchema } from "./acceptance-criteria.js"
 import { definitionOfReadyInputSchema } from "./definition-of-ready.js"
 import { definitionOfDoneInputSchema } from "./definition-of-done.js"
 import { implementationUnitModelInputSchema } from "./implementation-unit-model.js"
+import { dependencyMappingInputSchema } from "./dependency-mapping.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -688,6 +689,18 @@ export const hostImplementationUnitModelReviseParamsSchema = z.object({
   record: implementationUnitModelInputSchema,
 }).strict()
 
+export const hostDependencyMappingCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: dependencyMappingInputSchema,
+}).strict()
+
+export const hostDependencyMappingReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: dependencyMappingInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -977,6 +990,11 @@ export const hostMethodSchema = z.enum([
   "planning.implementationUnits.revise",
   "planning.implementationUnits.assess",
   "planning.implementationUnits.snapshot",
+  "planning.dependencyMapping.read",
+  "planning.dependencyMapping.create",
+  "planning.dependencyMapping.revise",
+  "planning.dependencyMapping.assess",
+  "planning.dependencyMapping.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1305,6 +1323,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.implementationUnits.revise", hostImplementationUnitModelReviseParamsSchema),
   requestVariant("planning.implementationUnits.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.implementationUnits.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.dependencyMapping.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.dependencyMapping.create", hostDependencyMappingCreateParamsSchema),
+  requestVariant("planning.dependencyMapping.revise", hostDependencyMappingReviseParamsSchema),
+  requestVariant("planning.dependencyMapping.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.dependencyMapping.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

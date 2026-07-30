@@ -129,6 +129,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.implementationUnits.revise",
   "planning.implementationUnits.assess",
   "planning.implementationUnits.snapshot",
+  "planning.dependencyMapping.read",
+  "planning.dependencyMapping.create",
+  "planning.dependencyMapping.revise",
+  "planning.dependencyMapping.assess",
+  "planning.dependencyMapping.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1392,6 +1397,21 @@ export class EngineHost {
         return this.engine.implementationUnitModel.assess(request.params.initiativeId)
       case "planning.implementationUnits.snapshot":
         return this.engine.implementationUnitModel.project(request.params.initiativeId)
+      case "planning.dependencyMapping.read":
+        return await this.engine.dependencyMapping.readCurrent(request.params.initiativeId) ?? null
+      case "planning.dependencyMapping.create":
+        return this.engine.dependencyMapping.create(request.params.record, actorId(request.params.actorId))
+      case "planning.dependencyMapping.revise":
+        return this.engine.dependencyMapping.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.dependencyMapping.assess":
+        return this.engine.dependencyMapping.assess(request.params.initiativeId)
+      case "planning.dependencyMapping.snapshot":
+        return this.engine.dependencyMapping.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":

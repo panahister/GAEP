@@ -746,14 +746,100 @@ describe("Backlog Hierarchy host protocol", () => {
     })
     expect(JSON.stringify(unitsSnapshot)).not.toContain(implementationUnitInput.title)
     expect(JSON.stringify(unitsSnapshot)).not.toContain(implementationUnitInput.units[0]!.repository.modulePath)
-    await expect(host.dispatch({
+    const unitsRevised = await host.dispatch({
       jsonrpc: "2.0", id: "units-revise", protocolVersion: 2,
       method: "planning.implementationUnits.revise",
       params: {
         actorId: "host-test", recordId: unitsCreated.id, expectedRevision: unitsCreated.revision,
         record: { ...implementationUnitInput, title: "Host reviewed implementation unit model candidate" },
       },
-    })).resolves.toMatchObject({ id: unitsCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+    }) as typeof unitsCreated & { predecessorDigest: string }
+    expect(unitsRevised).toMatchObject({ id: unitsCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+
+    const dependencyMappingInput = {
+      initiativeId: initiative.id,
+      context: input.context,
+      informationClassification: "internal" as const,
+      title: "Host dependency mapping candidate",
+      hierarchy: { recordId: created.id, revision: created.revision, digest: canonicalDigest(created) },
+      mvpSliceDefinition: criteriaInput.mvpSliceDefinition,
+      implementationUnitModel: {
+        recordId: unitsRevised.id, revision: unitsRevised.revision, digest: canonicalDigest(unitsRevised),
+      },
+      nodes: unitIds.map((implementationUnitId, index) => ({
+        implementationUnitId, ordinal: index + 1, candidateEffortPoints: index === 0 ? 8 : 5,
+        estimateState: "candidate-not-validated" as const, evidenceReferences: [],
+        assessedBy: { kind: "human" as const, id: "host-architecture-reviewer" },
+        assessedAt: "2026-07-30T00:00:00.000Z",
+      })),
+      edges: [{
+        id: randomUUID(), ordinal: 1, predecessorUnitId: unitIds[0]!, successorUnitId: unitIds[1]!,
+        kind: "integration" as const, strength: "required" as const,
+        evidenceState: "candidate-asserted" as const,
+        rationale: "The candidate native host unit consumes the candidate engine host contract",
+        evidenceReferences: [],
+        assessedBy: { kind: "human" as const, id: "host-architecture-reviewer" },
+        assessedAt: "2026-07-30T00:00:00.000Z",
+      }],
+      criticalPathPolicy: {
+        algorithm: "longest-candidate-effort-path-v1" as const,
+        tieBreak: "canonical-unit-ordinal-v1" as const,
+      },
+      unresolvedQuestions: [],
+      limitations: ["Dependency and critical-path results remain candidates for accountable human review."],
+      reviewState: "ready-for-human-review" as const,
+      dependencyTruthState: "not-established" as const, dependencyCompletenessState: "not-established" as const,
+      criticalPathAuthorityState: "not-established" as const, sequencingCommitmentState: "not-established" as const,
+      ownershipAppointmentState: "not-established" as const, implementationReadinessState: "not-established" as const,
+      implementationCompletenessState: "not-established" as const, assignmentExecutionState: "not-established" as const,
+      approvalState: "not-established" as const, acceptanceDecisionState: "not-established" as const,
+      mergeReadinessState: "not-established" as const, releaseReadinessState: "not-established" as const,
+      deploymentReadinessState: "not-established" as const, actionAuthorityState: "not-granted" as const,
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "dependency-v1-rejected", protocolVersion: 1,
+      method: "planning.dependencyMapping.snapshot", params: { initiativeId: initiative.id },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "dependency-read-empty", protocolVersion: 2,
+      method: "planning.dependencyMapping.read", params: { initiativeId: initiative.id },
+    })).resolves.toBeNull()
+    const dependencyCreated = await host.dispatch({
+      jsonrpc: "2.0", id: "dependency-create", protocolVersion: 2,
+      method: "planning.dependencyMapping.create", params: { actorId: "host-test", record: dependencyMappingInput },
+    }) as { id: string; revision: number; graphDigest: string; criticalPathDigest: string }
+    expect(dependencyCreated).toMatchObject({
+      revision: 1, graphDigest: expect.stringMatching(/^sha256:/u), criticalPathDigest: expect.stringMatching(/^sha256:/u),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "dependency-assess", protocolVersion: 2,
+      method: "planning.dependencyMapping.assess", params: { initiativeId: initiative.id },
+    })).resolves.toMatchObject({
+      state: "candidate-complete", nodeCount: 2, edgeCount: 1, requiredEdgeCount: 1,
+      criticalPathUnitCount: 2, criticalPathCandidateEffortPoints: 13,
+      missingNodeCount: 0, missingDeclaredEdgeCount: 0, extraEdgeCount: 0,
+    })
+    const dependencySnapshot = await host.dispatch({
+      jsonrpc: "2.0", id: "dependency-snapshot", protocolVersion: 2,
+      method: "planning.dependencyMapping.snapshot", params: { initiativeId: initiative.id },
+    }) as Record<string, unknown> & { snapshotDigest: string }
+    const { snapshotDigest: dependencySnapshotDigest, ...dependencySnapshotBody } = dependencySnapshot
+    expect(dependencySnapshotDigest).toBe(canonicalDigest(dependencySnapshotBody))
+    expect(dependencySnapshot).toMatchObject({
+      candidate: { id: dependencyCreated.id, nodeCount: 2, edgeCount: 1, criticalPathUnitCount: 2 },
+      privacyBoundary: expect.stringContaining("not-unit-node-edge-evidence-rationale-estimate"),
+      authorityBoundary: expect.stringContaining("does-not-establish-dependency-truth-or-completeness"),
+    })
+    expect(JSON.stringify(dependencySnapshot)).not.toContain(dependencyMappingInput.title)
+    expect(JSON.stringify(dependencySnapshot)).not.toContain(dependencyMappingInput.edges[0]!.rationale)
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "dependency-revise", protocolVersion: 2,
+      method: "planning.dependencyMapping.revise",
+      params: {
+        actorId: "host-test", recordId: dependencyCreated.id, expectedRevision: dependencyCreated.revision,
+        record: { ...dependencyMappingInput, title: "Host reviewed dependency mapping candidate" },
+      },
+    })).resolves.toMatchObject({ id: dependencyCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
 
     const revised = await host.dispatch({
       jsonrpc: "2.0",
