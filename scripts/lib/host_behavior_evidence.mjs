@@ -121,6 +121,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/ImplementationUnitModelProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/TechnologyProfileModels.cs",
       "apps/visual-studio/Gaep.HostClient/TechnologyProfileProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/BoilerplateRegistryModels.cs",
+      "apps/visual-studio/Gaep.HostClient/BoilerplateRegistryProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/DesignApplicabilityModels.cs",
       "apps/visual-studio/Gaep.HostClient/DesignApplicabilityProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/DesignPersonaRoleModels.cs",
@@ -191,7 +193,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (682)",
+        "GAEP Visual Studio host-client tests: PASS (691)",
       ],
     }],
   },
