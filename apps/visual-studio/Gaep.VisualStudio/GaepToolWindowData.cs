@@ -246,6 +246,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadDesignConflictResolutionCommand = new AsyncCommand(LoadDesignConflictResolutionAsync);
         LoadHumanDesignApprovalCommand = new AsyncCommand(LoadHumanDesignApprovalAsync);
         LoadDesignBaselineCommand = new AsyncCommand(LoadDesignBaselineAsync);
+        LoadDesignDriftDetectionCommand = new AsyncCommand(LoadDesignDriftDetectionAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -425,6 +426,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadDesignBaselineCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadDesignDriftDetectionCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -1060,6 +1064,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact Design Baseline version candidate",
             (controller, _, token) => controller.ReadDesignBaselineAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadDesignDriftDetectionAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact Design Drift Detection candidate",
+            (controller, _, token) => controller.ReadDesignDriftDetectionAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)

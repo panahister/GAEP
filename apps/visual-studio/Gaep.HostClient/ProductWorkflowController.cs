@@ -2775,6 +2775,64 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDesignDriftDetectionAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDesignDriftDetectionAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Design Drift Detection was read. Refresh the exact records.");
+        }
+        return RenderDesignDriftDetection(projection);
+    }
+
+    public static string RenderDesignDriftDetection(DesignDriftDetectionProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP Design Drift Detection candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate result: {projection.CandidateResult} · {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine($"Implementation targets: {projection.HumanReviewedImplementationTargetCount}/{projection.ImplementationTargetCount} human-reviewed")
+            .AppendLine($"Comparison paths: {projection.RequirementToDesignCount} requirement-to-design · {projection.DesignToImplementationCount} design-to-implementation")
+            .AppendLine($"Classifications: {projection.ConformantCount} conformant · {projection.DriftCount} drift · {projection.UnassessedCount} unassessed")
+            .AppendLine($"Severity: {projection.BlockerCount} blocker · {projection.HighSeverityCount} high")
+            .AppendLine($"Remediation candidates: {projection.RemediationCandidateCount} recorded · {projection.ExpiredRemediationCandidateCount} expired · effects not applied")
+            .AppendLine($"Candidate gaps: {projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references · {projection.UnresolvedQuestionCount} unresolved questions");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Candidate record: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine($"Baseline candidate: {candidate.DesignBaseline.RecordId:D}@{candidate.DesignBaseline.Revision} · {candidate.DesignBaseline.SemanticVersion} · designation {candidate.DesignBaseline.BaselineDesignationState}")
+                .AppendLine($"Returned design: {candidate.ReturnedFigmaSnapshot.RecordId:D}@{candidate.ReturnedFigmaSnapshot.Revision} · returned version {candidate.ReturnedFigmaSnapshot.ReturnedExternalVersionDigest}")
+                .AppendLine($"Design Requirements: {candidate.DesignRequirements.RecordId:D}@{candidate.DesignRequirements.Revision} · {candidate.DesignRequirements.CatalogDigest}")
+                .AppendLine($"Design trace: {candidate.DesignTrace.RecordId:D}@{candidate.DesignTrace.Revision} · {candidate.DesignTrace.ReconciliationDigest}")
+                .AppendLine($"Implementation target catalog: revision {candidate.ImplementationTargetCatalogRevision} · {candidate.ImplementationTargetCatalogDigest}")
+                .AppendLine($"Comparison: policy {candidate.ComparisonPolicyDigest} · receipt {candidate.ComparisonDigest}");
+        }
+        else output.AppendLine("Candidate record: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: exact candidate identities, version axes, catalog and comparison digests, counts, " +
+                "classifications, severities, review state, and non-effect status only; this view does not establish " +
+                "an actual Baseline Set, drift completeness, external completeness, design or implementation validity, " +
+                "approval, readiness, remediation effect, call Figma, import or write content, change implementation, " +
+                "or grant action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

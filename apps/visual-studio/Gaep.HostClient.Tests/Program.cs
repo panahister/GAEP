@@ -87,6 +87,7 @@ internal static class Program
     private static readonly Guid DesignConflictResolutionId = Guid.Parse("82828282-8282-4282-8282-828282828282");
     private static readonly Guid HumanDesignApprovalId = Guid.Parse("83838383-8383-4383-8383-838383838383");
     private static readonly Guid DesignBaselineId = Guid.Parse("84848484-8484-4484-8484-848484848484");
+    private static readonly Guid DesignDriftDetectionId = Guid.Parse("87878787-8787-4787-8787-878787878787");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -277,6 +278,9 @@ internal static class Program
         var badDesignBaselineBindingRoot = Path.Combine(temporaryRoot, "bad-design-baseline-binding");
         var badDesignBaselineDigestRoot = Path.Combine(temporaryRoot, "bad-design-baseline-digest");
         var badDesignBaselinePrivateRoot = Path.Combine(temporaryRoot, "bad-design-baseline-private");
+        var badDesignDriftBindingRoot = Path.Combine(temporaryRoot, "bad-design-drift-binding");
+        var badDesignDriftDigestRoot = Path.Combine(temporaryRoot, "bad-design-drift-digest");
+        var badDesignDriftPrivateRoot = Path.Combine(temporaryRoot, "bad-design-drift-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -467,6 +471,9 @@ internal static class Program
         Directory.CreateDirectory(badDesignBaselineBindingRoot);
         Directory.CreateDirectory(badDesignBaselineDigestRoot);
         Directory.CreateDirectory(badDesignBaselinePrivateRoot);
+        Directory.CreateDirectory(badDesignDriftBindingRoot);
+        Directory.CreateDirectory(badDesignDriftDigestRoot);
+        Directory.CreateDirectory(badDesignDriftPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2655,6 +2662,53 @@ internal static class Program
                 "Design Baseline rejects a projection rebound to a substituted Product revision");
         }
 
+        var designDriftProjection = await client.ReadDesignDriftDetectionAsync(InitiativeId);
+        Check(designDriftProjection.ProductId == product.Id &&
+              designDriftProjection.ProductRevision == product.Revision &&
+              designDriftProjection.ProductDigest == product.Digest &&
+              designDriftProjection.InitiativeId == resolved.Id &&
+              designDriftProjection.InitiativeRevision == resolved.Revision &&
+              designDriftProjection.InitiativeDigest == resolved.Digest &&
+              designDriftProjection.AssessmentState == "attention-required" &&
+              designDriftProjection.CandidateResult == "incomplete" &&
+              designDriftProjection.ReviewState == "held" &&
+              designDriftProjection.ImplementationTargetCount == 5 &&
+              designDriftProjection.ObservationCount == 9 &&
+              designDriftProjection.RequirementToDesignCount == 4 &&
+              designDriftProjection.DesignToImplementationCount == 5 &&
+              designDriftProjection.DriftCount == 5 &&
+              designDriftProjection.BlockerCount == 1 &&
+              designDriftProjection.RemediationCandidateCount == 4 &&
+              designDriftProjection.Candidate?.DesignBaseline.BaselineDesignationState == "not-established" &&
+              designDriftProjection.Candidate?.ImplementationTargetCatalogRevision == 2,
+            "Typed Design Drift Detection preserves exact Product, Initiative, dependency, catalog, comparison, count, and privacy-safe state metadata");
+        var designDriftOutput = await initiativeController.ReadDesignDriftDetectionAsync(InitiativeId);
+        Check(designDriftOutput.Contains("GAEP Design Drift Detection candidate", StringComparison.Ordinal) &&
+              designDriftOutput.Contains("4 requirement-to-design · 5 design-to-implementation", StringComparison.Ordinal) &&
+              designDriftOutput.Contains("3 conformant · 5 drift · 1 unassessed", StringComparison.Ordinal) &&
+              designDriftOutput.Contains("4 recorded", StringComparison.Ordinal) &&
+              designDriftOutput.Contains("does not establish an actual Baseline Set", StringComparison.Ordinal) &&
+              designDriftOutput.Contains("grant action authority", StringComparison.Ordinal) &&
+              !designDriftOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !designDriftOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !designDriftOutput.Contains("implementationContent=", StringComparison.Ordinal),
+            "Design Drift Detection workflow renders privacy-safe exact comparison metadata with explicit no-baseline and no-action boundaries");
+        foreach (var hostileRoot in new[] { badDesignDriftDigestRoot, badDesignDriftPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDesignDriftDetectionAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Design Drift Detection rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badDesignDriftBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDesignDriftDetectionAsync(InitiativeId),
+                "Design Drift Detection rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -4026,6 +4080,9 @@ internal static class Program
         var badDesignBaselineBinding = Path.GetFileName(workspace) == "bad-design-baseline-binding";
         var badDesignBaselineDigest = Path.GetFileName(workspace) == "bad-design-baseline-digest";
         var badDesignBaselinePrivate = Path.GetFileName(workspace) == "bad-design-baseline-private";
+        var badDesignDriftBinding = Path.GetFileName(workspace) == "bad-design-drift-binding";
+        var badDesignDriftDigest = Path.GetFileName(workspace) == "bad-design-drift-digest";
+        var badDesignDriftPrivate = Path.GetFileName(workspace) == "bad-design-drift-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -4631,6 +4688,17 @@ internal static class Program
                         badDesignBaselineBinding,
                         badDesignBaselineDigest,
                         badDesignBaselinePrivate);
+                    break;
+                case "design.designDriftDetection.snapshot":
+                    await HandleDesignDriftDetectionAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDesignDriftBinding,
+                        badDesignDriftDigest,
+                        badDesignDriftPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -9434,6 +9502,151 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) ((Dictionary<string, object?>)result["status"]!)["candidateSetCount"] = 0;
         if (includePrivateField) result["designRationale"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDesignDriftDetectionAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DESIGN DRIFT");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T03:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('4', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DesignDriftDetectionId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('5', 64)}",
+            ["state"] = "candidate",
+            ["designBaseline"] = new Dictionary<string, object?>
+            {
+                ["recordId"] = DesignBaselineId.ToString("D"),
+                ["revision"] = 3,
+                ["digest"] = $"sha256:{new string('e', 64)}",
+                ["membershipDigest"] = $"sha256:{new string('f', 64)}",
+                ["baselineLineageId"] = "85858585-8585-4585-8585-858585858585",
+                ["candidateSetId"] = "86868686-8686-4686-8686-868686868686",
+                ["candidateSetRevision"] = 3,
+                ["semanticVersion"] = "2.0.0",
+                ["designationReceiptDigest"] = $"sha256:{new string('4', 64)}",
+                ["baselineDesignationState"] = "not-established",
+            },
+            ["returnedFigmaSnapshot"] = new Dictionary<string, object?>
+            {
+                ["recordId"] = FinalizedFigmaSnapshotImportId.ToString("D"),
+                ["revision"] = 2,
+                ["digest"] = $"sha256:{new string('5', 64)}",
+                ["membershipDigest"] = $"sha256:{new string('6', 64)}",
+                ["externalFileIdentityDigest"] = $"sha256:{new string('7', 64)}",
+                ["returnedExternalVersionDigest"] = $"sha256:{new string('8', 64)}",
+                ["itemCatalogDigest"] = $"sha256:{new string('9', 64)}",
+            },
+            ["designRequirements"] = new Dictionary<string, object?>
+            {
+                ["recordId"] = DesignRequirementsId.ToString("D"),
+                ["revision"] = 3,
+                ["digest"] = $"sha256:{new string('a', 64)}",
+                ["membershipDigest"] = $"sha256:{new string('b', 64)}",
+                ["requirementCatalogDigest"] = $"sha256:{new string('c', 64)}",
+            },
+            ["designTrace"] = new Dictionary<string, object?>
+            {
+                ["recordId"] = DesignToRequirementBindingId.ToString("D"),
+                ["revision"] = 2,
+                ["digest"] = $"sha256:{new string('d', 64)}",
+                ["membershipDigest"] = $"sha256:{new string('e', 64)}",
+                ["reconciliationDigest"] = $"sha256:{new string('f', 64)}",
+            },
+            ["implementationTargetCatalogRevision"] = 2,
+            ["implementationTargetCatalogDigest"] = $"sha256:{new string('0', 64)}",
+            ["comparisonPolicyDigest"] = $"sha256:{new string('1', 64)}",
+            ["comparisonDigest"] = $"sha256:{new string('2', 64)}",
+            ["implementationTargetCount"] = 5,
+            ["observationCount"] = 9,
+            ["remediationCandidateCount"] = 4,
+            ["candidateResult"] = "incomplete",
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T03:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "design-drift-detection-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "design-drift-detection-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DesignDriftDetectionId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["implementationTargetCount"] = 5,
+                ["humanReviewedImplementationTargetCount"] = 4,
+                ["observationCount"] = 9,
+                ["humanReviewedObservationCount"] = 8,
+                ["requirementToDesignCount"] = 4,
+                ["designToImplementationCount"] = 5,
+                ["conformantCount"] = 3,
+                ["driftCount"] = 5,
+                ["unassessedCount"] = 1,
+                ["blockerCount"] = 1,
+                ["highSeverityCount"] = 2,
+                ["remediationCandidateCount"] = 4,
+                ["expiredRemediationCandidateCount"] = 1,
+                ["staleBindingCount"] = 2,
+                ["staleSourceReferenceCount"] = 3,
+                ["unresolvedQuestionCount"] = 1,
+                ["candidateResult"] = "incomplete",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more exact comparison subjects remain not assessed" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "design-drift-detection-status-is-observational-and-does-not-establish-an-actual-baseline-comparison-completeness-external-completeness-design-or-implementation-validity-approval-readiness-remediation-effect-or-figma-import-write-implementation-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-version-axes-counts-classifications-severities-statuses-and-digests-only-not-design-requirement-or-implementation-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+            ["authorityBoundary"] =
+                "design-drift-detection-projection-is-read-only-and-does-not-establish-an-actual-baseline-comparison-completeness-external-completeness-design-or-implementation-validity-approval-readiness-remediation-effect-or-figma-import-write-implementation-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) ((Dictionary<string, object?>)result["status"]!)["observationCount"] = 8;
+        if (includePrivateField) result["implementationContent"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

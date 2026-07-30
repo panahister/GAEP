@@ -200,6 +200,10 @@
                 Command="{Binding LoadDesignBaselineCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, exact Human Design Approval and finalized-snapshot bindings, version axes, lineage, scope and receipt digests, designation kind, predecessor, counts, and recorded states only; it withholds design, rationale, evidence, Source, human-attribution, personal, secret, credential, and permission content. It does not convert an approval candidate into approval, establish a Baseline Set designation, readiness, or phase entry, access Figma, execute imports or writes, or grant implementation or action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadDesignDriftDetectionButton" Content="Inspect Design Drift"
+                Command="{Binding LoadDesignDriftDetectionCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows exact candidate identities, version axes, catalog and comparison digests, counts, classifications, severities, review state, and non-effect status only; it withholds design, Requirement, implementation, Source, human-attribution, personal, local-path, secret, credential, and permission content. It does not establish a Baseline Set, prove drift completeness or design or implementation validity, access Figma, apply remediation, change implementation, or grant action authority."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />
