@@ -17,6 +17,7 @@ import { boilerplateCompatibilityValidationInputSchema } from "./boilerplate-com
 import { figmaToBoilerplateMappingInputSchema } from "./figma-to-boilerplate-mapping.js"
 import { designToCodeBindingRegistryInputSchema } from "./design-to-code-binding-registry.js"
 import { routeScreenComponentMappingInputSchema } from "./route-screen-component-mapping.js"
+import { testMethodologyInputSchema } from "./test-methodology.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -792,6 +793,18 @@ export const hostRouteScreenComponentMappingReviseParamsSchema = z.object({
   record: routeScreenComponentMappingInputSchema,
 }).strict()
 
+export const hostTestMethodologyCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: testMethodologyInputSchema,
+}).strict()
+
+export const hostTestMethodologyReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: testMethodologyInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1484,6 +1497,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.routeScreenComponentMapping.revise", hostRouteScreenComponentMappingReviseParamsSchema),
   requestVariant("planning.routeScreenComponentMapping.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.routeScreenComponentMapping.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.testMethodology.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.testMethodology.create", hostTestMethodologyCreateParamsSchema),
+  requestVariant("planning.testMethodology.revise", hostTestMethodologyReviseParamsSchema),
+  requestVariant("planning.testMethodology.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.testMethodology.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

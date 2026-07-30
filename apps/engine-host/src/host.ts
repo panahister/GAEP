@@ -169,6 +169,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.routeScreenComponentMapping.revise",
   "planning.routeScreenComponentMapping.assess",
   "planning.routeScreenComponentMapping.snapshot",
+  "planning.testMethodology.read",
+  "planning.testMethodology.create",
+  "planning.testMethodology.revise",
+  "planning.testMethodology.assess",
+  "planning.testMethodology.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1555,6 +1560,21 @@ export class EngineHost {
         return this.engine.routeScreenComponentMapping.assess(request.params.initiativeId)
       case "planning.routeScreenComponentMapping.snapshot":
         return this.engine.routeScreenComponentMapping.project(request.params.initiativeId)
+      case "planning.testMethodology.read":
+        return await this.engine.testMethodology.readCurrent(request.params.initiativeId) ?? null
+      case "planning.testMethodology.create":
+        return this.engine.testMethodology.create(request.params.record, actorId(request.params.actorId))
+      case "planning.testMethodology.revise":
+        return this.engine.testMethodology.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.testMethodology.assess":
+        return this.engine.testMethodology.assess(request.params.initiativeId)
+      case "planning.testMethodology.snapshot":
+        return this.engine.testMethodology.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":
