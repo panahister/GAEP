@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type { BacklogHierarchyInput, MvpSliceDefinitionInput } from "@gaep/contracts"
+import type { BacklogHierarchyInput, MvpSliceDefinitionInput, PrioritizationModelInput } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -164,6 +164,56 @@ describe("MVP and Slice Definition engine", () => {
     return { product, initiative, hierarchy, hierarchyInput, input }
   }
 
+  function prioritizationInput(
+    initiativeId: string,
+    context: MvpSliceDefinitionInput["context"],
+    mvp: Awaited<ReturnType<typeof engine.mvpSliceDefinition.create>>,
+  ): PrioritizationModelInput {
+    const evidence = (kind: "value-hypothesis" | "risk-register" | "dependency-analysis" | "cost-estimate") => [{
+      kind,
+      recordId: randomUUID(),
+      revision: 1,
+      digest: `sha256:${"1".repeat(64)}` as const,
+    }]
+    return {
+      initiativeId,
+      context,
+      informationClassification: "internal",
+      title: "Atlas explainable prioritization candidate",
+      mvpSliceDefinition: { recordId: mvp.id, revision: mvp.revision, digest: canonicalDigest(mvp) },
+      method: {
+        key: "weighted.value-risk-dependency-cost",
+        version: "1.0",
+        calculation: "weighted-sum-v1",
+        normalization: "zero-to-one-hundred",
+        weights: { value: 40, riskReduction: 30, dependencyEnablement: 20, costSize: 10 },
+        tieBreaker: "slice-ordinal-ascending",
+      },
+      subjects: mvp.slices.map((slice) => ({
+        sliceId: slice.id,
+        sliceKey: slice.key,
+        ordinal: slice.ordinal,
+        value: { state: "candidate-estimate", score: 80, evidence: evidence("value-hypothesis"), uncertainty: [] },
+        riskReduction: { state: "candidate-estimate", score: 70, evidence: evidence("risk-register"), uncertainty: [] },
+        dependencyEnablement: { state: "candidate-estimate", score: 60, evidence: evidence("dependency-analysis"), uncertainty: [] },
+        costSize: { state: "candidate-estimate", score: 40, evidence: evidence("cost-estimate"), uncertainty: [] },
+      })),
+      unresolvedQuestions: [],
+      limitations: ["Evidence validity, priority, commitment, scope, approval, readiness, assignment, execution, and action authority remain unestablished."],
+      reviewState: "ready-for-human-review",
+      evidenceValidityState: "not-established",
+      priorityDecisionState: "not-established",
+      commitmentState: "not-established",
+      scopeDecisionState: "not-established",
+      approvalState: "not-established",
+      acceptanceCriteriaValidityState: "not-established",
+      readyDoneState: "not-established",
+      implementationReadinessState: "not-established",
+      assignmentExecutionState: "not-established",
+      implementationAuthorityState: "not-granted",
+    }
+  }
+
   it("persists immutable revisions and emits minimized exact audit evidence", async () => {
     const { initiative, input } = await fixture()
     const created = await engine.mvpSliceDefinition.create(input, actorId)
@@ -264,5 +314,89 @@ describe("MVP and Slice Definition engine", () => {
       reviewState: "draft",
     })
     expect(status.reasons).toEqual(["No versioned MVP and Slice Definition candidate exists for this Initiative"])
+  })
+
+  it("persists and assesses deterministic Prioritization Model candidates without synthesizing priority", async () => {
+    const { initiative, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priorityInput = prioritizationInput(initiative.id, input.context, mvp)
+    const created = await engine.prioritizationModel.create(priorityInput, actorId)
+    expect(created.scoreCandidates).toEqual([
+      expect.objectContaining({ sliceId: mvp.slices[0]!.id, state: "candidate-score", score: 71, rank: 1 }),
+    ])
+    const revised = await engine.prioritizationModel.revise(created.id, 1, {
+      ...priorityInput,
+      title: "Atlas reviewed explainable prioritization candidate",
+    }, actorId)
+    expect(revised).toMatchObject({ revision: 2, predecessorDigest: canonicalDigest(created) })
+    expect((await engine.prioritizationModel.listHistory(created.id)).map((record) => record.revision)).toEqual([2, 1])
+    const status = await engine.prioritizationModel.assess(initiative.id)
+    expect(status).toMatchObject({
+      state: "complete-for-review",
+      subjectCount: 1,
+      scoredSubjectCount: 1,
+      unassessedSubjectCount: 0,
+      evidenceReferenceCount: 4,
+      invalidSubjectCount: 0,
+      invalidScoreCount: 0,
+    })
+    expect(status.authorityBoundary).toContain("does-not-establish-evidence-validity-priority")
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    const event = events.findLast((entry) => entry.eventType === "prioritization-model.revised")
+    expect(event?.payload).toMatchObject({
+      revision: 2,
+      subjectCount: 1,
+      scoredSubjectCount: 1,
+      evidenceValidityState: "not-established",
+      priorityDecisionState: "not-established",
+      implementationAuthorityState: "not-granted",
+      actionAuthorityState: "not-granted",
+    })
+    expect(JSON.stringify(event)).not.toContain(priorityInput.title)
+    expect(JSON.stringify(event)).not.toContain(priorityInput.subjects[0]!.value.evidence[0]!.recordId)
+    expect((await engine.repository.verifyAudit()).valid).toBe(true)
+  })
+
+  it("projects minimized Prioritization metadata and reports superseded MVP bindings", async () => {
+    const { initiative, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priorityInput = prioritizationInput(initiative.id, input.context, mvp)
+    const created = await engine.prioritizationModel.create(priorityInput, actorId)
+    const projection = await engine.prioritizationModel.project(initiative.id)
+    expect(projection.candidate).toMatchObject({ id: created.id, subjectCount: 1, scoredSubjectCount: 1, evidenceReferenceCount: 4 })
+    expect(projection.snapshotDigest).toMatch(/^sha256:[0-9a-f]{64}$/u)
+    const serialized = JSON.stringify(projection)
+    expect(serialized).not.toContain(priorityInput.title)
+    expect(serialized).not.toContain(priorityInput.subjects[0]!.value.evidence[0]!.recordId)
+    expect(serialized).not.toContain("founder")
+
+    await engine.mvpSliceDefinition.revise(mvp.id, mvp.revision, { ...input, title: "Superseding MVP slice candidate" }, actorId)
+    const status = await engine.prioritizationModel.assess(initiative.id)
+    expect(status).toMatchObject({ state: "attention-required", staleMvpSliceDefinitionCount: 1 })
+    expect(await engine.prioritizationModel.healthIssues()).toEqual([
+      expect.objectContaining({
+        code: "prioritization-model.binding-review-required",
+        severity: "warning",
+        record: { type: created.kind, id: created.id, revision: created.revision },
+      }),
+    ])
+  })
+
+  it("fails closed on mismatched Prioritization subjects and incomplete estimates", async () => {
+    const { initiative, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const mismatched = prioritizationInput(initiative.id, input.context, mvp)
+    mismatched.subjects[0]!.sliceId = randomUUID()
+    await expect(engine.prioritizationModel.create(mismatched, actorId)).rejects.toThrow(/match every exact MVP Vertical Slice/u)
+
+    const incomplete = prioritizationInput(initiative.id, input.context, mvp)
+    incomplete.subjects[0]!.value = { state: "not-assessed", evidence: [], uncertainty: [] }
+    incomplete.reviewState = "draft"
+    await engine.prioritizationModel.create(incomplete, actorId)
+    const status = await engine.prioritizationModel.assess(initiative.id)
+    expect(status).toMatchObject({ state: "attention-required", scoredSubjectCount: 0, unassessedSubjectCount: 1 })
+    expect(status.reasons).toContain("One or more Prioritization subjects are not fully assessed")
   })
 })

@@ -58,6 +58,7 @@ import {
   businessCapabilityMapSchema,
   backlogHierarchySchema,
   mvpSliceDefinitionSchema,
+  prioritizationModelSchema,
   businessRuleCatalogSchema,
   businessUnderstandingSchema,
   changeSchema,
@@ -134,6 +135,8 @@ const directoryNames = [
   "backlog-hierarchy-history",
   "mvp-slice-definitions",
   "mvp-slice-definition-history",
+  "prioritization-models",
+  "prioritization-model-history",
   "value-stream-models",
   "value-stream-model-history",
   "operating-models",
@@ -991,6 +994,8 @@ export class GaepRepository {
       ["backlog-hierarchy-history", /^backlog-hierarchy-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["mvp-slice-definitions", /^[0-9a-f-]+\.json$/i],
       ["mvp-slice-definition-history", /^mvp-slice-definition-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["prioritization-models", /^[0-9a-f-]+\.json$/i],
+      ["prioritization-model-history", /^prioritization-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["value-stream-models", /^[0-9a-f-]+\.json$/i],
       ["value-stream-model-history", /^value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["operating-models", /^[0-9a-f-]+\.json$/i],
@@ -1174,6 +1179,10 @@ export class GaepRepository {
     if (/^mvp-slice-definitions\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^mvp-slice-definition-history\/mvp-slice-definition-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, mvpSliceDefinitionSchema)
+    }
+    if (/^prioritization-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^prioritization-model-history\/prioritization-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, prioritizationModelSchema)
     }
     if (/^value-stream-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^value-stream-model-history\/value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
