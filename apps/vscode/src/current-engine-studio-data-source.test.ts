@@ -45,6 +45,7 @@ import {
   type DesignConflictResolutionProjection,
   type HumanDesignApprovalProjection,
   type DesignBaselineProjection,
+  type DesignDriftDetectionProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2985,6 +2986,89 @@ function designBaselineProjection(): DesignBaselineProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function designDriftDetectionProjection(): DesignDriftDetectionProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "design-drift-detection-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "87878787-8787-4787-8787-878787878787", revision: 2, digest: `sha256:${"1".repeat(64)}` as const },
+    implementationTargetCount: 5,
+    humanReviewedImplementationTargetCount: 4,
+    observationCount: 9,
+    humanReviewedObservationCount: 8,
+    requirementToDesignCount: 4,
+    designToImplementationCount: 5,
+    conformantCount: 3,
+    driftCount: 5,
+    unassessedCount: 1,
+    blockerCount: 1,
+    highSeverityCount: 2,
+    remediationCandidateCount: 4,
+    expiredRemediationCandidateCount: 1,
+    staleBindingCount: 2,
+    staleSourceReferenceCount: 3,
+    unresolvedQuestionCount: 1,
+    candidateResult: "incomplete" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more exact comparison subjects remain not assessed"],
+    assessedAt: "2026-07-30T03:30:00.000Z",
+    authorityBoundary: "design-drift-detection-status-is-observational-and-does-not-establish-an-actual-baseline-comparison-completeness-external-completeness-design-or-implementation-validity-approval-readiness-remediation-effect-or-figma-import-write-implementation-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "design-drift-detection-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"2".repeat(64)}` as const,
+      state: "candidate" as const,
+      designBaseline: {
+        recordId: "88888888-8888-4888-8888-888888888888", revision: 1, digest: `sha256:${"3".repeat(64)}` as const,
+        membershipDigest: `sha256:${"4".repeat(64)}` as const,
+        baselineLineageId: "89898989-8989-4989-8989-898989898989",
+        candidateSetId: "90909090-9090-4090-8090-909090909090", candidateSetRevision: 2,
+        semanticVersion: "1.1.0", designationReceiptDigest: `sha256:${"5".repeat(64)}` as const,
+        baselineDesignationState: "not-established" as const,
+      },
+      returnedFigmaSnapshot: {
+        recordId: "91919191-9191-4191-8191-919191919191", revision: 3, digest: `sha256:${"6".repeat(64)}` as const,
+        membershipDigest: `sha256:${"7".repeat(64)}` as const, externalFileIdentityDigest: `sha256:${"8".repeat(64)}` as const,
+        returnedExternalVersionDigest: `sha256:${"9".repeat(64)}` as const, itemCatalogDigest: `sha256:${"a".repeat(64)}` as const,
+      },
+      designRequirements: {
+        recordId: "92929292-9292-4292-8292-929292929292", revision: 4, digest: `sha256:${"b".repeat(64)}` as const,
+        membershipDigest: `sha256:${"c".repeat(64)}` as const, requirementCatalogDigest: `sha256:${"d".repeat(64)}` as const,
+      },
+      designTrace: {
+        recordId: "93939393-9393-4393-8393-939393939393", revision: 2, digest: `sha256:${"e".repeat(64)}` as const,
+        membershipDigest: `sha256:${"f".repeat(64)}` as const, reconciliationDigest: `sha256:${"0".repeat(64)}` as const,
+      },
+      implementationTargetCatalogRevision: 2,
+      implementationTargetCatalogDigest: `sha256:${"1".repeat(64)}` as const,
+      comparisonPolicyDigest: `sha256:${"2".repeat(64)}` as const,
+      comparisonDigest: `sha256:${"3".repeat(64)}` as const,
+      implementationTargetCount: status.implementationTargetCount,
+      observationCount: status.observationCount,
+      remediationCandidateCount: status.remediationCandidateCount,
+      candidateResult: status.candidateResult,
+      reviewState: status.reviewState,
+      updatedAt: "2026-07-30T03:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-version-axes-counts-classifications-severities-statuses-and-digests-only-not-design-requirement-or-implementation-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions" as const,
+    authorityBoundary: "design-drift-detection-projection-is-read-only-and-does-not-establish-an-actual-baseline-comparison-completeness-external-completeness-design-or-implementation-validity-approval-readiness-remediation-effect-or-figma-import-write-implementation-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -3656,6 +3740,8 @@ interface HarnessOptions {
   humanDesignApprovalProjectionError?: Error
   designBaselineProjection?: DesignBaselineProjection
   designBaselineProjectionError?: Error
+  designDriftDetectionProjection?: DesignDriftDetectionProjection
+  designDriftDetectionProjectionError?: Error
   commandResult?: unknown
 }
 
@@ -3977,6 +4063,14 @@ function harness(options: HarnessOptions = {}) {
         project: async () => {
           if (options.designBaselineProjectionError) throw options.designBaselineProjectionError
           return options.designBaselineProjection!
+        },
+      },
+    } : {}),
+    ...(options.designDriftDetectionProjection || options.designDriftDetectionProjectionError ? {
+      designDriftDetection: {
+        project: async () => {
+          if (options.designDriftDetectionProjectionError) throw options.designDriftDetectionProjectionError
+          return options.designDriftDetectionProjection!
         },
       },
     } : {}),
@@ -5268,6 +5362,64 @@ describe("current-engine Product Studio data source", () => {
     expect(invalidAuditSnapshot.page.kind === "readiness" && invalidAuditSnapshot.page.designBaselines.rows).toEqual([])
     expect(invalidAuditSnapshot.page.kind === "readiness" && invalidAuditSnapshot.page.gaps).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "design-baseline-unavailable", severity: "blocker" }),
+    ]))
+  })
+
+  it("projects privacy-safe Design Drift Detection metadata on the native readiness page", async () => {
+    const projection = designDriftDetectionProjection()
+    const { source } = harness({ designDriftDetectionProjection: projection })
+    const snapshot = await source.readSnapshot("readiness")
+    expect(snapshot.page.kind === "readiness" && snapshot.page.designDriftDetections).toMatchObject({
+      id: "design-drift-detection",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          baseline: `${projection.candidate?.designBaseline.recordId} · r1 · 1.1.0 · candidate only`,
+          returnedDesign: `${projection.candidate?.returnedFigmaSnapshot.recordId} · r3 · returned version ${projection.candidate?.returnedFigmaSnapshot.returnedExternalVersionDigest}`,
+          targets: `catalog r2 · ${projection.candidate?.implementationTargetCatalogDigest} · 4/5 human-reviewed`,
+          paths: "4 requirement→design · 5 design→implementation",
+          classifications: "3 conformant · 5 drift · 1 unassessed",
+          severity: "1 blocker · 2 high",
+          remediation: "4 candidates · 1 expired · effects not applied",
+          result: "incomplete · attention-required · held",
+          gaps: "1 questions · 2 stale bindings · 3 stale Source references",
+          boundary: expect.stringContaining("does not establish an actual Baseline Set"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private design content|private requirement|private implementation|private source content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("fails closed when Design Drift Detection metadata is unavailable, mismatched, or audit-invalid", async () => {
+    const unavailable = harness({ designDriftDetectionProjectionError: new Error("private upstream failure") })
+    const unavailableSnapshot = await unavailable.source.readSnapshot("readiness")
+    expect(unavailableSnapshot.page.kind === "readiness" && unavailableSnapshot.page.designDriftDetections.rows).toEqual([])
+    expect(unavailableSnapshot.page.kind === "readiness" && unavailableSnapshot.page.gaps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: `design-drift-detection-${initiative.id}-unavailable`, severity: "warning" }),
+    ]))
+    expect(unavailable.diagnostics.join(" ")).not.toContain("private upstream failure")
+
+    const projection = designDriftDetectionProjection()
+    const body = { ...projection, product: { ...projection.product, digest: `sha256:${"0".repeat(64)}` as const } }
+    const mismatched = harness({ designDriftDetectionProjection: { ...body, snapshotDigest: canonicalDigest(body) } })
+    const mismatchedSnapshot = await mismatched.source.readSnapshot("readiness")
+    expect(mismatchedSnapshot.page.kind === "readiness" && mismatchedSnapshot.page.designDriftDetections.rows).toEqual([])
+    expect(mismatched.diagnostics).toEqual(expect.arrayContaining([
+      expect.stringContaining("Design Drift Detection projection was unavailable or did not bind the exact Product and Initiative revisions"),
+    ]))
+
+    const invalidAudit = harness({
+      audit: { valid: false, events: 1 },
+      designDriftDetectionProjection: designDriftDetectionProjection(),
+    })
+    const invalidAuditSnapshot = await invalidAudit.source.readSnapshot("readiness")
+    expect(invalidAuditSnapshot.page.kind === "readiness" && invalidAuditSnapshot.page.designDriftDetections.rows).toEqual([])
+    expect(invalidAuditSnapshot.page.kind === "readiness" && invalidAuditSnapshot.page.gaps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "design-drift-detection-unavailable", severity: "blocker" }),
     ]))
   })
 

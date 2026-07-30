@@ -73,6 +73,7 @@ import type {
   DesignConflictResolutionProjection,
   HumanDesignApprovalProjection,
   DesignBaselineProjection,
+  DesignDriftDetectionProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -299,6 +300,9 @@ export interface CurrentStudioEngineReader {
   designBaseline?: {
     project(initiativeId: string): Promise<DesignBaselineProjection>
   }
+  designDriftDetection?: {
+    project(initiativeId: string): Promise<DesignDriftDetectionProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -381,6 +385,7 @@ interface ObservedStudioState {
   designConflictResolutionProjections: Map<string, DesignConflictResolutionProjection>
   humanDesignApprovalProjections: Map<string, HumanDesignApprovalProjection>
   designBaselineProjections: Map<string, DesignBaselineProjection>
+  designDriftDetectionProjections: Map<string, DesignDriftDetectionProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2842,6 +2847,71 @@ function designBaselineTable(state: ObservedStudioState): StudioTableSnapshot {
   }
 }
 
+function designDriftDetectionTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.designDriftDetectionProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        baseline: `${record.designBaseline.recordId} · r${record.designBaseline.revision} · ${record.designBaseline.semanticVersion} · candidate only`,
+        returnedDesign: `${record.returnedFigmaSnapshot.recordId} · r${record.returnedFigmaSnapshot.revision} · returned version ${record.returnedFigmaSnapshot.returnedExternalVersionDigest}`,
+        requirements: `${record.designRequirements.recordId} · r${record.designRequirements.revision} · ${record.designRequirements.requirementCatalogDigest}`,
+        trace: `${record.designTrace.recordId} · r${record.designTrace.revision} · ${record.designTrace.reconciliationDigest}`,
+        targets: `catalog r${record.implementationTargetCatalogRevision} · ${record.implementationTargetCatalogDigest} · ${status.humanReviewedImplementationTargetCount}/${status.implementationTargetCount} human-reviewed`,
+        comparison: `policy ${record.comparisonPolicyDigest} · receipt ${record.comparisonDigest}`,
+        paths: `${status.requirementToDesignCount} requirement→design · ${status.designToImplementationCount} design→implementation`,
+        classifications: `${status.conformantCount} conformant · ${status.driftCount} drift · ${status.unassessedCount} unassessed`,
+        severity: `${status.blockerCount} blocker · ${status.highSeverityCount} high`,
+        remediation: `${status.remediationCandidateCount} candidates · ${status.expiredRemediationCandidateCount} expired · effects not applied`,
+        result: `${status.candidateResult} · ${status.state} · ${status.reviewState}`,
+        gaps: `${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Exact candidate identities, version axes, catalog and comparison digests, counts, classifications, severities, review state, and non-effect status only; no design, Requirement, implementation, Source, human-attribution, personal, secret, credential, or permission content. This view does not establish an actual Baseline Set, drift completeness, external completeness, design or implementation validity, approval, readiness, remediation effect, call Figma, import or write content, change implementation, or grant action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "design-drift-detection",
+    title: "Design Drift Detection Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "baseline", label: "Baseline candidate" },
+      { key: "returnedDesign", label: "Returned design" },
+      { key: "requirements", label: "Design Requirements" },
+      { key: "trace", label: "Exact trace" },
+      { key: "targets", label: "Implementation targets" },
+      { key: "comparison", label: "Comparison receipts" },
+      { key: "paths", label: "Comparison paths" },
+      { key: "classifications", label: "Classifications" },
+      { key: "severity", label: "Severity" },
+      { key: "remediation", label: "Remediation candidates" },
+      { key: "result", label: "Candidate result" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No Design Drift Detection candidate",
+        "Record an exact version-bound comparison candidate through the governed engine workflow. This view does not establish a Baseline Set, prove drift completeness or design/implementation validity, call Figma, apply remediation, change implementation, or grant action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -4554,6 +4624,7 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
   const designConflictResolutions = designConflictResolutionTable(state)
   const humanDesignApprovals = humanDesignApprovalTable(state)
   const designBaselines = designBaselineTable(state)
+  const designDriftDetections = designDriftDetectionTable(state)
   const portableDesignInventory = portableDesignPage
     ? `${portableDesignPage.total} governed record${portableDesignPage.total === 1 ? "" : "s"}; every validated import remains pending human review.`
     : "Unavailable until audit and governed snapshot inventory verification both succeed."
@@ -4586,6 +4657,7 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
     designConflictResolutions,
     humanDesignApprovals,
     designBaselines,
+    designDriftDetections,
     portability: [
       { term: "Export", value: "Portable bundle only; authority, readiness, runtime bindings, credentials, and implementation approval are not conferred." },
       { term: "Product export preview", value: state.importPreview ? `${state.importPreview.status}; preview only; no mutation performed.` : "No Product export preview is loaded; that preview workflow never mutates Product state." },
@@ -4690,6 +4762,7 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       designConflictResolutions: capTable(page.designConflictResolutions),
       humanDesignApprovals: capTable(page.humanDesignApprovals),
       designBaselines: capTable(page.designBaselines),
+      designDriftDetections: capTable(page.designDriftDetections),
     }
   }
 }
@@ -4775,6 +4848,7 @@ function addDomainPagination(page: StudioPageSnapshot, state: ObservedStudioStat
       designConflictResolutions: page.designConflictResolutions,
       humanDesignApprovals: page.humanDesignApprovals,
       designBaselines: page.designBaselines,
+      designDriftDetections: page.designDriftDetections,
     }
   }
 }
@@ -5561,6 +5635,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       designConflictResolutionProjections: new Map(),
       humanDesignApprovalProjections: new Map(),
       designBaselineProjections: new Map(),
+      designDriftDetectionProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -7529,6 +7604,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "design-baseline-unavailable",
           "Design Baseline metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "readiness" && engine.designDriftDetection) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.designDriftDetection!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.designDriftDetectionProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Design Drift Detection projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `design-drift-detection-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Design Drift Detection metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "design-drift-detection-unavailable",
+          "Design Drift Detection metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

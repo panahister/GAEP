@@ -113,6 +113,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         designConflictResolutions: table("design-conflict-resolutions"),
         humanDesignApprovals: table("human-design-approvals"),
         designBaselines: table("design-baselines"),
+        designDriftDetections: table("design-drift-detections"),
         portability: [],
       }
   }
