@@ -22,8 +22,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260730T211403Z-phase-3a-route-screen-component-mapping-packages.json",
-  conformance: "evidence/ide-conformance/20260730T211403Z-phase-3a-route-screen-component-mapping.json",
+  packages: "evidence/local-packages/20260730T220200Z-phase-3a-test-methodology-packages.json",
+  conformance: "evidence/ide-conformance/20260730T220200Z-phase-3a-test-methodology.json",
   example: "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
 }
 const gateDefinitions = [
@@ -203,7 +203,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, figmaToBoilerplateMapping, designToCodeBindingRegistry, routeScreenComponentMapping, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, figmaToBoilerplateMapping, designToCodeBindingRegistry, routeScreenComponentMapping, testMethodology, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -230,7 +230,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    routeScreenComponentMapping
+    testMethodology
+      ? {
+          id: "phase-3a-test-methodology-closure",
+          state: "not-established",
+          basis: "the exact versioned Test Methodology candidate lifecycle, one exact scope per current Implementation Unit, bounded method, level, representation, automation, environment, platform, test-data policy, evidence expectation, entry, exit and owner candidates, deterministic scope, methodology, environment, data-policy, ownership, trace and assessment receipts, exact current Acceptance Criteria, Definition of Ready, Definition of Done, Implementation Unit Model, Dependency Mapping, Security and Privacy Threat Assessment and Route, Screen, and Component Mapping bindings, immutable revisions, privacy-safe Product Studio table and four host projections are implemented locally; candidates do not establish Requirement or Acceptance Criteria truth, methodology validity or completeness, environment availability, test-data fitness, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, native-host interaction or Product Owner acceptance",
+        }
+      : routeScreenComponentMapping
       ? {
           id: "phase-3a-route-screen-component-mapping-closure",
           state: "not-established",
@@ -575,6 +581,9 @@ export async function buildPhase0AcceptanceReport({
   const routeScreenComponentMapping = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "route-screen-component-mapping" && capability.state === "implemented"))
+  const testMethodology = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "test-methodology" && capability.state === "implemented"))
   const designSystemTokenContract = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-system-token-contract" && capability.state === "implemented"))
@@ -655,6 +664,7 @@ export async function buildPhase0AcceptanceReport({
     figmaToBoilerplateMapping,
     designToCodeBindingRegistry,
     routeScreenComponentMapping,
+    testMethodology,
     designSystemTokenContract,
     accessibilityDesignRules,
     responsiveMultiPlatformTargets,
@@ -692,8 +702,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: routeScreenComponentMapping || designToCodeBindingRegistry || figmaToBoilerplateMapping || boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: routeScreenComponentMapping
+    phase: testMethodology || routeScreenComponentMapping || designToCodeBindingRegistry || figmaToBoilerplateMapping || boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: testMethodology
+      ? "phase-3a-test-methodology-local"
+      : routeScreenComponentMapping
       ? "phase-3a-route-screen-component-mapping-local"
       : designToCodeBindingRegistry
       ? "phase-3a-design-to-code-binding-registry-local"
@@ -817,7 +829,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: routeScreenComponentMapping
+    claimBoundary: testMethodology
+      ? "This report binds the exact governed Test Methodology candidate lifecycle, immutable revision history, one exact scope per current Implementation Unit, bounded method, level, representation, automation, environment, platform, test-data policy, evidence expectation, entry, exit and owner candidates, deterministic scope, methodology, environment, data-policy, ownership, trace and assessment receipts, exact current Product, Initiative, Acceptance Criteria, Definition of Ready, Definition of Done, Implementation Unit Model, Dependency Mapping, Security and Privacy Threat Assessment and Route, Screen, and Component Mapping bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Test Methodologies remain governed candidates only. This report does not establish Requirement or Acceptance Criteria truth, methodology validity or completeness, environment availability, test-data fitness, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : routeScreenComponentMapping
       ? "This report binds the exact governed Route, Screen, and Component Mapping candidate lifecycle, immutable revision history, one exact route, screen, state, or component subject per current source subject, typed route-screen, screen-state, screen-component and component-component relationships, mapped, conflict, unmapped and not-assessed candidate outcomes, exact Requirement, Acceptance Criteria, Implementation Unit, Design-to-Code Binding and optional test-hook trace candidates, evidence and attributable review candidates, deterministic subject-catalog, relationship-catalog, trace, mapping and assessment receipts, exact current Product, Initiative, Information Architecture, Screen and State Inventory, Design Requirements, Design Baseline, Design-to-Requirement Binding, Figma-to-Boilerplate Mapping, Design-to-Code Binding Registry, Implementation Unit Model and Acceptance Criteria bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Route, Screen, and Component mappings remain governed candidates only. This report does not connect to or call Figma; establish returned Figma content, navigation or mapping truth, UI or design validity, requirement, acceptance-criteria, test-coverage, repository, path or symbol truth; create or change code or design targets; establish implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : designToCodeBindingRegistry
       ? "This report binds the exact governed Design-to-Code Binding Registry candidate lifecycle, immutable revision history, one exact binding subject per current Figma-to-Boilerplate Mapping subject, bounded component, configuration, layout, module, route, style, symbol, test-hook and token binding kinds, bound, conflict, unbound and not-assessed candidate outcomes, exact Implementation Unit, Requirement and repository, module, path and optional symbol target candidates, evidence and attributable human binding candidates, deterministic binding-subject, code-target, trace, binding and assessment receipts, exact current Product, Initiative, Design Baseline, Finalized Figma Snapshot Import, Design-to-Requirement Binding, Figma-to-Boilerplate Mapping, Implementation Unit Model, Technology Profile, Boilerplate Selection and Binding and Boilerplate Compatibility Validation bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Design-to-Code bindings remain governed candidates only. This report does not connect to or call Figma; establish returned Figma content, design validity, approval or baseline, mapping or binding truth or completeness, repository, path or symbol truth; create or change code targets; retrieve, import, instantiate, generate or execute assets; establish implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
