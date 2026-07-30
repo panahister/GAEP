@@ -1906,6 +1906,97 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readImplementationUnitModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val hierarchy = client.readBacklogHierarchy(initiativeId)
+        val mvp = client.readMvpSliceDefinition(initiativeId)
+        val criteria = client.readAcceptanceCriteria(initiativeId)
+        val ready = client.readDefinitionOfReady(initiativeId)
+        val done = client.readDefinitionOfDone(initiativeId)
+        val projection = client.readImplementationUnitModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Implementation Unit Model was read. Refresh the exact records." }
+        projection.candidate?.let {
+            val currentHierarchy = requireNotNull(hierarchy.candidate) { "The current Backlog Hierarchy candidate is unavailable. Refresh the exact records." }
+            val currentMvp = requireNotNull(mvp.candidate) { "The current MVP and Vertical Slice candidate is unavailable. Refresh the exact records." }
+            val currentCriteria = requireNotNull(criteria.candidate) { "The current Acceptance Criteria candidate is unavailable. Refresh the exact records." }
+            val currentReady = requireNotNull(ready.candidate) { "The current Definition of Ready candidate is unavailable. Refresh the exact records." }
+            val currentDone = requireNotNull(done.candidate) { "The current Definition of Done candidate is unavailable. Refresh the exact records." }
+            require(
+                projection.hierarchyRecordId == currentHierarchy.id && projection.hierarchyRevision == currentHierarchy.revision &&
+                    projection.hierarchyDigest == currentHierarchy.digest
+            ) { "The Backlog Hierarchy changed while Implementation Unit Model was read. Refresh the exact records." }
+            require(
+                projection.mvpSliceDefinitionRecordId == currentMvp.id && projection.mvpSliceDefinitionRevision == currentMvp.revision &&
+                    projection.mvpSliceDefinitionDigest == currentMvp.digest
+            ) { "The MVP and Vertical Slice Definition changed while Implementation Unit Model was read. Refresh the exact records." }
+            require(
+                projection.acceptanceCriteriaRecordId == currentCriteria.id && projection.acceptanceCriteriaRevision == currentCriteria.revision &&
+                    projection.acceptanceCriteriaDigest == currentCriteria.digest
+            ) { "Acceptance Criteria changed while Implementation Unit Model was read. Refresh the exact records." }
+            require(
+                projection.definitionOfReadyRecordId == currentReady.id && projection.definitionOfReadyRevision == currentReady.revision &&
+                    projection.definitionOfReadyDigest == currentReady.digest
+            ) { "Definition of Ready changed while Implementation Unit Model was read. Refresh the exact records." }
+            require(
+                projection.definitionOfDoneRecordId == currentDone.id && projection.definitionOfDoneRevision == currentDone.revision &&
+                    projection.definitionOfDoneDigest == currentDone.digest
+            ) { "Definition of Done changed while Implementation Unit Model was read. Refresh the exact records." }
+        }
+        return renderImplementationUnitModel(projection)
+    }
+
+    fun renderImplementationUnitModel(projection: ImplementationUnitModelProjection): String = buildString {
+        appendLine("GAEP governed Implementation Unit Model candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine(
+            "Coverage: ${projection.unitCount} units · ${projection.subjectCount} Story/Task subjects · " +
+                "${projection.requirementReferenceCount} Requirement references · ${projection.repositoryCandidateCount} repository candidates · " +
+                "${projection.ownerCandidateCount} owner candidates",
+        )
+        appendLine(
+            "Dependencies and impact: ${projection.dependencyEdgeCount} dependency edges · " +
+                "${projection.candidateAssessedBlastRadiusCount} blast radii candidate-assessed · " +
+                "${projection.notAssessedBlastRadiusCount} not assessed",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedQuestionCount} questions · ${projection.missingSubjectCount} missing subjects · " +
+                "${projection.invalidUnitCount} invalid units · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleHierarchyCount} stale hierarchies · ${projection.staleMvpSliceDefinitionCount} stale MVP definitions · " +
+                "${projection.staleAcceptanceCriteriaCount} stale Acceptance Criteria · " +
+                "${projection.staleDefinitionOfReadyCount} stale Definitions of Ready · " +
+                "${projection.staleDefinitionOfDoneCount} stale Definitions of Done",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Implementation Unit Model candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine("Placement digest: ${record.placementDigest}")
+            appendLine("Assessment receipt digest: ${record.assessmentReceiptDigest}")
+            appendLine(
+                "Candidate coverage: ${record.unitCount} units · ${record.subjectCount} subjects · " +
+                    "${record.requirementReferenceCount} Requirement references · ${record.reviewState}",
+            )
+        } ?: appendLine("Implementation Unit Model candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and membership, placement, assessment-receipt, and " +
+                "snapshot digests only; no unit titles, boundaries, Story, Task, or Requirement identities, repository keys, " +
+                "module paths, owner identities, evidence, rationales, or personal data. Candidate completeness does not " +
+                "establish repository truth, owner appointment, dependency or impact completeness, implementation readiness " +
+                "or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)

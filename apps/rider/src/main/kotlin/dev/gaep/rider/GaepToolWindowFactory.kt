@@ -642,6 +642,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += definitionOfDoneButton
         actions.add(definitionOfDoneButton)
 
+        val implementationUnitModelButton = JButton("Inspect Implementation Unit Model…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Unit titles, boundaries, Story, Task, Requirement, repository, module, owner, evidence, rationale, personal data, local paths, secrets, credentials, repository truth, ownership appointment, dependency or impact completeness, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, and action authority are withheld.",
+                    "GAEP Implementation Unit Model",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Implementation Unit Model", status, output, buttons) {
+                    controller.readImplementationUnitModel(initiativeId)
+                }
+            }
+        }
+        buttons += implementationUnitModelButton
+        actions.add(implementationUnitModelButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

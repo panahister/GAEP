@@ -48,6 +48,7 @@ private val prioritizationModelId = UUID.fromString("93939393-9393-4393-8393-939
 private val acceptanceCriteriaId = UUID.fromString("94949494-9494-4494-8494-949494949494")
 private val definitionOfReadyId = UUID.fromString("95959595-9595-4595-8595-959595959595")
 private val definitionOfDoneId = UUID.fromString("96969696-9696-4696-8696-969696969696")
+private val implementationUnitModelId = UUID.fromString("97979797-9797-4797-8797-979797979797")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -303,6 +304,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.definitionOfDone.snapshot" -> handleDefinitionOfDone(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.implementationUnits.snapshot" -> handleImplementationUnitModel(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3757,6 +3763,118 @@ private fun handleDefinitionOfDone(id: Long, params: JsonObject, workspacePath: 
             value.getAsJsonObject("candidate").addProperty("evaluationCount", 22)
         }
         workspacePath.endsWith("bad-definition-of-done-snapshot-private") -> {
+            value.addProperty("rationale", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleImplementationUnitModel(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE IMPLEMENTATION UNIT MODEL PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-implementation-unit-model-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T15:00:00.000Z"
+    val candidateDigest = "sha256:${"5".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "implementation-unit-model-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "implementation-unit-model-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", implementationUnitModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            add("hierarchy", JsonObject().apply {
+                addProperty("recordId", backlogHierarchyId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-implementation-unit-model-hierarchy-binding")) "sha256:${"7".repeat(64)}" else "sha256:${"8".repeat(64)}")
+            })
+            add("mvpSliceDefinition", JsonObject().apply {
+                addProperty("recordId", mvpSliceDefinitionId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-implementation-unit-model-mvp-binding")) "sha256:${"9".repeat(64)}" else "sha256:${"a".repeat(64)}")
+            })
+            add("acceptanceCriteria", JsonObject().apply {
+                addProperty("recordId", acceptanceCriteriaId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-implementation-unit-model-criteria-binding")) "sha256:${"0".repeat(64)}" else "sha256:${"1".repeat(64)}")
+            })
+            add("definitionOfReady", JsonObject().apply {
+                addProperty("recordId", definitionOfReadyId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-implementation-unit-model-ready-binding")) "sha256:${"5".repeat(64)}" else "sha256:${"6".repeat(64)}")
+            })
+            add("definitionOfDone", JsonObject().apply {
+                addProperty("recordId", definitionOfDoneId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-implementation-unit-model-done-binding")) "sha256:${"d".repeat(64)}" else "sha256:${"e".repeat(64)}")
+            })
+            addProperty("unitCount", 3)
+            addProperty("subjectCount", 4)
+            addProperty("requirementReferenceCount", 5)
+            addProperty("repositoryCandidateCount", 3)
+            addProperty("ownerCandidateCount", 3)
+            addProperty("dependencyEdgeCount", 2)
+            addProperty("candidateAssessedBlastRadiusCount", 2)
+            addProperty("notAssessedBlastRadiusCount", 1)
+            addProperty("missingSubjectCount", 1)
+            addProperty("invalidUnitCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleHierarchyCount", 0)
+            addProperty("staleMvpSliceDefinitionCount", 0)
+            addProperty("staleAcceptanceCriteriaCount", 0)
+            addProperty("staleDefinitionOfReadyCount", 0)
+            addProperty("staleDefinitionOfDoneCount", 0)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more implementation-unit candidate boundaries require human review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("authorityBoundary", "implementation-unit-model-status-is-observational-and-does-not-establish-repository-truth-ownership-appointment-dependency-or-impact-completeness-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority")
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", implementationUnitModelId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("state", "candidate")
+            addProperty("membershipDigest", "sha256:${"6".repeat(64)}")
+            addProperty("placementDigest", "sha256:${"7".repeat(64)}")
+            addProperty("assessmentReceiptDigest", "sha256:${"8".repeat(64)}")
+            addProperty("unitCount", 3)
+            addProperty("subjectCount", 4)
+            addProperty("requirementReferenceCount", 5)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T14:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-membership-placement-assessment-snapshot-digests-only-not-unit-titles-boundaries-subject-or-requirement-identities-repository-keys-module-paths-owner-identities-evidence-rationales-personal-data-secrets-credentials-or-machine-paths")
+        addProperty("authorityBoundary", "implementation-unit-model-projection-is-read-only-and-does-not-establish-repository-truth-ownership-appointment-dependency-or-impact-completeness-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-implementation-unit-model-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("unitCount", 4)
+        }
+        workspacePath.endsWith("bad-implementation-unit-model-snapshot-private") -> {
             value.addProperty("rationale", "$privateRoot/$privateCredential")
         }
     }

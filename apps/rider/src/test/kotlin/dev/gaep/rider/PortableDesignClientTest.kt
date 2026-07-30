@@ -1841,6 +1841,68 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Implementation Unit Model projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("implementation-unit-model-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readImplementationUnitModel(entryId)
+            assertEquals("attention-required", projection.state)
+            assertEquals("held", projection.reviewState)
+            assertEquals(3, projection.unitCount)
+            assertEquals(4, projection.subjectCount)
+            assertEquals(5, projection.requirementReferenceCount)
+            assertEquals(3, projection.repositoryCandidateCount)
+            assertEquals(3, projection.ownerCandidateCount)
+            assertEquals(2, projection.dependencyEdgeCount)
+            assertEquals(2, projection.candidateAssessedBlastRadiusCount)
+            assertEquals(1, projection.notAssessedBlastRadiusCount)
+            assertEquals(0, projection.staleDefinitionOfDoneCount)
+
+            val rendered = RiderProductController(client).readImplementationUnitModel(entryId)
+            assertTrue(rendered.contains("GAEP governed Implementation Unit Model candidate"))
+            assertTrue(rendered.contains("3 units · 4 Story/Task subjects · 5 Requirement references"))
+            assertTrue(rendered.contains("2 dependency edges · 2 blast radii candidate-assessed · 1 not assessed"))
+            assertTrue(rendered.contains("no unit titles, boundaries, Story, Task, or Requirement identities"))
+            assertTrue(rendered.contains("does not establish repository truth, owner appointment"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("modulePath"))
+            assertFalse(rendered.contains("ownerCandidate"))
+            assertFalse(rendered.contains("subjectNodeIds"))
+        }
+
+        listOf(
+            "bad-implementation-unit-model-snapshot-digest",
+            "bad-implementation-unit-model-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readImplementationUnitModel(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf(
+            "bad-implementation-unit-model-snapshot-binding",
+            "bad-implementation-unit-model-hierarchy-binding",
+            "bad-implementation-unit-model-mvp-binding",
+            "bad-implementation-unit-model-criteria-binding",
+            "bad-implementation-unit-model-ready-binding",
+            "bad-implementation-unit-model-done-binding",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readImplementationUnitModel(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

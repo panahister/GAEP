@@ -2423,6 +2423,66 @@ data class DefinitionOfDoneProjection(
     val snapshotDigest: String,
 )
 
+data class ImplementationUnitModelRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val placementDigest: String,
+    val assessmentReceiptDigest: String,
+    val unitCount: Int,
+    val subjectCount: Int,
+    val requirementReferenceCount: Int,
+    val reviewState: String,
+)
+
+data class ImplementationUnitModelProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val state: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val hierarchyRecordId: UUID?,
+    val hierarchyRevision: Long?,
+    val hierarchyDigest: String?,
+    val mvpSliceDefinitionRecordId: UUID?,
+    val mvpSliceDefinitionRevision: Long?,
+    val mvpSliceDefinitionDigest: String?,
+    val acceptanceCriteriaRecordId: UUID?,
+    val acceptanceCriteriaRevision: Long?,
+    val acceptanceCriteriaDigest: String?,
+    val definitionOfReadyRecordId: UUID?,
+    val definitionOfReadyRevision: Long?,
+    val definitionOfReadyDigest: String?,
+    val definitionOfDoneRecordId: UUID?,
+    val definitionOfDoneRevision: Long?,
+    val definitionOfDoneDigest: String?,
+    val unitCount: Int,
+    val subjectCount: Int,
+    val requirementReferenceCount: Int,
+    val repositoryCandidateCount: Int,
+    val ownerCandidateCount: Int,
+    val dependencyEdgeCount: Int,
+    val candidateAssessedBlastRadiusCount: Int,
+    val notAssessedBlastRadiusCount: Int,
+    val missingSubjectCount: Int,
+    val invalidUnitCount: Int,
+    val staleBindingCount: Int,
+    val staleHierarchyCount: Int,
+    val staleMvpSliceDefinitionCount: Int,
+    val staleAcceptanceCriteriaCount: Int,
+    val staleDefinitionOfReadyCount: Int,
+    val staleDefinitionOfDoneCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: ImplementationUnitModelRecordView?,
+    val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -3602,6 +3662,12 @@ internal object PortableDesignProtocol {
         "definition-of-done-projection-is-read-only-and-does-not-establish-evidence-truth-test-success-quality-requirement-satisfaction-acceptance-criteria-satisfaction-approval-ready-done-exception-waiver-authority-implementation-completeness-merge-readiness-release-readiness-deployment-readiness-assignment-execution-acceptance-or-action-authority"
     private const val DEFINITION_OF_DONE_STATUS_AUTHORITY_BOUNDARY =
         "definition-of-done-status-is-observational-and-does-not-establish-evidence-truth-test-success-quality-requirement-satisfaction-acceptance-criteria-satisfaction-approval-ready-done-exception-waiver-authority-implementation-completeness-merge-readiness-release-readiness-deployment-readiness-assignment-execution-acceptance-or-action-authority"
+    private const val IMPLEMENTATION_UNIT_MODEL_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-membership-placement-assessment-snapshot-digests-only-not-unit-titles-boundaries-subject-or-requirement-identities-repository-keys-module-paths-owner-identities-evidence-rationales-personal-data-secrets-credentials-or-machine-paths"
+    private const val IMPLEMENTATION_UNIT_MODEL_PROJECTION_AUTHORITY_BOUNDARY =
+        "implementation-unit-model-projection-is-read-only-and-does-not-establish-repository-truth-ownership-appointment-dependency-or-impact-completeness-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority"
+    private const val IMPLEMENTATION_UNIT_MODEL_STATUS_AUTHORITY_BOUNDARY =
+        "implementation-unit-model-status-is-observational-and-does-not-establish-repository-truth-ownership-appointment-dependency-or-impact-completeness-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -9297,6 +9363,158 @@ internal object PortableDesignProtocol {
             invalidEvaluationCount, missingEvaluationCount, staleBindingCount, staleHierarchyCount,
             staleMvpSliceDefinitionCount, stalePrioritizationModelCount, staleAcceptanceCriteriaCount,
             staleDefinitionOfReadyCount, expiredCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseImplementationUnitModelEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): ImplementationUnitModelProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "implementation-unit-model-projection" ||
+            projection.requireString("privacyBoundary") != IMPLEMENTATION_UNIT_MODEL_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != IMPLEMENTATION_UNIT_MODEL_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "unitCount", "subjectCount", "requirementReferenceCount", "repositoryCandidateCount",
+                "ownerCandidateCount", "dependencyEdgeCount", "candidateAssessedBlastRadiusCount",
+                "notAssessedBlastRadiusCount", "missingSubjectCount", "invalidUnitCount", "staleBindingCount",
+                "staleHierarchyCount", "staleMvpSliceDefinitionCount", "staleAcceptanceCriteriaCount",
+                "staleDefinitionOfReadyCount", "staleDefinitionOfDoneCount", "unresolvedQuestionCount",
+                "reviewState", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf(
+                "candidate", "hierarchy", "mvpSliceDefinition", "acceptanceCriteria", "definitionOfReady",
+                "definitionOfDone",
+            ),
+        )
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "implementation-unit-model-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != IMPLEMENTATION_UNIT_MODEL_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        fun reference(name: String): Reference? = status.get(name)?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val candidateReference = reference("candidate")
+        val hierarchyReference = reference("hierarchy")
+        val mvpReference = reference("mvpSliceDefinition")
+        val acceptanceCriteriaReference = reference("acceptanceCriteria")
+        val definitionOfReadyReference = reference("definitionOfReady")
+        val definitionOfDoneReference = reference("definitionOfDone")
+        val unitCount = status.requireBoundedNonNegativeInt("unitCount", 10_000)
+        val subjectCount = status.requireBoundedNonNegativeInt("subjectCount", 10_000)
+        val requirementReferenceCount = status.requireBoundedNonNegativeInt("requirementReferenceCount", 1_000_000)
+        val repositoryCandidateCount = status.requireBoundedNonNegativeInt("repositoryCandidateCount", 10_000)
+        val ownerCandidateCount = status.requireBoundedNonNegativeInt("ownerCandidateCount", 10_000)
+        val dependencyEdgeCount = status.requireBoundedNonNegativeInt("dependencyEdgeCount", 1_000_000)
+        val candidateAssessedBlastRadiusCount = status.requireBoundedNonNegativeInt("candidateAssessedBlastRadiusCount", 10_000)
+        val notAssessedBlastRadiusCount = status.requireBoundedNonNegativeInt("notAssessedBlastRadiusCount", 10_000)
+        val missingSubjectCount = status.requireBoundedNonNegativeInt("missingSubjectCount", 10_000)
+        val invalidUnitCount = status.requireBoundedNonNegativeInt("invalidUnitCount", 10_000)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 1)
+        val staleHierarchyCount = status.requireBoundedNonNegativeInt("staleHierarchyCount", 1)
+        val staleMvpSliceDefinitionCount = status.requireBoundedNonNegativeInt("staleMvpSliceDefinitionCount", 1)
+        val staleAcceptanceCriteriaCount = status.requireBoundedNonNegativeInt("staleAcceptanceCriteriaCount", 1)
+        val staleDefinitionOfReadyCount = status.requireBoundedNonNegativeInt("staleDefinitionOfReadyCount", 1)
+        val staleDefinitionOfDoneCount = status.requireBoundedNonNegativeInt("staleDefinitionOfDoneCount", 1)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        if (candidateAssessedBlastRadiusCount + notAssessedBlastRadiusCount != unitCount ||
+            repositoryCandidateCount > unitCount || ownerCandidateCount > unitCount
+        ) throw invalidResponse()
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val state = status.requireOneOf("state", setOf("attention-required", "candidate-complete"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gaps = missingSubjectCount + invalidUnitCount + notAssessedBlastRadiusCount + staleBindingCount +
+            staleHierarchyCount + staleMvpSliceDefinitionCount + staleAcceptanceCriteriaCount +
+            staleDefinitionOfReadyCount + staleDefinitionOfDoneCount + unresolvedQuestionCount
+        val allReferencesPresent = hierarchyReference != null && mvpReference != null &&
+            acceptanceCriteriaReference != null && definitionOfReadyReference != null && definitionOfDoneReference != null
+        if ((state == "candidate-complete" &&
+                (gaps > 0 || reviewState != "ready-for-human-review" || reasons.isNotEmpty() ||
+                    candidateReference == null || !allReferencesPresent)) ||
+            (state == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "membershipDigest", "placementDigest",
+                "assessmentReceiptDigest", "unitCount", "subjectCount", "requirementReferenceCount",
+                "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = ImplementationUnitModelRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("membershipDigest"),
+                value.requireDigest("placementDigest"), value.requireDigest("assessmentReceiptDigest"),
+                value.requireBoundedNonNegativeInt("unitCount", 10_000),
+                value.requireBoundedNonNegativeInt("subjectCount", 10_000),
+                value.requireBoundedNonNegativeInt("requirementReferenceCount", 1_000_000),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                candidateReference == null || candidateReference.id != id || candidateReference.revision != revision ||
+                candidateReference.digest != record.digest || record.unitCount != unitCount ||
+                record.subjectCount != subjectCount || record.requirementReferenceCount != requirementReferenceCount ||
+                record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((candidateReference == null) != (candidate == null) || (candidate == null) != !allReferencesPresent ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return ImplementationUnitModelProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, state, reviewState, reasons,
+            hierarchyReference?.id, hierarchyReference?.revision, hierarchyReference?.digest,
+            mvpReference?.id, mvpReference?.revision, mvpReference?.digest,
+            acceptanceCriteriaReference?.id, acceptanceCriteriaReference?.revision, acceptanceCriteriaReference?.digest,
+            definitionOfReadyReference?.id, definitionOfReadyReference?.revision, definitionOfReadyReference?.digest,
+            definitionOfDoneReference?.id, definitionOfDoneReference?.revision, definitionOfDoneReference?.digest,
+            unitCount, subjectCount, requirementReferenceCount, repositoryCandidateCount, ownerCandidateCount,
+            dependencyEdgeCount, candidateAssessedBlastRadiusCount, notAssessedBlastRadiusCount,
+            missingSubjectCount, invalidUnitCount, staleBindingCount, staleHierarchyCount,
+            staleMvpSliceDefinitionCount, staleAcceptanceCriteriaCount, staleDefinitionOfReadyCount,
+            staleDefinitionOfDoneCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 
