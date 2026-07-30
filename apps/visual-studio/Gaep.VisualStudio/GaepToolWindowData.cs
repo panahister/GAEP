@@ -242,6 +242,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadBoilerplateRegistryCommand = new AsyncCommand(LoadBoilerplateRegistryAsync);
         LoadBoilerplateSelectionBindingCommand = new AsyncCommand(LoadBoilerplateSelectionBindingAsync);
         LoadBoilerplateCompatibilityValidationCommand = new AsyncCommand(LoadBoilerplateCompatibilityValidationAsync);
+        LoadFigmaToBoilerplateMappingCommand = new AsyncCommand(LoadFigmaToBoilerplateMappingAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -428,6 +429,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadBoilerplateCompatibilityValidationCommand { get; }
+    public IAsyncCommand LoadFigmaToBoilerplateMappingCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1094,6 +1096,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Boilerplate Compatibility Validation candidate",
             (controller, _, token) => controller.ReadBoilerplateCompatibilityValidationAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadFigmaToBoilerplateMappingAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Figma-to-Boilerplate Mapping candidate",
+            (controller, _, token) => controller.ReadFigmaToBoilerplateMappingAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

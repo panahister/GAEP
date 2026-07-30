@@ -83,6 +83,7 @@ internal static class Program
     private static readonly Guid BoilerplateRegistryId = Guid.Parse("90909090-9090-4090-8090-909090909090");
     private static readonly Guid BoilerplateSelectionBindingId = Guid.Parse("a9a9a9a9-a9a9-49a9-89a9-a9a9a9a9a9a9");
     private static readonly Guid BoilerplateCompatibilityValidationId = Guid.Parse("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+    private static readonly Guid FigmaToBoilerplateMappingId = Guid.Parse("abababab-abab-4bab-8bab-abababababab");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -313,6 +314,10 @@ internal static class Program
         var badBoilerplateCompatibilityValidationTechnologyProfileBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-compatibility-validation-technology-profile-binding");
         var badBoilerplateCompatibilityValidationRegistryBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-compatibility-validation-registry-binding");
         var badBoilerplateCompatibilityValidationSelectionBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-compatibility-validation-selection-binding");
+        var badFigmaToBoilerplateMappingSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-figma-to-boilerplate-mapping-snapshot-binding");
+        var badFigmaToBoilerplateMappingSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-figma-to-boilerplate-mapping-snapshot-digest");
+        var badFigmaToBoilerplateMappingSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-figma-to-boilerplate-mapping-snapshot-private");
+        var badFigmaToBoilerplateMappingDesignApplicabilityBindingRoot = Path.Combine(temporaryRoot, "bad-figma-to-boilerplate-mapping-design-applicability-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -1609,6 +1614,63 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadBoilerplateCompatibilityValidationAsync(InitiativeId),
                 "Boilerplate Compatibility Validation workflow rejects substituted Product or current planning dependency bindings");
+        }
+        var figmaToBoilerplateMappingProjection = await client.ReadFigmaToBoilerplateMappingAsync(InitiativeId);
+        Check(figmaToBoilerplateMappingProjection.ProductId == product.Id &&
+              figmaToBoilerplateMappingProjection.ProductRevision == product.Revision &&
+              figmaToBoilerplateMappingProjection.ProductDigest == product.Digest &&
+              figmaToBoilerplateMappingProjection.InitiativeId == resolved.Id &&
+              figmaToBoilerplateMappingProjection.InitiativeRevision == resolved.Revision &&
+              figmaToBoilerplateMappingProjection.InitiativeDigest == resolved.Digest &&
+              figmaToBoilerplateMappingProjection.State == "attention-required" &&
+              figmaToBoilerplateMappingProjection.ReviewState == "held" &&
+              figmaToBoilerplateMappingProjection.DesignBindingCount == 2 &&
+              figmaToBoilerplateMappingProjection.SubjectCount == 2 &&
+              figmaToBoilerplateMappingProjection.MappedCandidateCount == 1 &&
+              figmaToBoilerplateMappingProjection.ConflictCandidateCount == 1 &&
+              figmaToBoilerplateMappingProjection.ComponentMappingCount == 1 &&
+              figmaToBoilerplateMappingProjection.TokenMappingCount == 1 &&
+              figmaToBoilerplateMappingProjection.InvalidSubjectCount == 1 &&
+              figmaToBoilerplateMappingProjection.TargetGapCount == 1 &&
+              figmaToBoilerplateMappingProjection.TraceGapCount == 1 &&
+              figmaToBoilerplateMappingProjection.Dependencies.Count == 11,
+            "Typed Figma-to-Boilerplate Mapping projection preserves exact Product, Initiative, 11-dependency, subject, target, trace, and privacy-safe metadata");
+        var figmaToBoilerplateMappingOutput = await initiativeController.ReadFigmaToBoilerplateMappingAsync(InitiativeId);
+        Check(figmaToBoilerplateMappingOutput.Contains("GAEP governed Figma-to-Boilerplate Mapping candidate", StringComparison.Ordinal) &&
+              figmaToBoilerplateMappingOutput.Contains("2 design bindings · 2 mapping subjects", StringComparison.Ordinal) &&
+              figmaToBoilerplateMappingOutput.Contains("1 mapped · 1 conflicts · 0 unmapped · 0 not assessed", StringComparison.Ordinal) &&
+              figmaToBoilerplateMappingOutput.Contains("1 component · 1 token · 0 layout · 0 responsive · 0 platform-target", StringComparison.Ordinal) &&
+              figmaToBoilerplateMappingOutput.Contains("no Figma content, design-item, binding, unit, profile", StringComparison.Ordinal) &&
+              figmaToBoilerplateMappingOutput.Contains("does not connect to or call Figma", StringComparison.Ordinal) &&
+              !figmaToBoilerplateMappingOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !figmaToBoilerplateMappingOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !figmaToBoilerplateMappingOutput.Contains("targetCandidate", StringComparison.Ordinal) &&
+              !figmaToBoilerplateMappingOutput.Contains("requirementKeys", StringComparison.Ordinal) &&
+              !figmaToBoilerplateMappingOutput.Contains("mappedBy", StringComparison.Ordinal),
+            "Figma-to-Boilerplate Mapping workflow renders privacy-safe metadata with explicit Figma, design, mapping, generation, implementation, and action boundaries");
+        foreach (var hostileRoot in new[]
+                 {
+                     badFigmaToBoilerplateMappingSnapshotDigestRoot,
+                     badFigmaToBoilerplateMappingSnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadFigmaToBoilerplateMappingAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Figma-to-Boilerplate Mapping projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[]
+                 {
+                     badFigmaToBoilerplateMappingSnapshotBindingRoot,
+                     badFigmaToBoilerplateMappingDesignApplicabilityBindingRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadFigmaToBoilerplateMappingAsync(InitiativeId),
+                "Figma-to-Boilerplate Mapping workflow rejects substituted Product or exact current dependency bindings");
         }
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
@@ -4951,6 +5013,14 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-boilerplate-compatibility-validation-registry-binding";
         var badBoilerplateCompatibilityValidationSelectionBinding =
             Path.GetFileName(workspace) == "bad-boilerplate-compatibility-validation-selection-binding";
+        var badFigmaToBoilerplateMappingSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-figma-to-boilerplate-mapping-snapshot-binding";
+        var badFigmaToBoilerplateMappingSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-figma-to-boilerplate-mapping-snapshot-digest";
+        var badFigmaToBoilerplateMappingSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-figma-to-boilerplate-mapping-snapshot-private";
+        var badFigmaToBoilerplateMappingDesignApplicabilityBinding =
+            Path.GetFileName(workspace) == "bad-figma-to-boilerplate-mapping-design-applicability-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -5619,6 +5689,18 @@ internal static class Program
                         badBoilerplateCompatibilityValidationTechnologyProfileBinding,
                         badBoilerplateCompatibilityValidationRegistryBinding,
                         badBoilerplateCompatibilityValidationSelectionBinding);
+                    break;
+                case "planning.figmaToBoilerplateMapping.snapshot":
+                    await HandleFigmaToBoilerplateMappingAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badFigmaToBoilerplateMappingSnapshotBinding,
+                        badFigmaToBoilerplateMappingSnapshotDigest,
+                        badFigmaToBoilerplateMappingSnapshotPrivate,
+                        badFigmaToBoilerplateMappingDesignApplicabilityBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -10339,6 +10421,116 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["subjectCount"] = 3;
         if (includePrivateField) result["claim"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleFigmaToBoilerplateMappingAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeDesignApplicabilityBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID FIGMA TO BOILERPLATE MAPPING");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T20:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('4', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        Dictionary<string, object?> Reference(Guid recordId, long revision, char digestCharacter) => new()
+        {
+            ["recordId"] = recordId.ToString("D"),
+            ["revision"] = revision,
+            ["digest"] = $"sha256:{new string(digestCharacter, 64)}",
+        };
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = FigmaToBoilerplateMappingId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["state"] = "candidate",
+            ["mappingSubjectCatalogDigest"] = $"sha256:{new string('5', 64)}",
+            ["targetCatalogDigest"] = $"sha256:{new string('6', 64)}",
+            ["traceReceiptDigest"] = $"sha256:{new string('7', 64)}",
+            ["mappingReceiptDigest"] = $"sha256:{new string('8', 64)}",
+            ["assessmentReceiptDigest"] = $"sha256:{new string('9', 64)}",
+            ["subjectCount"] = 2,
+            ["mappedCandidateCount"] = 1,
+            ["conflictCandidateCount"] = 1,
+            ["unmappedCandidateCount"] = 0,
+            ["notAssessedCount"] = 0,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T20:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "figma-to-boilerplate-mapping-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"), ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"), ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)), ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "figma-to-boilerplate-mapping-status",
+                ["productId"] = ProductId.ToString("D"), ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"), ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = FigmaToBoilerplateMappingId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                },
+                ["designApplicability"] = Reference(DesignApplicabilityId, 2, forgeDesignApplicabilityBinding ? '3' : '4'),
+                ["designSystemTokenContract"] = Reference(DesignSystemTokenContractId, 2, '1'),
+                ["responsiveMultiPlatformTargets"] = Reference(ResponsiveMultiPlatformTargetsId, 2, '5'),
+                ["finalizedFigmaSnapshotImport"] = Reference(FinalizedFigmaSnapshotImportId, 2, 'c'),
+                ["designToRequirementBinding"] = Reference(DesignToRequirementBindingId, 2, 'd'),
+                ["designBaseline"] = Reference(DesignBaselineId, 3, 'e'),
+                ["implementationUnitModel"] = Reference(ImplementationUnitModelId, 2, '5'),
+                ["technologyProfile"] = Reference(TechnologyProfileId, 2, '6'),
+                ["boilerplateRegistry"] = Reference(BoilerplateRegistryId, 2, '3'),
+                ["boilerplateSelectionBinding"] = Reference(BoilerplateSelectionBindingId, 2, '8'),
+                ["boilerplateCompatibilityValidation"] = Reference(BoilerplateCompatibilityValidationId, 2, 'd'),
+                ["designBindingCount"] = 2, ["subjectCount"] = 2,
+                ["mappedCandidateCount"] = 1, ["conflictCandidateCount"] = 1,
+                ["unmappedCandidateCount"] = 0, ["notAssessedCount"] = 0,
+                ["componentMappingCount"] = 1, ["tokenMappingCount"] = 1,
+                ["layoutMappingCount"] = 0, ["responsiveBehaviorMappingCount"] = 0,
+                ["platformTargetMappingCount"] = 0, ["missingSubjectCount"] = 0,
+                ["invalidSubjectCount"] = 1, ["targetGapCount"] = 1,
+                ["traceGapCount"] = 1, ["evidenceGapCount"] = 1,
+                ["staleBindingCount"] = 0, ["staleDependencyCount"] = 0,
+                ["invalidCandidateCount"] = 1, ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held", ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Figma-to-Boilerplate Mapping subjects require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "figma-to-boilerplate-mapping-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-truth-or-completeness-selection-binding-effectiveness-compatibility-truth-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-subject-target-trace-mapping-assessment-snapshot-digests-only-not-figma-content-design-item-binding-unit-profile-registry-entry-validation-subject-requirement-target-locator-evidence-reviewer-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "figma-to-boilerplate-mapping-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-truth-or-completeness-selection-binding-effectiveness-compatibility-truth-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["subjectCount"] = 3;
+        if (includePrivateField) result["targetCandidate"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

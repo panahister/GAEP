@@ -2775,6 +2775,123 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadFigmaToBoilerplateMappingAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var designApplicability = await client.ReadDesignApplicabilityAsync(initiativeId, cancellationToken);
+        var designSystem = await client.ReadDesignSystemTokenContractAsync(initiativeId, cancellationToken);
+        var responsiveTargets = await client.ReadResponsiveMultiPlatformTargetsAsync(initiativeId, cancellationToken);
+        var finalizedSnapshot = await client.ReadFinalizedFigmaSnapshotImportAsync(initiativeId, cancellationToken);
+        var designBinding = await client.ReadDesignToRequirementBindingAsync(initiativeId, cancellationToken);
+        var designBaseline = await client.ReadDesignBaselineAsync(initiativeId, cancellationToken);
+        var units = await client.ReadImplementationUnitModelAsync(initiativeId, cancellationToken);
+        var technologyProfile = await client.ReadTechnologyProfileAsync(initiativeId, cancellationToken);
+        var registry = await client.ReadBoilerplateRegistryAsync(initiativeId, cancellationToken);
+        var selectionBinding = await client.ReadBoilerplateSelectionBindingAsync(initiativeId, cancellationToken);
+        var compatibilityValidation = await client.ReadBoilerplateCompatibilityValidationAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadFigmaToBoilerplateMappingAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Figma-to-Boilerplate Mapping was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null)
+        {
+            void RequireDependency(string name, Guid id, long revision, string digest)
+            {
+                if (!projection.Dependencies.TryGetValue(name, out var reference) || reference.RecordId != id ||
+                    reference.Revision != revision || reference.Digest != digest)
+                {
+                    throw new ArgumentException($"The {name} candidate changed while Figma-to-Boilerplate Mapping was read. Refresh the exact records.");
+                }
+            }
+            if (designApplicability.Candidate is not { } designApplicabilityCandidate ||
+                designSystem.Candidate is not { } designSystemCandidate ||
+                responsiveTargets.Candidate is not { } responsiveTargetsCandidate ||
+                finalizedSnapshot.Candidate is not { } finalizedSnapshotCandidate ||
+                designBinding.Candidate is not { } designBindingCandidate ||
+                designBaseline.Candidate is not { } designBaselineCandidate ||
+                units.Candidate is not { } unitsCandidate ||
+                technologyProfile.Candidate is not { } technologyProfileCandidate ||
+                registry.Candidate is not { } registryCandidate ||
+                selectionBinding.Candidate is not { } selectionBindingCandidate ||
+                compatibilityValidation.Candidate is not { } compatibilityValidationCandidate)
+            {
+                throw new ArgumentException("One or more exact current dependency candidates are unavailable. Refresh the exact records.");
+            }
+            RequireDependency("designApplicability", designApplicabilityCandidate.Id, designApplicabilityCandidate.Revision, designApplicabilityCandidate.Digest);
+            RequireDependency("designSystemTokenContract", designSystemCandidate.Id, designSystemCandidate.Revision, designSystemCandidate.Digest);
+            RequireDependency("responsiveMultiPlatformTargets", responsiveTargetsCandidate.Id, responsiveTargetsCandidate.Revision, responsiveTargetsCandidate.Digest);
+            RequireDependency("finalizedFigmaSnapshotImport", finalizedSnapshotCandidate.Id, finalizedSnapshotCandidate.Revision, finalizedSnapshotCandidate.Digest);
+            RequireDependency("designToRequirementBinding", designBindingCandidate.Id, designBindingCandidate.Revision, designBindingCandidate.Digest);
+            RequireDependency("designBaseline", designBaselineCandidate.Id, designBaselineCandidate.Revision, designBaselineCandidate.Digest);
+            RequireDependency("implementationUnitModel", unitsCandidate.Id, unitsCandidate.Revision, unitsCandidate.Digest);
+            RequireDependency("technologyProfile", technologyProfileCandidate.Id, technologyProfileCandidate.Revision, technologyProfileCandidate.Digest);
+            RequireDependency("boilerplateRegistry", registryCandidate.Id, registryCandidate.Revision, registryCandidate.Digest);
+            RequireDependency("boilerplateSelectionBinding", selectionBindingCandidate.Id, selectionBindingCandidate.Revision, selectionBindingCandidate.Digest);
+            RequireDependency("boilerplateCompatibilityValidation", compatibilityValidationCandidate.Id, compatibilityValidationCandidate.Revision, compatibilityValidationCandidate.Digest);
+        }
+        return RenderFigmaToBoilerplateMapping(projection);
+    }
+
+    public static string RenderFigmaToBoilerplateMapping(FigmaToBoilerplateMappingProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Figma-to-Boilerplate Mapping candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine($"Candidate coverage: {projection.DesignBindingCount} design bindings · {projection.SubjectCount} mapping subjects")
+            .AppendLine(
+                $"Candidate outcomes: {projection.MappedCandidateCount} mapped · {projection.ConflictCandidateCount} conflicts · " +
+                $"{projection.UnmappedCandidateCount} unmapped · {projection.NotAssessedCount} not assessed")
+            .AppendLine(
+                $"Candidate kinds: {projection.ComponentMappingCount} component · {projection.TokenMappingCount} token · " +
+                $"{projection.LayoutMappingCount} layout · {projection.ResponsiveBehaviorMappingCount} responsive · " +
+                $"{projection.PlatformTargetMappingCount} platform-target")
+            .AppendLine(
+                $"Candidate mapping gaps: {projection.MissingSubjectCount} missing subjects · {projection.InvalidSubjectCount} invalid subjects · " +
+                $"{projection.TargetGapCount} target gaps · {projection.TraceGapCount} trace gaps · {projection.EvidenceGapCount} evidence gaps")
+            .AppendLine(
+                $"Candidate freshness gaps: {projection.StaleBindingCount} stale bindings · {projection.StaleDependencyCount} stale dependencies · " +
+                $"{projection.InvalidCandidateCount} invalid candidates · {projection.UnresolvedQuestionCount} questions");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Figma-to-Boilerplate Mapping candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Mapping subject catalog digest: {candidate.MappingSubjectCatalogDigest}")
+                .AppendLine($"Target catalog digest: {candidate.TargetCatalogDigest}")
+                .AppendLine($"Trace receipt digest: {candidate.TraceReceiptDigest}")
+                .AppendLine($"Mapping receipt digest: {candidate.MappingReceiptDigest}")
+                .AppendLine($"Assessment receipt digest: {candidate.AssessmentReceiptDigest}")
+                .AppendLine(
+                    $"Candidate coverage: {candidate.SubjectCount} subjects · {candidate.MappedCandidateCount} mapped · " +
+                    $"{candidate.ConflictCandidateCount} conflicts · {candidate.UnmappedCandidateCount} unmapped · " +
+                    $"{candidate.NotAssessedCount} not assessed · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Figma-to-Boilerplate Mapping candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and subject, target, trace, mapping, assessment, " +
+                "and snapshot digests only; no Figma content, design-item, binding, unit, profile, registry-entry, " +
+                "validation-subject, requirement, target-locator, evidence, reviewer, or personal data. This inspection " +
+                "does not connect to or call Figma, establish returned Figma content, design validity, approval or baseline, " +
+                "mapping truth or completeness, effective selection or compatibility truth, retrieve, import, instantiate, " +
+                "generate or execute assets, establish implementation readiness or completeness, assign, execute, accept, " +
+                "merge, release, deploy, or grant action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
