@@ -50,6 +50,7 @@ private val definitionOfReadyId = UUID.fromString("95959595-9595-4595-8595-95959
 private val definitionOfDoneId = UUID.fromString("96969696-9696-4696-8696-969696969696")
 private val implementationUnitModelId = UUID.fromString("97979797-9797-4797-8797-979797979797")
 private val dependencyMappingId = UUID.fromString("98989898-9898-4898-8898-989898989898")
+private val technologyProfileId = UUID.fromString("89898989-8989-4989-8989-898989898989")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -315,6 +316,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.dependencyMapping.snapshot" -> handleDependencyMapping(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.technologyProfile.snapshot" -> handleTechnologyProfile(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3987,6 +3993,123 @@ private fun handleDependencyMapping(id: Long, params: JsonObject, workspacePath:
             value.getAsJsonObject("candidate").addProperty("nodeCount", 4)
         }
         workspacePath.endsWith("bad-dependency-mapping-snapshot-private") -> {
+            value.addProperty("rationale", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleTechnologyProfile(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE TECHNOLOGY PROFILE PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-technology-profile-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T16:30:00.000Z"
+    val candidateDigest = "sha256:${"6".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "technology-profile-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "technology-profile-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", technologyProfileId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            add("implementationUnitModel", JsonObject().apply {
+                addProperty("recordId", implementationUnitModelId.toString())
+                addProperty("revision", 2)
+                addProperty(
+                    "digest",
+                    if (workspacePath.endsWith("bad-technology-profile-unit-model-binding")) {
+                        "sha256:${"4".repeat(64)}"
+                    } else {
+                        "sha256:${"5".repeat(64)}"
+                    },
+                )
+            })
+            add("dependencyMapping", JsonObject().apply {
+                addProperty("recordId", dependencyMappingId.toString())
+                addProperty("revision", 2)
+                addProperty(
+                    "digest",
+                    if (workspacePath.endsWith("bad-technology-profile-dependency-mapping-binding")) {
+                        "sha256:${"7".repeat(64)}"
+                    } else {
+                        "sha256:${"9".repeat(64)}"
+                    },
+                )
+            })
+            addProperty("unitProfileCount", 3)
+            addProperty("technologyChoiceCount", 5)
+            addProperty("exactVersionCandidateCount", 3)
+            addProperty("rangeVersionCandidateCount", 1)
+            addProperty("unresolvedVersionCount", 1)
+            addProperty("constraintCount", 4)
+            addProperty("missingProfileCount", 1)
+            addProperty("invalidProfileCount", 1)
+            addProperty("missingEvidenceCount", 2)
+            addProperty("unsupportedChoiceCount", 1)
+            addProperty("lifecycleRiskCount", 1)
+            addProperty("compatibilityConflictCount", 1)
+            addProperty("licenseReviewRequiredCount", 1)
+            addProperty("licenseProhibitedCount", 0)
+            addProperty("securityReviewRequiredCount", 1)
+            addProperty("securityNonconformantCount", 0)
+            addProperty("exceptionCandidateCount", 1)
+            addProperty("constraintConflictCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleImplementationUnitModelCount", 0)
+            addProperty("staleDependencyMappingCount", 0)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more technology-profile candidates require human review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("authorityBoundary", "technology-profile-status-is-observational-and-does-not-establish-technology-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-authority-architecture-baseline-designation-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority")
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", technologyProfileId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("state", "candidate")
+            addProperty("profileCatalogDigest", "sha256:${"a".repeat(64)}")
+            addProperty("selectionCatalogDigest", "sha256:${"b".repeat(64)}")
+            addProperty("compatibilityAssessmentReceiptDigest", "sha256:${"c".repeat(64)}")
+            addProperty("assessmentReceiptDigest", "sha256:${"d".repeat(64)}")
+            addProperty("unitProfileCount", 3)
+            addProperty("technologyChoiceCount", 5)
+            addProperty("constraintCount", 4)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T16:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-profile-selection-compatibility-assessment-snapshot-digests-only-not-technology-names-versions-constraints-evidence-rationale-unit-architecture-repository-toolchain-license-security-policy-personal-data-secrets-credentials-or-machine-paths")
+        addProperty("authorityBoundary", "technology-profile-projection-is-read-only-and-does-not-establish-technology-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-authority-architecture-baseline-designation-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-technology-profile-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("unitProfileCount", 4)
+        }
+        workspacePath.endsWith("bad-technology-profile-snapshot-private") -> {
             value.addProperty("rationale", "$privateRoot/$privateCredential")
         }
     }

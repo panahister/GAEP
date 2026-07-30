@@ -2541,6 +2541,63 @@ data class DependencyMappingProjection(
     val snapshotDigest: String,
 )
 
+data class TechnologyProfileRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val profileCatalogDigest: String,
+    val selectionCatalogDigest: String,
+    val compatibilityAssessmentReceiptDigest: String,
+    val assessmentReceiptDigest: String,
+    val unitProfileCount: Int,
+    val technologyChoiceCount: Int,
+    val constraintCount: Int,
+    val reviewState: String,
+)
+
+data class TechnologyProfileProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val state: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val implementationUnitModelRecordId: UUID?,
+    val implementationUnitModelRevision: Long?,
+    val implementationUnitModelDigest: String?,
+    val dependencyMappingRecordId: UUID?,
+    val dependencyMappingRevision: Long?,
+    val dependencyMappingDigest: String?,
+    val unitProfileCount: Int,
+    val technologyChoiceCount: Int,
+    val exactVersionCandidateCount: Int,
+    val rangeVersionCandidateCount: Int,
+    val unresolvedVersionCount: Int,
+    val constraintCount: Int,
+    val missingProfileCount: Int,
+    val invalidProfileCount: Int,
+    val missingEvidenceCount: Int,
+    val unsupportedChoiceCount: Int,
+    val lifecycleRiskCount: Int,
+    val compatibilityConflictCount: Int,
+    val licenseReviewRequiredCount: Int,
+    val licenseProhibitedCount: Int,
+    val securityReviewRequiredCount: Int,
+    val securityNonconformantCount: Int,
+    val exceptionCandidateCount: Int,
+    val constraintConflictCount: Int,
+    val staleBindingCount: Int,
+    val staleImplementationUnitModelCount: Int,
+    val staleDependencyMappingCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: TechnologyProfileRecordView?,
+    val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -3732,6 +3789,12 @@ internal object PortableDesignProtocol {
         "dependency-mapping-projection-is-read-only-and-does-not-establish-dependency-truth-or-completeness-critical-path-authority-sequencing-commitment-ownership-appointment-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority"
     private const val DEPENDENCY_MAPPING_STATUS_AUTHORITY_BOUNDARY =
         "dependency-mapping-status-is-observational-and-does-not-establish-dependency-truth-or-completeness-critical-path-authority-sequencing-commitment-ownership-appointment-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority"
+    private const val TECHNOLOGY_PROFILE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-profile-selection-compatibility-assessment-snapshot-digests-only-not-technology-names-versions-constraints-evidence-rationale-unit-architecture-repository-toolchain-license-security-policy-personal-data-secrets-credentials-or-machine-paths"
+    private const val TECHNOLOGY_PROFILE_PROJECTION_AUTHORITY_BOUNDARY =
+        "technology-profile-projection-is-read-only-and-does-not-establish-technology-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-authority-architecture-baseline-designation-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority"
+    private const val TECHNOLOGY_PROFILE_STATUS_AUTHORITY_BOUNDARY =
+        "technology-profile-status-is-observational-and-does-not-establish-technology-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-authority-architecture-baseline-designation-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -9725,6 +9788,158 @@ internal object PortableDesignProtocol {
             missingNodeCount, missingDeclaredEdgeCount, extraEdgeCount, invalidNodeCount, invalidEdgeCount,
             cycleCount, staleBindingCount, staleHierarchyCount, staleMvpSliceDefinitionCount,
             staleImplementationUnitModelCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseTechnologyProfileEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): TechnologyProfileProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "technology-profile-projection" ||
+            projection.requireString("privacyBoundary") != TECHNOLOGY_PROFILE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != TECHNOLOGY_PROFILE_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "unitProfileCount", "technologyChoiceCount", "exactVersionCandidateCount",
+                "rangeVersionCandidateCount", "unresolvedVersionCount", "constraintCount", "missingProfileCount",
+                "invalidProfileCount", "missingEvidenceCount", "unsupportedChoiceCount", "lifecycleRiskCount",
+                "compatibilityConflictCount", "licenseReviewRequiredCount", "licenseProhibitedCount",
+                "securityReviewRequiredCount", "securityNonconformantCount", "exceptionCandidateCount",
+                "constraintConflictCount", "staleBindingCount", "staleImplementationUnitModelCount",
+                "staleDependencyMappingCount", "unresolvedQuestionCount", "reviewState", "state", "reasons",
+                "assessedAt", "authorityBoundary",
+            ),
+            setOf("candidate", "implementationUnitModel", "dependencyMapping"),
+        )
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "technology-profile-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != TECHNOLOGY_PROFILE_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        fun reference(name: String): Reference? = status.get(name)?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val candidateReference = reference("candidate")
+        val implementationUnitModelReference = reference("implementationUnitModel")
+        val dependencyMappingReference = reference("dependencyMapping")
+        val unitProfileCount = status.requireBoundedNonNegativeInt("unitProfileCount", 10_000)
+        val technologyChoiceCount = status.requireBoundedNonNegativeInt("technologyChoiceCount", 100_000_000)
+        val exactVersionCandidateCount = status.requireBoundedNonNegativeInt("exactVersionCandidateCount", 100_000_000)
+        val rangeVersionCandidateCount = status.requireBoundedNonNegativeInt("rangeVersionCandidateCount", 100_000_000)
+        val unresolvedVersionCount = status.requireBoundedNonNegativeInt("unresolvedVersionCount", 100_000_000)
+        if (exactVersionCandidateCount + rangeVersionCandidateCount + unresolvedVersionCount != technologyChoiceCount) throw invalidResponse()
+        val constraintCount = status.requireBoundedNonNegativeInt("constraintCount", 100_000_000)
+        val missingProfileCount = status.requireBoundedNonNegativeInt("missingProfileCount", 10_000)
+        val invalidProfileCount = status.requireBoundedNonNegativeInt("invalidProfileCount", 10_000)
+        val missingEvidenceCount = status.requireBoundedNonNegativeInt("missingEvidenceCount", 100_000_000)
+        val unsupportedChoiceCount = status.requireBoundedNonNegativeInt("unsupportedChoiceCount", 100_000_000)
+        val lifecycleRiskCount = status.requireBoundedNonNegativeInt("lifecycleRiskCount", 100_000_000)
+        val compatibilityConflictCount = status.requireBoundedNonNegativeInt("compatibilityConflictCount", 100_000_000)
+        val licenseReviewRequiredCount = status.requireBoundedNonNegativeInt("licenseReviewRequiredCount", 100_000_000)
+        val licenseProhibitedCount = status.requireBoundedNonNegativeInt("licenseProhibitedCount", 100_000_000)
+        val securityReviewRequiredCount = status.requireBoundedNonNegativeInt("securityReviewRequiredCount", 100_000_000)
+        val securityNonconformantCount = status.requireBoundedNonNegativeInt("securityNonconformantCount", 100_000_000)
+        val exceptionCandidateCount = status.requireBoundedNonNegativeInt("exceptionCandidateCount", 100_000_000)
+        val constraintConflictCount = status.requireBoundedNonNegativeInt("constraintConflictCount", 100_000_000)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 1)
+        val staleImplementationUnitModelCount = status.requireBoundedNonNegativeInt("staleImplementationUnitModelCount", 1)
+        val staleDependencyMappingCount = status.requireBoundedNonNegativeInt("staleDependencyMappingCount", 1)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val state = status.requireOneOf("state", setOf("attention-required", "candidate-complete"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gaps = rangeVersionCandidateCount + unresolvedVersionCount + missingProfileCount + invalidProfileCount +
+            missingEvidenceCount + unsupportedChoiceCount + lifecycleRiskCount + compatibilityConflictCount +
+            licenseReviewRequiredCount + licenseProhibitedCount + securityReviewRequiredCount +
+            securityNonconformantCount + exceptionCandidateCount + constraintConflictCount + staleBindingCount +
+            staleImplementationUnitModelCount + staleDependencyMappingCount + unresolvedQuestionCount
+        val allReferencesPresent = implementationUnitModelReference != null && dependencyMappingReference != null
+        if ((state == "candidate-complete" &&
+                (gaps > 0 || reviewState != "ready-for-human-review" || reasons.isNotEmpty() ||
+                    candidateReference == null || !allReferencesPresent || unitProfileCount < 1 || technologyChoiceCount < 1)) ||
+            (state == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "profileCatalogDigest", "selectionCatalogDigest",
+                "compatibilityAssessmentReceiptDigest", "assessmentReceiptDigest", "unitProfileCount",
+                "technologyChoiceCount", "constraintCount", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = TechnologyProfileRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("profileCatalogDigest"),
+                value.requireDigest("selectionCatalogDigest"), value.requireDigest("compatibilityAssessmentReceiptDigest"),
+                value.requireDigest("assessmentReceiptDigest"),
+                value.requireBoundedNonNegativeInt("unitProfileCount", 10_000),
+                value.requireBoundedNonNegativeInt("technologyChoiceCount", 100_000_000),
+                value.requireBoundedNonNegativeInt("constraintCount", 100_000_000),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                candidateReference == null || candidateReference.id != id || candidateReference.revision != revision ||
+                candidateReference.digest != record.digest || record.unitProfileCount != unitProfileCount ||
+                record.technologyChoiceCount != technologyChoiceCount || record.constraintCount != constraintCount ||
+                record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((candidateReference == null) != (candidate == null) || (candidate == null) != !allReferencesPresent ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return TechnologyProfileProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, state, reviewState, reasons,
+            implementationUnitModelReference?.id, implementationUnitModelReference?.revision,
+            implementationUnitModelReference?.digest, dependencyMappingReference?.id,
+            dependencyMappingReference?.revision, dependencyMappingReference?.digest,
+            unitProfileCount, technologyChoiceCount, exactVersionCandidateCount, rangeVersionCandidateCount,
+            unresolvedVersionCount, constraintCount, missingProfileCount, invalidProfileCount, missingEvidenceCount,
+            unsupportedChoiceCount, lifecycleRiskCount, compatibilityConflictCount, licenseReviewRequiredCount,
+            licenseProhibitedCount, securityReviewRequiredCount, securityNonconformantCount, exceptionCandidateCount,
+            constraintConflictCount, staleBindingCount, staleImplementationUnitModelCount, staleDependencyMappingCount,
+            unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 

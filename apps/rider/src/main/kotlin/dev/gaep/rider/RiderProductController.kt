@@ -2079,6 +2079,87 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readTechnologyProfile(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val units = client.readImplementationUnitModel(initiativeId)
+        val dependencyMapping = client.readDependencyMapping(initiativeId)
+        val projection = client.readTechnologyProfile(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Technology Profile was read. Refresh the exact records." }
+        projection.candidate?.let {
+            val currentUnits = requireNotNull(units.candidate) {
+                "The current Implementation Unit Model candidate is unavailable. Refresh the exact records."
+            }
+            val currentDependencyMapping = requireNotNull(dependencyMapping.candidate) {
+                "The current Dependency Mapping candidate is unavailable. Refresh the exact records."
+            }
+            require(
+                projection.implementationUnitModelRecordId == currentUnits.id &&
+                    projection.implementationUnitModelRevision == currentUnits.revision &&
+                    projection.implementationUnitModelDigest == currentUnits.digest
+            ) { "The Implementation Unit Model changed while Technology Profile was read. Refresh the exact records." }
+            require(
+                projection.dependencyMappingRecordId == currentDependencyMapping.id &&
+                    projection.dependencyMappingRevision == currentDependencyMapping.revision &&
+                    projection.dependencyMappingDigest == currentDependencyMapping.digest
+            ) { "The Dependency Mapping changed while Technology Profile was read. Refresh the exact records." }
+        }
+        return renderTechnologyProfile(projection)
+    }
+
+    fun renderTechnologyProfile(projection: TechnologyProfileProjection): String = buildString {
+        appendLine("GAEP governed Technology Profile candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine(
+            "Candidate coverage: ${projection.unitProfileCount} unit profiles · ${projection.technologyChoiceCount} choices · " +
+                "${projection.exactVersionCandidateCount} exact versions · ${projection.rangeVersionCandidateCount} ranges · " +
+                "${projection.unresolvedVersionCount} unresolved versions · ${projection.constraintCount} constraints",
+        )
+        appendLine(
+            "Candidate policy gaps: ${projection.unsupportedChoiceCount} unsupported · " +
+                "${projection.lifecycleRiskCount} lifecycle risks · ${projection.compatibilityConflictCount} compatibility conflicts · " +
+                "${projection.licenseReviewRequiredCount} license reviews · ${projection.licenseProhibitedCount} license-prohibited · " +
+                "${projection.securityReviewRequiredCount} security reviews · ${projection.securityNonconformantCount} security-nonconformant · " +
+                "${projection.exceptionCandidateCount} exception candidates · ${projection.constraintConflictCount} constraint conflicts",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedQuestionCount} questions · ${projection.missingProfileCount} missing profiles · " +
+                "${projection.invalidProfileCount} invalid profiles · ${projection.missingEvidenceCount} missing evidence · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleImplementationUnitModelCount} stale Implementation Unit Models · " +
+                "${projection.staleDependencyMappingCount} stale Dependency Mappings",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Technology Profile candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Profile catalog digest: ${record.profileCatalogDigest}")
+            appendLine("Selection catalog digest: ${record.selectionCatalogDigest}")
+            appendLine("Compatibility assessment receipt digest: ${record.compatibilityAssessmentReceiptDigest}")
+            appendLine("Assessment receipt digest: ${record.assessmentReceiptDigest}")
+            appendLine(
+                "Candidate coverage: ${record.unitProfileCount} unit profiles · ${record.technologyChoiceCount} choices · " +
+                    "${record.constraintCount} constraints · ${record.reviewState}",
+            )
+        } ?: appendLine("Technology Profile candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and profile, selection, compatibility, assessment, " +
+                "and snapshot digests only; no technology names, versions, constraints, evidence, rationale, unit, architecture, " +
+                "repository, toolchain, license, security-policy, or personal data. Candidate completeness does not establish " +
+                "technology approval, support commitment, compatibility truth or completeness, licensing or security approval, " +
+                "exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, " +
+                "assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)

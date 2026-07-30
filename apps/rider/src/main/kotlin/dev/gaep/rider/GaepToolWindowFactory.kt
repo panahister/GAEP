@@ -674,6 +674,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += dependencyMappingButton
         actions.add(dependencyMappingButton)
 
+        val technologyProfileButton = JButton("Inspect Technology Profile…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Technology names, versions, constraints, evidence, rationale, unit, architecture, repository, toolchain, license and security-policy content, personal data, local paths, secrets, credentials, technology approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, and action authority are withheld.",
+                    "GAEP Technology Profile",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Technology Profile", status, output, buttons) {
+                    controller.readTechnologyProfile(initiativeId)
+                }
+            }
+        }
+        buttons += technologyProfileButton
+        actions.add(technologyProfileButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

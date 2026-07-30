@@ -1961,6 +1961,68 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Technology Profile projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("technology-profile-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readTechnologyProfile(entryId)
+            assertEquals("attention-required", projection.state)
+            assertEquals("held", projection.reviewState)
+            assertEquals(3, projection.unitProfileCount)
+            assertEquals(5, projection.technologyChoiceCount)
+            assertEquals(3, projection.exactVersionCandidateCount)
+            assertEquals(1, projection.rangeVersionCandidateCount)
+            assertEquals(1, projection.unresolvedVersionCount)
+            assertEquals(4, projection.constraintCount)
+            assertEquals(1, projection.unsupportedChoiceCount)
+            assertEquals(1, projection.compatibilityConflictCount)
+            assertEquals(0, projection.licenseProhibitedCount)
+            assertEquals(0, projection.securityNonconformantCount)
+            assertEquals(0, projection.staleImplementationUnitModelCount)
+            assertEquals(0, projection.staleDependencyMappingCount)
+
+            val rendered = RiderProductController(client).readTechnologyProfile(entryId)
+            assertTrue(rendered.contains("GAEP governed Technology Profile candidate"))
+            assertTrue(rendered.contains("3 unit profiles · 5 choices · 3 exact versions · 1 ranges · 1 unresolved versions · 4 constraints"))
+            assertTrue(rendered.contains("1 unsupported · 1 lifecycle risks · 1 compatibility conflicts"))
+            assertTrue(rendered.contains("no technology names, versions, constraints, evidence, rationale, unit, architecture"))
+            assertTrue(rendered.contains("does not establish technology approval, support commitment, compatibility truth or completeness"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("technologyName"))
+            assertFalse(rendered.contains("versionRange"))
+            assertFalse(rendered.contains("constraintText"))
+        }
+
+        listOf(
+            "bad-technology-profile-snapshot-digest",
+            "bad-technology-profile-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readTechnologyProfile(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf(
+            "bad-technology-profile-snapshot-binding",
+            "bad-technology-profile-unit-model-binding",
+            "bad-technology-profile-dependency-mapping-binding",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readTechnologyProfile(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
