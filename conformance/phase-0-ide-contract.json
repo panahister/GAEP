@@ -72,7 +72,8 @@
     { "id": "finalized-figma-snapshot-import", "label": "Exact governed Finalized Figma Snapshot Import review-candidate projection with bounded governed-write, return-receipt, item, conflict, authorization, reconciliation, provenance, completeness and gap metadata, without transferring or importing content, connecting to or calling Figma, requesting credentials, granting permissions, proving external completeness, validating or approving design, establishing a baseline or readiness, implementation, or action authority" },
     { "id": "design-to-requirement-binding", "label": "Exact governed Design-to-Requirement Binding review-candidate projection with bounded finalized-design, Requirement and Decision dependency, catalog, binding, coverage, conflict, reconciliation, provenance and gap metadata, without establishing relationship truth, coverage completeness, Requirement satisfaction, Decision effectiveness, external completeness, design validity or approval, baseline, readiness, Figma connection or call, credential or permission authority, import or write execution, implementation, or action authority" },
     { "id": "designer-ready-gate", "label": "Exact governed Designer-Ready Gate evaluation-candidate projection over twelve current attributable human-reviewed prerequisites with bounded candidate-result, assessment-receipt, exception-candidate, stale-binding, stale-source and unresolved-question metadata, without establishing design or external completeness, design validity, approval, baseline, readiness, exception or waiver authority, acceptance, phase entry, implementation, Figma connection or call, credential or permission authority, import or write execution, or action authority" },
-    { "id": "design-delta", "label": "Exact governed Design Delta comparison-candidate projection over the current Designer-Ready prerequisite catalog, finalized Figma snapshot item catalog and Design-to-Requirement binding catalog with bounded exact dependency, source and target snapshot, comparison definition and receipt, delta catalog, added, changed, conflicting, missing, stale, unmapped, human-review and gap metadata, without establishing delta or external completeness, design validity, approval, baseline, readiness, conflict-resolution or synchronization authority, Figma connection or call, credential or permission authority, import or write execution, implementation, or action authority" }
+    { "id": "design-delta", "label": "Exact governed Design Delta comparison-candidate projection over the current Designer-Ready prerequisite catalog, finalized Figma snapshot item catalog and Design-to-Requirement binding catalog with bounded exact dependency, source and target snapshot, comparison definition and receipt, delta catalog, added, changed, conflicting, missing, stale, unmapped, human-review and gap metadata, without establishing delta or external completeness, design validity, approval, baseline, readiness, conflict-resolution or synchronization authority, Figma connection or call, credential or permission authority, import or write execution, implementation, or action authority" },
+    { "id": "design-conflict-resolution", "label": "Exact governed Design Conflict Resolution candidate projection over one exact conflicting Design Delta catalog with bounded accept-source, accept-target, merge, reject-change, escalation, human-review, distinct-actor-declaration, expiry, coverage, provenance, receipt, unresolved-conflict and gap metadata, without enforcing separation of duties, resolving or applying conflicts, synchronizing design, establishing design validity, approval, baseline or readiness, connecting to or calling Figma, requesting credentials, granting permissions, executing imports or writes, or granting implementation or action authority" }
   ],
   "hosts": [
     {
@@ -83,7 +84,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T232922Z-phase-2-design-delta-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T001650Z-phase-2-design-conflict-resolution-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -304,6 +305,9 @@
         ] },
         { "capabilityId": "design-delta", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designDelta?: {", "engine.designDelta!.project(initiative.id)", "id: \"design-delta\"", "no delta completeness"] }
+        ] },
+        { "capabilityId": "design-conflict-resolution", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designConflictResolution?: {", "engine.designConflictResolution!.project(initiative.id)", "id: \"design-conflict-resolution\"", "does not enforce separation of duties"] }
         ] }
       ]
     },
@@ -315,7 +319,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T232922Z-phase-2-design-delta-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T001650Z-phase-2-design-conflict-resolution-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -571,6 +575,10 @@
         { "capabilityId": "design-delta", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignDelta(", "this.request(\"design.designDelta.snapshot\"", "designDeltaProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignDelta", "GAEP Design Delta candidate", "no delta or external completeness"] }
+        ] },
+        { "capabilityId": "design-conflict-resolution", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignConflictResolution(", "this.request(\"design.designConflictResolution.snapshot\"", "designConflictResolutionProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignConflictResolution", "GAEP Design Conflict Resolution candidate", "does not enforce separation of duties"] }
         ] }
       ]
     },
@@ -582,7 +590,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T232922Z-phase-2-design-delta-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T001650Z-phase-2-design-conflict-resolution-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -891,6 +899,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignDelta(", "portableRequest(\"design.designDelta.snapshot\"", "parseDesignDeltaEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP Design Delta candidate", "no delta or external completeness", "implementation, or action authority"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DesignDeltaProjection", "DESIGN_DELTA_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "design-conflict-resolution", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignConflictResolution(", "portableRequest(\"design.designConflictResolution.snapshot\"", "parseDesignConflictResolutionEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP Design Conflict Resolution candidate", "does not enforce separation of duties", "implementation or action authority"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DesignConflictResolutionProjection", "DESIGN_CONFLICT_RESOLUTION_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -902,7 +915,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260729T232922Z-phase-2-design-delta-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T001650Z-phase-2-design-conflict-resolution-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1223,6 +1236,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignDeltaAsync(", "\"design.designDelta.snapshot\"", "ParseDesignDeltaResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP Design Delta candidate", "no delta or external completeness", "implementation, or action authority"] },
           { "path": "apps/visual-studio/Gaep.HostClient/DesignDeltaProtocol.cs", "contains": ["DesignDeltaProjection", "DesignDeltaProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "design-conflict-resolution", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignConflictResolutionAsync(", "\"design.designConflictResolution.snapshot\"", "ParseDesignConflictResolutionResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP Design Conflict Resolution candidate", "does not enforce separation of duties", "implementation or action authority"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/DesignConflictResolutionProtocol.cs", "contains": ["DesignConflictResolutionProjection", "DesignConflictResolutionProjectionAuthorityBoundary"] }
         ] }
       ]
     }
