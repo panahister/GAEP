@@ -2277,6 +2277,49 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "design-baseline-read-empty",
+      protocolVersion: 2,
+      method: "design.designBaseline.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-baseline-assess-empty",
+      protocolVersion: 2,
+      method: "design.designBaseline.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      candidateSetCount: 0,
+      designationCandidateCount: 0,
+      supersessionCandidateCount: 0,
+      withdrawalCandidateCount: 0,
+      restorationCandidateCount: 0,
+      expiredDesignationCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      candidateResult: "not-assessed",
+      reviewState: "draft",
+      approvalDeterminationState: "not-established",
+      baselineDesignationState: "not-established",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-convert-an-approval-candidate-into-approval"),
+    })
+    const designBaselineProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-baseline-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.designBaseline.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: designBaselineDigest, ...designBaselineProjectionBody } = designBaselineProjection
+    expect(designBaselineDigest).toBe(canonicalDigest(designBaselineProjectionBody))
+    expect(designBaselineProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-design-content-rationale-evidence-source-content-human-attribution"),
+      authorityBoundary: expect.stringContaining("does-not-convert-an-approval-candidate-into-approval"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -2435,6 +2478,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "human-design-approval-v1-block",
       method: "design.humanDesignApproval.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-baseline-v1-block",
+      method: "design.designBaseline.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

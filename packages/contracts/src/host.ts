@@ -69,6 +69,7 @@ import { designerReadyGateInputSchema } from "./designer-ready-gate.js"
 import { designDeltaInputSchema } from "./design-delta.js"
 import { designConflictResolutionInputSchema } from "./design-conflict-resolution.js"
 import { humanDesignApprovalInputSchema } from "./human-design-approval.js"
+import { designBaselineInputSchema } from "./design-baseline.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -773,6 +774,18 @@ export const hostHumanDesignApprovalReviseParamsSchema = z.object({
   record: humanDesignApprovalInputSchema,
 }).strict()
 
+export const hostDesignBaselineCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: designBaselineInputSchema,
+}).strict()
+
+export const hostDesignBaselineReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: designBaselineInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -1045,6 +1058,11 @@ export const hostMethodSchema = z.enum([
   "design.humanDesignApproval.revise",
   "design.humanDesignApproval.assess",
   "design.humanDesignApproval.snapshot",
+  "design.designBaseline.read",
+  "design.designBaseline.create",
+  "design.designBaseline.revise",
+  "design.designBaseline.assess",
+  "design.designBaseline.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1326,6 +1344,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.humanDesignApproval.revise", hostHumanDesignApprovalReviseParamsSchema),
   requestVariant("design.humanDesignApproval.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.humanDesignApproval.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designBaseline.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designBaseline.create", hostDesignBaselineCreateParamsSchema),
+  requestVariant("design.designBaseline.revise", hostDesignBaselineReviseParamsSchema),
+  requestVariant("design.designBaseline.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designBaseline.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({
