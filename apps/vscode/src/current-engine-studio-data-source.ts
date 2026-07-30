@@ -18,6 +18,7 @@ import type {
   DependencyMappingProjection,
   TechnologyProfileProjection,
   BoilerplateRegistryProjection,
+  BoilerplateSelectionBindingProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -219,6 +220,9 @@ export interface CurrentStudioEngineReader {
   boilerplateRegistry?: {
     project(initiativeId: string): Promise<BoilerplateRegistryProjection>
   }
+  boilerplateSelectionBinding?: {
+    project(initiativeId: string): Promise<BoilerplateSelectionBindingProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -398,6 +402,7 @@ interface ObservedStudioState {
   dependencyMappingProjections: Map<string, DependencyMappingProjection>
   technologyProfileProjections: Map<string, TechnologyProfileProjection>
   boilerplateRegistryProjections: Map<string, BoilerplateRegistryProjection>
+  boilerplateSelectionBindingProjections: Map<string, BoilerplateSelectionBindingProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3824,6 +3829,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     dependencyMappings: dependencyMappingTable(state),
     technologyProfiles: technologyProfileTable(state),
     boilerplateRegistries: boilerplateRegistryTable(state),
+    boilerplateSelectionBindings: boilerplateSelectionBindingTable(state),
   }
 }
 
@@ -4431,6 +4437,61 @@ function boilerplateRegistryTable(state: ObservedStudioState): StudioTableSnapsh
       emptyState: emptySurface(
         "No governed Boilerplate Registry candidate",
         "Create the candidate through the governed engine workflow after exact Implementation Unit Model and Technology Profile candidates exist. This view does not infer organizational designation, endorsement, approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver, selection or binding, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function boilerplateSelectionBindingTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.boilerplateSelectionBindingProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        decisions: record.unitDecisionCatalogDigest,
+        selectionReceipt: record.selectionReceiptDigest,
+        bindingReceipt: record.bindingReceiptDigest,
+        assessmentReceipt: record.assessmentReceiptDigest,
+        coverage: `${status.decisionCount} decisions · ${status.selectedCandidateCount} selected · ${status.notApplicableCandidateCount} not applicable · ${status.deferredCandidateCount} deferred · ${status.notAssessedCount} not assessed`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        decisionGaps: `${status.missingUnitDecisionCount} missing unit decisions · ${status.invalidSelectionCount} invalid selections · ${status.registryGapCount} registry gaps · ${status.profileMismatchCount} profile mismatches · ${status.unitScopeMismatchCount} unit-scope mismatches · ${status.versionMismatchCount} version mismatches · ${status.missingEvidenceCount} missing evidence`,
+        staleGaps: `${status.staleBindingCount} stale bindings · ${status.staleImplementationUnitModelCount} stale Implementation Unit Models · ${status.staleDependencyMappingCount} stale Dependency Mappings · ${status.staleTechnologyProfileCount} stale Technology Profiles · ${status.staleBoilerplateRegistryCount} stale Boilerplate Registries · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+        boundary: "Candidate identities, counts, statuses, and unit-decision, selection, binding, assessment, and snapshot digests only; no boilerplate names, locators, versions, unit or profile identities, rationale, conditions, alternatives, deviations, evidence, decision roles, personal data, organizational designation, endorsement, approval, support commitment, effective selection or binding, compatibility truth, completeness, or validation, licensing or security approval, exception or waiver, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "boilerplate-selection-binding",
+    title: "Governed Boilerplate Selection and Binding Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "decisions", label: "Unit decision catalog digest" },
+      { key: "selectionReceipt", label: "Selection receipt" },
+      { key: "bindingReceipt", label: "Binding receipt" },
+      { key: "assessmentReceipt", label: "Assessment receipt" },
+      { key: "coverage", label: "Privacy-safe decision coverage" },
+      { key: "assessment", label: "Candidate assessment" },
+      { key: "decisionGaps", label: "Candidate decision gaps" },
+      { key: "staleGaps", label: "Candidate freshness gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Boilerplate Selection and Binding candidate",
+        "Create the candidate through the governed engine workflow after exact Implementation Unit Model, Dependency Mapping, Technology Profile, and Boilerplate Registry candidates exist. This view does not infer organizational designation, endorsement, approval, support commitment, effective selection or binding, compatibility truth, completeness, or validation, licensing or security approval, exception or waiver, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
       ),
     } : {}),
   }
@@ -6280,6 +6341,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       dependencyMappingProjections: new Map(),
       technologyProfileProjections: new Map(),
       boilerplateRegistryProjections: new Map(),
+      boilerplateSelectionBindingProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -7016,6 +7078,67 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "boilerplate-registry-unavailable",
           "Boilerplate Registry metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.boilerplateSelectionBinding) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.boilerplateSelectionBinding!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            const units = empty.implementationUnitModelProjections.get(initiative.id)?.candidate
+            const dependencyMapping = empty.dependencyMappingProjections.get(initiative.id)?.candidate
+            const technologyProfile = empty.technologyProfileProjections.get(initiative.id)?.candidate
+            const boilerplateRegistry = empty.boilerplateRegistryProjections.get(initiative.id)?.candidate
+            const candidate = projection.value.candidate
+            const exactDependencies = !candidate || (
+              units !== undefined && projection.value.status.implementationUnitModel?.recordId === units.id &&
+              projection.value.status.implementationUnitModel.revision === units.revision &&
+              projection.value.status.implementationUnitModel.digest === units.digest &&
+              dependencyMapping !== undefined && projection.value.status.dependencyMapping?.recordId === dependencyMapping.id &&
+              projection.value.status.dependencyMapping.revision === dependencyMapping.revision &&
+              projection.value.status.dependencyMapping.digest === dependencyMapping.digest &&
+              technologyProfile !== undefined && projection.value.status.technologyProfile?.recordId === technologyProfile.id &&
+              projection.value.status.technologyProfile.revision === technologyProfile.revision &&
+              projection.value.status.technologyProfile.digest === technologyProfile.digest &&
+              boilerplateRegistry !== undefined && projection.value.status.boilerplateRegistry?.recordId === boilerplateRegistry.id &&
+              projection.value.status.boilerplateRegistry.revision === boilerplateRegistry.revision &&
+              projection.value.status.boilerplateRegistry.digest === boilerplateRegistry.digest
+            )
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              exactDependencies && snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.boilerplateSelectionBindingProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Boilerplate Selection and Binding projection was unavailable or did not bind exact Product, Initiative, Implementation Unit Model, Dependency Mapping, Technology Profile, and Boilerplate Registry revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `boilerplate-selection-binding-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Boilerplate Selection and Binding metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "boilerplate-selection-binding-unavailable",
+          "Boilerplate Selection and Binding metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

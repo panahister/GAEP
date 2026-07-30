@@ -57,6 +57,7 @@ import {
   type DependencyMappingProjection,
   type TechnologyProfileProjection,
   type BoilerplateRegistryProjection,
+  type BoilerplateSelectionBindingProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -2639,6 +2640,80 @@ function boilerplateRegistryProjection(
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function boilerplateSelectionBindingProjection(
+  units = implementationUnitModelProjection(),
+  dependencyMapping = dependencyMappingProjection(undefined, undefined, undefined, undefined, undefined, undefined, units),
+  technologyProfile = technologyProfileProjection(units, dependencyMapping),
+  boilerplateRegistry = boilerplateRegistryProjection(units, technologyProfile),
+): BoilerplateSelectionBindingProjection {
+  const exactUnits = units.candidate!
+  const exactDependencyMapping = dependencyMapping.candidate!
+  const exactTechnologyProfile = technologyProfile.candidate!
+  const exactBoilerplateRegistry = boilerplateRegistry.candidate!
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "boilerplate-selection-binding-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "afafafaf-afaf-4faf-8faf-afafafafafaf", revision: 2, digest: `sha256:${"8".repeat(64)}` as const },
+    implementationUnitModel: { recordId: exactUnits.id, revision: exactUnits.revision, digest: exactUnits.digest },
+    dependencyMapping: { recordId: exactDependencyMapping.id, revision: exactDependencyMapping.revision, digest: exactDependencyMapping.digest },
+    technologyProfile: { recordId: exactTechnologyProfile.id, revision: exactTechnologyProfile.revision, digest: exactTechnologyProfile.digest },
+    boilerplateRegistry: { recordId: exactBoilerplateRegistry.id, revision: exactBoilerplateRegistry.revision, digest: exactBoilerplateRegistry.digest },
+    decisionCount: 4,
+    selectedCandidateCount: 2,
+    notApplicableCandidateCount: 1,
+    deferredCandidateCount: 1,
+    notAssessedCount: 0,
+    missingUnitDecisionCount: 1,
+    invalidSelectionCount: 1,
+    registryGapCount: 1,
+    profileMismatchCount: 1,
+    unitScopeMismatchCount: 1,
+    versionMismatchCount: 1,
+    missingEvidenceCount: 1,
+    staleBindingCount: 0,
+    staleImplementationUnitModelCount: 0,
+    staleDependencyMappingCount: 0,
+    staleTechnologyProfileCount: 0,
+    staleBoilerplateRegistryCount: 0,
+    invalidCandidateCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more Boilerplate Selection and Binding decisions require human review"],
+    assessedAt: "2026-07-30T18:00:00.000Z",
+    authorityBoundary: "boilerplate-selection-binding-status-is-observational-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-selection-decision-effectiveness-binding-effectiveness-compatibility-truth-or-completeness-or-validation-licensing-or-security-approval-exception-waiver-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "boilerplate-selection-binding-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      state: "candidate" as const,
+      unitDecisionCatalogDigest: `sha256:${"9".repeat(64)}` as const,
+      selectionReceiptDigest: `sha256:${"a".repeat(64)}` as const,
+      bindingReceiptDigest: `sha256:${"b".repeat(64)}` as const,
+      assessmentReceiptDigest: `sha256:${"c".repeat(64)}` as const,
+      decisionCount: 4,
+      selectedCandidateCount: 2,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-30T17:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-unit-decision-selection-binding-assessment-snapshot-digests-only-not-boilerplate-names-locators-versions-unit-or-profile-identities-rationale-conditions-alternatives-deviations-evidence-decision-roles-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "boilerplate-selection-binding-projection-is-read-only-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-selection-decision-effectiveness-binding-effectiveness-compatibility-truth-or-completeness-or-validation-licensing-or-security-approval-exception-waiver-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -4436,6 +4511,7 @@ interface HarnessOptions {
   dependencyMappingProjection?: DependencyMappingProjection
   technologyProfileProjection?: TechnologyProfileProjection
   boilerplateRegistryProjection?: BoilerplateRegistryProjection
+  boilerplateSelectionBindingProjection?: BoilerplateSelectionBindingProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -4636,6 +4712,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.boilerplateRegistryProjection ? {
       boilerplateRegistry: {
         project: async () => options.boilerplateRegistryProjection!,
+      },
+    } : {}),
+    ...(options.boilerplateSelectionBindingProjection ? {
+      boilerplateSelectionBinding: {
+        project: async () => options.boilerplateSelectionBindingProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -5540,6 +5621,58 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private boilerplate|private locator|private version|private capability|private limitation|private license|private security policy|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects exact privacy-safe Boilerplate Selection and Binding metadata without effective selection or binding authority", async () => {
+    const hierarchy = backlogHierarchyProjection()
+    const mvp = mvpSliceDefinitionProjection(hierarchy)
+    const priority = prioritizationModelProjection(mvp)
+    const criteria = acceptanceCriteriaProjection(hierarchy, mvp, priority)
+    const ready = definitionOfReadyProjection(hierarchy, mvp, priority, criteria)
+    const done = definitionOfDoneProjection(hierarchy, mvp, priority, criteria, ready)
+    const units = implementationUnitModelProjection(hierarchy, mvp, priority, criteria, ready, done)
+    const dependencyMapping = dependencyMappingProjection(hierarchy, mvp, priority, criteria, ready, done, units)
+    const technologyProfile = technologyProfileProjection(units, dependencyMapping)
+    const boilerplateRegistry = boilerplateRegistryProjection(units, technologyProfile)
+    const projection = boilerplateSelectionBindingProjection(units, dependencyMapping, technologyProfile, boilerplateRegistry)
+    const { source } = harness({
+      backlogHierarchyProjection: hierarchy,
+      mvpSliceDefinitionProjection: mvp,
+      prioritizationModelProjection: priority,
+      acceptanceCriteriaProjection: criteria,
+      definitionOfReadyProjection: ready,
+      definitionOfDoneProjection: done,
+      implementationUnitModelProjection: units,
+      dependencyMappingProjection: dependencyMapping,
+      technologyProfileProjection: technologyProfile,
+      boilerplateRegistryProjection: boilerplateRegistry,
+      boilerplateSelectionBindingProjection: projection,
+    })
+    const snapshot = await source.readSnapshot("delivery")
+
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.kind === "delivery" && snapshot.page.boilerplateSelectionBindings).toMatchObject({
+      id: "boilerplate-selection-binding",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          decisions: projection.candidate?.unitDecisionCatalogDigest,
+          selectionReceipt: projection.candidate?.selectionReceiptDigest,
+          bindingReceipt: projection.candidate?.bindingReceiptDigest,
+          assessmentReceipt: projection.candidate?.assessmentReceiptDigest,
+          coverage: "4 decisions · 2 selected · 1 not applicable · 1 deferred · 0 not assessed",
+          assessment: "attention-required · held",
+          decisionGaps: "1 missing unit decisions · 1 invalid selections · 1 registry gaps · 1 profile mismatches · 1 unit-scope mismatches · 1 version mismatches · 1 missing evidence",
+          staleGaps: "0 stale bindings · 0 stale Implementation Unit Models · 0 stale Dependency Mappings · 0 stale Technology Profiles · 0 stale Boilerplate Registries · 1 invalid candidates · 2 questions",
+          boundary: expect.stringContaining("no boilerplate names, locators, versions, unit or profile identities"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private boilerplate|private locator|private version|private unit|private profile|private rationale|private decision role|customer@example\.com|api_key/iu,
     )
   })
 
