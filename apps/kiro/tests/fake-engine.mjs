@@ -61,6 +61,7 @@ const mvpSliceDefinitionId = "82828282-8282-4282-8282-828282828282"
 const prioritizationModelId = "83838383-8383-4383-8383-838383838383"
 const acceptanceCriteriaId = "84848484-8484-4484-8484-848484848484"
 const definitionOfReadyId = "85858585-8585-4585-8585-858585858585"
+const definitionOfDoneId = "86868686-8686-4686-8686-868686868686"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -181,6 +182,8 @@ input.on("line", (line) => {
       return readAcceptanceCriteria(id, request.params)
     case "planning.definitionOfReady.snapshot":
       return readDefinitionOfReady(id, request.params)
+    case "planning.definitionOfDone.snapshot":
+      return readDefinitionOfDone(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -2493,6 +2496,88 @@ function readDefinitionOfReady(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-definition-of-ready-snapshot-digest")) value.candidate.evaluationCount = 19
   if (workspacePath.endsWith("bad-definition-of-ready-snapshot-private")) {
+    value.rationale = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readDefinitionOfDone(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DEFINITION OF DONE PARAMS")
+  }
+  const candidateDigest = `sha256:${"e".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "definition-of-done-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: definitionOfDoneId, revision: 2, digest: candidateDigest },
+    hierarchy: { recordId: backlogHierarchyId, revision: 2, digest: `sha256:${"8".repeat(64)}` },
+    mvpSliceDefinition: { recordId: mvpSliceDefinitionId, revision: 2, digest: `sha256:${"a".repeat(64)}` },
+    prioritizationModel: { recordId: prioritizationModelId, revision: 2, digest: `sha256:${"c".repeat(64)}` },
+    acceptanceCriteria: { recordId: acceptanceCriteriaId, revision: 2, digest: `sha256:${"4".repeat(64)}` },
+    definitionOfReady: { recordId: definitionOfReadyId, revision: 2, digest: `sha256:${"9".repeat(64)}` },
+    subjectCount: 4,
+    policyEntryCount: 6,
+    expectedEvaluationCount: 24,
+    evaluationCount: 21,
+    candidateSatisfiedCount: 14,
+    notSatisfiedCount: 2,
+    notApplicableCount: 3,
+    exceptionCandidateCount: 1,
+    notAssessedCount: 1,
+    staleEvaluationCount: 1,
+    invalidEvaluationCount: 2,
+    missingEvaluationCount: 3,
+    staleBindingCount: 0,
+    staleHierarchyCount: 0,
+    staleMvpSliceDefinitionCount: 0,
+    stalePrioritizationModelCount: 0,
+    staleAcceptanceCriteriaCount: 0,
+    staleDefinitionOfReadyCount: 0,
+    expiredCount: 0,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    result: "attention-required",
+    reasons: ["One or more completion prerequisites require review"],
+    assessedAt: "2026-07-30T14:20:00.000Z",
+    gateBoundary: "a-passing-definition-of-done-candidate-is-an-evaluation-result-not-completion-acceptance-approval-merge-release-deployment-or-action-permission",
+    authorityBoundary: "definition-of-done-status-is-observational-and-does-not-establish-evidence-truth-test-success-quality-requirement-satisfaction-acceptance-criteria-satisfaction-approval-ready-done-exception-waiver-authority-implementation-completeness-merge-readiness-release-readiness-deployment-readiness-assignment-execution-acceptance-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "definition-of-done-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: definitionOfDoneId,
+      revision: 2,
+      digest: candidateDigest,
+      state: "candidate",
+      policyVersion: 4,
+      validUntil: "2026-08-30T14:19:00.000Z",
+      subjectCatalogDigest: `sha256:${"1".repeat(64)}`,
+      policyDigest: `sha256:${"2".repeat(64)}`,
+      evaluationDigest: `sha256:${"3".repeat(64)}`,
+      receiptDigest: `sha256:${"4".repeat(64)}`,
+      subjectCount: 4,
+      policyEntryCount: 6,
+      evaluationCount: 21,
+      reviewState: "held",
+      updatedAt: "2026-07-30T14:19:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-policy-evaluation-receipt-snapshot-digests-only-not-rules-rationales-evidence-identities-assessor-identities-personal-data-secrets-credentials-or-machine-paths",
+    gateBoundary: "a-passing-definition-of-done-candidate-is-an-evaluation-result-not-completion-acceptance-approval-merge-release-deployment-or-action-permission",
+    authorityBoundary: "definition-of-done-projection-is-read-only-and-does-not-establish-evidence-truth-test-success-quality-requirement-satisfaction-acceptance-criteria-satisfaction-approval-ready-done-exception-waiver-authority-implementation-completeness-merge-readiness-release-readiness-deployment-readiness-assignment-execution-acceptance-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-definition-of-done-snapshot-binding")) content.initiative.id = definitionOfDoneId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-definition-of-done-snapshot-digest")) value.candidate.evaluationCount = 22
+  if (workspacePath.endsWith("bad-definition-of-done-snapshot-private")) {
     value.rationale = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)

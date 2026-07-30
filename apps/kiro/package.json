@@ -87,6 +87,7 @@
     "onCommand:gaepKiro.prioritizationModel.inspect",
     "onCommand:gaepKiro.acceptanceCriteria.inspect",
     "onCommand:gaepKiro.definitionOfReady.inspect",
+    "onCommand:gaepKiro.definitionOfDone.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -329,6 +330,10 @@
       {
         "command": "gaepKiro.definitionOfReady.inspect",
         "title": "GAEP for Kiro: Inspect Governed Definition of Ready Candidate"
+      },
+      {
+        "command": "gaepKiro.definitionOfDone.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Definition of Done Candidate"
       },
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",

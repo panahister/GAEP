@@ -35,6 +35,7 @@ import {
   type PrioritizationModelProjection,
   type AcceptanceCriteriaProjection,
   type DefinitionOfReadyProjection,
+  type DefinitionOfDoneProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -162,6 +163,7 @@ const commandIds = {
   prioritizationModel: "gaepKiro.prioritizationModel.inspect",
   acceptanceCriteria: "gaepKiro.acceptanceCriteria.inspect",
   definitionOfReady: "gaepKiro.definitionOfReady.inspect",
+  definitionOfDone: "gaepKiro.definitionOfDone.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -306,6 +308,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.prioritizationModel, (input?: unknown) => runUserCommand(() => showPrioritizationModel(pool, input))),
     vscode.commands.registerCommand(commandIds.acceptanceCriteria, (input?: unknown) => runUserCommand(() => showAcceptanceCriteria(pool, input))),
     vscode.commands.registerCommand(commandIds.definitionOfReady, (input?: unknown) => runUserCommand(() => showDefinitionOfReady(pool, input))),
+    vscode.commands.registerCommand(commandIds.definitionOfDone, (input?: unknown) => runUserCommand(() => showDefinitionOfDone(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -1952,6 +1955,51 @@ async function showDefinitionOfReady(
     ] : []),
     "",
     "Candidate identities, counts, statuses, validity time, and subject, policy, evaluation, receipt, and snapshot digests only; no rules, rationales, evidence identities, assessor identities, or personal data. A candidate pass is an evaluation result, not admission, readiness, assignment, execution, implementation permission, exception or waiver authority, phase entry, acceptance, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Gate boundary: ${projection.gateBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDefinitionOfDone(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DefinitionOfDoneProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Definition of Done inspection", "Initiative ID")
+  const projection = await client.readDefinitionOfDone(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Definition of Done candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.result} · review state: ${status.reviewState}`,
+    `Coverage: ${status.subjectCount} subjects · ${status.policyEntryCount} prerequisites · ${status.evaluationCount}/${status.expectedEvaluationCount} evaluations · ${status.missingEvaluationCount} missing`,
+    `Evaluation states: ${status.candidateSatisfiedCount} candidate-satisfied · ${status.notApplicableCount} not-applicable candidates · ${status.notSatisfiedCount} not satisfied · ${status.exceptionCandidateCount} exception candidates · ${status.notAssessedCount} unassessed · ${status.staleEvaluationCount} stale · ${status.invalidEvaluationCount} invalid`,
+    `Candidate gaps: ${status.unresolvedQuestionCount} questions · ${status.expiredCount} expired · ${status.staleBindingCount} stale bindings · ${status.staleHierarchyCount} stale hierarchies · ${status.staleMvpSliceDefinitionCount} stale MVP definitions · ${status.stalePrioritizationModelCount} stale prioritization models · ${status.staleAcceptanceCriteriaCount} stale Acceptance Criteria · ${status.staleDefinitionOfReadyCount} stale Definition of Ready`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Policy version: ${record.policyVersion} · valid until ${record.validUntil}`,
+      `Subject catalog digest: ${record.subjectCatalogDigest}`,
+      `Policy digest: ${record.policyDigest}`,
+      `Evaluation digest: ${record.evaluationDigest}`,
+      `Receipt digest: ${record.receiptDigest}`,
+      `Candidate coverage: ${record.subjectCount} subjects · ${record.policyEntryCount} prerequisites · ${record.evaluationCount} evaluations · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, validity time, and subject, policy, evaluation, receipt, and snapshot digests only; no rules, rationales, evidence identities, assessor identities, or personal data. A candidate pass is an evaluation result, not completion, acceptance, approval, exception or waiver authority, implementation completeness, merge, release or deployment readiness, assignment, execution, or action permission.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Gate boundary: ${projection.gateBoundary}`,

@@ -60,6 +60,7 @@ const commands = [
   "gaepKiro.prioritizationModel.inspect",
   "gaepKiro.acceptanceCriteria.inspect",
   "gaepKiro.definitionOfReady.inspect",
+  "gaepKiro.definitionOfDone.inspect",
   "gaepKiro.designSystemTokenContract.inspect",
   "gaepKiro.accessibilityDesignRules.inspect",
   "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -235,7 +236,7 @@ async function run() {
   const finalStoreManifest = await inspectPortableStore(path.join(workspace, ".gaep"))
   assert.deepEqual(finalStoreManifest, fixtureStoreManifest)
   process.stdout.write("PASS installed compatible-host provider/model/Phase 1 and Phase 2 dashboard smoke: two bounded capability rows, exact Initiative scope, 23-of-23 UX/Figma attention state, integrated change/impact/execution truth, explicit no-authority boundaries, private-safe output, and immutable fixture store\n")
-  process.stdout.write(`PASS activation: seventy-two bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, provider/model/UX/Figma/integrated dashboards, governed Backlog Hierarchy, MVP/Vertical Slice, Prioritization Model, Acceptance Criteria, and Definition of Ready projections, empty audit-gated evidence workflow, and no workspace mutation\n`)
+  process.stdout.write(`PASS activation: seventy-three bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, provider/model/UX/Figma/integrated dashboards, governed Backlog Hierarchy, MVP/Vertical Slice, Prioritization Model, Acceptance Criteria, Definition of Ready, and Definition of Done projections, empty audit-gated evidence workflow, and no workspace mutation\n`)
 }
 
 function assertPrivateSafe(content, workspace, fixtureProductName) {
