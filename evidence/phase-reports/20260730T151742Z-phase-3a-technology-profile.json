@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-3a-delivery-planning",
+  "evidenceScope": "phase-3a-technology-profile-local",
+  "recordedAt": "2026-07-30T15:22:06Z",
+  "sourceCommit": "d84347a0c8c9047085c484d28382fb19a749b4bc",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 85,
+    "hostAssessments": 340,
+    "hostAssessmentsImplemented": 340,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:c60c30fc4552eecd3cf737e73c69f23813ff5222e3a57d42cfd88b1a43687345",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 232980,
+      "digest": "sha256:15a90081db58e6b5c3597dce29ddd0da0bebb6b2b014b4c58fc056675197f471",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260730T151300Z-phase-3a-technology-profile-packages.json",
+      "bytes": 3513,
+      "digest": "sha256:2abea51f8dba779818deadc846a57bf7b26f1197e6433d463c79ccfa019e552b",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260730T151229Z-phase-3a-technology-profile-host-behavior.json",
+      "bytes": 3575,
+      "digest": "sha256:80a4a68885c22eafdfbb821c849ac307254822a368535c3e43d7ed44d17b9de3",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260730T151300Z-phase-3a-technology-profile.json",
+      "bytes": 57475,
+      "digest": "sha256:7b0ce0b8a0e889330c17469a0a511be50ca6875d539d05058787bfd22ec5c59e",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
+      "bytes": 5234,
+      "digest": "sha256:f44e4a370357cf7738fbf691a49178cd3da20ff4d01e593e2af1565cfc1b71d7",
+      "kind": "gaep-phase2-realistic-figma-loop-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 113,
+        "testsPassed": 960,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:dc4f4210fe5bf9629eb6eafc5d106e03d8533c85648c1efad61568cc55a75103"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:8f2b51f16f71cfaf74e7b90667eb2edcfbd38e08a8a44e055e0305904332f101"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 26,
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:3aba3b94a63808baee3ab3a7c234c153b8bc62a2b2dbf9413d1237d55b450621"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:e18b841ef825857eb412f9ccdaedca530ba6856a0c47f4e6257bfa8d1000b231"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:fa464594e4641068d4708d6d18c30e42874935ebccaf90b934c40aa86278f30d"
+    }
+  ],
+  "testsDigest": "sha256:ed7709ce8c588ad6bf110f0dde1c456df19f37158b788ea11672e2a860df9335",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-3a-technology-profile-closure",
+      "state": "not-established",
+      "basis": "the exact versioned Technology Profile candidate lifecycle, complete current Implementation Unit profile coverage, bounded technology, runtime, framework, library, toolchain, platform, version and constraint selections, compatibility, provenance, support, licensing, security-policy and lifecycle evidence states, deterministic profile, selection, compatibility and assessment receipts, exact current Implementation Unit Model and Dependency Mapping bindings, immutable revisions, privacy-safe Product Studio table and four host projections are implemented locally; candidates do not establish technology approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, native-host interaction or Product Owner acceptance"
+    }
+  ],
+  "knownGapsDigest": "sha256:ee8767a703f9bd73b4ded422a3d3adb6ade3f8a8d760d0c6d4885011d0454669",
+  "claimBoundary": "This report binds the exact governed Technology Profile candidate lifecycle, immutable revision history, complete current Implementation Unit profile coverage, bounded technology, runtime, framework, library, toolchain, platform, version and constraint selections, compatibility, provenance, support, licensing, security-policy and lifecycle evidence states, deterministic profile, selection, compatibility and assessment receipts, exact current Product, Initiative, Implementation Unit Model and Dependency Mapping bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Technology Profiles remain governed candidates only. This report does not establish technology approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+}
