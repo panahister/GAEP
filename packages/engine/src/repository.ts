@@ -67,6 +67,7 @@ import {
   technologyProfileSchema,
   boilerplateRegistrySchema,
   boilerplateSelectionBindingSchema,
+  boilerplateCompatibilityValidationSchema,
   businessRuleCatalogSchema,
   businessUnderstandingSchema,
   changeSchema,
@@ -161,6 +162,8 @@ const directoryNames = [
   "boilerplate-registry-history",
   "boilerplate-selection-bindings",
   "boilerplate-selection-binding-history",
+  "boilerplate-compatibility-validations",
+  "boilerplate-compatibility-validation-history",
   "value-stream-models",
   "value-stream-model-history",
   "operating-models",
@@ -1036,6 +1039,8 @@ export class GaepRepository {
       ["boilerplate-registry-history", /^boilerplate-registry-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["boilerplate-selection-bindings", /^[0-9a-f-]+\.json$/i],
       ["boilerplate-selection-binding-history", /^boilerplate-selection-binding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["boilerplate-compatibility-validations", /^[0-9a-f-]+\.json$/i],
+      ["boilerplate-compatibility-validation-history", /^boilerplate-compatibility-validation-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["value-stream-models", /^[0-9a-f-]+\.json$/i],
       ["value-stream-model-history", /^value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["operating-models", /^[0-9a-f-]+\.json$/i],
@@ -1255,6 +1260,10 @@ export class GaepRepository {
     if (/^boilerplate-selection-bindings\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^boilerplate-selection-binding-history\/boilerplate-selection-binding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, boilerplateSelectionBindingSchema)
+    }
+    if (/^boilerplate-compatibility-validations\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^boilerplate-compatibility-validation-history\/boilerplate-compatibility-validation-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, boilerplateCompatibilityValidationSchema)
     }
     if (/^value-stream-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^value-stream-model-history\/value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

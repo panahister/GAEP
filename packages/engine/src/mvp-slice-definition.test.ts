@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type { AcceptanceCriteriaInput, BacklogHierarchyInput, BoilerplateRegistryInput, BoilerplateSelectionBindingInput, DefinitionOfDoneInput, DefinitionOfReadyInput, DependencyMappingInput, ImplementationUnitModelInput, MvpSliceDefinitionInput, PrioritizationModelInput, TechnologyProfileInput } from "@gaep/contracts"
+import { boilerplateCompatibilityDimensions, type AcceptanceCriteriaInput, type BacklogHierarchyInput, type BoilerplateCompatibilityValidationInput, type BoilerplateRegistryInput, type BoilerplateSelectionBindingInput, type DefinitionOfDoneInput, type DefinitionOfReadyInput, type DependencyMappingInput, type ImplementationUnitModelInput, type MvpSliceDefinitionInput, type PrioritizationModelInput, type TechnologyProfileInput } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -800,6 +800,92 @@ describe("MVP and Slice Definition engine", () => {
       licensingApprovalState: "not-established",
       securityApprovalState: "not-established",
       exceptionWaiverState: "not-established",
+      sourceRetrievalState: "not-established",
+      assetImportInstantiationState: "not-established",
+      architectureBaselineDesignationState: "not-established",
+      implementationReadinessState: "not-established",
+      implementationCompletenessState: "not-established",
+      assignmentExecutionState: "not-established",
+      acceptanceDecisionState: "not-established",
+      mergeReadinessState: "not-established",
+      releaseReadinessState: "not-established",
+      deploymentReadinessState: "not-established",
+      actionAuthorityState: "not-granted",
+    }
+  }
+
+  function boilerplateCompatibilityValidationInput(
+    initiativeId: string,
+    context: MvpSliceDefinitionInput["context"],
+    units: Awaited<ReturnType<typeof engine.implementationUnitModel.create>>,
+    dependencyMapping: Awaited<ReturnType<typeof engine.dependencyMapping.create>>,
+    technologyProfile: Awaited<ReturnType<typeof engine.technologyProfile.create>>,
+    boilerplateRegistry: Awaited<ReturnType<typeof engine.boilerplateRegistry.create>>,
+    boilerplateSelectionBinding: Awaited<ReturnType<typeof engine.boilerplateSelectionBinding.create>>,
+  ): BoilerplateCompatibilityValidationInput {
+    return {
+      initiativeId,
+      context,
+      informationClassification: "internal",
+      title: "Atlas candidate boilerplate compatibility validation",
+      implementationUnitModel: { recordId: units.id, revision: units.revision, digest: canonicalDigest(units) },
+      dependencyMapping: {
+        recordId: dependencyMapping.id, revision: dependencyMapping.revision,
+        digest: canonicalDigest(dependencyMapping),
+      },
+      technologyProfile: {
+        recordId: technologyProfile.id, revision: technologyProfile.revision,
+        digest: canonicalDigest(technologyProfile),
+      },
+      boilerplateRegistry: {
+        recordId: boilerplateRegistry.id, revision: boilerplateRegistry.revision,
+        digest: canonicalDigest(boilerplateRegistry),
+      },
+      boilerplateSelectionBinding: {
+        recordId: boilerplateSelectionBinding.id, revision: boilerplateSelectionBinding.revision,
+        digest: canonicalDigest(boilerplateSelectionBinding),
+      },
+      subjects: boilerplateSelectionBinding.decisions
+        .filter((decision) => decision.disposition === "candidate-selected")
+        .map((decision, subjectIndex) => ({
+          id: randomUUID(), ordinal: subjectIndex + 1, bindingDecisionId: decision.id,
+          implementationUnitId: decision.implementationUnitId,
+          technologyProfileId: decision.technologyProfileId,
+          boilerplateRegistryEntryId: decision.boilerplateRegistryEntryId!,
+          boilerplateVersionCandidate: decision.boilerplateVersionCandidate!,
+          outcome: "candidate-compatible" as const,
+          dimensionAssessments: boilerplateCompatibilityDimensions.map((dimension, dimensionIndex) => ({
+            id: randomUUID(), ordinal: dimensionIndex + 1, dimension,
+            outcome: "candidate-compatible" as const,
+            claim: `The ${dimension} dimension is an evidence-backed compatibility candidate only`,
+            evidenceReferences: [{
+              kind: dimension === "security-privacy" ? "security-privacy" as const : "evidence" as const,
+              sourceId: `${decision.id}-${dimension}-candidate-evidence`,
+              revision: 1,
+              digest: canonicalDigest({ decisionId: decision.id, dimension, subjectIndex, context }),
+              evidenceState: "observed-not-validated" as const,
+            }],
+            exceptionReferenceCandidates: [],
+            assessedBy: { kind: "human" as const, id: "compatibility-reviewer" },
+            assessedAt: "2026-07-30T00:00:00.000Z",
+            compatibilityTruthState: "not-established" as const,
+            approvalState: "not-established" as const,
+            exceptionWaiverState: "not-established" as const,
+          })),
+        })),
+      unresolvedQuestions: [],
+      limitations: ["Candidate validation does not establish actual asset behavior or compatibility truth"],
+      reviewState: "ready-for-human-review",
+      compatibilityTruthState: "not-established",
+      compatibilityCompletenessState: "not-established",
+      validationDecisionState: "not-established",
+      actualAssetBehaviorState: "not-established",
+      testExecutionState: "not-established",
+      designValidityState: "not-established",
+      securityPrivacyApprovalState: "not-established",
+      licensingApprovalState: "not-established",
+      exceptionWaiverState: "not-established",
+      selectionBindingEffectivenessState: "not-established",
       sourceRetrievalState: "not-established",
       assetImportInstantiationState: "not-established",
       architectureBaselineDesignationState: "not-established",
@@ -1767,5 +1853,130 @@ describe("MVP and Slice Definition engine", () => {
         boilerplateVersionCandidate: bindingInput.decisions[1]!.boilerplateVersionCandidate,
       } : decision),
     }, actorId)).rejects.toThrow(/exact registry entry and version scope/u)
+  })
+
+  it("persists, revises, assesses, and privately projects exact Boilerplate Compatibility Validation candidates", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteria = await engine.acceptanceCriteria.create(acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority), actorId)
+    const ready = await engine.definitionOfReady.create(definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria), actorId)
+    const done = await engine.definitionOfDone.create(definitionOfDoneInput(initiative.id, input.context, hierarchy, mvp, priority, criteria, ready), actorId)
+    const units = await engine.implementationUnitModel.create(implementationUnitModelInput(initiative.id, input.context, hierarchy, mvp, criteria, ready, done), actorId)
+    const mapping = await engine.dependencyMapping.create(dependencyMappingInput(initiative.id, input.context, hierarchy, mvp, units), actorId)
+    const technologyProfile = await engine.technologyProfile.create(technologyProfileInput(initiative.id, input.context, units, mapping), actorId)
+    const registry = await engine.boilerplateRegistry.create(boilerplateRegistryInput(initiative.id, input.context, units, technologyProfile), actorId)
+    const bindingInput = boilerplateSelectionBindingInput(initiative.id, input.context, units, mapping, technologyProfile, registry)
+    const binding = await engine.boilerplateSelectionBinding.create(bindingInput, actorId)
+    const validationInput = boilerplateCompatibilityValidationInput(
+      initiative.id, input.context, units, mapping, technologyProfile, registry, binding,
+    )
+    const created = await engine.boilerplateCompatibilityValidation.create(validationInput, actorId)
+    const revised = await engine.boilerplateCompatibilityValidation.revise(created.id, created.revision, {
+      ...validationInput, title: "Atlas reviewed candidate boilerplate compatibility validation",
+    }, actorId)
+    expect(revised).toMatchObject({ revision: 2, predecessorDigest: canonicalDigest(created) })
+    expect((await engine.boilerplateCompatibilityValidation.listHistory(created.id)).map((record) => record.revision))
+      .toEqual([2, 1])
+    expect((await engine.boilerplateCompatibilityValidation.readRevision(created.id, 1)).title)
+      .toBe(validationInput.title)
+
+    const status = await engine.boilerplateCompatibilityValidation.assess(initiative.id)
+    expect(status).toMatchObject({
+      state: "candidate-complete", selectedBindingCount: 2, subjectCount: 2,
+      compatibleCandidateCount: 2, incompatibleCandidateCount: 0, exceptionCandidateCount: 0,
+      notAssessedCount: 0, dimensionAssessmentCount: 28, missingSubjectCount: 0,
+      invalidSubjectCount: 0, missingDimensionCount: 0, missingEvidenceCount: 0,
+      expiredAssessmentCount: 0, conflictingOutcomeCount: 0, selectionBindingGapCount: 0,
+      staleImplementationUnitModelCount: 0, staleDependencyMappingCount: 0,
+      staleTechnologyProfileCount: 0, staleBoilerplateRegistryCount: 0,
+      staleSelectionBindingCount: 0, invalidCandidateCount: 0,
+    })
+    const projection = await engine.boilerplateCompatibilityValidation.project(initiative.id)
+    expect(projection.candidate).toMatchObject({
+      id: revised.id, revision: 2, subjectCount: 2, compatibleCandidateCount: 2,
+      dimensionAssessmentCount: 28,
+    })
+    expect(projection.snapshotDigest).toMatch(/^sha256:[0-9a-f]{64}$/u)
+    const serialized = JSON.stringify(projection)
+    expect(serialized).not.toContain(validationInput.title)
+    expect(serialized).not.toContain(validationInput.subjects[0]!.bindingDecisionId)
+    expect(serialized).not.toContain(validationInput.subjects[0]!.implementationUnitId)
+    expect(serialized).not.toContain(validationInput.subjects[0]!.boilerplateRegistryEntryId)
+    expect(serialized).not.toContain(validationInput.subjects[0]!.dimensionAssessments[0]!.claim)
+    expect(serialized).not.toContain("compatibility-reviewer")
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    const event = events.findLast((entry) => entry.eventType === "boilerplate-compatibility-validation.revised")
+    expect(event?.payload).toMatchObject({
+      revision: 2, subjectCount: 2, compatibleCandidateCount: 2, incompatibleCandidateCount: 0,
+      exceptionCandidateCount: 0, notAssessedCount: 0, dimensionAssessmentCount: 28,
+      compatibilityTruthState: "not-established", compatibilityCompletenessState: "not-established",
+      validationDecisionState: "not-established", actualAssetBehaviorState: "not-established",
+      testExecutionState: "not-established", designValidityState: "not-established",
+      securityPrivacyApprovalState: "not-established", licensingApprovalState: "not-established",
+      exceptionWaiverState: "not-established", selectionBindingEffectivenessState: "not-established",
+      sourceRetrievalState: "not-established", assetImportInstantiationState: "not-established",
+      architectureBaselineDesignationState: "not-established",
+      implementationReadinessState: "not-established", implementationCompletenessState: "not-established",
+      assignmentExecutionState: "not-established", acceptanceDecisionState: "not-established",
+      mergeReadinessState: "not-established", releaseReadinessState: "not-established",
+      deploymentReadinessState: "not-established", actionAuthorityState: "not-granted",
+    })
+    expect(JSON.stringify(event)).not.toContain(validationInput.title)
+    expect(JSON.stringify(event)).not.toContain(validationInput.subjects[0]!.dimensionAssessments[0]!.claim)
+    expect((await engine.repository.verifyAudit()).valid).toBe(true)
+
+    await engine.boilerplateSelectionBinding.revise(binding.id, binding.revision, {
+      ...bindingInput, title: "Superseding Atlas candidate boilerplate selection and binding",
+    }, actorId)
+    expect(await engine.boilerplateCompatibilityValidation.assess(initiative.id)).toMatchObject({
+      state: "attention-required", staleSelectionBindingCount: 1,
+    })
+    expect(await engine.boilerplateCompatibilityValidation.healthIssues()).toEqual([
+      expect.objectContaining({ code: "boilerplate-compatibility-validation.review-required", severity: "warning" }),
+    ])
+    expect((await engine.workspaceHealth()).issues).toContainEqual(expect.objectContaining({
+      code: "boilerplate-compatibility-validation.review-required", severity: "warning",
+    }))
+  })
+
+  it("fails closed when review-ready Boilerplate Compatibility Validation omits a selected binding or uses stale evidence", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteria = await engine.acceptanceCriteria.create(acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority), actorId)
+    const ready = await engine.definitionOfReady.create(definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria), actorId)
+    const done = await engine.definitionOfDone.create(definitionOfDoneInput(initiative.id, input.context, hierarchy, mvp, priority, criteria, ready), actorId)
+    const units = await engine.implementationUnitModel.create(implementationUnitModelInput(initiative.id, input.context, hierarchy, mvp, criteria, ready, done), actorId)
+    const mapping = await engine.dependencyMapping.create(dependencyMappingInput(initiative.id, input.context, hierarchy, mvp, units), actorId)
+    const technologyProfile = await engine.technologyProfile.create(technologyProfileInput(initiative.id, input.context, units, mapping), actorId)
+    const registry = await engine.boilerplateRegistry.create(boilerplateRegistryInput(initiative.id, input.context, units, technologyProfile), actorId)
+    const binding = await engine.boilerplateSelectionBinding.create(
+      boilerplateSelectionBindingInput(initiative.id, input.context, units, mapping, technologyProfile, registry),
+      actorId,
+    )
+    const validationInput = boilerplateCompatibilityValidationInput(
+      initiative.id, input.context, units, mapping, technologyProfile, registry, binding,
+    )
+    await expect(engine.boilerplateCompatibilityValidation.create({
+      ...validationInput, subjects: validationInput.subjects.slice(0, 1),
+    }, actorId)).rejects.toThrow(/every selected boilerplate binding/u)
+    await expect(engine.boilerplateCompatibilityValidation.create({
+      ...validationInput,
+      subjects: validationInput.subjects.map((subject, index) => index === 0 ? {
+        ...subject, boilerplateVersionCandidate: "stale-version-candidate",
+      } : subject),
+    }, actorId)).rejects.toThrow(/mismatched/u)
+    await expect(engine.boilerplateCompatibilityValidation.create({
+      ...validationInput,
+      subjects: validationInput.subjects.map((subject, subjectIndex) => subjectIndex === 0 ? {
+        ...subject,
+        dimensionAssessments: subject.dimensionAssessments.map((assessment, dimensionIndex) => dimensionIndex === 0
+          ? { ...assessment, expiresAt: "2026-07-29T00:00:00.000Z" }
+          : assessment),
+      } : subject),
+    }, actorId)).rejects.toThrow(/non-expired/u)
   })
 })

@@ -133,6 +133,7 @@ describe("Boilerplate Compatibility Validation contracts", () => {
       dimensionAssessmentCount: boilerplateCompatibilityDimensions.length,
       missingSubjectCount: 0, invalidSubjectCount: 0, missingDimensionCount: 0,
       missingEvidenceCount: 0, expiredAssessmentCount: 0, conflictingOutcomeCount: 0,
+      selectionBindingGapCount: 0,
       staleBindingCount: 0, staleImplementationUnitModelCount: 0, staleDependencyMappingCount: 0,
       staleTechnologyProfileCount: 0, staleBoilerplateRegistryCount: 0,
       staleSelectionBindingCount: 0, invalidCandidateCount: 0, unresolvedQuestionCount: 0,

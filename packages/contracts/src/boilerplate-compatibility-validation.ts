@@ -264,6 +264,7 @@ export const boilerplateCompatibilityValidationStatusSchema = z.object({
   missingEvidenceCount: z.number().int().nonnegative().max(140_000),
   expiredAssessmentCount: z.number().int().nonnegative().max(140_000),
   conflictingOutcomeCount: z.number().int().nonnegative().max(10_000),
+  selectionBindingGapCount: z.number().int().nonnegative().max(1),
   staleBindingCount: z.number().int().nonnegative().max(1),
   staleImplementationUnitModelCount: z.number().int().nonnegative().max(1),
   staleDependencyMappingCount: z.number().int().nonnegative().max(1),
@@ -287,6 +288,7 @@ export const boilerplateCompatibilityValidationStatusSchema = z.object({
   }
   const gaps = status.missingSubjectCount + status.invalidSubjectCount + status.missingDimensionCount +
     status.missingEvidenceCount + status.expiredAssessmentCount + status.conflictingOutcomeCount +
+    status.selectionBindingGapCount +
     status.notAssessedCount + status.staleBindingCount + status.staleImplementationUnitModelCount +
     status.staleDependencyMappingCount + status.staleTechnologyProfileCount +
     status.staleBoilerplateRegistryCount + status.staleSelectionBindingCount +
