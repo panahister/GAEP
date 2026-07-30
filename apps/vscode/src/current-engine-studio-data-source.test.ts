@@ -42,6 +42,7 @@ import {
   type DesignToRequirementBindingProjection,
   type DesignerReadyGateProjection,
   type DesignDeltaProjection,
+  type DesignConflictResolutionProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2753,6 +2754,79 @@ function designDeltaProjection(): DesignDeltaProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function designConflictResolutionProjection(): DesignConflictResolutionProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "design-conflict-resolution-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "82828282-8282-4282-8282-828282828282", revision: 2, digest: `sha256:${"4".repeat(64)}` as const },
+    conflictCount: 5,
+    resolutionCount: 4,
+    acceptSourceCount: 1,
+    acceptTargetCount: 1,
+    mergeCount: 1,
+    rejectChangeCount: 0,
+    escalateCount: 1,
+    humanReviewedCount: 3,
+    distinctActorDeclaredCount: 2,
+    expiredCandidateCount: 1,
+    unresolvedConflictCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 2,
+    coverageState: "partial" as const,
+    provenanceState: "partial" as const,
+    candidateResult: "escalation-plan-candidate" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["The candidate records unresolved design conflicts"],
+    assessedAt: "2026-07-30T00:10:00.000Z",
+    authorityBoundary: "design-conflict-resolution-status-is-observational-and-does-not-enforce-separation-of-duties-resolve-conflicts-synchronize-design-establish-validity-approval-baseline-readiness-or-grant-implementation-write-import-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "design-conflict-resolution-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"5".repeat(64)}` as const,
+      state: "candidate" as const,
+      designDelta: {
+        recordId: "81818181-8181-4181-8181-818181818181",
+        revision: 2,
+        digest: `sha256:${"1".repeat(64)}` as const,
+        membershipDigest: `sha256:${"2".repeat(64)}` as const,
+        deltaCatalogDigest: `sha256:${"3".repeat(64)}` as const,
+        comparisonReceiptDigest: `sha256:${"4".repeat(64)}` as const,
+        conflictingCount: 5,
+        candidateResult: "conflict-candidate" as const,
+        reviewState: "ready-for-human-review" as const,
+      },
+      resolutionDefinitionDigest: `sha256:${"6".repeat(64)}` as const,
+      resolutionReceiptDigest: `sha256:${"7".repeat(64)}` as const,
+      resolutionCatalogDigest: `sha256:${"8".repeat(64)}` as const,
+      conflictCount: status.conflictCount,
+      resolutionCount: status.resolutionCount,
+      coverageState: status.coverageState,
+      provenanceState: status.provenanceState,
+      candidateResult: status.candidateResult,
+      reviewState: status.reviewState,
+      updatedAt: "2026-07-30T00:09:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-delta-content-resolution-content-evidence-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions" as const,
+    authorityBoundary: "design-conflict-resolution-projection-is-read-only-and-does-not-enforce-separation-of-duties-resolve-conflicts-synchronize-design-establish-validity-approval-baseline-readiness-or-grant-implementation-write-import-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -3418,6 +3492,8 @@ interface HarnessOptions {
   designerReadyGateProjection?: DesignerReadyGateProjection
   designDeltaProjection?: DesignDeltaProjection
   designDeltaProjectionError?: Error
+  designConflictResolutionProjection?: DesignConflictResolutionProjection
+  designConflictResolutionProjectionError?: Error
   commandResult?: unknown
 }
 
@@ -3715,6 +3791,14 @@ function harness(options: HarnessOptions = {}) {
         project: async () => {
           if (options.designDeltaProjectionError) throw options.designDeltaProjectionError
           return options.designDeltaProjection!
+        },
+      },
+    } : {}),
+    ...(options.designConflictResolutionProjection || options.designConflictResolutionProjectionError ? {
+      designConflictResolution: {
+        project: async () => {
+          if (options.designConflictResolutionProjectionError) throw options.designConflictResolutionProjectionError
+          return options.designConflictResolutionProjection!
         },
       },
     } : {}),
@@ -4827,6 +4911,66 @@ describe("current-engine Product Studio data source", () => {
     expect(snapshot.page.kind === "readiness" && snapshot.page.designDeltas.rows).toEqual([])
     expect(snapshot.page.kind === "readiness" && snapshot.page.gaps).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "design-delta-unavailable", severity: "blocker" }),
+    ]))
+  })
+
+  it("projects privacy-safe Design Conflict Resolution metadata on the native readiness page", async () => {
+    const projection = designConflictResolutionProjection()
+    const { source } = harness({ designConflictResolutionProjection: projection })
+    const snapshot = await source.readSnapshot("readiness")
+    expect(snapshot.page.kind === "readiness" && snapshot.page.designConflictResolutions).toMatchObject({
+      id: "design-conflict-resolution",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          designDelta: `${projection.candidate?.designDelta.recordId} · r2 · 5 conflicts · catalog ${projection.candidate?.designDelta.deltaCatalogDigest}`,
+          evidence: `definition ${projection.candidate?.resolutionDefinitionDigest} · receipt ${projection.candidate?.resolutionReceiptDigest} · catalog ${projection.candidate?.resolutionCatalogDigest}`,
+          result: "escalation-plan-candidate · attention-required · held",
+          inventory: "5 conflicts · 4 resolution candidates",
+          actions: "1 accept source · 1 accept target · 1 merge · 0 reject change · 1 escalate",
+          review: "3/4 human-reviewed · 2 distinct-actor declarations · 1 expired",
+          governance: "coverage partial · provenance partial · separation of duties not enforced",
+          gaps: "1 unresolved conflicts · 2 questions · 1 stale bindings · 2 stale Source references",
+          boundary: expect.stringContaining("does not enforce separation of duties"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private design content|private delta content|private resolution content|private evidence content|private source content|private human attribution|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("fails closed when Design Conflict Resolution metadata is unavailable or binds a different exact Product", async () => {
+    const unavailable = harness({ designConflictResolutionProjectionError: new Error("private upstream failure") })
+    const unavailableSnapshot = await unavailable.source.readSnapshot("readiness")
+    expect(unavailableSnapshot.page.kind === "readiness" && unavailableSnapshot.page.designConflictResolutions.rows).toEqual([])
+    expect(unavailableSnapshot.page.kind === "readiness" && unavailableSnapshot.page.gaps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: `design-conflict-resolution-${initiative.id}-unavailable`, severity: "warning" }),
+    ]))
+    expect(unavailable.diagnostics.join(" ")).not.toContain("private upstream failure")
+
+    const projection = designConflictResolutionProjection()
+    const body = { ...projection, product: { ...projection.product, digest: `sha256:${"a".repeat(64)}` as const } }
+    const mismatched = harness({ designConflictResolutionProjection: { ...body, snapshotDigest: canonicalDigest(body) } })
+    const mismatchedSnapshot = await mismatched.source.readSnapshot("readiness")
+    expect(mismatchedSnapshot.page.kind === "readiness" && mismatchedSnapshot.page.designConflictResolutions.rows).toEqual([])
+    expect(mismatched.diagnostics).toEqual(expect.arrayContaining([
+      expect.stringContaining("did not bind the exact Product and Initiative revisions"),
+    ]))
+  })
+
+  it("withholds Design Conflict Resolution metadata when the audit chain is invalid", async () => {
+    const { source } = harness({
+      audit: { valid: false, events: 1 },
+      designConflictResolutionProjection: designConflictResolutionProjection(),
+    })
+    const snapshot = await source.readSnapshot("readiness")
+    expect(snapshot.page.kind === "readiness" && snapshot.page.designConflictResolutions.rows).toEqual([])
+    expect(snapshot.page.kind === "readiness" && snapshot.page.gaps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "design-conflict-resolution-unavailable", severity: "blocker" }),
     ]))
   })
 

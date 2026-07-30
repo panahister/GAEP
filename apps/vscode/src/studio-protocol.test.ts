@@ -110,6 +110,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         portableDesignSnapshots: table("portable-design-snapshots"),
         designerReadyGates: table("designer-ready-gates"),
         designDeltas: table("design-deltas"),
+        designConflictResolutions: table("design-conflict-resolutions"),
         portability: [],
       }
   }
