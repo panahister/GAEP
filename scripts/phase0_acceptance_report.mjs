@@ -22,8 +22,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260730T180300Z-phase-3a-boilerplate-compatibility-validation-packages.json",
-  conformance: "evidence/ide-conformance/20260730T180400Z-phase-3a-boilerplate-compatibility-validation.json",
+  packages: "evidence/local-packages/20260730T190100Z-phase-3a-figma-to-boilerplate-mapping-packages.json",
+  conformance: "evidence/ide-conformance/20260730T190200Z-phase-3a-figma-to-boilerplate-mapping.json",
   example: "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
 }
 const gateDefinitions = [
@@ -203,7 +203,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, figmaToBoilerplateMapping, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -230,7 +230,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    boilerplateCompatibilityValidation
+    figmaToBoilerplateMapping
+      ? {
+          id: "phase-3a-figma-to-boilerplate-mapping-closure",
+          state: "not-established",
+          basis: "the exact versioned Figma-to-Boilerplate Mapping candidate lifecycle, one exact mapping subject per current Design-to-Requirement Binding, bounded component, token, layout, responsive-behavior and platform-target mapping kinds, mapped, conflict, unmapped and not-assessed candidate outcomes, exact selected boilerplate target, Implementation Unit and Requirement trace candidates, evidence and attributable review candidates, deterministic subject-catalog, target-catalog, trace, mapping and assessment receipts, exact current design applicability, design-system/token, responsive/platform, finalized-snapshot, design-to-requirement, design-baseline, Implementation Unit Model, Technology Profile, Boilerplate Registry, Boilerplate Selection and Binding and Boilerplate Compatibility Validation bindings, immutable revisions, privacy-safe Product Studio table and four host projections are implemented locally; candidates do not connect to or call Figma, establish returned Figma content, design validity, approval or baseline, mapping truth or completeness, effective selection or binding, compatibility truth, retrieval, import, instantiation, code generation, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, native-host interaction or Product Owner acceptance",
+        }
+      : boilerplateCompatibilityValidation
       ? {
           id: "phase-3a-boilerplate-compatibility-validation-closure",
           state: "not-established",
@@ -548,6 +554,9 @@ export async function buildPhase0AcceptanceReport({
   const boilerplateCompatibilityValidation = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "boilerplate-compatibility-validation" && capability.state === "implemented"))
+  const figmaToBoilerplateMapping = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "figma-to-boilerplate-mapping" && capability.state === "implemented"))
   const designSystemTokenContract = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-system-token-contract" && capability.state === "implemented"))
@@ -625,6 +634,7 @@ export async function buildPhase0AcceptanceReport({
     boilerplateRegistry,
     boilerplateSelectionBinding,
     boilerplateCompatibilityValidation,
+    figmaToBoilerplateMapping,
     designSystemTokenContract,
     accessibilityDesignRules,
     responsiveMultiPlatformTargets,
@@ -662,8 +672,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: boilerplateCompatibilityValidation
+    phase: figmaToBoilerplateMapping || boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: figmaToBoilerplateMapping
+      ? "phase-3a-figma-to-boilerplate-mapping-local"
+      : boilerplateCompatibilityValidation
       ? "phase-3a-boilerplate-compatibility-validation-local"
       : boilerplateSelectionBinding
       ? "phase-3a-boilerplate-selection-binding-local"
@@ -781,7 +793,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: boilerplateCompatibilityValidation
+    claimBoundary: figmaToBoilerplateMapping
+      ? "This report binds the exact governed Figma-to-Boilerplate Mapping candidate lifecycle, immutable revision history, one exact mapping subject per current Design-to-Requirement Binding, bounded component, token, layout, responsive-behavior and platform-target mapping kinds, mapped, conflict, unmapped and not-assessed candidate outcomes, exact selected boilerplate target, Implementation Unit and Requirement trace candidates, evidence and attributable review candidates, deterministic subject-catalog, target-catalog, trace, mapping and assessment receipts, exact current Product, Initiative, design applicability, design-system/token, responsive/platform, finalized-snapshot, design-to-requirement, design-baseline, Implementation Unit Model, Technology Profile, Boilerplate Registry, Boilerplate Selection and Binding and Boilerplate Compatibility Validation bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Figma-to-Boilerplate mappings remain governed candidates only. This report does not connect to or call Figma; establish returned Figma content, design validity, approval or baseline, mapping truth or completeness, effective selection or binding, compatibility truth; retrieve, import, instantiate, generate or execute assets; establish implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : boilerplateCompatibilityValidation
       ? "This report binds the exact governed Boilerplate Compatibility Validation candidate lifecycle, immutable revision history, one exact validation subject per selected Boilerplate Selection and Binding decision, complete canonical architecture, build, dependency, deployment, design-system, licensing-policy, packaging, platform, runtime, security-privacy, stack, test, toolchain and version dimension coverage, exact evidence and exception candidates, deterministic validation-subject, dimension, evidence, validation and assessment receipts, exact current Product, Initiative, Implementation Unit Model, Dependency Mapping, Technology Profile, Boilerplate Registry and Boilerplate Selection and Binding bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Compatibility validations remain governed candidates only. This report does not establish compatibility truth or completeness, validation decisions, actual asset behavior, test execution, design validity, security, privacy or licensing approval, exception or waiver authority, effective selection or binding, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : boilerplateSelectionBinding
       ? "This report binds the exact governed Boilerplate Selection and Binding candidate lifecycle, immutable revision history, one evidence-backed decision per current Implementation Unit, selected, not-applicable, deferred and not-assessed dispositions, exact Technology Profile and Boilerplate Registry entry and version candidate references, alternatives, conditions and deviations, deterministic unit-decision, selection, binding and assessment receipts, exact current Product, Initiative, Implementation Unit Model, Dependency Mapping, Technology Profile and Boilerplate Registry bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Boilerplate selection and binding decisions remain governed candidates only. This report does not establish organizational designation, endorsement, approval, support commitment, effective selection or binding, compatibility truth, completeness or validation, licensing or security approval, exception or waiver authority, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
