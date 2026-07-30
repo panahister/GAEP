@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-ide-package-report-v1",
+  "packageSet": "phase-0-local",
+  "artifacts": [
+    {
+      "host": "vscode",
+      "packageId": "gaep.gaep-vscode@0.1.0",
+      "artifactPath": "apps/vscode/dist/gaep-vscode.vsix",
+      "status": "produced",
+      "bytes": 1034656,
+      "digest": "sha256:75f4f11fc71a9f0f98d86a010b623293921b11f008291d846a10349d9fc7e151",
+      "verification": "exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-bundled-engine-empty-recovery-evidence-workflow-and-accessible-phase-3a-backlog-hierarchy-plus-mvp-slice-definition-plus-prioritization-model-plus-acceptance-criteria-plus-definition-of-ready-plus-definition-of-done-plus-implementation-unit-model-plus-dependency-mapping-plus-technology-profile-plus-boilerplate-registry-plus-boilerplate-selection-binding-plus-boilerplate-compatibility-validation-product-studio-projection"
+    },
+    {
+      "host": "kiro",
+      "packageId": "gaep.gaep-kiro@0.1.0",
+      "artifactPath": "apps/kiro/dist/gaep-kiro.vsix",
+      "status": "produced",
+      "bytes": 988789,
+      "digest": "sha256:82ceec45be5fb1f8d3df7e6bd49b29cbc51cbe8f8927d10f793efac35b532ae8",
+      "verification": "exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-digest-bound-package-local-provider-model-phase-1-phase-2-and-phase-3a-backlog-hierarchy-plus-mvp-slice-definition-plus-prioritization-model-plus-acceptance-criteria-plus-definition-of-ready-plus-definition-of-done-plus-implementation-unit-model-plus-dependency-mapping-plus-technology-profile-plus-boilerplate-registry-plus-boilerplate-selection-binding-plus-boilerplate-compatibility-validation-workflows-with-private-safe-output-and-immutable-store"
+    },
+    {
+      "host": "rider",
+      "packageId": "dev.gaep.productstudio@0.1.0",
+      "artifactPath": "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
+      "status": "produced",
+      "bytes": 2012500,
+      "digest": "sha256:a5c9fe50686b04be8df13aef8a70152126d793bcd1fb64182c9bfeb788c48088",
+      "verification": "clean-test-instrumentation-build-exact-engine-and-jar-archive-prepared-sandbox-parity-jetbrains-plugininstaller-install-removal-absence-reinstall-native-startup-client-packaged-engine-empty-evidence-workflow-and-phase-3a-backlog-hierarchy-plus-mvp-slice-definition-plus-prioritization-model-plus-acceptance-criteria-plus-definition-of-ready-plus-definition-of-done-plus-implementation-unit-model-plus-dependency-mapping-plus-technology-profile-plus-boilerplate-registry-plus-boilerplate-selection-binding-plus-boilerplate-compatibility-validation-projection"
+    },
+    {
+      "host": "visual-studio",
+      "packageId": "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
+      "artifactPath": "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
+      "status": "not-produced-on-this-platform",
+      "verification": "cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-714-protocol-controller-checks-with-phase-3a-backlog-hierarchy-plus-mvp-slice-definition-plus-prioritization-model-plus-acceptance-criteria-plus-definition-of-ready-plus-definition-of-done-plus-implementation-unit-model-plus-dependency-mapping-plus-technology-profile-plus-boilerplate-registry-plus-boilerplate-selection-binding-plus-boilerplate-compatibility-validation-and-packaged-engine-empty-evidence-workflow-windows-container-install-pending",
+      "limitation": "Native Visual Studio VSIX container creation and installation require Windows and VsixUtil.exe."
+    }
+  ],
+  "summary": {
+    "expected": 4,
+    "produced": 3,
+    "missingNativePlatformArtifacts": 1
+  },
+  "claimBoundary": "Local package evidence is not release signing, publication, supported-OS acceptance, Product readiness, or release approval."
+}
