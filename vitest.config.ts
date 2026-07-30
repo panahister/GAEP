@@ -7,10 +7,11 @@ export default defineConfig({
     // stdio suite runs with Node's built-in test runner via apps/kiro/verify.
     exclude: ["apps/kiro/**"],
     // The repository suites are intentionally I/O-heavy. Bound file workers and
-    // allow a bounded ten-second case window so host load does not create false
-    // failures while assertions and fail-closed behavior remain unchanged.
+    // allow a bounded twenty-second case window so the expanded immutable-record
+    // graph does not create false failures under full parallel host load;
+    // assertions and fail-closed behavior remain unchanged.
     maxWorkers: 4,
-    testTimeout: 10_000,
+    testTimeout: 20_000,
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary"],
