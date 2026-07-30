@@ -54,6 +54,7 @@ import {
   type DefinitionOfReadyProjection,
   type DefinitionOfDoneProjection,
   type ImplementationUnitModelProjection,
+  type DependencyMappingProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -2411,6 +2412,83 @@ function implementationUnitModelProjection(
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function dependencyMappingProjection(
+  hierarchy = backlogHierarchyProjection(),
+  mvp = mvpSliceDefinitionProjection(hierarchy),
+  priority = prioritizationModelProjection(mvp),
+  criteria = acceptanceCriteriaProjection(hierarchy, mvp, priority),
+  ready = definitionOfReadyProjection(hierarchy, mvp, priority, criteria),
+  done = definitionOfDoneProjection(hierarchy, mvp, priority, criteria, ready),
+  units = implementationUnitModelProjection(hierarchy, mvp, priority, criteria, ready, done),
+): DependencyMappingProjection {
+  const exactHierarchy = hierarchy.candidate!
+  const exactMvp = mvp.candidate!
+  const exactUnits = units.candidate!
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "dependency-mapping-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "acacacac-acac-4cac-8cac-acacacacacac", revision: 2, digest: `sha256:${"9".repeat(64)}` as const },
+    hierarchy: { recordId: exactHierarchy.id, revision: exactHierarchy.revision, digest: exactHierarchy.digest },
+    mvpSliceDefinition: { recordId: exactMvp.id, revision: exactMvp.revision, digest: exactMvp.digest },
+    implementationUnitModel: { recordId: exactUnits.id, revision: exactUnits.revision, digest: exactUnits.digest },
+    nodeCount: 3,
+    edgeCount: 2,
+    requiredEdgeCount: 1,
+    conditionalEdgeCount: 1,
+    advisoryEdgeCount: 0,
+    rootNodeCount: 1,
+    leafNodeCount: 1,
+    criticalPathUnitCount: 2,
+    criticalPathCandidateEffortPoints: 13,
+    missingNodeCount: 1,
+    missingDeclaredEdgeCount: 1,
+    extraEdgeCount: 0,
+    invalidNodeCount: 1,
+    invalidEdgeCount: 1,
+    cycleCount: 0,
+    staleBindingCount: 0,
+    staleHierarchyCount: 0,
+    staleMvpSliceDefinitionCount: 0,
+    staleImplementationUnitModelCount: 0,
+    unresolvedQuestionCount: 2,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more dependency-map candidates require human review"],
+    assessedAt: "2026-07-30T15:30:00.000Z",
+    authorityBoundary: "dependency-mapping-status-is-observational-and-does-not-establish-dependency-truth-or-completeness-critical-path-authority-sequencing-commitment-ownership-appointment-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "dependency-mapping-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      state: "candidate" as const,
+      graphDigest: `sha256:${"a".repeat(64)}` as const,
+      criticalPathDigest: `sha256:${"b".repeat(64)}` as const,
+      assessmentReceiptDigest: `sha256:${"c".repeat(64)}` as const,
+      nodeCount: 3,
+      edgeCount: 2,
+      criticalPathUnitCount: 2,
+      criticalPathCandidateEffortPoints: 13,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-30T15:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-graph-critical-path-assessment-snapshot-digests-only-not-unit-node-edge-evidence-rationale-estimate-owner-repository-module-requirement-architecture-risk-test-or-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "dependency-mapping-projection-is-read-only-and-does-not-establish-dependency-truth-or-completeness-critical-path-authority-sequencing-commitment-ownership-appointment-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -4205,6 +4283,7 @@ interface HarnessOptions {
   definitionOfReadyProjection?: DefinitionOfReadyProjection
   definitionOfDoneProjection?: DefinitionOfDoneProjection
   implementationUnitModelProjection?: ImplementationUnitModelProjection
+  dependencyMappingProjection?: DependencyMappingProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -4390,6 +4469,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.implementationUnitModelProjection ? {
       implementationUnitModel: {
         project: async () => options.implementationUnitModelProjection!,
+      },
+    } : {}),
+    ...(options.dependencyMappingProjection ? {
+      dependencyMapping: {
+        project: async () => options.dependencyMappingProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -5150,6 +5234,51 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private unit title|private module path|private owner identity|private impact rationale|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects exact privacy-safe Dependency Mapping metadata without asserting dependency or sequencing truth", async () => {
+    const hierarchy = backlogHierarchyProjection()
+    const mvp = mvpSliceDefinitionProjection(hierarchy)
+    const priority = prioritizationModelProjection(mvp)
+    const criteria = acceptanceCriteriaProjection(hierarchy, mvp, priority)
+    const ready = definitionOfReadyProjection(hierarchy, mvp, priority, criteria)
+    const done = definitionOfDoneProjection(hierarchy, mvp, priority, criteria, ready)
+    const units = implementationUnitModelProjection(hierarchy, mvp, priority, criteria, ready, done)
+    const projection = dependencyMappingProjection(hierarchy, mvp, priority, criteria, ready, done, units)
+    const { source } = harness({
+      backlogHierarchyProjection: hierarchy,
+      mvpSliceDefinitionProjection: mvp,
+      prioritizationModelProjection: priority,
+      acceptanceCriteriaProjection: criteria,
+      definitionOfReadyProjection: ready,
+      definitionOfDoneProjection: done,
+      implementationUnitModelProjection: units,
+      dependencyMappingProjection: projection,
+    })
+    const snapshot = await source.readSnapshot("delivery")
+
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.kind === "delivery" && snapshot.page.dependencyMappings).toMatchObject({
+      id: "dependency-mapping",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          graph: projection.candidate?.graphDigest,
+          criticalPath: projection.candidate?.criticalPathDigest,
+          assessmentReceipt: projection.candidate?.assessmentReceiptDigest,
+          coverage: "3 nodes · 2 edges · 1 required · 1 conditional · 0 advisory",
+          path: "2 units · 13 candidate effort points · 1 roots · 1 leaves",
+          assessment: "attention-required · held",
+          gaps: "2 questions · 1 missing nodes · 1 missing declared edges · 0 extra edges · 1 invalid nodes · 1 invalid edges · 0 cycles · 0 stale bindings · 0 stale hierarchies · 0 stale MVP definitions · 0 stale Implementation Unit Models",
+          boundary: expect.stringContaining("no unit, node, edge, evidence, rationale, estimate, owner, repository, module"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private node|private edge|private dependency rationale|private effort estimate|private owner|private module|customer@example\.com|api_key/iu,
     )
   })
 
