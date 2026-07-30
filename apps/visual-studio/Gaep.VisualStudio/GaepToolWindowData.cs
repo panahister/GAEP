@@ -237,6 +237,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadDefinitionOfReadyCommand = new AsyncCommand(LoadDefinitionOfReadyAsync);
         LoadDefinitionOfDoneCommand = new AsyncCommand(LoadDefinitionOfDoneAsync);
         LoadImplementationUnitModelCommand = new AsyncCommand(LoadImplementationUnitModelAsync);
+        LoadDependencyMappingCommand = new AsyncCommand(LoadDependencyMappingAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -408,6 +409,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadImplementationUnitModelCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadDependencyMappingCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1044,6 +1048,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Implementation Unit Model candidate",
             (controller, _, token) => controller.ReadImplementationUnitModelAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadDependencyMappingAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Dependency Mapping candidate",
+            (controller, _, token) => controller.ReadDependencyMappingAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

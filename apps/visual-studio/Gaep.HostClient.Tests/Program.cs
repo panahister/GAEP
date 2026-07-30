@@ -78,6 +78,7 @@ internal static class Program
     private static readonly Guid DefinitionOfReadyId = Guid.Parse("95959595-9595-4595-8595-959595959595");
     private static readonly Guid DefinitionOfDoneId = Guid.Parse("96969696-9696-4696-8696-969696969696");
     private static readonly Guid ImplementationUnitModelId = Guid.Parse("97979797-9797-4797-8797-979797979797");
+    private static readonly Guid DependencyMappingId = Guid.Parse("98989898-9898-4898-8898-989898989898");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -277,6 +278,12 @@ internal static class Program
         var badImplementationUnitModelCriteriaBindingRoot = Path.Combine(temporaryRoot, "bad-implementation-unit-model-criteria-binding");
         var badImplementationUnitModelReadyBindingRoot = Path.Combine(temporaryRoot, "bad-implementation-unit-model-ready-binding");
         var badImplementationUnitModelDoneBindingRoot = Path.Combine(temporaryRoot, "bad-implementation-unit-model-done-binding");
+        var badDependencyMappingSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-dependency-mapping-snapshot-binding");
+        var badDependencyMappingSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-dependency-mapping-snapshot-digest");
+        var badDependencyMappingSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-dependency-mapping-snapshot-private");
+        var badDependencyMappingHierarchyBindingRoot = Path.Combine(temporaryRoot, "bad-dependency-mapping-hierarchy-binding");
+        var badDependencyMappingMvpBindingRoot = Path.Combine(temporaryRoot, "bad-dependency-mapping-mvp-binding");
+        var badDependencyMappingUnitModelBindingRoot = Path.Combine(temporaryRoot, "bad-dependency-mapping-unit-model-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -1300,6 +1307,57 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadImplementationUnitModelAsync(InitiativeId),
                 "Implementation Unit Model workflow rejects substituted Product or current planning dependency bindings");
+        }
+        var dependencyMappingProjection = await client.ReadDependencyMappingAsync(InitiativeId);
+        Check(dependencyMappingProjection.ProductId == product.Id &&
+              dependencyMappingProjection.ProductRevision == product.Revision &&
+              dependencyMappingProjection.ProductDigest == product.Digest &&
+              dependencyMappingProjection.InitiativeId == resolved.Id &&
+              dependencyMappingProjection.InitiativeRevision == resolved.Revision &&
+              dependencyMappingProjection.InitiativeDigest == resolved.Digest &&
+              dependencyMappingProjection.State == "attention-required" &&
+              dependencyMappingProjection.ReviewState == "held" &&
+              dependencyMappingProjection.NodeCount == 3 &&
+              dependencyMappingProjection.EdgeCount == 2 &&
+              dependencyMappingProjection.RequiredEdgeCount == 1 &&
+              dependencyMappingProjection.ConditionalEdgeCount == 1 &&
+              dependencyMappingProjection.CriticalPathUnitCount == 2 &&
+              dependencyMappingProjection.CriticalPathCandidateEffortPoints == 13 &&
+              dependencyMappingProjection.StaleImplementationUnitModelCount == 0,
+            "Typed Dependency Mapping projection preserves exact Product, Initiative, prerequisite, graph, critical-path, and privacy-safe metadata");
+        var dependencyMappingOutput = await initiativeController.ReadDependencyMappingAsync(InitiativeId);
+        Check(dependencyMappingOutput.Contains("GAEP governed Dependency Mapping candidate", StringComparison.Ordinal) &&
+              dependencyMappingOutput.Contains("3 nodes · 2 edges · 1 required · 1 conditional · 0 advisory", StringComparison.Ordinal) &&
+              dependencyMappingOutput.Contains("2 units · 13 candidate effort points · 1 roots · 1 leaves", StringComparison.Ordinal) &&
+              dependencyMappingOutput.Contains("no unit, node, edge, evidence, rationale, estimate, owner, repository, module", StringComparison.Ordinal) &&
+              dependencyMappingOutput.Contains("does not establish dependency truth or completeness, critical-path authority", StringComparison.Ordinal) &&
+              !dependencyMappingOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !dependencyMappingOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !dependencyMappingOutput.Contains("candidateEffortPoints", StringComparison.Ordinal) &&
+              !dependencyMappingOutput.Contains("modulePath", StringComparison.Ordinal) &&
+              !dependencyMappingOutput.Contains("predecessorUnitId", StringComparison.Ordinal),
+            "Dependency Mapping workflow renders privacy-safe metadata with explicit graph, path, sequencing, implementation, and action boundaries");
+        foreach (var hostileRoot in new[] { badDependencyMappingSnapshotDigestRoot, badDependencyMappingSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDependencyMappingAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Dependency Mapping projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[]
+                 {
+                     badDependencyMappingSnapshotBindingRoot,
+                     badDependencyMappingHierarchyBindingRoot,
+                     badDependencyMappingMvpBindingRoot,
+                     badDependencyMappingUnitModelBindingRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDependencyMappingAsync(InitiativeId),
+                "Dependency Mapping workflow rejects substituted Product or current planning dependency bindings");
         }
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
@@ -4580,6 +4638,18 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-implementation-unit-model-ready-binding";
         var badImplementationUnitModelDoneBinding =
             Path.GetFileName(workspace) == "bad-implementation-unit-model-done-binding";
+        var badDependencyMappingSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-dependency-mapping-snapshot-binding";
+        var badDependencyMappingSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-dependency-mapping-snapshot-digest";
+        var badDependencyMappingSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-dependency-mapping-snapshot-private";
+        var badDependencyMappingHierarchyBinding =
+            Path.GetFileName(workspace) == "bad-dependency-mapping-hierarchy-binding";
+        var badDependencyMappingMvpBinding =
+            Path.GetFileName(workspace) == "bad-dependency-mapping-mvp-binding";
+        var badDependencyMappingUnitModelBinding =
+            Path.GetFileName(workspace) == "bad-dependency-mapping-unit-model-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -5177,6 +5247,20 @@ internal static class Program
                         badImplementationUnitModelCriteriaBinding,
                         badImplementationUnitModelReadyBinding,
                         badImplementationUnitModelDoneBinding);
+                    break;
+                case "planning.dependencyMapping.snapshot":
+                    await HandleDependencyMappingAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDependencyMappingSnapshotBinding,
+                        badDependencyMappingSnapshotDigest,
+                        badDependencyMappingSnapshotPrivate,
+                        badDependencyMappingHierarchyBinding,
+                        badDependencyMappingMvpBinding,
+                        badDependencyMappingUnitModelBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -9228,6 +9312,129 @@ internal static class Program
         };
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["unitCount"] = 4;
+        if (includePrivateField) result["rationale"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDependencyMappingAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeHierarchyBinding,
+        bool forgeMvpBinding,
+        bool forgeImplementationUnitModelBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DEPENDENCY MAPPING");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T15:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('9', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DependencyMappingId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["state"] = "candidate",
+            ["graphDigest"] = $"sha256:{new string('a', 64)}",
+            ["criticalPathDigest"] = $"sha256:{new string('b', 64)}",
+            ["assessmentReceiptDigest"] = $"sha256:{new string('c', 64)}",
+            ["nodeCount"] = 3,
+            ["edgeCount"] = 2,
+            ["criticalPathUnitCount"] = 2,
+            ["criticalPathCandidateEffortPoints"] = 13,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T15:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "dependency-mapping-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "dependency-mapping-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DependencyMappingId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                },
+                ["hierarchy"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BacklogHierarchyId.ToString("D"), ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeHierarchyBinding ? '7' : '8', 64)}",
+                },
+                ["mvpSliceDefinition"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = MvpSliceDefinitionId.ToString("D"), ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeMvpBinding ? '9' : 'a', 64)}",
+                },
+                ["implementationUnitModel"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = ImplementationUnitModelId.ToString("D"), ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeImplementationUnitModelBinding ? '4' : '5', 64)}",
+                },
+                ["nodeCount"] = 3,
+                ["edgeCount"] = 2,
+                ["requiredEdgeCount"] = 1,
+                ["conditionalEdgeCount"] = 1,
+                ["advisoryEdgeCount"] = 0,
+                ["rootNodeCount"] = 1,
+                ["leafNodeCount"] = 1,
+                ["criticalPathUnitCount"] = 2,
+                ["criticalPathCandidateEffortPoints"] = 13,
+                ["missingNodeCount"] = 1,
+                ["missingDeclaredEdgeCount"] = 1,
+                ["extraEdgeCount"] = 0,
+                ["invalidNodeCount"] = 1,
+                ["invalidEdgeCount"] = 1,
+                ["cycleCount"] = 0,
+                ["staleBindingCount"] = 0,
+                ["staleHierarchyCount"] = 0,
+                ["staleMvpSliceDefinitionCount"] = 0,
+                ["staleImplementationUnitModelCount"] = 0,
+                ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more dependency-map candidates require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "dependency-mapping-status-is-observational-and-does-not-establish-dependency-truth-or-completeness-critical-path-authority-sequencing-commitment-ownership-appointment-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-graph-critical-path-assessment-snapshot-digests-only-not-unit-node-edge-evidence-rationale-estimate-owner-repository-module-requirement-architecture-risk-test-or-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "dependency-mapping-projection-is-read-only-and-does-not-establish-dependency-truth-or-completeness-critical-path-authority-sequencing-commitment-ownership-appointment-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["nodeCount"] = 4;
         if (includePrivateField) result["rationale"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }

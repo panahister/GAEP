@@ -2290,6 +2290,95 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDependencyMappingAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var hierarchy = await client.ReadBacklogHierarchyAsync(initiativeId, cancellationToken);
+        var mvp = await client.ReadMvpSliceDefinitionAsync(initiativeId, cancellationToken);
+        var units = await client.ReadImplementationUnitModelAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDependencyMappingAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Dependency Mapping was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (hierarchy.Candidate is not { } currentHierarchy || projection.HierarchyRecordId != currentHierarchy.Id ||
+                projection.HierarchyRevision != currentHierarchy.Revision || projection.HierarchyDigest != currentHierarchy.Digest))
+        {
+            throw new ArgumentException("The Backlog Hierarchy changed while Dependency Mapping was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (mvp.Candidate is not { } currentMvp || projection.MvpSliceDefinitionRecordId != currentMvp.Id ||
+                projection.MvpSliceDefinitionRevision != currentMvp.Revision || projection.MvpSliceDefinitionDigest != currentMvp.Digest))
+        {
+            throw new ArgumentException("The MVP and Vertical Slice Definition changed while Dependency Mapping was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (units.Candidate is not { } currentUnits || projection.ImplementationUnitModelRecordId != currentUnits.Id ||
+                projection.ImplementationUnitModelRevision != currentUnits.Revision ||
+                projection.ImplementationUnitModelDigest != currentUnits.Digest))
+        {
+            throw new ArgumentException("The Implementation Unit Model changed while Dependency Mapping was read. Refresh the exact records.");
+        }
+        return RenderDependencyMapping(projection);
+    }
+
+    public static string RenderDependencyMapping(DependencyMappingProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Dependency Mapping candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Graph coverage: {projection.NodeCount} nodes · {projection.EdgeCount} edges · " +
+                $"{projection.RequiredEdgeCount} required · {projection.ConditionalEdgeCount} conditional · {projection.AdvisoryEdgeCount} advisory")
+            .AppendLine(
+                $"Candidate critical path: {projection.CriticalPathUnitCount} units · " +
+                $"{projection.CriticalPathCandidateEffortPoints} candidate effort points · " +
+                $"{projection.RootNodeCount} roots · {projection.LeafNodeCount} leaves")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedQuestionCount} questions · {projection.MissingNodeCount} missing nodes · " +
+                $"{projection.MissingDeclaredEdgeCount} missing declared edges · {projection.ExtraEdgeCount} extra edges · " +
+                $"{projection.InvalidNodeCount} invalid nodes · {projection.InvalidEdgeCount} invalid edges · " +
+                $"{projection.CycleCount} cycles · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleHierarchyCount} stale hierarchies · {projection.StaleMvpSliceDefinitionCount} stale MVP definitions · " +
+                $"{projection.StaleImplementationUnitModelCount} stale Implementation Unit Models");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Dependency Mapping candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Graph digest: {candidate.GraphDigest}")
+                .AppendLine($"Critical-path digest: {candidate.CriticalPathDigest}")
+                .AppendLine($"Assessment receipt digest: {candidate.AssessmentReceiptDigest}")
+                .AppendLine(
+                    $"Candidate coverage: {candidate.NodeCount} nodes · {candidate.EdgeCount} edges · " +
+                    $"{candidate.CriticalPathUnitCount} critical-path units · " +
+                    $"{candidate.CriticalPathCandidateEffortPoints} candidate effort points · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Dependency Mapping candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and graph, critical-path, assessment-receipt, and " +
+                "snapshot digests only; no unit, node, edge, evidence, rationale, estimate, owner, repository, module, " +
+                "Requirement, architecture, risk, test, or personal data. Candidate completeness does not establish " +
+                "dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, " +
+                "implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, " +
+                "deployment, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
