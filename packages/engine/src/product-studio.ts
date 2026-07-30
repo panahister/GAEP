@@ -31,6 +31,7 @@ import {
   designerReadyGateSchema,
   designDeltaSchema,
   designConflictResolutionSchema,
+  humanDesignApprovalSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -118,6 +119,7 @@ import {
   type DesignerReadyGate,
   type DesignDelta,
   type DesignConflictResolution,
+  type HumanDesignApproval,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -177,6 +179,11 @@ import {
   designConflictResolutionReceiptDigest,
   designDeltaResolutionReference,
 } from "./design-conflict-resolution.js"
+import {
+  humanDesignApprovalDecisionReceiptDigest,
+  humanDesignApprovalScopeDigest,
+  humanDesignApprovalSubjectReference,
+} from "./human-design-approval.js"
 import {
   canonicalDigest as portableDesignDigest,
   importPortableDesignBundle,
@@ -2395,6 +2402,16 @@ export class ProductStudioService {
       /^design-conflict-resolution-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       designConflictResolutionSchema,
     )
+    const humanDesignApprovals = await this.listRecords(
+      "human-design-approvals",
+      /^[0-9a-f-]+\.json$/i,
+      humanDesignApprovalSchema,
+    )
+    const humanDesignApprovalHistory = await this.listRecords(
+      "human-design-approval-history",
+      /^human-design-approval-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      humanDesignApprovalSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2499,6 +2516,8 @@ export class ProductStudioService {
       ...designDeltaHistory,
       ...designConflictResolutions,
       ...designConflictResolutionHistory,
+      ...humanDesignApprovals,
+      ...humanDesignApprovalHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2543,6 +2562,7 @@ export class ProductStudioService {
           manualFigmaExecutionPaths.find((record) => record.id === id)?.informationClassification ??
           figmaMcpCapabilityDiscoveries.find((record) => record.id === id)?.informationClassification ??
           designConflictResolutions.find((record) => record.id === id)?.informationClassification ??
+          humanDesignApprovals.find((record) => record.id === id)?.informationClassification ??
           portableDesignSnapshots.find((record) => record.bundleId === id)?.classification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
@@ -2890,6 +2910,13 @@ export class ProductStudioService {
       designConflictResolutionHistory,
       (record) =>
         `design-conflict-resolution-history/design-conflict-resolution-${record.id}-r${record.revision}.json`,
+    )
+    append("human-design-approvals", "human-design-approval-candidate", humanDesignApprovals)
+    append(
+      "human-design-approval-history",
+      "human-design-approval-candidate",
+      humanDesignApprovalHistory,
+      (record) => `human-design-approval-history/human-design-approval-${record.id}-r${record.revision}.json`,
     )
     append(
       "candidates",
@@ -3427,6 +3454,14 @@ export class ProductStudioService {
           `design-conflict-resolution-history/design-conflict-resolution-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Design Conflict Resolution history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("human-design-approval-history/")) {
+        const record = validated as HumanDesignApproval
+        const expectedHistoryPath =
+          `human-design-approval-history/human-design-approval-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Human Design Approval history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4561,7 +4596,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution | HumanDesignApproval,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4593,7 +4628,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution | HumanDesignApproval,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -8878,6 +8913,91 @@ export class ProductStudioService {
       }
     }
 
+    const humanDesignApprovals = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("human-design-approvals/"))
+      .map(([, record]) => humanDesignApprovalSchema.parse(record))
+    const humanDesignApprovalHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("human-design-approval-history/"))
+      .map(([, record]) => humanDesignApprovalSchema.parse(record))
+    validateVersionedBusinessRecords(humanDesignApprovals, humanDesignApprovalHistory, "Human Design Approval")
+    const humanDesignApprovalPrerequisiteRecords = [
+      ...designConflictResolutions,
+      ...designConflictResolutionHistory,
+      ...designDeltas,
+      ...designDeltaHistory,
+      ...designToRequirementBindings,
+      ...designToRequirementBindingHistory,
+      ...designerReadyGates,
+      ...designerReadyGateHistory,
+      ...finalizedFigmaSnapshotImports,
+      ...finalizedFigmaSnapshotImportHistory,
+    ]
+    const humanDesignApprovalPrerequisiteByExact = new Map(humanDesignApprovalPrerequisiteRecords.map((record) => [
+      `${record.kind}:${record.id}:${record.revision}:${canonicalDigest(record)}`,
+      record,
+    ]))
+    for (const candidate of [...humanDesignApprovals, ...humanDesignApprovalHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        objectiveDigest: candidate.objectiveDigest,
+        prerequisites: candidate.prerequisites,
+        subject: candidate.subject,
+        scope: candidate.scope,
+        decision: candidate.decision,
+        decisionDefinitionDigest: candidate.decisionDefinitionDigest,
+        decisionReceiptDigest: candidate.decisionReceiptDigest,
+        candidateResult: candidate.candidateResult,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        approverAuthorityState: candidate.approverAuthorityState,
+        separationOfDutiesEnforcementState: candidate.separationOfDutiesEnforcementState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        phaseEntryAuthorityState: candidate.phaseEntryAuthorityState,
+        figmaConnectionAuthorityState: candidate.figmaConnectionAuthorityState,
+        credentialAuthorityState: candidate.credentialAuthorityState,
+        permissionGrantState: candidate.permissionGrantState,
+        importExecutionState: candidate.importExecutionState,
+        writeExecutionState: candidate.writeExecutionState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Human Design Approval ${candidate.id} membership digest is invalid`)
+      }
+      if (candidate.scope.scopeDigest !== humanDesignApprovalScopeDigest(candidate.scope)) {
+        throw new Error(`Import Human Design Approval ${candidate.id} scope digest is invalid`)
+      }
+      if (candidate.decisionReceiptDigest !== humanDesignApprovalDecisionReceiptDigest(candidate)) {
+        throw new Error(`Import Human Design Approval ${candidate.id} decision receipt digest is invalid`)
+      }
+      for (const prerequisite of candidate.prerequisites) {
+        const record = humanDesignApprovalPrerequisiteByExact.get(
+          `${prerequisite.kind}:${prerequisite.recordId}:${prerequisite.revision}:${prerequisite.digest}`,
+        )
+        if (!record || record.productId !== candidate.productId || record.initiativeId !== candidate.initiativeId ||
+            record.membershipDigest !== prerequisite.membershipDigest) {
+          throw new Error(`Import Human Design Approval ${candidate.id} has an unresolved exact ${prerequisite.key} binding`)
+        }
+      }
+      const finalized = exactFinalizedSnapshot.get(
+        `${candidate.subject.recordId}:${candidate.subject.revision}:${candidate.subject.digest}`,
+      )
+      if (!finalized || finalized.productId !== candidate.productId || finalized.initiativeId !== candidate.initiativeId ||
+          canonicalDigest(humanDesignApprovalSubjectReference(finalized)) !== canonicalDigest(candidate.subject)) {
+        throw new Error(`Import Human Design Approval ${candidate.id} has an unresolved exact approval subject`)
+      }
+      const expectedItemDigests = finalized.items.map((item) => canonicalDigest(item)).sort()
+      const actualItemDigests = [...candidate.scope.includedItemDigests, ...candidate.scope.excludedItemDigests].sort()
+      if (canonicalDigest(actualItemDigests) !== canonicalDigest(expectedItemDigests)) {
+        throw new Error(`Import Human Design Approval ${candidate.id} scope does not classify every exact finalized-snapshot item`)
+      }
+    }
+
     const plans = [...recordsByPath.entries()].filter(([path]) => path.startsWith("workflow-plans/"))
       .map(([, record]) => workflowPlanSchema.parse(record))
     for (const plan of plans) this.validateWorkflowInImport(plan, resolveExact)
@@ -9498,6 +9618,10 @@ export class ProductStudioService {
         /^design-conflict-resolution-history\/design-conflict-resolution-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "design-conflict-resolution-candidate"
     }
+    if (/^human-design-approvals\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^human-design-approval-history\/human-design-approval-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "human-design-approval-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -9707,6 +9831,10 @@ export class ProductStudioService {
     if (/^design-conflict-resolutions\/[0-9a-f-]+\.json$/i.test(path) ||
         /^design-conflict-resolution-history\/design-conflict-resolution-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return designConflictResolutionSchema
+    }
+    if (/^human-design-approvals\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^human-design-approval-history\/human-design-approval-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return humanDesignApprovalSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||

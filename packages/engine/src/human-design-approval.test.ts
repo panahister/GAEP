@@ -213,6 +213,11 @@ describe("Human Design Approval service", () => {
     expect(projection.candidate).toMatchObject({ id: created.id, decisionKind: "approve-candidate" })
     expect(projection.authorityBoundary).toContain("does-not-verify-approver-authority")
     expect(JSON.stringify(projection)).not.toContain("design-approver")
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `human-design-approvals/${created.id}.json`,
+      `human-design-approval-history/human-design-approval-${created.id}-r1.json`,
+    ]))
 
     const revised = await service.revise(created.id, 1, await input({
       decision: undefined,
