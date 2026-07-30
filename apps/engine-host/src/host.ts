@@ -164,6 +164,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.designToCodeBindingRegistry.revise",
   "planning.designToCodeBindingRegistry.assess",
   "planning.designToCodeBindingRegistry.snapshot",
+  "planning.routeScreenComponentMapping.read",
+  "planning.routeScreenComponentMapping.create",
+  "planning.routeScreenComponentMapping.revise",
+  "planning.routeScreenComponentMapping.assess",
+  "planning.routeScreenComponentMapping.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1535,6 +1540,21 @@ export class EngineHost {
         return this.engine.designToCodeBindingRegistry.assess(request.params.initiativeId)
       case "planning.designToCodeBindingRegistry.snapshot":
         return this.engine.designToCodeBindingRegistry.project(request.params.initiativeId)
+      case "planning.routeScreenComponentMapping.read":
+        return await this.engine.routeScreenComponentMapping.readCurrent(request.params.initiativeId) ?? null
+      case "planning.routeScreenComponentMapping.create":
+        return this.engine.routeScreenComponentMapping.create(request.params.record, actorId(request.params.actorId))
+      case "planning.routeScreenComponentMapping.revise":
+        return this.engine.routeScreenComponentMapping.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.routeScreenComponentMapping.assess":
+        return this.engine.routeScreenComponentMapping.assess(request.params.initiativeId)
+      case "planning.routeScreenComponentMapping.snapshot":
+        return this.engine.routeScreenComponentMapping.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":

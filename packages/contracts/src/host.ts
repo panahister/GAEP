@@ -16,6 +16,7 @@ import { boilerplateSelectionBindingInputSchema } from "./boilerplate-selection-
 import { boilerplateCompatibilityValidationInputSchema } from "./boilerplate-compatibility-validation.js"
 import { figmaToBoilerplateMappingInputSchema } from "./figma-to-boilerplate-mapping.js"
 import { designToCodeBindingRegistryInputSchema } from "./design-to-code-binding-registry.js"
+import { routeScreenComponentMappingInputSchema } from "./route-screen-component-mapping.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -779,6 +780,18 @@ export const hostDesignToCodeBindingRegistryReviseParamsSchema = z.object({
   record: designToCodeBindingRegistryInputSchema,
 }).strict()
 
+export const hostRouteScreenComponentMappingCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: routeScreenComponentMappingInputSchema,
+}).strict()
+
+export const hostRouteScreenComponentMappingReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: routeScreenComponentMappingInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1466,6 +1479,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.designToCodeBindingRegistry.revise", hostDesignToCodeBindingRegistryReviseParamsSchema),
   requestVariant("planning.designToCodeBindingRegistry.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.designToCodeBindingRegistry.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.routeScreenComponentMapping.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.routeScreenComponentMapping.create", hostRouteScreenComponentMappingCreateParamsSchema),
+  requestVariant("planning.routeScreenComponentMapping.revise", hostRouteScreenComponentMappingReviseParamsSchema),
+  requestVariant("planning.routeScreenComponentMapping.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.routeScreenComponentMapping.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),
