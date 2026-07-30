@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-2-ux-figma-loop",
+  "evidenceScope": "phase-2-ux-figma-dashboard-local",
+  "recordedAt": "2026-07-30T04:09:24Z",
+  "sourceCommit": "588ec3a4c72e4fcdc6473f585e2cfb688daebe06",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 75,
+    "hostAssessments": 300,
+    "hostAssessmentsImplemented": 300,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:1a9e2da0c5c54ef56643c18be298c3e9df6d5e11480afbfab77f9891a6a2d4d9",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 200730,
+      "digest": "sha256:c04568843a81ff885f0b7d5d688db3d27b1f399e03fa4d93c32083aefa51dbb3",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260730T040035Z-phase-2-ux-figma-dashboard-packages.json",
+      "bytes": 2580,
+      "digest": "sha256:53031d2815f35a8663938796143bd32df1a620db28493d3d1d2a3a9be6e243a5",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260730T040035Z-phase-2-ux-figma-dashboard-host-behavior.json",
+      "bytes": 3574,
+      "digest": "sha256:ff15cb68f02584b6feb4a58530b9b63776ec466a871dae8c2f47c805f1a2fcb6",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260730T040035Z-phase-2-ux-figma-dashboard.json",
+      "bytes": 50833,
+      "digest": "sha256:bded752f47e15179393a0d5589a9c333e7ea6f717d769d3a0b440e791e87dc75",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
+      "bytes": 5790,
+      "digest": "sha256:bda03985ec201ac53ec3f311f5d8bc91e6f4bca6ff8b189e27c4518f35f14389",
+      "kind": "gaep-phase1-realistic-reference-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 99,
+        "testsPassed": 883,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:8e44fa22b18b12962e4d0f70be5700c4310b4ed33419012cbbf44cd7ec5cfad8"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:51fbc727904626f6d546e65458e0d9d32f3dd4b2f25efde7ee049af967af2551"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 21,
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:bff24f4cf7c1851d97178519ccf18fbdd17e5d7b443eef69a072f68d3acc30f8"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:0c943e7c09f12eac706a79a22fbfc6163a013cf4af7b911ba8da53cd3bfcb7c1"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:ed4e2ab6e1a614f8e8f6700dc01cd317a6f94d6e7b56d1a9073b9abc47058338"
+    }
+  ],
+  "testsDigest": "sha256:b6f08384c8fed62a55d7154fd8f0e7726080bde61088347753652cd032c35cc7",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-2-ux-figma-dashboard-closure",
+      "state": "not-established",
+      "basis": "the exact derived Phase 2 UX/Figma dashboard is implemented locally across Product Studio and four host projections; real Product and design evidence, returned current Figma content, live Figma connection or execution, external completeness and design validity, accountable human review, approval or Baseline Set designation, readiness, remediation or implementation effects, native-host interaction and Product Owner acceptance remain incomplete"
+    }
+  ],
+  "knownGapsDigest": "sha256:93bfa1833723534093d20ec85bf935f793d648c915f8152294bfb167e2ea9cbb",
+  "claimBoundary": "This report binds the exact derived Phase 2 UX/Figma dashboard, canonical ordered P2-01 through P2-23 source catalog, exact Product and Initiative identity and revision digests, explicit current, attention-required and unavailable source states, bounded experience, design-system, Figma, trace, drift and freshness aggregates, stable source-catalog and snapshot digests, explicit no-authority governance states, accessible Product Studio and four-host projections, and current package, test, host and conformance evidence. This report does not create a second source of truth, establish design or external completeness or validity, connect to or call Figma, request credentials, grant permissions, authorize or perform imports or writes, establish Human Design Approval or a Baseline Set designation, grant readiness or phase entry, apply remediation, change implementation, grant action authority, prove real Product research or returned current Figma content, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+}
