@@ -37,6 +37,7 @@ import {
   type DefinitionOfReadyProjection,
   type DefinitionOfDoneProjection,
   type ImplementationUnitModelProjection,
+  type DependencyMappingProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -166,6 +167,7 @@ const commandIds = {
   definitionOfReady: "gaepKiro.definitionOfReady.inspect",
   definitionOfDone: "gaepKiro.definitionOfDone.inspect",
   implementationUnitModel: "gaepKiro.implementationUnitModel.inspect",
+  dependencyMapping: "gaepKiro.dependencyMapping.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -312,6 +314,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.definitionOfReady, (input?: unknown) => runUserCommand(() => showDefinitionOfReady(pool, input))),
     vscode.commands.registerCommand(commandIds.definitionOfDone, (input?: unknown) => runUserCommand(() => showDefinitionOfDone(pool, input))),
     vscode.commands.registerCommand(commandIds.implementationUnitModel, (input?: unknown) => runUserCommand(() => showImplementationUnitModel(pool, input))),
+    vscode.commands.registerCommand(commandIds.dependencyMapping, (input?: unknown) => runUserCommand(() => showDependencyMapping(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2046,6 +2049,48 @@ async function showImplementationUnitModel(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and membership, placement, assessment-receipt, and snapshot digests only; no unit titles, boundaries, Story, Task, or Requirement identities, repository keys, module paths, owner identities, evidence, rationales, or personal data. Candidate completeness does not establish repository truth, owner appointment, dependency or impact completeness, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDependencyMapping(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DependencyMappingProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Dependency Mapping inspection", "Initiative ID")
+  const projection = await client.readDependencyMapping(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Dependency Mapping candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Graph coverage: ${status.nodeCount} nodes · ${status.edgeCount} edges · ${status.requiredEdgeCount} required · ${status.conditionalEdgeCount} conditional · ${status.advisoryEdgeCount} advisory`,
+    `Candidate critical path: ${status.criticalPathUnitCount} units · ${status.criticalPathCandidateEffortPoints} candidate effort points · ${status.rootNodeCount} roots · ${status.leafNodeCount} leaves`,
+    `Candidate gaps: ${status.unresolvedQuestionCount} questions · ${status.missingNodeCount} missing nodes · ${status.missingDeclaredEdgeCount} missing declared edges · ${status.extraEdgeCount} extra edges · ${status.invalidNodeCount} invalid nodes · ${status.invalidEdgeCount} invalid edges · ${status.cycleCount} cycles · ${status.staleBindingCount} stale bindings · ${status.staleHierarchyCount} stale hierarchies · ${status.staleMvpSliceDefinitionCount} stale MVP definitions · ${status.staleImplementationUnitModelCount} stale Implementation Unit Models`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Graph digest: ${record.graphDigest}`,
+      `Critical-path digest: ${record.criticalPathDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`,
+      `Candidate coverage: ${record.nodeCount} nodes · ${record.edgeCount} edges · ${record.criticalPathUnitCount} critical-path units · ${record.criticalPathCandidateEffortPoints} candidate effort points · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and graph, critical-path, assessment-receipt, and snapshot digests only; no unit, node, edge, evidence, rationale, estimate, owner, repository, module, Requirement, architecture, risk, test, or personal data. Candidate completeness does not establish dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

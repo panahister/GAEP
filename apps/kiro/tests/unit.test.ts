@@ -2046,6 +2046,58 @@ test("protocol-v2 Implementation Unit Model projection is exact, private-safe, a
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 Dependency Mapping projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-dependency-mapping-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-dependency-mapping-snapshot-binding",
+    "bad-dependency-mapping-snapshot-digest",
+    "bad-dependency-mapping-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readDependencyMapping(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.nodeCount, 3)
+    assert.equal(projection.status.edgeCount, 2)
+    assert.equal(projection.status.requiredEdgeCount, 1)
+    assert.equal(projection.status.conditionalEdgeCount, 1)
+    assert.equal(projection.status.criticalPathUnitCount, 2)
+    assert.equal(projection.status.criticalPathCandidateEffortPoints, 13)
+    assert.equal(projection.status.staleImplementationUnitModelCount, 0)
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"rationale":'), false)
+    assert.equal(serialized.includes('"candidateEffortPoints":'), false)
+    assert.equal(serialized.includes('"owner":'), false)
+    assert.equal(serialized.includes('"modulePath":'), false)
+    assert.equal(serialized.includes('"edges":'), false)
+    assert.equal(serialized.includes('"nodes":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readDependencyMapping(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 Design System and Token Contract projection is exact, private-safe, and non-authorizing", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-design-system-token-contract-"))
   const workspace = join(root, "workspace")

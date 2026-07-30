@@ -89,6 +89,7 @@
     "onCommand:gaepKiro.definitionOfReady.inspect",
     "onCommand:gaepKiro.definitionOfDone.inspect",
     "onCommand:gaepKiro.implementationUnitModel.inspect",
+    "onCommand:gaepKiro.dependencyMapping.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -339,6 +340,10 @@
       {
         "command": "gaepKiro.implementationUnitModel.inspect",
         "title": "GAEP for Kiro: Inspect Governed Implementation Unit Model Candidate"
+      },
+      {
+        "command": "gaepKiro.dependencyMapping.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Dependency Mapping Candidate"
       },
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",
