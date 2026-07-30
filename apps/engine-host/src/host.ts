@@ -104,6 +104,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.mvpSlices.revise",
   "planning.mvpSlices.assess",
   "planning.mvpSlices.snapshot",
+  "planning.prioritization.read",
+  "planning.prioritization.create",
+  "planning.prioritization.revise",
+  "planning.prioritization.assess",
+  "planning.prioritization.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1292,6 +1297,21 @@ export class EngineHost {
         return this.engine.mvpSliceDefinition.assess(request.params.initiativeId)
       case "planning.mvpSlices.snapshot":
         return this.engine.mvpSliceDefinition.project(request.params.initiativeId)
+      case "planning.prioritization.read":
+        return await this.engine.prioritizationModel.readCurrent(request.params.initiativeId) ?? null
+      case "planning.prioritization.create":
+        return this.engine.prioritizationModel.create(request.params.record, actorId(request.params.actorId))
+      case "planning.prioritization.revise":
+        return this.engine.prioritizationModel.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.prioritization.assess":
+        return this.engine.prioritizationModel.assess(request.params.initiativeId)
+      case "planning.prioritization.snapshot":
+        return this.engine.prioritizationModel.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":

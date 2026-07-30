@@ -3,7 +3,13 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type { BacklogHierarchy, BacklogHierarchyInput, MvpSliceDefinitionInput } from "@gaep/contracts"
+import type {
+  BacklogHierarchy,
+  BacklogHierarchyInput,
+  MvpSliceDefinition,
+  MvpSliceDefinitionInput,
+  PrioritizationModelInput,
+} from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -313,8 +319,98 @@ describe("Backlog Hierarchy host protocol", () => {
         expectedRevision: mvpCreated.revision,
         record: { ...mvpInput, title: "Host reviewed MVP and vertical slice candidate" },
       },
-    }) as { id: string; revision: number; predecessorDigest: string }
+    }) as MvpSliceDefinition
     expect(mvpRevised).toMatchObject({ id: mvpCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+
+    const estimate = (kind: "value-hypothesis" | "risk-register" | "dependency-analysis" | "cost-estimate", score: number) => ({
+      state: "candidate-estimate" as const,
+      score,
+      evidence: [{ kind, recordId: randomUUID(), revision: 1, digest: `sha256:${"1".repeat(64)}` as const }],
+      uncertainty: [],
+    })
+    const prioritizationInput: PrioritizationModelInput = {
+      initiativeId: initiative.id,
+      context: mvpInput.context,
+      informationClassification: "internal",
+      title: "Host explainable prioritization candidate",
+      mvpSliceDefinition: { recordId: mvpRevised.id, revision: mvpRevised.revision, digest: canonicalDigest(mvpRevised) },
+      method: {
+        key: "weighted.value-risk-dependency-cost",
+        version: "1.0",
+        calculation: "weighted-sum-v1",
+        normalization: "zero-to-one-hundred",
+        weights: { value: 40, riskReduction: 30, dependencyEnablement: 20, costSize: 10 },
+        tieBreaker: "slice-ordinal-ascending",
+      },
+      subjects: mvpRevised.slices.map((slice) => ({
+        sliceId: slice.id,
+        sliceKey: slice.key,
+        ordinal: slice.ordinal,
+        value: estimate("value-hypothesis", 80),
+        riskReduction: estimate("risk-register", 70),
+        dependencyEnablement: estimate("dependency-analysis", 60),
+        costSize: estimate("cost-estimate", 40),
+      })),
+      unresolvedQuestions: [],
+      limitations: ["Host transport does not establish evidence validity, priority, commitment, approval, readiness, assignment, execution, or action authority."],
+      reviewState: "ready-for-human-review",
+      evidenceValidityState: "not-established",
+      priorityDecisionState: "not-established",
+      commitmentState: "not-established",
+      scopeDecisionState: "not-established",
+      approvalState: "not-established",
+      acceptanceCriteriaValidityState: "not-established",
+      readyDoneState: "not-established",
+      implementationReadinessState: "not-established",
+      assignmentExecutionState: "not-established",
+      implementationAuthorityState: "not-granted",
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "priority-v1-rejected", protocolVersion: 1,
+      method: "planning.prioritization.snapshot", params: { initiativeId: initiative.id },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "priority-read-empty", protocolVersion: 2,
+      method: "planning.prioritization.read", params: { initiativeId: initiative.id },
+    })).resolves.toBeNull()
+    const priorityCreated = await host.dispatch({
+      jsonrpc: "2.0", id: "priority-create", protocolVersion: 2,
+      method: "planning.prioritization.create", params: { actorId: "host-test", record: prioritizationInput },
+    }) as { id: string; revision: number; rankingDigest: string }
+    expect(priorityCreated).toMatchObject({ revision: 1, rankingDigest: expect.stringMatching(/^sha256:/u) })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "priority-assess", protocolVersion: 2,
+      method: "planning.prioritization.assess", params: { initiativeId: initiative.id },
+    })).resolves.toMatchObject({
+      state: "complete-for-review",
+      subjectCount: 1,
+      scoredSubjectCount: 1,
+      evidenceReferenceCount: 4,
+      authorityBoundary: expect.stringContaining("does-not-establish-evidence-validity-priority"),
+    })
+    const prioritySnapshot = await host.dispatch({
+      jsonrpc: "2.0", id: "priority-snapshot", protocolVersion: 2,
+      method: "planning.prioritization.snapshot", params: { initiativeId: initiative.id },
+    }) as Record<string, unknown> & { snapshotDigest: string }
+    const { snapshotDigest: prioritySnapshotDigest, ...prioritySnapshotBody } = prioritySnapshot
+    expect(prioritySnapshotDigest).toBe(canonicalDigest(prioritySnapshotBody))
+    expect(prioritySnapshot).toMatchObject({
+      candidate: { id: priorityCreated.id, subjectCount: 1, scoredSubjectCount: 1, evidenceReferenceCount: 4 },
+      privacyBoundary: expect.stringContaining("not-dimension-estimates-evidence-identities"),
+      authorityBoundary: expect.stringContaining("does-not-establish-evidence-validity-priority"),
+    })
+    expect(JSON.stringify(prioritySnapshot)).not.toContain(prioritizationInput.title)
+    expect(JSON.stringify(prioritySnapshot)).not.toContain(prioritizationInput.subjects[0]!.value.evidence[0]!.recordId)
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "priority-revise", protocolVersion: 2,
+      method: "planning.prioritization.revise",
+      params: {
+        actorId: "host-test",
+        recordId: priorityCreated.id,
+        expectedRevision: priorityCreated.revision,
+        record: { ...prioritizationInput, title: "Host reviewed explainable prioritization candidate" },
+      },
+    })).resolves.toMatchObject({ id: priorityCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
 
     const revised = await host.dispatch({
       jsonrpc: "2.0",

@@ -4,6 +4,7 @@ import { portableSelectionSettingsSchema } from "./agent.js"
 import { businessCapabilityMapInputSchema } from "./business-capability-map.js"
 import { backlogHierarchyInputSchema } from "./backlog-hierarchy.js"
 import { mvpSliceDefinitionInputSchema } from "./mvp-slice-definition.js"
+import { prioritizationModelInputSchema } from "./prioritization-model.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -623,6 +624,18 @@ export const hostMvpSliceDefinitionReviseParamsSchema = z.object({
   record: mvpSliceDefinitionInputSchema,
 }).strict()
 
+export const hostPrioritizationModelCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: prioritizationModelInputSchema,
+}).strict()
+
+export const hostPrioritizationModelReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: prioritizationModelInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -887,6 +900,11 @@ export const hostMethodSchema = z.enum([
   "planning.mvpSlices.revise",
   "planning.mvpSlices.assess",
   "planning.mvpSlices.snapshot",
+  "planning.prioritization.read",
+  "planning.prioritization.create",
+  "planning.prioritization.revise",
+  "planning.prioritization.assess",
+  "planning.prioritization.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1190,6 +1208,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.mvpSlices.revise", hostMvpSliceDefinitionReviseParamsSchema),
   requestVariant("planning.mvpSlices.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.mvpSlices.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.prioritization.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.prioritization.create", hostPrioritizationModelCreateParamsSchema),
+  requestVariant("planning.prioritization.revise", hostPrioritizationModelReviseParamsSchema),
+  requestVariant("planning.prioritization.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.prioritization.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),
