@@ -319,6 +319,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.designBaseline.revise",
   "design.designBaseline.assess",
   "design.designBaseline.snapshot",
+  "design.designDriftDetection.read",
+  "design.designDriftDetection.create",
+  "design.designDriftDetection.revise",
+  "design.designDriftDetection.assess",
+  "design.designDriftDetection.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1882,6 +1887,21 @@ export class EngineHost {
         return this.engine.designBaseline.assess(request.params.initiativeId)
       case "design.designBaseline.snapshot":
         return this.engine.designBaseline.project(request.params.initiativeId)
+      case "design.designDriftDetection.read":
+        return await this.engine.designDriftDetection.readCurrent(request.params.initiativeId) ?? null
+      case "design.designDriftDetection.create":
+        return this.engine.designDriftDetection.create(request.params.record, actorId(request.params.actorId))
+      case "design.designDriftDetection.revise":
+        return this.engine.designDriftDetection.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.designDriftDetection.assess":
+        return this.engine.designDriftDetection.assess(request.params.initiativeId)
+      case "design.designDriftDetection.snapshot":
+        return this.engine.designDriftDetection.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {

@@ -70,6 +70,7 @@ import { designDeltaInputSchema } from "./design-delta.js"
 import { designConflictResolutionInputSchema } from "./design-conflict-resolution.js"
 import { humanDesignApprovalInputSchema } from "./human-design-approval.js"
 import { designBaselineInputSchema } from "./design-baseline.js"
+import { designDriftDetectionInputSchema } from "./design-drift-detection.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -786,6 +787,18 @@ export const hostDesignBaselineReviseParamsSchema = z.object({
   record: designBaselineInputSchema,
 }).strict()
 
+export const hostDesignDriftDetectionCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: designDriftDetectionInputSchema,
+}).strict()
+
+export const hostDesignDriftDetectionReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: designDriftDetectionInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -1063,6 +1076,11 @@ export const hostMethodSchema = z.enum([
   "design.designBaseline.revise",
   "design.designBaseline.assess",
   "design.designBaseline.snapshot",
+  "design.designDriftDetection.read",
+  "design.designDriftDetection.create",
+  "design.designDriftDetection.revise",
+  "design.designDriftDetection.assess",
+  "design.designDriftDetection.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1349,6 +1367,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.designBaseline.revise", hostDesignBaselineReviseParamsSchema),
   requestVariant("design.designBaseline.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.designBaseline.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designDriftDetection.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designDriftDetection.create", hostDesignDriftDetectionCreateParamsSchema),
+  requestVariant("design.designDriftDetection.revise", hostDesignDriftDetectionReviseParamsSchema),
+  requestVariant("design.designDriftDetection.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designDriftDetection.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

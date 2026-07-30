@@ -2320,6 +2320,54 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "design-drift-read-empty",
+      protocolVersion: 2,
+      method: "design.designDriftDetection.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-drift-assess-empty",
+      protocolVersion: 2,
+      method: "design.designDriftDetection.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      implementationTargetCount: 0,
+      humanReviewedImplementationTargetCount: 0,
+      observationCount: 0,
+      humanReviewedObservationCount: 0,
+      requirementToDesignCount: 0,
+      designToImplementationCount: 0,
+      conformantCount: 0,
+      driftCount: 0,
+      unassessedCount: 0,
+      blockerCount: 0,
+      highSeverityCount: 0,
+      remediationCandidateCount: 0,
+      expiredRemediationCandidateCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      candidateResult: "not-assessed",
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-establish-an-actual-baseline"),
+    })
+    const designDriftProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-drift-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.designDriftDetection.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: designDriftDigest, ...designDriftProjectionBody } = designDriftProjection
+    expect(designDriftDigest).toBe(canonicalDigest(designDriftProjectionBody))
+    expect(designDriftProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-design-requirement-or-implementation-content"),
+      authorityBoundary: expect.stringContaining("does-not-establish-an-actual-baseline"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -2484,6 +2532,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "design-baseline-v1-block",
       method: "design.designBaseline.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-drift-v1-block",
+      method: "design.designDriftDetection.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({
