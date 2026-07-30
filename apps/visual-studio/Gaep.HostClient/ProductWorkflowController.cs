@@ -2086,6 +2086,109 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDefinitionOfDoneAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var hierarchy = await client.ReadBacklogHierarchyAsync(initiativeId, cancellationToken);
+        var mvp = await client.ReadMvpSliceDefinitionAsync(initiativeId, cancellationToken);
+        var prioritization = await client.ReadPrioritizationModelAsync(initiativeId, cancellationToken);
+        var criteria = await client.ReadAcceptanceCriteriaAsync(initiativeId, cancellationToken);
+        var ready = await client.ReadDefinitionOfReadyAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDefinitionOfDoneAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Definition of Done was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (hierarchy.Candidate is not { } currentHierarchy || projection.HierarchyRecordId != currentHierarchy.Id ||
+                projection.HierarchyRevision != currentHierarchy.Revision || projection.HierarchyDigest != currentHierarchy.Digest))
+        {
+            throw new ArgumentException("The Backlog Hierarchy changed while Definition of Done was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (mvp.Candidate is not { } currentMvp || projection.MvpSliceDefinitionRecordId != currentMvp.Id ||
+                projection.MvpSliceDefinitionRevision != currentMvp.Revision || projection.MvpSliceDefinitionDigest != currentMvp.Digest))
+        {
+            throw new ArgumentException("The MVP and Vertical Slice Definition changed while Definition of Done was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (prioritization.Candidate is not { } currentPrioritization ||
+                projection.PrioritizationModelRecordId != currentPrioritization.Id ||
+                projection.PrioritizationModelRevision != currentPrioritization.Revision ||
+                projection.PrioritizationModelDigest != currentPrioritization.Digest))
+        {
+            throw new ArgumentException("The Prioritization Model changed while Definition of Done was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (criteria.Candidate is not { } currentCriteria || projection.AcceptanceCriteriaRecordId != currentCriteria.Id ||
+                projection.AcceptanceCriteriaRevision != currentCriteria.Revision || projection.AcceptanceCriteriaDigest != currentCriteria.Digest))
+        {
+            throw new ArgumentException("Acceptance Criteria changed while Definition of Done was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (ready.Candidate is not { } currentReady || projection.DefinitionOfReadyRecordId != currentReady.Id ||
+                projection.DefinitionOfReadyRevision != currentReady.Revision || projection.DefinitionOfReadyDigest != currentReady.Digest))
+        {
+            throw new ArgumentException("Definition of Ready changed while Definition of Done was read. Refresh the exact records.");
+        }
+        return RenderDefinitionOfDone(projection);
+    }
+
+    public static string RenderDefinitionOfDone(DefinitionOfDoneProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Definition of Done candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.Result} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Coverage: {projection.SubjectCount} Story/Task subjects · {projection.PolicyEntryCount} completion prerequisites · " +
+                $"{projection.EvaluationCount}/{projection.ExpectedEvaluationCount} evaluations · {projection.MissingEvaluationCount} missing")
+            .AppendLine(
+                $"Evaluation states: {projection.CandidateSatisfiedCount} candidate-satisfied · {projection.NotApplicableCount} not-applicable candidates · " +
+                $"{projection.NotSatisfiedCount} not satisfied · {projection.ExceptionCandidateCount} exception candidates · " +
+                $"{projection.NotAssessedCount} unassessed · {projection.StaleEvaluationCount} stale · {projection.InvalidEvaluationCount} invalid")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedQuestionCount} questions · {projection.ExpiredCount} expired · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleHierarchyCount} stale hierarchies · " +
+                $"{projection.StaleMvpSliceDefinitionCount} stale MVP definitions · " +
+                $"{projection.StalePrioritizationModelCount} stale prioritization models · " +
+                $"{projection.StaleAcceptanceCriteriaCount} stale Acceptance Criteria · " +
+                $"{projection.StaleDefinitionOfReadyCount} stale Definitions of Ready");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Definition of Done candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Policy version: {candidate.PolicyVersion} · valid until {candidate.ValidUntil:O}")
+                .AppendLine($"Subject catalog digest: {candidate.SubjectCatalogDigest}")
+                .AppendLine($"Policy digest: {candidate.PolicyDigest}")
+                .AppendLine($"Evaluation digest: {candidate.EvaluationDigest}")
+                .AppendLine($"Receipt digest: {candidate.ReceiptDigest}")
+                .AppendLine(
+                    $"Candidate coverage: {candidate.SubjectCount} subjects · {candidate.PolicyEntryCount} completion prerequisites · " +
+                    $"{candidate.EvaluationCount} evaluations · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Definition of Done candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, validity time, and subject, policy, evaluation, receipt, " +
+                "and snapshot digests only; no rules, rationales, evidence identities, assessor identities, or personal data. " +
+                "A candidate pass is an evaluation result, not completion, acceptance, approval, merge, release, deployment, " +
+                "implementation completeness, exception or waiver authority, assignment, execution, or action permission.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

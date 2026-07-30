@@ -235,6 +235,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadPrioritizationModelCommand = new AsyncCommand(LoadPrioritizationModelAsync);
         LoadAcceptanceCriteriaCommand = new AsyncCommand(LoadAcceptanceCriteriaAsync);
         LoadDefinitionOfReadyCommand = new AsyncCommand(LoadDefinitionOfReadyAsync);
+        LoadDefinitionOfDoneCommand = new AsyncCommand(LoadDefinitionOfDoneAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -400,6 +401,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadDefinitionOfReadyCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadDefinitionOfDoneCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1024,6 +1028,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Definition of Ready candidate",
             (controller, _, token) => controller.ReadDefinitionOfReadyAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadDefinitionOfDoneAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Definition of Done candidate",
+            (controller, _, token) => controller.ReadDefinitionOfDoneAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>
