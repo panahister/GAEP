@@ -71,6 +71,7 @@ const commands = [
   "gaepKiro.designToCodeBindingRegistry.inspect",
   "gaepKiro.routeScreenComponentMapping.inspect",
   "gaepKiro.testMethodology.inspect",
+  "gaepKiro.testInventory.inspect",
   "gaepKiro.designSystemTokenContract.inspect",
   "gaepKiro.accessibilityDesignRules.inspect",
   "gaepKiro.responsiveMultiPlatformTargets.inspect",

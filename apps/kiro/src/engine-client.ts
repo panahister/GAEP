@@ -45,6 +45,7 @@ import {
   designToCodeBindingRegistryProjectionSchema,
   routeScreenComponentMappingProjectionSchema,
   testMethodologyProjectionSchema,
+  testInventoryProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -116,6 +117,7 @@ import {
   type DesignToCodeBindingRegistryProjection,
   type RouteScreenComponentMappingProjection,
   type TestMethodologyProjection,
+  type TestInventoryProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -1050,6 +1052,21 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = testMethodologyProjectionSchema.safeParse(
         await this.request("planning.testMethodology.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId ||
+          snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readTestInventory(initiativeValue: string): Promise<TestInventoryProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = testInventoryProjectionSchema.safeParse(
+        await this.request("planning.testInventory.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

@@ -98,6 +98,7 @@
     "onCommand:gaepKiro.designToCodeBindingRegistry.inspect",
     "onCommand:gaepKiro.routeScreenComponentMapping.inspect",
     "onCommand:gaepKiro.testMethodology.inspect",
+    "onCommand:gaepKiro.testInventory.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -384,6 +385,10 @@
       {
         "command": "gaepKiro.testMethodology.inspect",
         "title": "GAEP for Kiro: Inspect Governed Test Methodology Candidate"
+      },
+      {
+        "command": "gaepKiro.testInventory.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Test Inventory Candidate"
       },
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",

@@ -46,6 +46,7 @@ import {
   type DesignToCodeBindingRegistryProjection,
   type RouteScreenComponentMappingProjection,
   type TestMethodologyProjection,
+  type TestInventoryProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -184,6 +185,7 @@ const commandIds = {
   designToCodeBindingRegistry: "gaepKiro.designToCodeBindingRegistry.inspect",
   routeScreenComponentMapping: "gaepKiro.routeScreenComponentMapping.inspect",
   testMethodology: "gaepKiro.testMethodology.inspect",
+  testInventory: "gaepKiro.testInventory.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -339,6 +341,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.designToCodeBindingRegistry, (input?: unknown) => runUserCommand(() => showDesignToCodeBindingRegistry(pool, input))),
     vscode.commands.registerCommand(commandIds.routeScreenComponentMapping, (input?: unknown) => runUserCommand(() => showRouteScreenComponentMapping(pool, input))),
     vscode.commands.registerCommand(commandIds.testMethodology, (input?: unknown) => runUserCommand(() => showTestMethodology(pool, input))),
+    vscode.commands.registerCommand(commandIds.testInventory, (input?: unknown) => runUserCommand(() => showTestInventory(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2477,6 +2480,53 @@ async function showTestMethodology(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and methodology scope, environment, data, ownership, trace, assessment, and snapshot digests only; no Requirement, criterion, method rationale, environment address, test data, owner, evidence, result, personal data, secret, credential, or machine path. This inspection does not establish methodology validity or completeness, environment availability, data fitness, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showTestInventory(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<TestInventoryProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Test Inventory inspection", "Initiative ID")
+  const projection = await client.readTestInventory(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Test Inventory candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Source coverage: ${status.sourceCriterionCount} Acceptance Criteria · ${status.sourceRiskCount} Risks · ${status.sourceUnitCount} Implementation Units · ${status.sourceMappingSubjectCount} mapping subjects · ${status.sourceMethodologyScopeCount} methodology scopes`,
+    `Candidate inventory: ${status.assetCount} tests · ${status.catalogedAssetCount} cataloged · ${status.conflictAssetCount} conflicts · ${status.missingAssetCount} missing · ${status.deferredAssetCount} deferred · ${status.notAssessedAssetCount} not assessed`,
+    `Candidate asset states: ${status.observedAssetCount} observed · ${status.plannedAssetCount} planned · ${status.automatedAssetCount} automated · ${status.manualAssetCount} manual`,
+    `Candidate coverage gaps: ${status.uncoveredCriterionCount} criteria · ${status.uncoveredRiskCount} risks · ${status.uncoveredUnitCount} units · ${status.uncoveredMappingSubjectCount} mapping subjects · ${status.uncoveredMethodologyScopeCount} methodology scopes`,
+    `Candidate integrity gaps: ${status.duplicateIdentityCount} duplicates · ${status.orphanAssetCount} orphans · ${status.ownershipGapCount} ownership · ${status.traceGapCount} trace · ${status.evidenceGapCount} evidence`,
+    `Candidate freshness gaps: ${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Catalog receipt digest: ${record.catalogReceiptDigest}`,
+      `Coverage receipt digest: ${record.coverageReceiptDigest}`,
+      `Trace receipt digest: ${record.traceReceiptDigest}`,
+      `Ownership receipt digest: ${record.ownershipReceiptDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`,
+      `Candidate coverage: ${record.assetCount} tests · ${record.catalogedAssetCount} cataloged · ${record.conflictAssetCount} conflicts · ${record.observedAssetCount} observed · ${record.plannedAssetCount} planned · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and test catalog, coverage, trace, ownership, assessment, and snapshot digests only; no test title, path, code, steps, data, owner, evidence, result, personal data, secret, credential, or machine path. This inspection does not establish test existence, inventory validity or completeness, environment availability, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

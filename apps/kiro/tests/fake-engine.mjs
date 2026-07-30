@@ -72,6 +72,7 @@ const figmaToBoilerplateMappingId = "93939393-9393-4393-8393-939393939393"
 const designToCodeBindingRegistryId = "94949494-9494-4494-8494-949494949494"
 const routeScreenComponentMappingId = "95959595-9595-4595-8595-959595959595"
 const testMethodologyId = "96969696-9696-4696-8696-969696969696"
+const testInventoryId = "97979797-9797-4797-8797-979797979797"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -214,6 +215,8 @@ input.on("line", (line) => {
       return readRouteScreenComponentMapping(id, request.params)
     case "planning.testMethodology.snapshot":
       return readTestMethodology(id, request.params)
+    case "planning.testInventory.snapshot":
+      return readTestInventory(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -3416,6 +3419,65 @@ function readTestMethodology(id, params) {
   if (workspacePath.endsWith("bad-test-methodology-snapshot-digest")) value.candidate.scopeCount = 5
   if (workspacePath.endsWith("bad-test-methodology-snapshot-private")) {
     value.testData = `${privateRoot}/${privateCredential}`
+    value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
+  }
+  return writeResult(id, value)
+}
+
+function readTestInventory(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE TEST INVENTORY PARAMS")
+  }
+  const candidateDigest = `sha256:${"9".repeat(64)}`
+  const reference = (recordId, value) => ({ recordId, revision: 2, digest: `sha256:${value.repeat(64)}` })
+  const status = {
+    schemaVersion: 1, kind: "test-inventory-status", productId, productRevision: 7,
+    initiativeId, initiativeRevision: initiativeState.revision,
+    candidate: { recordId: testInventoryId, revision: 2, digest: candidateDigest },
+    acceptanceCriteria: reference(acceptanceCriteriaId, "4"),
+    riskRegister: reference(riskRegisterId, "5"),
+    implementationUnitModel: reference(implementationUnitModelId, "7"),
+    routeScreenComponentMapping: reference(routeScreenComponentMappingId, "2"),
+    testMethodology: reference(testMethodologyId, "8"),
+    sourceCriterionCount: 12, sourceRiskCount: 9, sourceUnitCount: 4,
+    sourceMappingSubjectCount: 14, sourceMethodologyScopeCount: 4,
+    assetCount: 18, catalogedAssetCount: 14, conflictAssetCount: 1, missingAssetCount: 1,
+    deferredAssetCount: 1, notAssessedAssetCount: 1, observedAssetCount: 11, plannedAssetCount: 5,
+    automatedAssetCount: 10, manualAssetCount: 4, duplicateIdentityCount: 1, orphanAssetCount: 1,
+    uncoveredCriterionCount: 2, uncoveredRiskCount: 1, uncoveredUnitCount: 1,
+    uncoveredMappingSubjectCount: 2, uncoveredMethodologyScopeCount: 1,
+    ownershipGapCount: 1, traceGapCount: 2, evidenceGapCount: 1, staleBindingCount: 0,
+    staleDependencyCount: 0, invalidCandidateCount: 1, unresolvedQuestionCount: 2,
+    reviewState: "held", state: "attention-required",
+    reasons: ["One or more Test Inventory candidates require human review"],
+    assessedAt: "2026-07-31T02:00:00.000Z",
+    authorityBoundary: "test-inventory-status-is-observational-and-does-not-establish-requirement-acceptance-criteria-or-risk-truth-inventory-validity-or-completeness-test-asset-existence-environment-availability-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1, kind: "test-inventory-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: testInventoryId, revision: 2, digest: candidateDigest, state: "candidate",
+      catalogReceiptDigest: `sha256:${"1".repeat(64)}`,
+      coverageReceiptDigest: `sha256:${"2".repeat(64)}`,
+      traceReceiptDigest: `sha256:${"3".repeat(64)}`,
+      ownershipReceiptDigest: `sha256:${"4".repeat(64)}`,
+      assessmentReceiptDigest: `sha256:${"5".repeat(64)}`,
+      assetCount: 18, catalogedAssetCount: 14, conflictAssetCount: 1,
+      observedAssetCount: 11, plannedAssetCount: 5, reviewState: "held",
+      updatedAt: "2026-07-31T01:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-test-catalog-coverage-trace-ownership-assessment-snapshot-digests-only-not-test-titles-paths-code-steps-data-owner-evidence-results-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "test-inventory-projection-is-read-only-and-does-not-establish-requirement-acceptance-criteria-or-risk-truth-inventory-validity-or-completeness-test-asset-existence-environment-availability-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-test-inventory-snapshot-binding")) content.initiative.id = testInventoryId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-test-inventory-snapshot-digest")) value.candidate.assetCount = 19
+  if (workspacePath.endsWith("bad-test-inventory-snapshot-private")) {
+    value.testPath = `${privateRoot}/${privateCredential}`
     value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
   }
   return writeResult(id, value)
