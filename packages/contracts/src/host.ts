@@ -5,6 +5,7 @@ import { businessCapabilityMapInputSchema } from "./business-capability-map.js"
 import { backlogHierarchyInputSchema } from "./backlog-hierarchy.js"
 import { mvpSliceDefinitionInputSchema } from "./mvp-slice-definition.js"
 import { prioritizationModelInputSchema } from "./prioritization-model.js"
+import { acceptanceCriteriaInputSchema } from "./acceptance-criteria.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -636,6 +637,18 @@ export const hostPrioritizationModelReviseParamsSchema = z.object({
   record: prioritizationModelInputSchema,
 }).strict()
 
+export const hostAcceptanceCriteriaCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: acceptanceCriteriaInputSchema,
+}).strict()
+
+export const hostAcceptanceCriteriaReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: acceptanceCriteriaInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -905,6 +918,11 @@ export const hostMethodSchema = z.enum([
   "planning.prioritization.revise",
   "planning.prioritization.assess",
   "planning.prioritization.snapshot",
+  "planning.acceptanceCriteria.read",
+  "planning.acceptanceCriteria.create",
+  "planning.acceptanceCriteria.revise",
+  "planning.acceptanceCriteria.assess",
+  "planning.acceptanceCriteria.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1213,6 +1231,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.prioritization.revise", hostPrioritizationModelReviseParamsSchema),
   requestVariant("planning.prioritization.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.prioritization.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.acceptanceCriteria.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.acceptanceCriteria.create", hostAcceptanceCriteriaCreateParamsSchema),
+  requestVariant("planning.acceptanceCriteria.revise", hostAcceptanceCriteriaReviseParamsSchema),
+  requestVariant("planning.acceptanceCriteria.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.acceptanceCriteria.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

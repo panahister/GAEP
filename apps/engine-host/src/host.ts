@@ -109,6 +109,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.prioritization.revise",
   "planning.prioritization.assess",
   "planning.prioritization.snapshot",
+  "planning.acceptanceCriteria.read",
+  "planning.acceptanceCriteria.create",
+  "planning.acceptanceCriteria.revise",
+  "planning.acceptanceCriteria.assess",
+  "planning.acceptanceCriteria.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1312,6 +1317,21 @@ export class EngineHost {
         return this.engine.prioritizationModel.assess(request.params.initiativeId)
       case "planning.prioritization.snapshot":
         return this.engine.prioritizationModel.project(request.params.initiativeId)
+      case "planning.acceptanceCriteria.read":
+        return await this.engine.acceptanceCriteria.readCurrent(request.params.initiativeId) ?? null
+      case "planning.acceptanceCriteria.create":
+        return this.engine.acceptanceCriteria.create(request.params.record, actorId(request.params.actorId))
+      case "planning.acceptanceCriteria.revise":
+        return this.engine.acceptanceCriteria.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.acceptanceCriteria.assess":
+        return this.engine.acceptanceCriteria.assess(request.params.initiativeId)
+      case "planning.acceptanceCriteria.snapshot":
+        return this.engine.acceptanceCriteria.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":
