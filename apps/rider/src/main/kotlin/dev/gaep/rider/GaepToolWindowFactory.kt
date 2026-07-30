@@ -754,6 +754,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += designDeltaButton
         actions.add(designDeltaButton)
 
+        val designConflictResolutionButton = JButton("Inspect Design Conflict Resolution…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Design, delta, resolution, evidence, Source, human-attribution, personal, local-path, secret, credential, permission, and authority content is withheld.",
+                    "GAEP Design Conflict Resolution",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Design Conflict Resolution", status, output, buttons) {
+                    controller.readDesignConflictResolution(initiativeId)
+                }
+            }
+        }
+        buttons += designConflictResolutionButton
+        actions.add(designConflictResolutionButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

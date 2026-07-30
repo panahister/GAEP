@@ -55,6 +55,7 @@ private val finalizedFigmaSnapshotImportId = UUID.fromString("78787878-7878-4878
 private val designToRequirementBindingId = UUID.fromString("79797979-7979-4979-8979-797979797979")
 private val designerReadyGateId = UUID.fromString("80808080-8080-4080-8080-808080808080")
 private val designDeltaId = UUID.fromString("81818181-8181-4181-8181-818181818181")
+private val designConflictResolutionId = UUID.fromString("82828282-8282-4282-8282-828282828282")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -328,6 +329,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.designDelta.snapshot" -> handleDesignDelta(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.designConflictResolution.snapshot" -> handleDesignConflictResolution(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4353,6 +4359,116 @@ private fun handleDesignDelta(id: Long, params: JsonObject, workspacePath: Strin
         }
         workspacePath.endsWith("bad-design-delta-private") -> {
             value.addProperty("deltaContent", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDesignConflictResolution(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN CONFLICT RESOLUTION PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-design-conflict-resolution-binding")) 8 else 7
+    val assessedAt = "2026-07-30T00:10:00.000Z"
+    val candidateDigest = "sha256:${"2".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "design-conflict-resolution-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "design-conflict-resolution-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", designConflictResolutionId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("conflictCount", 5)
+            addProperty("resolutionCount", 4)
+            addProperty("acceptSourceCount", 1)
+            addProperty("acceptTargetCount", 1)
+            addProperty("mergeCount", 1)
+            addProperty("rejectChangeCount", 0)
+            addProperty("escalateCount", 1)
+            addProperty("humanReviewedCount", 3)
+            addProperty("distinctActorDeclaredCount", 2)
+            addProperty("expiredCandidateCount", 1)
+            addProperty("unresolvedConflictCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("coverageState", "partial")
+            addProperty("provenanceState", "partial")
+            addProperty("candidateResult", "escalation-plan-candidate")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("The candidate records unresolved design conflicts") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "design-conflict-resolution-status-is-observational-and-does-not-enforce-separation-of-duties-resolve-conflicts-synchronize-design-establish-validity-approval-baseline-readiness-or-grant-implementation-write-import-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", designConflictResolutionId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"3".repeat(64)}")
+            addProperty("state", "candidate")
+            add("designDelta", JsonObject().apply {
+                addProperty("recordId", designDeltaId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", "sha256:${"8".repeat(64)}")
+                addProperty("membershipDigest", "sha256:${"9".repeat(64)}")
+                addProperty("deltaCatalogDigest", "sha256:${"1".repeat(64)}")
+                addProperty("comparisonReceiptDigest", "sha256:${"0".repeat(64)}")
+                addProperty("conflictingCount", 5)
+                addProperty("candidateResult", "conflict-candidate")
+                addProperty("reviewState", "ready-for-human-review")
+            })
+            addProperty("resolutionDefinitionDigest", "sha256:${"4".repeat(64)}")
+            addProperty("resolutionReceiptDigest", "sha256:${"5".repeat(64)}")
+            addProperty("resolutionCatalogDigest", "sha256:${"6".repeat(64)}")
+            addProperty("conflictCount", 5)
+            addProperty("resolutionCount", 4)
+            addProperty("coverageState", "partial")
+            addProperty("provenanceState", "partial")
+            addProperty("candidateResult", "escalation-plan-candidate")
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T00:09:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-delta-content-resolution-content-evidence-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+        )
+        addProperty(
+            "authorityBoundary",
+            "design-conflict-resolution-projection-is-read-only-and-does-not-enforce-separation-of-duties-resolve-conflicts-synchronize-design-establish-validity-approval-baseline-readiness-or-grant-implementation-write-import-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-design-conflict-resolution-digest") -> {
+            value.getAsJsonObject("status").addProperty("resolutionCount", 3)
+        }
+        workspacePath.endsWith("bad-design-conflict-resolution-private") -> {
+            value.addProperty("resolutionContent", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

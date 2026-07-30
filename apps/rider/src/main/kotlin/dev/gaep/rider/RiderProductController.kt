@@ -2257,6 +2257,66 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readDesignConflictResolution(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readDesignConflictResolution(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Design Conflict Resolution was read. Refresh the exact records." }
+        return renderDesignConflictResolution(projection)
+    }
+
+    fun renderDesignConflictResolution(projection: DesignConflictResolutionProjection): String = buildString {
+        appendLine("GAEP Design Conflict Resolution candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate result: ${projection.candidateResult} · ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine("Conflict inventory: ${projection.conflictCount} conflicts · ${projection.resolutionCount} resolution candidates")
+        appendLine(
+            "Candidate actions: ${projection.acceptSourceCount} accept source · ${projection.acceptTargetCount} accept target · " +
+                "${projection.mergeCount} merge · ${projection.rejectChangeCount} reject change · ${projection.escalateCount} escalate",
+        )
+        appendLine(
+            "Recorded review: ${projection.humanReviewedCount}/${projection.resolutionCount} human-reviewed · " +
+                "${projection.distinctActorDeclaredCount} distinct-actor declarations · ${projection.expiredCandidateCount} expired",
+        )
+        appendLine(
+            "Candidate governance: coverage ${projection.coverageState} · provenance ${projection.provenanceState} · " +
+                "separation of duties not enforced",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedConflictCount} unresolved conflicts · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Candidate record: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Design Delta: ${record.designDelta.recordId}@${record.designDelta.revision} · " +
+                    "${record.designDelta.conflictingCount} conflicts · catalog ${record.designDelta.deltaCatalogDigest}",
+            )
+            appendLine(
+                "Resolution evidence: definition ${record.resolutionDefinitionDigest} · " +
+                    "receipt ${record.resolutionReceiptDigest} · catalog ${record.resolutionCatalogDigest}",
+            )
+        } ?: appendLine("Candidate record: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, exact Design Delta binding, receipts, catalog digests, counts, " +
+                "results, and recorded review states only; this view does not enforce separation of duties, resolve or " +
+                "apply conflicts, synchronize design, establish validity, approval, baseline, or readiness, call Figma, " +
+                "request credentials, grant permissions, execute imports or writes, or grant implementation or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

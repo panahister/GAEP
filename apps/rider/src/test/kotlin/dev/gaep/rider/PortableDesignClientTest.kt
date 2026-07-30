@@ -2174,6 +2174,53 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Design Conflict Resolution projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("design-conflict-resolution-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDesignConflictResolution(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("escalation-plan-candidate", projection.candidateResult)
+            assertEquals("held", projection.reviewState)
+            assertEquals(5, projection.conflictCount)
+            assertEquals(4, projection.resolutionCount)
+            assertEquals(1, projection.escalateCount)
+            assertEquals(3, projection.humanReviewedCount)
+            assertEquals(4, projection.candidate?.resolutionCount)
+
+            val rendered = RiderProductController(client).readDesignConflictResolution(entryId)
+            assertTrue(rendered.contains("GAEP Design Conflict Resolution candidate"))
+            assertTrue(rendered.contains("5 conflicts · 4 resolution candidates"))
+            assertTrue(rendered.contains("1 accept source · 1 accept target · 1 merge"))
+            assertTrue(rendered.contains("separation of duties not enforced"))
+            assertTrue(rendered.contains("does not enforce separation of duties"))
+            assertTrue(rendered.contains("implementation or action authority"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("resolutionContent="))
+        }
+
+        listOf("bad-design-conflict-resolution-digest", "bad-design-conflict-resolution-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDesignConflictResolution(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-design-conflict-resolution-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDesignConflictResolution(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))
