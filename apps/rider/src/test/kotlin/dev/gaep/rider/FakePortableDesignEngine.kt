@@ -56,6 +56,7 @@ private val boilerplateSelectionBindingId = UUID.fromString("a9a9a9a9-a9a9-49a9-
 private val boilerplateCompatibilityValidationId = UUID.fromString("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 private val figmaToBoilerplateMappingId = UUID.fromString("abababab-abab-4bab-8bab-abababababab")
 private val designToCodeBindingRegistryId = UUID.fromString("bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc")
+private val routeScreenComponentMappingId = UUID.fromString("cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -351,6 +352,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.designToCodeBindingRegistry.snapshot" -> handleDesignToCodeBindingRegistry(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.routeScreenComponentMapping.snapshot" -> handleRouteScreenComponentMapping(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4690,6 +4696,145 @@ private fun handleDesignToCodeBindingRegistry(id: Long, params: JsonObject, work
             value.getAsJsonObject("candidate").addProperty("subjectCount", 3)
         workspacePath.endsWith("bad-design-to-code-binding-registry-snapshot-private") -> {
             value.addProperty("repositoryPath", "$privateRoot/$privateCredential")
+            val digestBody = value.deepCopy().also { it.remove("snapshotDigest") }
+            value.addProperty("snapshotDigest", canonicalDigest(digestBody))
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleRouteScreenComponentMapping(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE ROUTE SCREEN COMPONENT MAPPING PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-route-screen-component-mapping-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-31T00:30:00.000Z"
+    val candidateDigest = "sha256:${"2".repeat(64)}"
+    fun reference(recordId: UUID, revision: Int, digest: String) = JsonObject().apply {
+        addProperty("recordId", recordId.toString())
+        addProperty("revision", revision)
+        addProperty("digest", digest)
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "route-screen-component-mapping-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "route-screen-component-mapping-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", reference(routeScreenComponentMappingId, 2, candidateDigest))
+            add(
+                "informationArchitecture",
+                reference(
+                    informationArchitectureId,
+                    2,
+                    "sha256:${if (workspacePath.endsWith("bad-route-screen-component-mapping-dependency-binding")) "0".repeat(64) else "a".repeat(64)}",
+                ),
+            )
+            add("screenStateInventory", reference(screenStateInventoryId, 2, "sha256:${"c".repeat(64)}"))
+            add("designRequirements", reference(designRequirementsId, 2, "sha256:${"e".repeat(64)}"))
+            add("designBaseline", reference(designBaselineId, 3, "sha256:${"e".repeat(64)}"))
+            add("designToRequirementBinding", reference(designToRequirementBindingId, 2, "sha256:${"d".repeat(64)}"))
+            add("figmaToBoilerplateMapping", reference(figmaToBoilerplateMappingId, 2, "sha256:${"4".repeat(64)}"))
+            add("designToCodeBindingRegistry", reference(designToCodeBindingRegistryId, 2, "sha256:${"c".repeat(64)}"))
+            add("implementationUnitModel", reference(implementationUnitModelId, 2, "sha256:${"5".repeat(64)}"))
+            add("acceptanceCriteria", reference(acceptanceCriteriaId, 2, "sha256:${"1".repeat(64)}"))
+            addProperty("sourceRouteCount", 2)
+            addProperty("sourceScreenCount", 3)
+            addProperty("sourceStateCount", 5)
+            addProperty("sourceComponentCount", 4)
+            addProperty("subjectCount", 14)
+            addProperty("routeSubjectCount", 2)
+            addProperty("screenSubjectCount", 3)
+            addProperty("stateSubjectCount", 5)
+            addProperty("componentSubjectCount", 4)
+            addProperty("mappedCandidateCount", 12)
+            addProperty("conflictCandidateCount", 1)
+            addProperty("unmappedCandidateCount", 1)
+            addProperty("notAssessedCount", 0)
+            addProperty("relationshipCount", 18)
+            addProperty("definedRelationshipCount", 16)
+            addProperty("conflictRelationshipCount", 1)
+            addProperty("notAssessedRelationshipCount", 1)
+            addProperty("missingSubjectCount", 1)
+            addProperty("extraSubjectCount", 1)
+            addProperty("invalidSubjectCount", 1)
+            addProperty("missingRelationshipCount", 2)
+            addProperty("invalidRelationshipCount", 1)
+            addProperty("traceGapCount", 2)
+            addProperty("evidenceGapCount", 1)
+            addProperty("componentPlacementGapCount", 1)
+            addProperty("testHookGapCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleDependencyCount", 0)
+            addProperty("invalidCandidateCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply {
+                add("One or more Route, Screen, and Component Mapping subjects require human review")
+            })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "route-screen-component-mapping-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-navigation-route-screen-state-component-responsive-platform-requirement-acceptance-criteria-test-coverage-repository-path-symbol-or-mapping-truth-or-completeness-create-or-change-code-or-design-targets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", routeScreenComponentMappingId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("state", "candidate")
+            addProperty("subjectCatalogDigest", "sha256:${"3".repeat(64)}")
+            addProperty("relationshipCatalogDigest", "sha256:${"4".repeat(64)}")
+            addProperty("traceReceiptDigest", "sha256:${"5".repeat(64)}")
+            addProperty("mappingReceiptDigest", "sha256:${"6".repeat(64)}")
+            addProperty("assessmentReceiptDigest", "sha256:${"7".repeat(64)}")
+            addProperty("subjectCount", 14)
+            addProperty("routeSubjectCount", 2)
+            addProperty("screenSubjectCount", 3)
+            addProperty("stateSubjectCount", 5)
+            addProperty("componentSubjectCount", 4)
+            addProperty("mappedCandidateCount", 12)
+            addProperty("conflictCandidateCount", 1)
+            addProperty("unmappedCandidateCount", 1)
+            addProperty("notAssessedCount", 0)
+            addProperty("relationshipCount", 18)
+            addProperty("definedRelationshipCount", 16)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-31T00:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-subject-relationship-trace-mapping-assessment-snapshot-digests-only-not-route-pattern-screen-state-component-design-requirement-criterion-unit-repository-module-path-symbol-test-hook-evidence-reviewer-personal-data-secrets-credentials-or-machine-paths",
+        )
+        addProperty(
+            "authorityBoundary",
+            "route-screen-component-mapping-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-navigation-route-screen-state-component-responsive-platform-requirement-acceptance-criteria-test-coverage-repository-path-symbol-or-mapping-truth-or-completeness-create-or-change-code-or-design-targets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-route-screen-component-mapping-snapshot-digest") ->
+            value.getAsJsonObject("candidate").addProperty("subjectCount", 15)
+        workspacePath.endsWith("bad-route-screen-component-mapping-snapshot-private") -> {
+            value.addProperty("routePattern", "$privateRoot/$privateCredential")
             val digestBody = value.deepCopy().also { it.remove("snapshotDigest") }
             value.addProperty("snapshotDigest", canonicalDigest(digestBody))
         }

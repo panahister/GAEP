@@ -2644,6 +2644,109 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readRouteScreenComponentMapping(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val informationArchitecture = client.readInformationArchitectureModel(initiativeId)
+        val screenInventory = client.readScreenStateInventory(initiativeId)
+        val designRequirements = client.readDesignRequirements(initiativeId)
+        val designBaseline = client.readDesignBaseline(initiativeId)
+        val designBinding = client.readDesignToRequirementBinding(initiativeId)
+        val figmaMapping = client.readFigmaToBoilerplateMapping(initiativeId)
+        val designCodeBinding = client.readDesignToCodeBindingRegistry(initiativeId)
+        val units = client.readImplementationUnitModel(initiativeId)
+        val acceptance = client.readAcceptanceCriteria(initiativeId)
+        val projection = client.readRouteScreenComponentMapping(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Route, Screen, and Component Mapping was read. Refresh the exact records." }
+        projection.candidate?.let {
+            fun requireDependency(name: String, id: UUID, revision: Long, digest: String) {
+                val reference = requireNotNull(projection.dependencies[name]) {
+                    "The current $name candidate reference is unavailable. Refresh the exact records."
+                }
+                require(reference.recordId == id && reference.revision == revision && reference.digest == digest) {
+                    "The $name candidate changed while Route, Screen, and Component Mapping was read. Refresh the exact records."
+                }
+            }
+            informationArchitecture.candidate!!.let { requireDependency("informationArchitecture", it.id, it.revision, it.digest) }
+            screenInventory.candidate!!.let { requireDependency("screenStateInventory", it.id, it.revision, it.digest) }
+            designRequirements.candidate!!.let { requireDependency("designRequirements", it.id, it.revision, it.digest) }
+            designBaseline.candidate!!.let { requireDependency("designBaseline", it.id, it.revision, it.digest) }
+            designBinding.candidate!!.let { requireDependency("designToRequirementBinding", it.id, it.revision, it.digest) }
+            figmaMapping.candidate!!.let { requireDependency("figmaToBoilerplateMapping", it.id, it.revision, it.digest) }
+            designCodeBinding.candidate!!.let { requireDependency("designToCodeBindingRegistry", it.id, it.revision, it.digest) }
+            units.candidate!!.let { requireDependency("implementationUnitModel", it.id, it.revision, it.digest) }
+            acceptance.candidate!!.let { requireDependency("acceptanceCriteria", it.id, it.revision, it.digest) }
+        }
+        return renderRouteScreenComponentMapping(projection)
+    }
+
+    fun renderRouteScreenComponentMapping(projection: RouteScreenComponentMappingProjection): String = buildString {
+        appendLine("GAEP governed Route, Screen, and Component Mapping candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine(
+            "Source coverage: ${projection.sourceRouteCount} routes · ${projection.sourceScreenCount} screens · " +
+                "${projection.sourceStateCount} states · ${projection.sourceComponentCount} components",
+        )
+        appendLine(
+            "Candidate coverage: ${projection.subjectCount} subjects · ${projection.routeSubjectCount} routes · " +
+                "${projection.screenSubjectCount} screens · ${projection.stateSubjectCount} states · " +
+                "${projection.componentSubjectCount} components",
+        )
+        appendLine(
+            "Candidate outcomes: ${projection.mappedCandidateCount} mapped · ${projection.conflictCandidateCount} conflicts · " +
+                "${projection.unmappedCandidateCount} unmapped · ${projection.notAssessedCount} not assessed",
+        )
+        appendLine(
+            "Candidate relationships: ${projection.relationshipCount} total · ${projection.definedRelationshipCount} defined · " +
+                "${projection.conflictRelationshipCount} conflicts · ${projection.notAssessedRelationshipCount} not assessed",
+        )
+        appendLine(
+            "Candidate mapping gaps: ${projection.missingSubjectCount} missing subjects · ${projection.extraSubjectCount} extra subjects · " +
+                "${projection.invalidSubjectCount} invalid subjects · ${projection.missingRelationshipCount} missing relationships · " +
+                "${projection.invalidRelationshipCount} invalid relationships · ${projection.traceGapCount} trace gaps · " +
+                "${projection.evidenceGapCount} evidence gaps · ${projection.componentPlacementGapCount} component placement gaps · " +
+                "${projection.testHookGapCount} test-hook gaps",
+        )
+        appendLine(
+            "Candidate freshness gaps: ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleDependencyCount} stale dependencies · ${projection.invalidCandidateCount} invalid candidates · " +
+                "${projection.unresolvedQuestionCount} questions",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Route, Screen, and Component Mapping candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Subject catalog digest: ${record.subjectCatalogDigest}")
+            appendLine("Relationship catalog digest: ${record.relationshipCatalogDigest}")
+            appendLine("Trace receipt digest: ${record.traceReceiptDigest}")
+            appendLine("Mapping receipt digest: ${record.mappingReceiptDigest}")
+            appendLine("Assessment receipt digest: ${record.assessmentReceiptDigest}")
+            appendLine(
+                "Candidate coverage: ${record.subjectCount} subjects · ${record.relationshipCount} relationships · " +
+                    "${record.mappedCandidateCount} mapped · ${record.conflictCandidateCount} conflicts · " +
+                    "${record.unmappedCandidateCount} unmapped · ${record.notAssessedCount} not assessed · ${record.reviewState}",
+            )
+        }
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and subject, relationship, trace, mapping, " +
+                "assessment, and snapshot digests only; no route patterns, screen, state, component, design, Requirement, " +
+                "Acceptance Criteria, Implementation Unit, repository, module, path, symbol, test-hook, evidence, reviewer, " +
+                "or personal data. This inspection does not connect to or call Figma, establish returned Figma content, " +
+                "navigation or mapping truth, UI or design validity, repository or test truth, create or change code or " +
+                "design targets, establish implementation readiness or completeness, assign, execute, accept, merge, " +
+                "release, deploy, or grant action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)

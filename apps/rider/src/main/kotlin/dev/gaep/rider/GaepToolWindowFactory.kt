@@ -770,6 +770,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += designToCodeBindingRegistryButton
         actions.add(designToCodeBindingRegistryButton)
 
+        val routeScreenComponentMappingButton = JButton("Inspect Route, Screen, and Component Mapping…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Route patterns, screen, state, component, design, Requirement, Acceptance Criteria, Implementation Unit, repository, module, path, symbol, test-hook, evidence, reviewer, personal data, local paths, secrets, credentials, navigation or mapping truth, UI or design validity, code or design target mutation, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, and action authority are withheld.",
+                    "GAEP Route, Screen, and Component Mapping",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Route, Screen, and Component Mapping", status, output, buttons) {
+                    controller.readRouteScreenComponentMapping(initiativeId)
+                }
+            }
+        }
+        buttons += routeScreenComponentMappingButton
+        actions.add(routeScreenComponentMappingButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

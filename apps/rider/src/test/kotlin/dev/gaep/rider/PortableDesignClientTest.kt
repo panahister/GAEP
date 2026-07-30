@@ -2331,6 +2331,73 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Route Screen and Component Mapping projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("route-screen-component-mapping-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readRouteScreenComponentMapping(entryId)
+            assertEquals("attention-required", projection.state)
+            assertEquals("held", projection.reviewState)
+            assertEquals(2, projection.sourceRouteCount)
+            assertEquals(3, projection.sourceScreenCount)
+            assertEquals(5, projection.sourceStateCount)
+            assertEquals(4, projection.sourceComponentCount)
+            assertEquals(14, projection.subjectCount)
+            assertEquals(12, projection.mappedCandidateCount)
+            assertEquals(18, projection.relationshipCount)
+            assertEquals(16, projection.definedRelationshipCount)
+            assertEquals(2, projection.missingRelationshipCount)
+            assertEquals(1, projection.componentPlacementGapCount)
+            assertEquals(1, projection.testHookGapCount)
+            assertEquals(9, projection.dependencies.size)
+            assertEquals("sha256:${"3".repeat(64)}", projection.candidate?.subjectCatalogDigest)
+            assertEquals("sha256:${"4".repeat(64)}", projection.candidate?.relationshipCatalogDigest)
+
+            val rendered = RiderProductController(client).readRouteScreenComponentMapping(entryId)
+            assertTrue(rendered.contains("GAEP governed Route, Screen, and Component Mapping candidate"))
+            assertTrue(rendered.contains("2 routes · 3 screens · 5 states · 4 components"))
+            assertTrue(rendered.contains("12 mapped · 1 conflicts · 1 unmapped · 0 not assessed"))
+            assertTrue(rendered.contains("18 total · 16 defined · 1 conflicts · 1 not assessed"))
+            assertTrue(rendered.contains("2 missing relationships · 1 invalid relationships"))
+            assertTrue(rendered.contains("no route patterns, screen, state, component"))
+            assertTrue(rendered.contains("does not connect to or call Figma"))
+            assertTrue(rendered.contains("create or change code or design targets"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("routePattern"))
+            assertFalse(rendered.contains("testHookCandidates"))
+            assertFalse(rendered.contains("evidenceReferences"))
+            assertFalse(rendered.contains("reviewedBy"))
+        }
+
+        listOf(
+            "bad-route-screen-component-mapping-snapshot-digest",
+            "bad-route-screen-component-mapping-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readRouteScreenComponentMapping(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf(
+            "bad-route-screen-component-mapping-snapshot-binding",
+            "bad-route-screen-component-mapping-dependency-binding",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readRouteScreenComponentMapping(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
