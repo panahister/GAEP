@@ -32,6 +32,7 @@ import {
   designDeltaSchema,
   designConflictResolutionSchema,
   humanDesignApprovalSchema,
+  designBaselineSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -120,6 +121,7 @@ import {
   type DesignDelta,
   type DesignConflictResolution,
   type HumanDesignApproval,
+  type DesignBaseline,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -184,6 +186,7 @@ import {
   humanDesignApprovalScopeDigest,
   humanDesignApprovalSubjectReference,
 } from "./human-design-approval.js"
+import { designBaselineDesignationReceiptDigest } from "./design-baseline.js"
 import {
   canonicalDigest as portableDesignDigest,
   importPortableDesignBundle,
@@ -2412,6 +2415,16 @@ export class ProductStudioService {
       /^human-design-approval-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       humanDesignApprovalSchema,
     )
+    const designBaselines = await this.listRecords(
+      "design-baselines",
+      /^[0-9a-f-]+\.json$/i,
+      designBaselineSchema,
+    )
+    const designBaselineHistory = await this.listRecords(
+      "design-baseline-history",
+      /^design-baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      designBaselineSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2917,6 +2930,13 @@ export class ProductStudioService {
       "human-design-approval-candidate",
       humanDesignApprovalHistory,
       (record) => `human-design-approval-history/human-design-approval-${record.id}-r${record.revision}.json`,
+    )
+    append("design-baselines", "design-baseline-candidate", designBaselines)
+    append(
+      "design-baseline-history",
+      "design-baseline-candidate",
+      designBaselineHistory,
+      (record) => `design-baseline-history/design-baseline-${record.id}-r${record.revision}.json`,
     )
     append(
       "candidates",
@@ -3462,6 +3482,14 @@ export class ProductStudioService {
           `human-design-approval-history/human-design-approval-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Human Design Approval history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("design-baseline-history/")) {
+        const record = validated as DesignBaseline
+        const expectedHistoryPath =
+          `design-baseline-history/design-baseline-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Design Baseline history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4596,7 +4624,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution | HumanDesignApproval,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution | HumanDesignApproval | DesignBaseline,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4628,7 +4656,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution | HumanDesignApproval,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution | HumanDesignApproval | DesignBaseline,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -8919,7 +8947,11 @@ export class ProductStudioService {
     const humanDesignApprovalHistory = [...recordsByPath.entries()]
       .filter(([path]) => path.startsWith("human-design-approval-history/"))
       .map(([, record]) => humanDesignApprovalSchema.parse(record))
-    validateVersionedBusinessRecords(humanDesignApprovals, humanDesignApprovalHistory, "Human Design Approval")
+    const exactHumanDesignApprovals = validateVersionedBusinessRecords(
+      humanDesignApprovals,
+      humanDesignApprovalHistory,
+      "Human Design Approval",
+    )
     const humanDesignApprovalPrerequisiteRecords = [
       ...designConflictResolutions,
       ...designConflictResolutionHistory,
@@ -8995,6 +9027,83 @@ export class ProductStudioService {
       const actualItemDigests = [...candidate.scope.includedItemDigests, ...candidate.scope.excludedItemDigests].sort()
       if (canonicalDigest(actualItemDigests) !== canonicalDigest(expectedItemDigests)) {
         throw new Error(`Import Human Design Approval ${candidate.id} scope does not classify every exact finalized-snapshot item`)
+      }
+    }
+
+    const designBaselines = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-baselines/"))
+      .map(([, record]) => designBaselineSchema.parse(record))
+    const designBaselineHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-baseline-history/"))
+      .map(([, record]) => designBaselineSchema.parse(record))
+    const exactDesignBaselines = validateVersionedBusinessRecords(
+      designBaselines,
+      designBaselineHistory,
+      "Design Baseline",
+    )
+    for (const candidate of [...designBaselines, ...designBaselineHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        objectiveDigest: candidate.objectiveDigest,
+        humanDesignApproval: candidate.humanDesignApproval,
+        subject: candidate.subject,
+        scope: candidate.scope,
+        baselineLineageId: candidate.baselineLineageId,
+        candidateSetId: candidate.candidateSetId,
+        candidateSetRevision: candidate.candidateSetRevision,
+        semanticVersion: candidate.semanticVersion,
+        versionPolicyDigest: candidate.versionPolicyDigest,
+        designation: candidate.designation,
+        supersedes: candidate.supersedes,
+        designationDefinitionDigest: candidate.designationDefinitionDigest,
+        designationReceiptDigest: candidate.designationReceiptDigest,
+        candidateResult: candidate.candidateResult,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        approvalDeterminationState: candidate.approvalDeterminationState,
+        baselineDesignationState: candidate.baselineDesignationState,
+        approverAuthorityState: candidate.approverAuthorityState,
+        separationOfDutiesEnforcementState: candidate.separationOfDutiesEnforcementState,
+        readinessState: candidate.readinessState,
+        phaseEntryAuthorityState: candidate.phaseEntryAuthorityState,
+        figmaConnectionAuthorityState: candidate.figmaConnectionAuthorityState,
+        credentialAuthorityState: candidate.credentialAuthorityState,
+        permissionGrantState: candidate.permissionGrantState,
+        importExecutionState: candidate.importExecutionState,
+        writeExecutionState: candidate.writeExecutionState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Design Baseline ${candidate.id} membership digest is invalid`)
+      }
+      if (candidate.designationReceiptDigest !== designBaselineDesignationReceiptDigest(candidate)) {
+        throw new Error(`Import Design Baseline ${candidate.id} designation receipt digest is invalid`)
+      }
+      const approval = exactHumanDesignApprovals.get(
+        `${candidate.humanDesignApproval.recordId}:${candidate.humanDesignApproval.revision}:${candidate.humanDesignApproval.digest}`,
+      )
+      if (!approval || approval.productId !== candidate.productId || approval.initiativeId !== candidate.initiativeId ||
+          approval.membershipDigest !== candidate.humanDesignApproval.membershipDigest ||
+          approval.decisionReceiptDigest !== candidate.humanDesignApproval.decisionReceiptDigest ||
+          approval.candidateResult !== "approved-candidate" || approval.reviewState !== "recorded-human-decision" ||
+          canonicalDigest(approval.subject) !== canonicalDigest(candidate.subject) ||
+          canonicalDigest(approval.scope) !== canonicalDigest(candidate.scope)) {
+        throw new Error(`Import Design Baseline ${candidate.id} has an unresolved exact Human Design Approval binding`)
+      }
+      if (candidate.supersedes) {
+        const predecessor = exactDesignBaselines.get(
+          `${candidate.supersedes.recordId}:${candidate.supersedes.revision}:${candidate.supersedes.digest}`,
+        )
+        if (!predecessor || predecessor.id !== candidate.id || predecessor.revision !== candidate.revision - 1 ||
+            predecessor.membershipDigest !== candidate.supersedes.membershipDigest ||
+            predecessor.baselineLineageId !== candidate.supersedes.baselineLineageId ||
+            predecessor.semanticVersion !== candidate.supersedes.semanticVersion) {
+          throw new Error(`Import Design Baseline ${candidate.id} has an unresolved exact predecessor binding`)
+        }
       }
     }
 
@@ -9622,6 +9731,10 @@ export class ProductStudioService {
         /^human-design-approval-history\/human-design-approval-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "human-design-approval-candidate"
     }
+    if (/^design-baselines\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-baseline-history\/design-baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "design-baseline-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -9835,6 +9948,10 @@ export class ProductStudioService {
     if (/^human-design-approvals\/[0-9a-f-]+\.json$/i.test(path) ||
         /^human-design-approval-history\/human-design-approval-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return humanDesignApprovalSchema
+    }
+    if (/^design-baselines\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-baseline-history\/design-baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return designBaselineSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
