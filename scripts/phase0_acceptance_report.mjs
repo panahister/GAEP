@@ -22,8 +22,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260730T045105Z-phase-2-change-impact-agent-model-dashboard-packages.json",
-  conformance: "evidence/ide-conformance/20260730T045105Z-phase-2-change-impact-agent-model-dashboard.json",
+  packages: "evidence/local-packages/20260730T061251Z-phase-3a-backlog-hierarchy-packages.json",
+  conformance: "evidence/ide-conformance/20260730T061251Z-phase-3a-backlog-hierarchy.json",
   example: "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
 }
 const gateDefinitions = [
@@ -203,7 +203,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -230,7 +230,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    phase2RealisticFigmaLoop
+    backlogHierarchy
+      ? {
+          id: "phase-3a-backlog-hierarchy-closure",
+          state: "not-established",
+          basis: "the exact versioned Backlog Hierarchy candidate lifecycle, strict Epic-to-Feature-to-Story-to-Task topology, exact Work Item, Change and Requirement bindings, privacy-safe Product Studio table and four host projections are implemented locally; real prioritized backlog commitments, accountable ownership, acceptance criteria, ready or done determinations, implementation readiness, assignment or execution, native-host interaction and Product Owner acceptance remain incomplete",
+        }
+      : phase2RealisticFigmaLoop
       ? {
           id: "phase-2-realistic-figma-loop-example-closure",
           state: "not-established",
@@ -440,6 +446,9 @@ export async function buildPhase0AcceptanceReport({
   const designRequirements = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-requirements" && capability.state === "implemented"))
+  const backlogHierarchy = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "backlog-hierarchy" && capability.state === "implemented"))
   const designSystemTokenContract = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-system-token-contract" && capability.state === "implemented"))
@@ -505,6 +514,7 @@ export async function buildPhase0AcceptanceReport({
     informationArchitecture,
     screenStateInventory,
     designRequirements,
+    backlogHierarchy,
     designSystemTokenContract,
     accessibilityDesignRules,
     responsiveMultiPlatformTargets,
@@ -542,8 +552,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: phase2RealisticFigmaLoop
+    phase: backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: backlogHierarchy
+      ? "phase-3a-backlog-hierarchy-local"
+      : phase2RealisticFigmaLoop
       ? "phase-2-realistic-figma-loop-example-local"
       : phase2ChangeImpactAgentModelDashboard
       ? "phase-2-change-impact-agent-model-dashboard-local"
@@ -637,7 +649,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: phase2RealisticFigmaLoop
+    claimBoundary: backlogHierarchy
+      ? "This report binds the exact governed Backlog Hierarchy candidate lifecycle, immutable revision history, strict Epic-to-Feature-to-Story-to-Task topology, exact current Product and Initiative binding, exact current Work Item and Change membership, exact Story and Task Requirement traces, bounded topology, trace and gap assessment, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. This report does not duplicate Work Item title, scope, owner or execution authority; establish priority, commitment, ownership, ready or done state, acceptance criteria, implementation readiness, assignment, execution, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : phase2RealisticFigmaLoop
       ? "This report binds the exact deterministic Phase 2 realistic Figma-loop scenario, 12 ordered candidate stages, 23 governed source candidates, two derived dashboard snapshots, three fail-closed recovery cases, four exact host projection bindings, copied prior local evidence and zero external or implementation effects to current package, test, host and conformance evidence. This report does not establish real Product research, returned current Figma content, a live Figma or provider connection, credentials, permissions, content transfer, write or import execution, provider usage, cost or quality, design or external completeness or validity, accountable human authority, effective approval, an actual Baseline Set, readiness, remediation, implementation or action authority, native-host or Product Owner acceptance, security approval, release authorization or deployment approval."
       : phase2ChangeImpactAgentModelDashboard
       ? "This report binds the exact derived Phase 2 synchronization-change, bounded-impact and Initiative-scoped Agent/Model execution-truth views to the exact Phase 2 UX/Figma and Agent/Model source snapshot digests, exact Product and Initiative identity and revision digests, bounded source availability, trace, drift, freshness, capability, selection, Run, Managed Run and handoff counts, unavailable provider usage and cost, not-assessed live-provider and semantic output quality, explicit no-authority governance states, accessible Product Studio and four-host projections, and current package, test, host and conformance evidence. This report does not create a second source of truth, establish impact completeness, design or external completeness or validity, provider readiness or quality, provider preference, selection, Run launch, handoff acknowledgement, approval, a Baseline Set designation, readiness, phase entry, remediation, Figma, implementation or effect authority, connect to or call Figma, request credentials, grant permissions, authorize or perform imports or writes, prove real Product research or returned current Figma content, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
