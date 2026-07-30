@@ -32,6 +32,7 @@ import {
   type DesignRequirementsProjection,
   type BacklogHierarchyProjection,
   type MvpSliceDefinitionProjection,
+  type PrioritizationModelProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -156,6 +157,7 @@ const commandIds = {
   designRequirements: "gaepKiro.designRequirements.inspect",
   backlogHierarchy: "gaepKiro.backlogHierarchy.inspect",
   mvpSliceDefinition: "gaepKiro.mvpSliceDefinition.inspect",
+  prioritizationModel: "gaepKiro.prioritizationModel.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -297,6 +299,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.designRequirements, (input?: unknown) => runUserCommand(() => showDesignRequirements(pool, input))),
     vscode.commands.registerCommand(commandIds.backlogHierarchy, (input?: unknown) => runUserCommand(() => showBacklogHierarchy(pool, input))),
     vscode.commands.registerCommand(commandIds.mvpSliceDefinition, (input?: unknown) => runUserCommand(() => showMvpSliceDefinition(pool, input))),
+    vscode.commands.registerCommand(commandIds.prioritizationModel, (input?: unknown) => runUserCommand(() => showPrioritizationModel(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -1815,6 +1818,47 @@ async function showMvpSliceDefinition(
     ] : []),
     "",
     "Candidate identities, scope and slice counts, statuses, and digests only; this does not establish priority, commitment, scope approval, acceptance-criteria validity, Definition of Ready or Done, implementation readiness, assignment, execution, implementation authority, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showPrioritizationModel(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<PrioritizationModelProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Prioritization Model inspection", "Initiative ID")
+  const projection = await client.readPrioritizationModel(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Prioritization Model candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Coverage: ${status.subjectCount} slices · ${status.scoredSubjectCount} scored · ${status.unassessedSubjectCount} unassessed · ${status.evidenceReferenceCount} evidence references · ${status.tieCount} score ties`,
+    `Candidate gaps: ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleMvpSliceDefinitionCount} stale MVP definitions · ${status.invalidSubjectCount} invalid subjects · ${status.invalidScoreCount} invalid scores`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Method digest: ${record.methodDigest}`,
+      `Candidate ranking digest: ${record.rankingDigest}`,
+      `Candidate coverage: ${record.subjectCount} slices · ${record.scoredSubjectCount} scored · ${record.evidenceReferenceCount} evidence references · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, method, membership, ranking, and snapshot digests only; this does not establish evidence validity, priority, commitment, scope decisions, approval, acceptance-criteria validity, Definition of Ready or Done, implementation readiness, assignment, execution, implementation authority, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

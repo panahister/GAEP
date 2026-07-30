@@ -160,6 +160,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.designRequirements.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.backlogHierarchy.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.mvpSliceDefinition.inspect") ||
+      !commands.some((command) => command.command === "gaepKiro.prioritizationModel.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designSystemTokenContract.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.accessibilityDesignRules.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.responsiveMultiPlatformTargets.inspect") ||

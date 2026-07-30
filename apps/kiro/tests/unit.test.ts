@@ -1774,6 +1774,58 @@ test("protocol-v2 MVP and Vertical Slice projection is exact, private-safe, and 
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 Prioritization Model projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-prioritization-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-prioritization-snapshot-binding",
+    "bad-prioritization-snapshot-digest",
+    "bad-prioritization-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readPrioritizationModel(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.subjectCount, 4)
+    assert.equal(projection.status.scoredSubjectCount, 3)
+    assert.equal(projection.status.unassessedSubjectCount, 1)
+    assert.equal(projection.status.evidenceReferenceCount, 12)
+    assert.equal(projection.status.tieCount, 1)
+    assert.equal(
+      projection.authorityBoundary,
+      "prioritization-model-projection-is-read-only-and-does-not-establish-evidence-validity-priority-commitment-scope-decision-approval-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"dimensionEstimate":'), false)
+    assert.equal(serialized.includes('"subjects":'), false)
+    assert.equal(serialized.includes('"evidence":'), false)
+    assert.equal(serialized.includes('"uncertainty":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readPrioritizationModel(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 Design System and Token Contract projection is exact, private-safe, and non-authorizing", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-design-system-token-contract-"))
   const workspace = join(root, "workspace")

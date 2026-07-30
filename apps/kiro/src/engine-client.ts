@@ -31,6 +31,7 @@ import {
   designRequirementsProjectionSchema,
   backlogHierarchyProjectionSchema,
   mvpSliceDefinitionProjectionSchema,
+  prioritizationModelProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -88,6 +89,7 @@ import {
   type DesignRequirementsProjection,
   type BacklogHierarchyProjection,
   type MvpSliceDefinitionProjection,
+  type PrioritizationModelProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -788,6 +790,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = mvpSliceDefinitionProjectionSchema.safeParse(
         await this.request("planning.mvpSlices.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readPrioritizationModel(initiativeValue: string): Promise<PrioritizationModelProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = prioritizationModelProjectionSchema.safeParse(
+        await this.request("planning.prioritization.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

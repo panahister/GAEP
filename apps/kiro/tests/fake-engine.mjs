@@ -58,6 +58,7 @@ const screenStateInventoryId = "60606060-6060-4060-8060-606060606060"
 const designRequirementsId = "61616161-6161-4161-8161-616161616161"
 const backlogHierarchyId = "81818181-8181-4181-8181-818181818181"
 const mvpSliceDefinitionId = "82828282-8282-4282-8282-828282828282"
+const prioritizationModelId = "83838383-8383-4383-8383-838383838383"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -172,6 +173,8 @@ input.on("line", (line) => {
       return readBacklogHierarchy(id, request.params)
     case "planning.mvpSlices.snapshot":
       return readMvpSliceDefinition(id, request.params)
+    case "planning.prioritization.snapshot":
+      return readPrioritizationModel(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -2266,6 +2269,70 @@ function readMvpSliceDefinition(id, params) {
   if (workspacePath.endsWith("bad-mvp-slice-snapshot-digest")) value.candidate.taskCount = 10
   if (workspacePath.endsWith("bad-mvp-slice-snapshot-private")) {
     value.sliceRationale = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readPrioritizationModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PRIORITIZATION PARAMS")
+  }
+  const candidateDigest = `sha256:${"c".repeat(64)}`
+  const mvpDigest = `sha256:${"a".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "prioritization-model-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: prioritizationModelId, revision: 2, digest: candidateDigest },
+    mvpSliceDefinition: { recordId: mvpSliceDefinitionId, revision: 2, digest: mvpDigest },
+    subjectCount: 4,
+    scoredSubjectCount: 3,
+    unassessedSubjectCount: 1,
+    evidenceReferenceCount: 12,
+    tieCount: 1,
+    staleBindingCount: 0,
+    staleMvpSliceDefinitionCount: 0,
+    invalidSubjectCount: 1,
+    invalidScoreCount: 0,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Prioritization subjects require review"],
+    assessedAt: "2026-07-30T11:20:00.000Z",
+    authorityBoundary: "prioritization-model-status-is-observational-and-does-not-establish-evidence-validity-priority-commitment-scope-decision-approval-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "prioritization-model-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: prioritizationModelId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"d".repeat(64)}`,
+      methodDigest: `sha256:${"e".repeat(64)}`,
+      rankingDigest: `sha256:${"f".repeat(64)}`,
+      state: "candidate",
+      subjectCount: 4,
+      scoredSubjectCount: 3,
+      evidenceReferenceCount: 12,
+      reviewState: "held",
+      updatedAt: "2026-07-30T11:19:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-method-membership-ranking-and-snapshot-digests-only-not-dimension-estimates-evidence-identities-uncertainty-slice-content-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "prioritization-model-projection-is-read-only-and-does-not-establish-evidence-validity-priority-commitment-scope-decision-approval-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-prioritization-snapshot-binding")) content.initiative.id = prioritizationModelId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-prioritization-snapshot-digest")) value.candidate.scoredSubjectCount = 4
+  if (workspacePath.endsWith("bad-prioritization-snapshot-private")) {
+    value.dimensionEstimate = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }
