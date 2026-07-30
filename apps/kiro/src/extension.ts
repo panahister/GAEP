@@ -42,6 +42,7 @@ import {
   type BoilerplateRegistryProjection,
   type BoilerplateSelectionBindingProjection,
   type BoilerplateCompatibilityValidationProjection,
+  type FigmaToBoilerplateMappingProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -176,6 +177,7 @@ const commandIds = {
   boilerplateRegistry: "gaepKiro.boilerplateRegistry.inspect",
   boilerplateSelectionBinding: "gaepKiro.boilerplateSelectionBinding.inspect",
   boilerplateCompatibilityValidation: "gaepKiro.boilerplateCompatibilityValidation.inspect",
+  figmaToBoilerplateMapping: "gaepKiro.figmaToBoilerplateMapping.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -327,6 +329,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.boilerplateRegistry, (input?: unknown) => runUserCommand(() => showBoilerplateRegistry(pool, input))),
     vscode.commands.registerCommand(commandIds.boilerplateSelectionBinding, (input?: unknown) => runUserCommand(() => showBoilerplateSelectionBinding(pool, input))),
     vscode.commands.registerCommand(commandIds.boilerplateCompatibilityValidation, (input?: unknown) => runUserCommand(() => showBoilerplateCompatibilityValidation(pool, input))),
+    vscode.commands.registerCommand(commandIds.figmaToBoilerplateMapping, (input?: unknown) => runUserCommand(() => showFigmaToBoilerplateMapping(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2278,6 +2281,52 @@ async function showBoilerplateCompatibilityValidation(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and subject, dimension, evidence, validation, assessment, and snapshot digests only; no boilerplate names, locators, versions, unit, profile, entry, or binding identities, claims, evidence, assessors, or personal data. Candidate completeness does not establish compatibility truth or completeness, a validation decision, actual asset behavior, test execution, design validity, security, privacy, or licensing approval, exception or waiver, effective selection or binding, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showFigmaToBoilerplateMapping(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<FigmaToBoilerplateMappingProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Figma-to-Boilerplate Mapping inspection", "Initiative ID")
+  const projection = await client.readFigmaToBoilerplateMapping(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Figma-to-Boilerplate Mapping candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Candidate coverage: ${status.designBindingCount} design bindings · ${status.subjectCount} mapping subjects`,
+    `Candidate outcomes: ${status.mappedCandidateCount} mapped · ${status.conflictCandidateCount} conflicts · ${status.unmappedCandidateCount} unmapped · ${status.notAssessedCount} not assessed`,
+    `Candidate kinds: ${status.componentMappingCount} component · ${status.tokenMappingCount} token · ${status.layoutMappingCount} layout · ${status.responsiveBehaviorMappingCount} responsive · ${status.platformTargetMappingCount} platform-target`,
+    `Candidate mapping gaps: ${status.missingSubjectCount} missing subjects · ${status.invalidSubjectCount} invalid subjects · ${status.targetGapCount} target gaps · ${status.traceGapCount} trace gaps · ${status.evidenceGapCount} evidence gaps`,
+    `Candidate freshness gaps: ${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Mapping subject catalog digest: ${record.mappingSubjectCatalogDigest}`,
+      `Target catalog digest: ${record.targetCatalogDigest}`,
+      `Trace receipt digest: ${record.traceReceiptDigest}`,
+      `Mapping receipt digest: ${record.mappingReceiptDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`,
+      `Candidate coverage: ${record.subjectCount} subjects · ${record.mappedCandidateCount} mapped · ${record.conflictCandidateCount} conflicts · ${record.unmappedCandidateCount} unmapped · ${record.notAssessedCount} not assessed · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and subject, target, trace, mapping, assessment, and snapshot digests only; no Figma content, design-item, binding, unit, profile, registry-entry, validation-subject, requirement, target-locator, evidence, reviewer, or personal data. This inspection does not connect to or call Figma, establish returned Figma content, design validity, approval or baseline, mapping truth or completeness, effective selection or compatibility truth, retrieve, import, instantiate, generate or execute assets, establish implementation readiness or completeness, assign, execute, accept, merge, release, deploy, or grant action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

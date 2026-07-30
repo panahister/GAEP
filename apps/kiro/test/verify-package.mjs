@@ -8,7 +8,7 @@ import yauzl from "yauzl"
 
 const kiroRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const maximumArchiveBytes = 8 * 1024 * 1024
-const maximumEntryBytes = 5 * 1024 * 1024
+const maximumEntryBytes = 6 * 1024 * 1024
 const maximumTotalBytes = 8 * 1024 * 1024
 const expectedEntries = [
   "[Content_Types].xml",
@@ -145,7 +145,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
     fail("package identity, host engine, entry point, or extension kind differs")
   }
   const commands = packagedManifest.contributes?.commands
-  if (!Array.isArray(commands) || commands.length !== 79 ||
+  if (!Array.isArray(commands) || commands.length !== 80 ||
       new Set(commands.map((command) => command.command)).size !== commands.length ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase2UxFigma") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase2ChangeImpactAgentModel") ||
@@ -170,6 +170,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.boilerplateRegistry.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.boilerplateSelectionBinding.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.boilerplateCompatibilityValidation.inspect") ||
+      !commands.some((command) => command.command === "gaepKiro.figmaToBoilerplateMapping.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designSystemTokenContract.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.accessibilityDesignRules.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.responsiveMultiPlatformTargets.inspect") ||
@@ -187,7 +188,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.humanDesignApproval.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designBaseline.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designDriftDetection.inspect")) {
-    fail("package command inventory must contain 79 unique commands including both Phase 2 dashboards, all three Phase 1 dashboards, Backlog Hierarchy, MVP and Vertical Slice Definition, Prioritization Model, Acceptance Criteria, Definition of Ready, Definition of Done, Implementation Unit Model, Dependency Mapping, Technology Profile, Boilerplate Registry, Boilerplate Selection and Binding, Boilerplate Compatibility Validation, and governed Design phase candidates through Design Drift Detection")
+    fail("package command inventory must contain 80 unique commands including both Phase 2 dashboards, all three Phase 1 dashboards, Backlog Hierarchy, MVP and Vertical Slice Definition, Prioritization Model, Acceptance Criteria, Definition of Ready, Definition of Done, Implementation Unit Model, Dependency Mapping, Technology Profile, Boilerplate Registry, Boilerplate Selection and Binding, Boilerplate Compatibility Validation, Figma-to-Boilerplate Mapping, and governed Design phase candidates through Design Drift Detection")
   }
   const activationCommands = packagedManifest.activationEvents
     .filter((event) => event.startsWith("onCommand:"))

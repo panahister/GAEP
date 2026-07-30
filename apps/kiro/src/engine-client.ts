@@ -41,6 +41,7 @@ import {
   boilerplateRegistryProjectionSchema,
   boilerplateSelectionBindingProjectionSchema,
   boilerplateCompatibilityValidationProjectionSchema,
+  figmaToBoilerplateMappingProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -108,6 +109,7 @@ import {
   type BoilerplateRegistryProjection,
   type BoilerplateSelectionBindingProjection,
   type BoilerplateCompatibilityValidationProjection,
+  type FigmaToBoilerplateMappingProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -988,6 +990,21 @@ export class GaepEngineClient {
         projection.initiative.id.toLowerCase() !== initiativeId ||
         snapshotDigest !== canonicalDigest(projectionBody)
       ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readFigmaToBoilerplateMapping(initiativeValue: string): Promise<FigmaToBoilerplateMappingProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = figmaToBoilerplateMappingProjectionSchema.safeParse(
+        await this.request("planning.figmaToBoilerplateMapping.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId ||
+          snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
       return projection
     })
   }

@@ -68,6 +68,7 @@ const technologyProfileId = "89898989-8989-4989-8989-898989898989"
 const boilerplateRegistryId = "90909090-9090-4090-8090-909090909090"
 const boilerplateSelectionBindingId = "91919191-9191-4191-8191-919191919191"
 const boilerplateCompatibilityValidationId = "92929292-9292-4292-8292-929292929292"
+const figmaToBoilerplateMappingId = "93939393-9393-4393-8393-939393939393"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -202,6 +203,8 @@ input.on("line", (line) => {
       return readBoilerplateSelectionBinding(id, request.params)
     case "planning.boilerplateCompatibilityValidation.snapshot":
       return readBoilerplateCompatibilityValidation(id, request.params)
+    case "planning.figmaToBoilerplateMapping.snapshot":
+      return readFigmaToBoilerplateMapping(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -3067,6 +3070,95 @@ function readBoilerplateCompatibilityValidation(id, params) {
   }
   if (workspacePath.endsWith("bad-boilerplate-compatibility-validation-snapshot-private")) {
     value.claim = `${privateRoot}/${privateCredential}`
+    value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
+  }
+  return writeResult(id, value)
+}
+
+function readFigmaToBoilerplateMapping(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE FIGMA TO BOILERPLATE MAPPING PARAMS")
+  }
+  const candidateDigest = `sha256:${"4".repeat(64)}`
+  const reference = (recordId, value) => ({ recordId, revision: 2, digest: `sha256:${value.repeat(64)}` })
+  const status = {
+    schemaVersion: 1,
+    kind: "figma-to-boilerplate-mapping-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: figmaToBoilerplateMappingId, revision: 2, digest: candidateDigest },
+    designApplicability: reference(designApplicabilityId, "1"),
+    designSystemTokenContract: reference(designSystemTokenContractId, "2"),
+    responsiveMultiPlatformTargets: reference(responsiveMultiPlatformTargetsId, "3"),
+    finalizedFigmaSnapshotImport: reference(finalizedFigmaSnapshotImportId, "4"),
+    designToRequirementBinding: reference(designToRequirementBindingId, "5"),
+    designBaseline: reference(designBaselineId, "6"),
+    implementationUnitModel: reference(implementationUnitModelId, "7"),
+    technologyProfile: reference(technologyProfileId, "8"),
+    boilerplateRegistry: reference(boilerplateRegistryId, "9"),
+    boilerplateSelectionBinding: reference(boilerplateSelectionBindingId, "a"),
+    boilerplateCompatibilityValidation: reference(boilerplateCompatibilityValidationId, "b"),
+    designBindingCount: 2,
+    subjectCount: 2,
+    mappedCandidateCount: 1,
+    conflictCandidateCount: 1,
+    unmappedCandidateCount: 0,
+    notAssessedCount: 0,
+    componentMappingCount: 1,
+    tokenMappingCount: 1,
+    layoutMappingCount: 0,
+    responsiveBehaviorMappingCount: 0,
+    platformTargetMappingCount: 0,
+    missingSubjectCount: 0,
+    invalidSubjectCount: 1,
+    targetGapCount: 1,
+    traceGapCount: 1,
+    evidenceGapCount: 1,
+    staleBindingCount: 0,
+    staleDependencyCount: 0,
+    invalidCandidateCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Figma-to-Boilerplate Mapping subjects require human review"],
+    assessedAt: "2026-07-30T20:00:00.000Z",
+    authorityBoundary: "figma-to-boilerplate-mapping-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-truth-or-completeness-selection-binding-effectiveness-compatibility-truth-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "figma-to-boilerplate-mapping-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: figmaToBoilerplateMappingId,
+      revision: 2,
+      digest: candidateDigest,
+      state: "candidate",
+      mappingSubjectCatalogDigest: `sha256:${"5".repeat(64)}`,
+      targetCatalogDigest: `sha256:${"6".repeat(64)}`,
+      traceReceiptDigest: `sha256:${"7".repeat(64)}`,
+      mappingReceiptDigest: `sha256:${"8".repeat(64)}`,
+      assessmentReceiptDigest: `sha256:${"9".repeat(64)}`,
+      subjectCount: 2,
+      mappedCandidateCount: 1,
+      conflictCandidateCount: 1,
+      unmappedCandidateCount: 0,
+      notAssessedCount: 0,
+      reviewState: "held",
+      updatedAt: "2026-07-30T19:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-subject-target-trace-mapping-assessment-snapshot-digests-only-not-figma-content-design-item-binding-unit-profile-registry-entry-validation-subject-requirement-target-locator-evidence-reviewer-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "figma-to-boilerplate-mapping-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-truth-or-completeness-selection-binding-effectiveness-compatibility-truth-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-figma-to-boilerplate-mapping-snapshot-binding")) content.initiative.id = figmaToBoilerplateMappingId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-figma-to-boilerplate-mapping-snapshot-digest")) value.candidate.subjectCount = 3
+  if (workspacePath.endsWith("bad-figma-to-boilerplate-mapping-snapshot-private")) {
+    value.targetCandidate = `${privateRoot}/${privateCredential}`
     value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
   }
   return writeResult(id, value)
