@@ -202,6 +202,8 @@ input.on("line", (line) => {
       return readDesignDriftDetection(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
+    case "dashboard.phase2UxFigma":
+      return readPhase2UxFigmaDashboard(id, request.params)
     case "dashboard.phase1Summary":
       return readPhase1Summary(id, request.params)
     case "dashboard.phase1ChangeImpact":
@@ -3720,6 +3722,110 @@ function readPhaseDashboard(id, params) {
   const value = { ...content, compositionDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-dashboard-digest")) value.panels[0].title = "Forged dashboard title"
   if (workspacePath.endsWith("bad-dashboard-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readPhase2UxFigmaDashboard(id, params) {
+  const productDigest = canonicalDigest(productRecord())
+  const initiativeDigest = canonicalDigest(initiativeState)
+  if (!exactKeys(params, [
+    "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+    "expectedInitiativeRevision", "expectedInitiativeDigest",
+  ]) || params.expectedProductId !== productId || params.expectedProductRevision !== 7 ||
+      params.expectedProductDigest !== productDigest || params.expectedInitiativeId !== initiativeId ||
+      params.expectedInitiativeRevision !== initiativeState.revision || params.expectedInitiativeDigest !== initiativeDigest) {
+    return writeError(id, -32_602, "PHASE2_UX_FIGMA_PARAMS_INVALID", "PRIVATE PHASE 2 DASHBOARD PARAMS")
+  }
+  const definitions = [
+    ["design-applicability", "Design applicability", "experience", "design-applicability-projection"],
+    ["design-personas-roles", "Design personas and roles", "experience", "design-persona-role-projection"],
+    ["user-journeys", "User journeys", "experience", "user-journey-model-projection"],
+    ["information-architecture", "Information architecture", "experience", "information-architecture-model-projection"],
+    ["screen-state-inventory", "Screen and state inventory", "experience", "screen-state-inventory-projection"],
+    ["design-requirements", "Design requirements", "design-system", "design-requirements-projection"],
+    ["design-system-token-contract", "Design system and token contract", "design-system", "design-system-token-contract-projection"],
+    ["accessibility-design-rules", "Accessibility design rules", "design-system", "accessibility-design-rules-projection"],
+    ["responsive-multi-platform-targets", "Responsive and multi-platform targets", "design-system", "responsive-multi-platform-targets-projection"],
+    ["manual-figma-execution-path", "Manual Figma execution path", "figma-exchange", "manual-figma-execution-path-projection"],
+    ["figma-mcp-capability-discovery", "Figma MCP capability discovery", "figma-exchange", "figma-mcp-capability-discovery-projection"],
+    ["figma-read-snapshot", "Figma read snapshot", "figma-exchange", "figma-read-snapshot-projection"],
+    ["figma-context-import", "Figma context import", "figma-exchange", "figma-context-import-projection"],
+    ["outbound-design-brief-package", "Outbound design brief package", "figma-exchange", "outbound-design-brief-package-projection"],
+    ["governed-figma-write", "Governed Figma write", "figma-exchange", "governed-figma-write-projection"],
+    ["finalized-figma-snapshot-import", "Finalized Figma snapshot import", "figma-exchange", "finalized-figma-snapshot-import-projection"],
+    ["design-to-requirement-binding", "Design-to-requirement binding", "governance-assurance", "design-to-requirement-binding-projection"],
+    ["designer-ready-gate", "Designer-ready gate", "governance-assurance", "designer-ready-gate-projection"],
+    ["design-delta", "Design delta", "governance-assurance", "design-delta-projection"],
+    ["design-conflict-resolution", "Design conflict resolution", "governance-assurance", "design-conflict-resolution-projection"],
+    ["human-design-approval", "Human design approval", "governance-assurance", "human-design-approval-projection"],
+    ["design-baseline", "Design baseline", "governance-assurance", "design-baseline-projection"],
+    ["design-drift-detection", "Design drift detection", "governance-assurance", "design-drift-detection-projection"],
+  ]
+  const sourceCatalogDigest = canonicalDigest(definitions.map(([sourceId, title, group, projectionKind]) => ({
+    id: sourceId, title, group, projectionKind,
+  })))
+  const emptyExperience = {
+    personaCount: 0, designRoleCount: 0, journeyCount: 0, touchpointCount: 0,
+    informationArchitectureNodeCount: 0, routeCount: 0, screenCount: 0, stateCount: 0, variantCount: 0,
+  }
+  const emptyDesignSystem = {
+    requirementCount: 0, designSystemCount: 0, tokenCount: 0, componentCount: 0,
+    accessibilityRuleCount: 0, accessibilityCheckCount: 0, platformTargetCount: 0, breakpointCount: 0,
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "phase-2-ux-figma-dashboard",
+    viewDefinitionVersion: "gaep-phase-2-ux-figma-dashboard-v1",
+    phase: { id: "phase-2-design", label: "Phase 2 — UX and Figma Loop" },
+    product: { recordType: "product", recordId: productId, revision: 7, digest: productDigest },
+    initiative: {
+      recordType: "initiative", recordId: initiativeId, revision: initiativeState.revision,
+      digest: initiativeDigest, state: initiativeState.state,
+    },
+    sources: definitions.map(([sourceId, title, group, projectionKind]) => ({
+      id: sourceId, title, group, projectionKind, availability: "unavailable",
+    })),
+    experience: emptyExperience,
+    designSystem: emptyDesignSystem,
+    figma: {
+      fileCount: 0, componentCount: 0, variableCount: 0, designBindingCount: 0,
+      humanReviewedBindingCount: 0, unboundDesignItemCount: 0, connectionState: "not-established",
+      writeExecutionState: "not-performed", importExecutionState: "not-performed",
+    },
+    governance: {
+      designerReadyCandidateResult: "not-assessed", humanApprovalCandidateResult: "not-assessed",
+      baselineCandidateResult: "not-assessed", baselineDesignationState: "not-established",
+      driftCandidateResult: "not-assessed", approvalState: "not-established", readinessState: "not-established",
+      remediationEffectState: "not-applied",
+    },
+    drift: {
+      observationCount: 0, requirementToDesignCount: 0, designToImplementationCount: 0,
+      conformantCount: 0, driftCount: 0, unassessedCount: 0, blockerCount: 0,
+      highSeverityCount: 0, remediationCandidateCount: 0,
+    },
+    freshness: { state: "current", staleBindingCount: 0, staleSourceReferenceCount: 0, unresolvedQuestionCount: 0 },
+    phaseStatus: {
+      state: "attention-required", expectedSourceCount: 23, currentSourceCount: 0,
+      attentionRequiredSourceCount: 0, unavailableSourceCount: 23, sourceCatalogDigest,
+      productOwnerAcceptance: "not-established", readinessAuthority: "not-established",
+      phaseEntryAuthority: "not-established",
+    },
+    evidenceCues: {
+      freshness: "unknown",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    },
+    observedAt: "2026-07-30T03:10:00.000Z",
+    sourceBoundary: "current-governed-product-initiative-and-phase-2-projections-only",
+    privacyBoundary: "dashboard-exposes-identities-counts-statuses-times-and-digests-not-design-requirement-figma-source-human-or-personal-content-secrets-credentials-or-permissions",
+    limitations: [
+      "Missing projections remain explicitly unavailable and do not establish completeness.",
+      "No approval, Baseline Set, readiness, Figma, remediation, implementation, release, or action authority is granted.",
+    ],
+    authorityBoundary: "phase-2-dashboard-is-a-derived-read-only-view-not-a-second-source-of-truth-or-completeness-validity-approval-baseline-readiness-remediation-figma-implementation-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-phase2-dashboard-private")) content.privateRoot = `${privateRoot}/${privateCredential}`
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-phase2-dashboard-digest")) value.phaseStatus.unavailableSourceCount = 22
   return writeResult(id, value)
 }
 

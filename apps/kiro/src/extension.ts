@@ -47,6 +47,7 @@ import {
   type HumanDesignApprovalProjection,
   type DesignBaselineProjection,
   type DesignDriftDetectionProjection,
+  type Phase2UxFigmaDashboard,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -111,6 +112,7 @@ const commandIds = {
   evidence: "gaepKiro.runs.evidence",
   stagedReview: "gaepKiro.runs.stagedReview",
   dashboard: "gaepKiro.dashboard.phase",
+  phase2UxFigma: "gaepKiro.dashboard.phase2UxFigma",
   phase1Summary: "gaepKiro.dashboard.phase1Summary",
   phase1ChangeImpact: "gaepKiro.dashboard.phase1ChangeImpact",
   changeImpact: "gaepKiro.dashboard.changeImpact",
@@ -248,6 +250,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.evidence, () => runUserCommand(() => showManagedEvidenceDashboard(pool))),
     vscode.commands.registerCommand(commandIds.stagedReview, () => runUserCommand(() => reviewManagedStagedChanges(pool))),
     vscode.commands.registerCommand(commandIds.dashboard, () => runUserCommand(() => showPhaseDashboard(pool))),
+    vscode.commands.registerCommand(commandIds.phase2UxFigma, (input?: unknown) => runUserCommand(() => showPhase2UxFigmaDashboard(pool, input))),
     vscode.commands.registerCommand(commandIds.phase1Summary, (input?: unknown) => runUserCommand(() => showPhase1Summary(pool, input))),
     vscode.commands.registerCommand(commandIds.phase1ChangeImpact, (input?: unknown) => runUserCommand(() => showPhase1ChangeImpact(pool, input))),
     vscode.commands.registerCommand(commandIds.changeImpact, () => runUserCommand(() => showChangeImpactDashboard(pool))),
@@ -2940,6 +2943,44 @@ async function showPhaseDashboard(pool: EngineClientPool): Promise<PhaseDashboar
     "",
     "Boundary: this is a read-only governed-state projection. It grants no mutation, applicability, phase-entry, approval, readiness, acceptance, release, Run, Tool, or effect authority.",
     "Product text, source bytes, local paths, provider output, prompts, executable state, and credentials are withheld.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return dashboard
+}
+
+async function showPhase2UxFigmaDashboard(pool: EngineClientPool, input: unknown): Promise<Phase2UxFigmaDashboard> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Phase 2 UX and Figma dashboard", "Initiative ID")
+  const [product, initiative] = await Promise.all([client.readProduct(), client.readInitiative(initiativeId)])
+  const dashboard = await client.readPhase2UxFigmaDashboard(product, initiative)
+  const lines = [
+    "GAEP exact Phase 2 UX and Figma dashboard",
+    "",
+    `Initiative: ${dashboard.initiative.recordId} · revision ${dashboard.initiative.revision} · ${dashboard.initiative.state}`,
+    `Phase state: ${dashboard.phaseStatus.state}`,
+    `Sources: ${dashboard.phaseStatus.currentSourceCount} current · ${dashboard.phaseStatus.attentionRequiredSourceCount} attention-required · ${dashboard.phaseStatus.unavailableSourceCount} unavailable · ${dashboard.phaseStatus.expectedSourceCount} expected`,
+    `Experience: ${dashboard.experience.personaCount} personas · ${dashboard.experience.designRoleCount} design roles · ${dashboard.experience.journeyCount} journeys · ${dashboard.experience.screenCount} screens · ${dashboard.experience.stateCount} states`,
+    `Design system: ${dashboard.designSystem.requirementCount} requirements · ${dashboard.designSystem.tokenCount} tokens · ${dashboard.designSystem.componentCount} components · ${dashboard.designSystem.accessibilityRuleCount} accessibility rules`,
+    `Figma and trace: ${dashboard.figma.fileCount} files · ${dashboard.figma.componentCount} components · ${dashboard.figma.variableCount} variables · ${dashboard.figma.designBindingCount} bindings · connection ${dashboard.figma.connectionState} · write ${dashboard.figma.writeExecutionState} · import ${dashboard.figma.importExecutionState}`,
+    `Drift: ${dashboard.drift.observationCount} observations · ${dashboard.drift.conformantCount} conformant · ${dashboard.drift.driftCount} drift · ${dashboard.drift.unassessedCount} unassessed · ${dashboard.drift.remediationCandidateCount} remediation candidates`,
+    `Freshness: ${dashboard.freshness.state} · ${dashboard.freshness.staleBindingCount} stale bindings · ${dashboard.freshness.staleSourceReferenceCount} stale sources · ${dashboard.freshness.unresolvedQuestionCount} questions`,
+    "Product Owner acceptance: not established · approval: not established · Baseline Set designation: not established · readiness and phase-entry authority: not established",
+    `Snapshot digest: ${dashboard.snapshotDigest}`,
+    `Source catalog digest: ${dashboard.phaseStatus.sourceCatalogDigest}`,
+    `Source: ${dashboard.sourceBoundary}`,
+    `Privacy: ${dashboard.privacyBoundary}`,
+    "",
+    ...dashboard.sources.map((source) =>
+      `${source.title} · ${source.group} · ${source.availability} · ${source.assessment?.state ?? "no state inferred"}`),
+    "",
+    ...dashboard.limitations.map((limitation) => `Limit: ${limitation}`),
+    "",
+    "Boundary: this derived read-only view is not a second source of truth and grants no completeness, validity, approval, baseline, readiness, phase-entry, Figma, remediation, implementation, release, or action authority.",
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })

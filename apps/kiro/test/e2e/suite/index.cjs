@@ -16,6 +16,7 @@ const commands = [
   "gaepKiro.runs.evidence",
   "gaepKiro.runs.stagedReview",
   "gaepKiro.dashboard.phase",
+  "gaepKiro.dashboard.phase2UxFigma",
   "gaepKiro.dashboard.phase1Summary",
   "gaepKiro.dashboard.phase1ChangeImpact",
   "gaepKiro.dashboard.changeImpact",

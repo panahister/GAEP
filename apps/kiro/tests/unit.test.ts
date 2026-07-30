@@ -2583,6 +2583,58 @@ test("protocol-v2 client validates privacy-safe Design Drift Detection projectio
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 client validates the exact derived Phase 2 UX/Figma dashboard and rejects hostile responses", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-phase2-dashboard-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = ["bad-phase2-dashboard-digest", "bad-phase2-dashboard-private"].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const [product, initiative] = await Promise.all([
+      client.readProduct(),
+      client.readInitiative(initiativeId),
+    ])
+    const dashboard = await client.readPhase2UxFigmaDashboard(product, initiative)
+    assert.equal(dashboard.kind, "phase-2-ux-figma-dashboard")
+    assert.equal(dashboard.sources.length, 23)
+    assert.equal(dashboard.phaseStatus.state, "attention-required")
+    assert.equal(dashboard.phaseStatus.unavailableSourceCount, 23)
+    assert.equal(dashboard.phaseStatus.productOwnerAcceptance, "not-established")
+    assert.equal(dashboard.governance.approvalState, "not-established")
+    assert.equal(dashboard.governance.baselineDesignationState, "not-established")
+    assert.equal(dashboard.figma.connectionState, "not-established")
+    assert.equal(dashboard.figma.writeExecutionState, "not-performed")
+    assert.equal(dashboard.governance.remediationEffectState, "not-applied")
+    const serialized = JSON.stringify(dashboard)
+    assert.equal(serialized.includes("Example Product"), false)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      const [product, initiative] = await Promise.all([
+        hostile.readProduct(),
+        hostile.readInitiative(initiativeId),
+      ])
+      await assert.rejects(
+        () => hostile.readPhase2UxFigmaDashboard(product, initiative),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")
