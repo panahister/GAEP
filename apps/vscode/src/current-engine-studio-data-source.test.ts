@@ -47,6 +47,7 @@ import {
   type DesignBaselineProjection,
   type DesignDriftDetectionProjection,
   type BusinessCapabilityMapProjection,
+  type BacklogHierarchyProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -1908,6 +1909,68 @@ function designRequirementsProjection(): DesignRequirementsProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function backlogHierarchyProjection(): BacklogHierarchyProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "backlog-hierarchy-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: {
+      recordId: "f4f4f4f4-f4f4-44f4-84f4-f4f4f4f4f4f4",
+      revision: 2,
+      digest: `sha256:${"a".repeat(64)}` as const,
+    },
+    nodeCount: 24,
+    epicCount: 2,
+    featureCount: 5,
+    storyCount: 8,
+    taskCount: 9,
+    rootCount: 2,
+    leafCount: 12,
+    requirementTraceCount: 17,
+    untracedStoryTaskCount: 1,
+    staleBindingCount: 0,
+    staleWorkItemCount: 1,
+    staleChangeCount: 0,
+    staleRequirementCount: 2,
+    unresolvedQuestionCount: 3,
+    hierarchyCompletenessState: "not-assessed" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more hierarchy bindings require review"],
+    assessedAt: "2026-07-30T09:20:00.000Z",
+    authorityBoundary: "backlog-hierarchy-status-is-observational-and-does-not-establish-priority-commitment-ownership-ready-done-implementation-readiness-assignment-execution-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "backlog-hierarchy-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"b".repeat(64)}` as const,
+      state: "candidate" as const,
+      nodeCount: 24,
+      epicCount: 2,
+      featureCount: 5,
+      storyCount: 8,
+      taskCount: 9,
+      requirementTraceCount: 17,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-30T09:19:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-level-counts-statuses-and-digests-only-not-backlog-objectives-criteria-scope-owner-requirement-content-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "backlog-hierarchy-projection-is-read-only-and-does-not-prioritize-commit-assign-admit-execute-or-authorize-implementation-or-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -3695,6 +3758,7 @@ interface HarnessOptions {
   sourceGovernanceProjection?: SourceGovernanceProjection
   businessUnderstandingProjection?: BusinessUnderstandingProjection
   businessCapabilityMapProjection?: BusinessCapabilityMapProjection
+  backlogHierarchyProjection?: BacklogHierarchyProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -3845,6 +3909,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.businessCapabilityMapProjection ? {
       businessCapabilityMap: {
         project: async () => options.businessCapabilityMapProjection!,
+      },
+    } : {}),
+    ...(options.backlogHierarchyProjection ? {
+      backlogHierarchy: {
+        project: async () => options.backlogHierarchyProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -4357,6 +4426,33 @@ describe("current-engine Product Studio data source", () => {
       },
     })
     expect(JSON.stringify(snapshot)).not.toContain("sourceLocator")
+  })
+
+  it("projects exact privacy-safe Backlog Hierarchy metadata on Delivery", async () => {
+    const projection = backlogHierarchyProjection()
+    const { source } = harness({ backlogHierarchyProjection: projection })
+    const snapshot = await source.readSnapshot("delivery")
+
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.kind === "delivery" && snapshot.page.backlogHierarchy).toMatchObject({
+      id: "backlog-hierarchy",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          hierarchy: "2 Epics · 5 Features · 8 Stories · 9 Tasks",
+          topology: "2 roots · 12 leaves · 17 Requirement traces",
+          assessment: "attention-required · held · not-assessed",
+          gaps: "1 untraced delivery nodes · 3 questions · 0 stale bindings · 1 stale Work Items · 0 stale Changes · 2 stale Requirements",
+          boundary: "Candidate identities, level counts, statuses, and digests only; no backlog objectives, criteria, scope, owners, Requirement content, personal data, priority, commitment, ready or done, implementation readiness, assignment, execution, or action authority.",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private objective|private completion criterion|private owner|private requirement content|customer@example\.com|api_key/iu,
+    )
   })
 
   it("projects privacy-safe governed business, stakeholder, and outcome metadata on their native pages", async () => {

@@ -602,6 +602,7 @@ class StudioShell {
       page.sourceProvenance,
       page.changes,
       page.workItems,
+      ...(page.backlogHierarchy ? [page.backlogHierarchy] : []),
     ]) container.append(this.renderTable(table))
     if (page.transitionPreview) {
       const preview = element("section", "section grouped-section")

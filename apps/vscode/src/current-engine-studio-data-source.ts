@@ -8,6 +8,7 @@ import type {
   BoundedContextModelProjection,
   BusinessArchitectureBaselineProjection,
   BusinessCapabilityMapProjection,
+  BacklogHierarchyProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -179,6 +180,9 @@ export interface CurrentStudioEngineReader {
   businessCapabilityMap?: {
     project(initiativeId: string): Promise<BusinessCapabilityMapProjection>
   }
+  backlogHierarchy?: {
+    project(initiativeId: string): Promise<BacklogHierarchyProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -348,6 +352,7 @@ interface ObservedStudioState {
   initiativeEntryAssessments: Map<string, InitiativeEntryAssessment>
   businessUnderstandingProjections: Map<string, BusinessUnderstandingProjection>
   businessCapabilityMapProjections: Map<string, BusinessCapabilityMapProjection>
+  backlogHierarchyProjections: Map<string, BacklogHierarchyProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3764,6 +3769,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     sourceProvenance,
     changes: changesTable(state.changes, state.product),
     workItems: workItemsTable(state.workItems),
+    backlogHierarchy: backlogHierarchyTable(state),
   }
 }
 
@@ -3841,6 +3847,55 @@ function workItemsTable(records: WorkItem[]): StudioTableSnapshot {
       ],
     })),
     actions: [domainControl("Create Work Item", "create-work-item", undefined, undefined, "primary")],
+  }
+}
+
+function backlogHierarchyTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.backlogHierarchyProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        hierarchy: `${status.epicCount} Epics · ${status.featureCount} Features · ${status.storyCount} Stories · ${status.taskCount} Tasks`,
+        topology: `${status.rootCount} roots · ${status.leafCount} leaves · ${status.requirementTraceCount} Requirement traces`,
+        assessment: `${status.state} · ${status.reviewState} · ${status.hierarchyCompletenessState}`,
+        gaps: `${status.untracedStoryTaskCount} untraced delivery nodes · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleWorkItemCount} stale Work Items · ${status.staleChangeCount} stale Changes · ${status.staleRequirementCount} stale Requirements`,
+        boundary: "Candidate identities, level counts, statuses, and digests only; no backlog objectives, criteria, scope, owners, Requirement content, personal data, priority, commitment, ready or done, implementation readiness, assignment, execution, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "backlog-hierarchy",
+    title: "Governed Backlog Hierarchy Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "hierarchy", label: "Privacy-safe hierarchy" },
+      { key: "topology", label: "Topology and trace" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Backlog Hierarchy candidate",
+        "Create the candidate through the governed engine workflow. This view does not infer priority, commitment, ownership authority, Definition of Ready or Done, implementation readiness, assignment, execution, or action authority.",
+      ),
+    } : {}),
   }
 }
 
@@ -4720,6 +4775,7 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       sourceProvenance: capTable(page.sourceProvenance),
       changes: capTable(page.changes),
       workItems: capTable(page.workItems),
+      ...(page.backlogHierarchy ? { backlogHierarchy: capTable(page.backlogHierarchy) } : {}),
     }
     case "risks-decisions": return {
       ...page,
@@ -5677,6 +5733,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
   private async observe(route: StudioRoute): Promise<ObservedStudioState> {
     const empty: ObservedStudioState = {
       initiatives: [], initiativeEntryAssessments: new Map(), businessUnderstandingProjections: new Map(),
+      backlogHierarchyProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -5880,6 +5937,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "source-governance-unavailable",
           "Source governance metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.backlogHierarchy) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.backlogHierarchy!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.backlogHierarchyProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Backlog Hierarchy projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `backlog-hierarchy-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Backlog Hierarchy metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "backlog-hierarchy-unavailable",
+          "Backlog Hierarchy metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
