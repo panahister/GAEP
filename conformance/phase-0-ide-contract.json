@@ -75,6 +75,7 @@
     { "id": "boilerplate-selection-binding", "label": "Exact governed Boilerplate Selection and Binding candidate with one evidence-backed selected, not-applicable, deferred, or not-assessed decision per current Implementation Unit, exact Technology Profile and Boilerplate Registry entry and version candidate references, alternatives, conditions, deviations, deterministic unit-decision, selection, binding and assessment receipts, and exact current Implementation Unit Model, Dependency Mapping, Technology Profile and Boilerplate Registry bindings, without establishing organizational designation, endorsement, approval, support commitment, effective selection or binding, compatibility truth, completeness or validation, licensing or security approval, exception or waiver authority, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, write, or action authority" },
     { "id": "boilerplate-compatibility-validation", "label": "Exact governed Boilerplate Compatibility Validation candidate with one exact subject per selected binding, complete canonical architecture, build, dependency, deployment, design-system, licensing-policy, packaging, platform, runtime, security-privacy, stack, test, toolchain and version dimension coverage, evidence and exception candidates, deterministic subject, dimension, evidence, validation and assessment receipts, and exact current Implementation Unit Model, Dependency Mapping, Technology Profile, Boilerplate Registry and Boilerplate Selection and Binding bindings, without establishing compatibility truth or completeness, validation decisions, actual asset behavior, test execution, design validity, security, privacy or licensing approval, exception or waiver authority, effective selection or binding, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, write, or action authority" },
     { "id": "figma-to-boilerplate-mapping", "label": "Exact governed Figma-to-Boilerplate Mapping candidate with one mapping subject per current Design-to-Requirement Binding, bounded component, token, layout, responsive-behavior and platform-target mapping kinds, mapped, conflict, unmapped and not-assessed candidate outcomes, exact selected boilerplate target, Implementation Unit and Requirement trace candidates, evidence and attributable review candidates, deterministic subject-catalog, target-catalog, trace, mapping and assessment receipts, and exact current design applicability, design-system/token, responsive/platform, finalized-snapshot, design-to-requirement, design-baseline, Implementation Unit Model, Technology Profile, Boilerplate Registry, Boilerplate Selection and Binding and Boilerplate Compatibility Validation bindings, without connecting to or calling Figma, establishing returned Figma content, design validity, approval or baseline, mapping truth or completeness, effective selection or binding, compatibility truth, retrieving, importing, instantiating, generating or executing assets, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, write, or action authority" },
+    { "id": "design-to-code-binding-registry", "label": "Exact governed Design-to-Code Binding Registry candidate with one binding subject per current Figma-to-Boilerplate Mapping subject, bounded component, configuration, layout, module, route, style, symbol, test-hook and token binding kinds, bound, conflict, unbound and not-assessed candidate outcomes, exact Implementation Unit, Requirement and repository, module, path and optional symbol target candidates, evidence and attributable human binding candidates, deterministic subject-catalog, code-target-catalog, trace, binding and assessment receipts, and exact current Design Baseline, Finalized Figma Snapshot Import, Design-to-Requirement Binding, Figma-to-Boilerplate Mapping, Implementation Unit Model, Technology Profile, Boilerplate Selection and Binding and Boilerplate Compatibility Validation bindings, without connecting to or calling Figma, establishing returned Figma content, design validity, approval or baseline, mapping or binding truth or completeness, repository, path or symbol truth, creating or changing code targets, retrieving, importing, instantiating, generating or executing assets, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, write, or action authority" },
     { "id": "design-system-token-contract", "label": "Exact governed Design System and Token Contract candidate projection with bounded system, token, variable, component and requirement-coverage metadata, without system, token, variable or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "accessibility-design-rules", "label": "Exact governed Accessibility Design Rules candidate projection with bounded target, rule, check, evidence-state and requirement-coverage metadata, without accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "responsive-multi-platform-targets", "label": "Exact governed Responsive and Multi-Platform Targets candidate projection with bounded platform-target, breakpoint, behavior, check, evidence-state and requirement-coverage metadata, without responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
@@ -102,7 +103,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T190000Z-phase-3a-figma-to-boilerplate-mapping-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T200113Z-phase-3a-design-to-code-binding-registry-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -334,6 +335,9 @@
         { "capabilityId": "figma-to-boilerplate-mapping", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["figmaToBoilerplateMapping?: {", "engine.figmaToBoilerplateMapping!.project(initiative.id)", "id: \"figma-to-boilerplate-mapping\"", "mapping truth or completeness, design validity, approval or baseline"] }
         ] },
+        { "capabilityId": "design-to-code-binding-registry", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designToCodeBindingRegistry?: {", "engine.designToCodeBindingRegistry!.project(initiative.id)", "id: \"design-to-code-binding-registry\"", "mapping or binding truth or completeness"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designSystemTokenContract?: {", "engine.designSystemTokenContract!.project(initiative.id)", "id: \"design-system-token-contract\"", "no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."] }
         ] },
@@ -395,7 +399,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T190000Z-phase-3a-figma-to-boilerplate-mapping-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T200113Z-phase-3a-design-to-code-binding-registry-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -662,6 +666,10 @@
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readFigmaToBoilerplateMapping(", "this.request(\"planning.figmaToBoilerplateMapping.snapshot\"", "figmaToBoilerplateMappingProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showFigmaToBoilerplateMapping", "GAEP governed Figma-to-Boilerplate Mapping candidate", "does not connect to or call Figma, establish returned Figma content"] }
         ] },
+        { "capabilityId": "design-to-code-binding-registry", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignToCodeBindingRegistry(", "this.request(\"planning.designToCodeBindingRegistry.snapshot\"", "designToCodeBindingRegistryProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignToCodeBindingRegistry", "GAEP governed Design-to-Code Binding Registry candidate", "create or change code targets"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignSystemTokenContract(", "this.request(\"design.systemTokenContract.snapshot\"", "designSystemTokenContractProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignSystemTokenContract", "GAEP governed Design System and Token Contract candidate", "does not establish system, token, variable, or component validity"] }
@@ -740,7 +748,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T190000Z-phase-3a-figma-to-boilerplate-mapping-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T200113Z-phase-3a-design-to-code-binding-registry-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -1062,6 +1070,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Figma-to-Boilerplate Mapping candidate", "requireDependency(\"boilerplateCompatibilityValidation\"", "mapping truth or completeness"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["FigmaToBoilerplateMappingProjection", "FIGMA_TO_BOILERPLATE_MAPPING_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] },
+        { "capabilityId": "design-to-code-binding-registry", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignToCodeBindingRegistry(", "portableRequest(\"planning.designToCodeBindingRegistry.snapshot\"", "parseDesignToCodeBindingRegistryEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design-to-Code Binding Registry candidate", "requireDependency(\"boilerplateCompatibilityValidation\"", "create or change code targets"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DesignToCodeBindingRegistryProjection", "DESIGN_TO_CODE_BINDING_REGISTRY_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignSystemTokenContract(", "portableRequest(\"design.systemTokenContract.snapshot\"", "parseDesignSystemTokenContractEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design System and Token Contract candidate", "no system, token, variable", "ownership authority"] },
@@ -1157,7 +1170,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T190000Z-phase-3a-figma-to-boilerplate-mapping-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T200113Z-phase-3a-design-to-code-binding-registry-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1490,6 +1503,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadFigmaToBoilerplateMappingAsync(", "\"planning.figmaToBoilerplateMapping.snapshot\"", "ParseFigmaToBoilerplateMappingResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Figma-to-Boilerplate Mapping candidate", "RequireDependency(\"boilerplateCompatibilityValidation\"", "mapping truth or completeness"] },
           { "path": "apps/visual-studio/Gaep.HostClient/FigmaToBoilerplateMappingProtocol.cs", "contains": ["FigmaToBoilerplateMappingProjection", "FigmaToBoilerplateMappingProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "design-to-code-binding-registry", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignToCodeBindingRegistryAsync(", "\"planning.designToCodeBindingRegistry.snapshot\"", "ParseDesignToCodeBindingRegistryResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Design-to-Code Binding Registry candidate", "RequireDependency(\"boilerplateCompatibilityValidation\"", "create or change code targets"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/DesignToCodeBindingRegistryProtocol.cs", "contains": ["DesignToCodeBindingRegistryProjection", "DesignToCodeBindingRegistryProjectionAuthorityBoundary"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignSystemTokenContractAsync(", "\"design.systemTokenContract.snapshot\"", "ParseDesignSystemTokenContractResponse"] },
