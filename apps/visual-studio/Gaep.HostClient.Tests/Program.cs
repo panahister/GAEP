@@ -82,6 +82,7 @@ internal static class Program
     private static readonly Guid TechnologyProfileId = Guid.Parse("89898989-8989-4989-8989-898989898989");
     private static readonly Guid BoilerplateRegistryId = Guid.Parse("90909090-9090-4090-8090-909090909090");
     private static readonly Guid BoilerplateSelectionBindingId = Guid.Parse("a9a9a9a9-a9a9-49a9-89a9-a9a9a9a9a9a9");
+    private static readonly Guid BoilerplateCompatibilityValidationId = Guid.Parse("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -304,6 +305,14 @@ internal static class Program
         var badBoilerplateSelectionBindingDependencyMappingBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-selection-binding-dependency-mapping-binding");
         var badBoilerplateSelectionBindingTechnologyProfileBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-selection-binding-technology-profile-binding");
         var badBoilerplateSelectionBindingRegistryBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-selection-binding-registry-binding");
+        var badBoilerplateCompatibilityValidationSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-compatibility-validation-snapshot-binding");
+        var badBoilerplateCompatibilityValidationSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-boilerplate-compatibility-validation-snapshot-digest");
+        var badBoilerplateCompatibilityValidationSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-boilerplate-compatibility-validation-snapshot-private");
+        var badBoilerplateCompatibilityValidationUnitModelBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-compatibility-validation-unit-model-binding");
+        var badBoilerplateCompatibilityValidationDependencyMappingBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-compatibility-validation-dependency-mapping-binding");
+        var badBoilerplateCompatibilityValidationTechnologyProfileBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-compatibility-validation-technology-profile-binding");
+        var badBoilerplateCompatibilityValidationRegistryBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-compatibility-validation-registry-binding");
+        var badBoilerplateCompatibilityValidationSelectionBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-compatibility-validation-selection-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -1540,6 +1549,66 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadBoilerplateSelectionBindingAsync(InitiativeId),
                 "Boilerplate Selection and Binding workflow rejects substituted Product or current planning dependency bindings");
+        }
+        var boilerplateCompatibilityValidationProjection = await client.ReadBoilerplateCompatibilityValidationAsync(InitiativeId);
+        Check(boilerplateCompatibilityValidationProjection.ProductId == product.Id &&
+              boilerplateCompatibilityValidationProjection.ProductRevision == product.Revision &&
+              boilerplateCompatibilityValidationProjection.ProductDigest == product.Digest &&
+              boilerplateCompatibilityValidationProjection.InitiativeId == resolved.Id &&
+              boilerplateCompatibilityValidationProjection.InitiativeRevision == resolved.Revision &&
+              boilerplateCompatibilityValidationProjection.InitiativeDigest == resolved.Digest &&
+              boilerplateCompatibilityValidationProjection.State == "attention-required" &&
+              boilerplateCompatibilityValidationProjection.ReviewState == "held" &&
+              boilerplateCompatibilityValidationProjection.SelectedBindingCount == 2 &&
+              boilerplateCompatibilityValidationProjection.SubjectCount == 2 &&
+              boilerplateCompatibilityValidationProjection.DimensionAssessmentCount == 28 &&
+              boilerplateCompatibilityValidationProjection.CompatibleCandidateCount == 1 &&
+              boilerplateCompatibilityValidationProjection.ExceptionCandidateCount == 1 &&
+              boilerplateCompatibilityValidationProjection.InvalidSubjectCount == 1 &&
+              boilerplateCompatibilityValidationProjection.MissingEvidenceCount == 1 &&
+              boilerplateCompatibilityValidationProjection.ExpiredAssessmentCount == 1 &&
+              boilerplateCompatibilityValidationProjection.SelectionBindingGapCount == 0,
+            "Typed Boilerplate Compatibility Validation projection preserves exact Product, Initiative, prerequisite, subject, dimension, and privacy-safe metadata");
+        var boilerplateCompatibilityValidationOutput = await initiativeController.ReadBoilerplateCompatibilityValidationAsync(InitiativeId);
+        Check(boilerplateCompatibilityValidationOutput.Contains("GAEP governed Boilerplate Compatibility Validation candidate", StringComparison.Ordinal) &&
+              boilerplateCompatibilityValidationOutput.Contains("2 selected bindings · 2 subjects · 28 dimension assessments", StringComparison.Ordinal) &&
+              boilerplateCompatibilityValidationOutput.Contains("1 compatible · 0 incompatible · 1 exception candidates · 0 not assessed", StringComparison.Ordinal) &&
+              boilerplateCompatibilityValidationOutput.Contains("1 invalid subjects · 0 missing dimensions · 1 missing evidence", StringComparison.Ordinal) &&
+              boilerplateCompatibilityValidationOutput.Contains("no boilerplate names, locators, versions, unit, profile, entry, or binding identities", StringComparison.Ordinal) &&
+              boilerplateCompatibilityValidationOutput.Contains("does not establish compatibility truth or completeness", StringComparison.Ordinal) &&
+              !boilerplateCompatibilityValidationOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !boilerplateCompatibilityValidationOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !boilerplateCompatibilityValidationOutput.Contains("boilerplateRegistryEntryId", StringComparison.Ordinal) &&
+              !boilerplateCompatibilityValidationOutput.Contains("bindingDecisionId", StringComparison.Ordinal) &&
+              !boilerplateCompatibilityValidationOutput.Contains("private claim", StringComparison.Ordinal),
+            "Boilerplate Compatibility Validation workflow renders privacy-safe metadata with explicit validation, selection, implementation, and action boundaries");
+        foreach (var hostileRoot in new[]
+                 {
+                     badBoilerplateCompatibilityValidationSnapshotDigestRoot,
+                     badBoilerplateCompatibilityValidationSnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadBoilerplateCompatibilityValidationAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Boilerplate Compatibility Validation projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[]
+                 {
+                     badBoilerplateCompatibilityValidationSnapshotBindingRoot,
+                     badBoilerplateCompatibilityValidationUnitModelBindingRoot,
+                     badBoilerplateCompatibilityValidationDependencyMappingBindingRoot,
+                     badBoilerplateCompatibilityValidationTechnologyProfileBindingRoot,
+                     badBoilerplateCompatibilityValidationRegistryBindingRoot,
+                     badBoilerplateCompatibilityValidationSelectionBindingRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadBoilerplateCompatibilityValidationAsync(InitiativeId),
+                "Boilerplate Compatibility Validation workflow rejects substituted Product or current planning dependency bindings");
         }
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
@@ -4866,6 +4935,22 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-boilerplate-selection-binding-technology-profile-binding";
         var badBoilerplateSelectionBindingRegistryBinding =
             Path.GetFileName(workspace) == "bad-boilerplate-selection-binding-registry-binding";
+        var badBoilerplateCompatibilityValidationSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-boilerplate-compatibility-validation-snapshot-binding";
+        var badBoilerplateCompatibilityValidationSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-boilerplate-compatibility-validation-snapshot-digest";
+        var badBoilerplateCompatibilityValidationSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-boilerplate-compatibility-validation-snapshot-private";
+        var badBoilerplateCompatibilityValidationUnitModelBinding =
+            Path.GetFileName(workspace) == "bad-boilerplate-compatibility-validation-unit-model-binding";
+        var badBoilerplateCompatibilityValidationDependencyMappingBinding =
+            Path.GetFileName(workspace) == "bad-boilerplate-compatibility-validation-dependency-mapping-binding";
+        var badBoilerplateCompatibilityValidationTechnologyProfileBinding =
+            Path.GetFileName(workspace) == "bad-boilerplate-compatibility-validation-technology-profile-binding";
+        var badBoilerplateCompatibilityValidationRegistryBinding =
+            Path.GetFileName(workspace) == "bad-boilerplate-compatibility-validation-registry-binding";
+        var badBoilerplateCompatibilityValidationSelectionBinding =
+            Path.GetFileName(workspace) == "bad-boilerplate-compatibility-validation-selection-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -5518,6 +5603,22 @@ internal static class Program
                         badBoilerplateSelectionBindingDependencyMappingBinding,
                         badBoilerplateSelectionBindingTechnologyProfileBinding,
                         badBoilerplateSelectionBindingRegistryBinding);
+                    break;
+                case "planning.boilerplateCompatibilityValidation.snapshot":
+                    await HandleBoilerplateCompatibilityValidationAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badBoilerplateCompatibilityValidationSnapshotBinding,
+                        badBoilerplateCompatibilityValidationSnapshotDigest,
+                        badBoilerplateCompatibilityValidationSnapshotPrivate,
+                        badBoilerplateCompatibilityValidationUnitModelBinding,
+                        badBoilerplateCompatibilityValidationDependencyMappingBinding,
+                        badBoilerplateCompatibilityValidationTechnologyProfileBinding,
+                        badBoilerplateCompatibilityValidationRegistryBinding,
+                        badBoilerplateCompatibilityValidationSelectionBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -10109,6 +10210,135 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["decisionCount"] = 5;
         if (includePrivateField) result["rationale"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleBoilerplateCompatibilityValidationAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeImplementationUnitModelBinding,
+        bool forgeDependencyMappingBinding,
+        bool forgeTechnologyProfileBinding,
+        bool forgeBoilerplateRegistryBinding,
+        bool forgeBoilerplateSelectionBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID BOILERPLATE COMPATIBILITY VALIDATION");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T19:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('d', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        Dictionary<string, object?> Reference(Guid recordId, char digestCharacter) => new()
+        {
+            ["recordId"] = recordId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = $"sha256:{new string(digestCharacter, 64)}",
+        };
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = BoilerplateCompatibilityValidationId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["state"] = "candidate",
+            ["validationSubjectCatalogDigest"] = $"sha256:{new string('1', 64)}",
+            ["dimensionCatalogDigest"] = $"sha256:{new string('2', 64)}",
+            ["evidenceReceiptDigest"] = $"sha256:{new string('3', 64)}",
+            ["validationReceiptDigest"] = $"sha256:{new string('4', 64)}",
+            ["assessmentReceiptDigest"] = $"sha256:{new string('5', 64)}",
+            ["subjectCount"] = 2,
+            ["compatibleCandidateCount"] = 1,
+            ["incompatibleCandidateCount"] = 0,
+            ["exceptionCandidateCount"] = 1,
+            ["notAssessedCount"] = 0,
+            ["dimensionAssessmentCount"] = 28,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T19:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "boilerplate-compatibility-validation-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "boilerplate-compatibility-validation-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BoilerplateCompatibilityValidationId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["implementationUnitModel"] = Reference(ImplementationUnitModelId, forgeImplementationUnitModelBinding ? '4' : '5'),
+                ["dependencyMapping"] = Reference(DependencyMappingId, forgeDependencyMappingBinding ? '8' : '9'),
+                ["technologyProfile"] = Reference(TechnologyProfileId, forgeTechnologyProfileBinding ? '7' : '6'),
+                ["boilerplateRegistry"] = Reference(BoilerplateRegistryId, forgeBoilerplateRegistryBinding ? '2' : '3'),
+                ["boilerplateSelectionBinding"] = Reference(BoilerplateSelectionBindingId, forgeBoilerplateSelectionBinding ? '7' : '8'),
+                ["selectedBindingCount"] = 2,
+                ["subjectCount"] = 2,
+                ["compatibleCandidateCount"] = 1,
+                ["incompatibleCandidateCount"] = 0,
+                ["exceptionCandidateCount"] = 1,
+                ["notAssessedCount"] = 0,
+                ["dimensionAssessmentCount"] = 28,
+                ["missingSubjectCount"] = 0,
+                ["invalidSubjectCount"] = 1,
+                ["missingDimensionCount"] = 0,
+                ["missingEvidenceCount"] = 1,
+                ["expiredAssessmentCount"] = 1,
+                ["conflictingOutcomeCount"] = 0,
+                ["selectionBindingGapCount"] = 0,
+                ["staleBindingCount"] = 0,
+                ["staleImplementationUnitModelCount"] = 0,
+                ["staleDependencyMappingCount"] = 0,
+                ["staleTechnologyProfileCount"] = 0,
+                ["staleBoilerplateRegistryCount"] = 0,
+                ["staleSelectionBindingCount"] = 0,
+                ["invalidCandidateCount"] = 0,
+                ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Boilerplate Compatibility Validation subjects require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "boilerplate-compatibility-validation-status-is-observational-and-does-not-establish-compatibility-truth-or-completeness-validation-decision-actual-asset-behavior-test-execution-design-validity-security-privacy-or-licensing-approval-exception-waiver-selection-binding-effectiveness-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-subject-dimension-evidence-validation-assessment-snapshot-digests-only-not-boilerplate-names-locators-versions-unit-profile-entry-or-binding-identities-claims-evidence-assessors-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "boilerplate-compatibility-validation-projection-is-read-only-and-does-not-establish-compatibility-truth-or-completeness-validation-decision-actual-asset-behavior-test-execution-design-validity-security-privacy-or-licensing-approval-exception-waiver-selection-binding-effectiveness-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["subjectCount"] = 3;
+        if (includePrivateField) result["claim"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
