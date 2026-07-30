@@ -7,6 +7,7 @@ import type {
   Phase1AgentModelDashboard,
   Phase1SummaryDashboard,
   PhaseDashboardFramework,
+  Phase2UxFigmaDashboard,
 } from "@gaep/contracts"
 
 import {
@@ -217,6 +218,7 @@ class StudioShell {
     if (snapshot.surface.kind === "ready") {
       main.append(this.renderPage(snapshot))
       if (snapshot.dashboard) main.append(this.renderPhaseDashboard(snapshot.dashboard))
+      if (snapshot.phase2UxFigma) main.append(this.renderPhase2UxFigmaDashboard(snapshot.phase2UxFigma))
       if (snapshot.phase1Summary) main.append(this.renderPhase1Summary(snapshot.phase1Summary))
       if (snapshot.phase1ChangeImpact) main.append(this.renderPhase1ChangeImpact(snapshot.phase1ChangeImpact))
       if (snapshot.changeImpact) main.append(this.renderChangeImpactDashboard(snapshot.changeImpact))
@@ -1051,6 +1053,125 @@ class StudioShell {
         },
         actions: [],
       })),
+      actions: [],
+    }))
+    section.append(this.renderStringList("Projection limits", dashboard.limitations))
+    return section
+  }
+
+  private renderPhase2UxFigmaDashboard(dashboard: Phase2UxFigmaDashboard): HTMLElement {
+    const section = element("section", "section phase2-ux-figma-dashboard")
+    section.setAttribute("aria-label", "Phase 2 UX and Figma dashboard")
+    const phaseState = dashboard.phaseStatus.state === "candidate-complete-for-human-review"
+      ? "Candidate complete for human review"
+      : "Attention required"
+    section.append(
+      element("h3", undefined, "Phase 2 UX and Figma"),
+      element(
+        "p",
+        "prose",
+        `${phaseState}. ${dashboard.phaseStatus.currentSourceCount} current, ${dashboard.phaseStatus.attentionRequiredSourceCount} attention-required, and ${dashboard.phaseStatus.unavailableSourceCount} unavailable governed sources.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        `Exact Product revision ${dashboard.product.revision}; exact Initiative revision ${dashboard.initiative.revision}; observed ${dashboard.observedAt}.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        "This is a derived read-only view. Product Owner acceptance, approval, Baseline Set designation, readiness, phase entry, Figma execution, remediation effect, implementation change, and action authority are not established.",
+      ),
+    )
+    section.append(this.renderTable({
+      id: "phase2-ux-figma-summary",
+      title: "Bounded Phase 2 summary",
+      columns: [
+        { key: "area", label: "Area" },
+        { key: "inventory", label: "Inventory" },
+        { key: "attention", label: "Attention and authority boundary" },
+      ],
+      rows: [
+        {
+          id: "experience",
+          cells: {
+            area: "Experience",
+            inventory: `${dashboard.experience.personaCount} personas · ${dashboard.experience.designRoleCount} design roles · ${dashboard.experience.journeyCount} journeys · ${dashboard.experience.touchpointCount} touchpoints · ${dashboard.experience.screenCount} screens · ${dashboard.experience.stateCount} states · ${dashboard.experience.variantCount} variants`,
+            attention: "Counts do not establish research validity, journey completeness, UI completeness, or interaction quality.",
+          },
+          actions: [],
+        },
+        {
+          id: "design-system",
+          cells: {
+            area: "Design system and accessibility",
+            inventory: `${dashboard.designSystem.requirementCount} requirements · ${dashboard.designSystem.designSystemCount} design systems · ${dashboard.designSystem.tokenCount} tokens · ${dashboard.designSystem.componentCount} components · ${dashboard.designSystem.accessibilityRuleCount} accessibility rules · ${dashboard.designSystem.accessibilityCheckCount} checks`,
+            attention: "Counts do not establish catalog validity, accessibility conformance, ownership, or design approval.",
+          },
+          actions: [],
+        },
+        {
+          id: "figma",
+          cells: {
+            area: "Figma and trace",
+            inventory: `${dashboard.figma.fileCount} files · ${dashboard.figma.componentCount} components · ${dashboard.figma.variableCount} variables · ${dashboard.figma.designBindingCount} design bindings · ${dashboard.figma.unboundDesignItemCount} unbound design items`,
+            attention: `Connection ${dashboard.figma.connectionState}; write ${dashboard.figma.writeExecutionState}; import ${dashboard.figma.importExecutionState}.`,
+          },
+          actions: [],
+        },
+        {
+          id: "drift",
+          cells: {
+            area: "Drift",
+            inventory: `${dashboard.drift.observationCount} observations · ${dashboard.drift.conformantCount} conformant · ${dashboard.drift.driftCount} drift · ${dashboard.drift.unassessedCount} unassessed · ${dashboard.drift.blockerCount} blocker · ${dashboard.drift.highSeverityCount} high`,
+            attention: `${dashboard.drift.remediationCandidateCount} remediation candidates; effects remain ${dashboard.governance.remediationEffectState}.`,
+          },
+          actions: [],
+        },
+      ],
+      actions: [],
+    }))
+    section.append(this.renderTable({
+      id: "phase2-ux-figma-sources",
+      title: "Governed source projections",
+      columns: [
+        { key: "source", label: "Source" },
+        { key: "group", label: "Group" },
+        { key: "availability", label: "Availability" },
+        { key: "assessment", label: "Assessment" },
+        { key: "freshness", label: "Freshness gaps" },
+      ],
+      rows: dashboard.sources.map((source) => ({
+        id: source.id,
+        cells: {
+          source: source.title,
+          group: source.group.replaceAll("-", " "),
+          availability: source.availability.replaceAll("-", " "),
+          assessment: source.assessment
+            ? `${source.assessment.state}${source.assessment.reviewState ? ` · ${source.assessment.reviewState}` : ""}${source.assessment.candidateResult ? ` · ${source.assessment.candidateResult}` : ""}`
+            : "Unavailable — no state inferred",
+          freshness: source.assessment
+            ? `${source.assessment.staleBindingCount} stale bindings · ${source.assessment.staleSourceReferenceCount} stale sources · ${source.assessment.unresolvedQuestionCount} questions`
+            : "Unknown",
+        },
+        actions: [],
+      })),
+      actions: [],
+    }))
+    section.append(this.renderTable({
+      id: "phase2-ux-figma-governance",
+      title: "Governance candidates",
+      columns: [
+        { key: "subject", label: "Subject" },
+        { key: "candidate", label: "Candidate result" },
+        { key: "authority", label: "Authority state" },
+      ],
+      rows: [
+        { id: "designer-ready", cells: { subject: "Designer-ready gate", candidate: dashboard.governance.designerReadyCandidateResult, authority: "Readiness not established" }, actions: [] },
+        { id: "human-approval", cells: { subject: "Human design approval", candidate: dashboard.governance.humanApprovalCandidateResult, authority: "Approval not established" }, actions: [] },
+        { id: "baseline", cells: { subject: "Design baseline", candidate: dashboard.governance.baselineCandidateResult, authority: "Baseline Set designation not established" }, actions: [] },
+        { id: "drift-review", cells: { subject: "Design drift", candidate: dashboard.governance.driftCandidateResult, authority: "Remediation effect not applied" }, actions: [] },
+      ],
       actions: [],
     }))
     section.append(this.renderStringList("Projection limits", dashboard.limitations))

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { canonicalDigest } from "@gaep/agent-sdk"
+import type { Initiative, Product } from "@gaep/contracts"
+import { composePhase2UxFigmaDashboard } from "@gaep/engine"
 
 import {
   isStudioAction,
@@ -344,6 +346,49 @@ describe("Product Studio protocol", () => {
     const mutableEvidenceCue = forgedEvidenceCue.dashboard.evidenceCues as unknown as { freshness: string }
     mutableEvidenceCue.freshness = "unknown"
     expect(isStudioSnapshot(forgedEvidenceCue)).toBe(false)
+  })
+
+  it("accepts only a digest-bound Phase 2 UX/Figma view beside the Phase 2 dashboard shell", () => {
+    const product: Product = {
+      schemaVersion: 1, id: "00000000-0000-4000-8000-000000000001", kind: "product", revision: 2,
+      name: "Phase 2 dashboard Product", summary: "Exact Product Studio Phase 2 projection fixture",
+      problem: "Phase 2 source state must remain derived and bounded.", affectedUsers: "GAEP operators",
+      desiredOutcome: "Expose exact source state without synthesizing authority.", successSignals: ["Exact digest validation"],
+      firstWorkflow: "Inspect Phase 2 source coverage.", exclusions: ["Approval or action authority"], profile: "internal-tool",
+      lifecycleState: "active", createdAt: "2026-07-30T03:00:00.000Z", updatedAt: "2026-07-30T03:00:00.000Z",
+    }
+    const initiative: Initiative = {
+      schemaVersion: 1, id: "00000000-0000-4000-8000-000000000002", kind: "initiative", revision: 1,
+      productId: product.id, title: "Phase 2 dashboard Initiative", outcome: "Inspect current design state.",
+      scope: ["P2-01 through P2-23"], exclusions: ["Automatic Figma effects"], state: "active",
+      createdAt: "2026-07-30T03:00:00.000Z", updatedAt: "2026-07-30T03:00:00.000Z",
+    }
+    const phase2 = composePhase2UxFigmaDashboard(product, initiative, [], {
+      expectedProductId: product.id, expectedProductRevision: product.revision ?? 1, expectedProductDigest: canonicalDigest(product),
+      expectedInitiativeId: initiative.id, expectedInitiativeRevision: initiative.revision ?? 1,
+      expectedInitiativeDigest: canonicalDigest(initiative),
+    }, "2026-07-30T03:10:00.000Z")
+    const candidate = snapshot("overview")
+    if (!candidate.dashboard) throw new Error("Expected dashboard fixture")
+    candidate.dashboard.phase = { id: "phase-2-design", label: "Phase 2 — UX and Figma Loop" }
+    candidate.dashboard.panels[0] = {
+      id: "ux-figma", role: "phase", title: "UX and Figma",
+      applicability: { status: "unknown", basis: "not-evaluated" }, state: "attention-required",
+    }
+    candidate.phase2UxFigma = phase2
+    expect(isStudioSnapshot(candidate)).toBe(true)
+    const forged = structuredClone(candidate)
+    if (!forged.phase2UxFigma) throw new Error("Expected Phase 2 dashboard fixture")
+    forged.phase2UxFigma.phaseStatus.unavailableSourceCount = 22
+    expect(isStudioSnapshot(forged)).toBe(false)
+    const wrongPhase = structuredClone(candidate)
+    if (!wrongPhase.dashboard) throw new Error("Expected dashboard fixture")
+    wrongPhase.dashboard.phase = { id: "phase-0-1a-foundation", label: "Phase 0 / 1A — Four-IDE Platform Foundation" }
+    wrongPhase.dashboard.panels[0] = {
+      id: "foundation-summary", role: "phase", title: "Foundation summary and readiness",
+      applicability: { status: "unknown", basis: "not-evaluated" }, state: "attention-required",
+    }
+    expect(isStudioSnapshot(wrongPhase)).toBe(false)
   })
 
   it("accepts only an internally consistent Change and impact projection on Delivery", () => {

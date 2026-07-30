@@ -89,6 +89,7 @@ import type {
   Phase1ChangeImpactDashboard,
   Phase1AgentModelDashboard,
   PhaseDashboardFramework,
+  Phase2UxFigmaDashboard,
 } from "@gaep/contracts"
 import { containsSecretShapedValue } from "@gaep/contracts"
 import { canonicalDigest, capabilityDigest } from "@gaep/agent-sdk"
@@ -99,6 +100,7 @@ import {
   composePhase1ChangeImpactDashboard,
   composePhase1AgentModelDashboard,
   composePhaseDashboardFramework,
+  composePhase2UxFigmaDashboard,
 } from "@gaep/engine"
 import type {
   ManagedRunListPage,
@@ -5153,6 +5155,54 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
           expectedProductDigest: canonicalDigest(observed.product),
         })
       : undefined
+    let phase2UxFigma: Phase2UxFigmaDashboard | undefined
+    if (deliveryPhase === "phase-2-design" && observed.product) {
+      const initiative = currentInitiative(observed.initiatives)
+      if (initiative) {
+        const projections: unknown[] = []
+        const append = (projection: unknown): void => { if (projection !== undefined) projections.push(projection) }
+        append(observed.designApplicabilityProjections.get(initiative.id))
+        append(observed.designPersonaRoleProjections.get(initiative.id))
+        append(observed.userJourneyProjections.get(initiative.id))
+        append(observed.informationArchitectureProjections.get(initiative.id))
+        append(observed.screenStateInventoryProjections.get(initiative.id))
+        append(observed.designRequirementsProjections.get(initiative.id))
+        append(observed.designSystemTokenContractProjections.get(initiative.id))
+        append(observed.accessibilityDesignRulesProjections.get(initiative.id))
+        append(observed.responsiveMultiPlatformTargetsProjections.get(initiative.id))
+        append(observed.manualFigmaExecutionPathProjections.get(initiative.id))
+        append(observed.figmaMcpCapabilityDiscoveryProjections.get(initiative.id))
+        append(observed.figmaReadSnapshotProjections.get(initiative.id))
+        append(observed.figmaContextImportProjections.get(initiative.id))
+        append(observed.outboundDesignBriefPackageProjections.get(initiative.id))
+        append(observed.governedFigmaWriteProjections.get(initiative.id))
+        append(observed.finalizedFigmaSnapshotImportProjections.get(initiative.id))
+        append(observed.designToRequirementBindingProjections.get(initiative.id))
+        append(observed.designerReadyGateProjections.get(initiative.id))
+        append(observed.designDeltaProjections.get(initiative.id))
+        append(observed.designConflictResolutionProjections.get(initiative.id))
+        append(observed.humanDesignApprovalProjections.get(initiative.id))
+        append(observed.designBaselineProjections.get(initiative.id))
+        append(observed.designDriftDetectionProjections.get(initiative.id))
+        try {
+          phase2UxFigma = composePhase2UxFigmaDashboard(observed.product, initiative, projections, {
+            expectedProductId: observed.product.id,
+            expectedProductRevision: observed.product.revision ?? 1,
+            expectedProductDigest: canonicalDigest(observed.product),
+            expectedInitiativeId: initiative.id,
+            expectedInitiativeRevision: initiative.revision ?? 1,
+            expectedInitiativeDigest: canonicalDigest(initiative),
+          })
+        } catch (error) {
+          this.context.logDiagnostic("Product Studio exact Phase 2 UX/Figma dashboard composition failed; stale or private detail was withheld", error)
+          observed.issues.push(issue(
+            "phase-2-ux-figma-dashboard-unavailable",
+            "The Phase 2 UX/Figma dashboard could not be revalidated against the exact current Product, Initiative, and governed P2-01 through P2-23 projections.",
+            "warning",
+          ))
+        }
+      }
+    }
     let phase1Summary: Phase1SummaryDashboard | undefined
     let phase1ChangeImpact: Phase1ChangeImpactDashboard | undefined
     if (observed.product) {
@@ -5243,6 +5293,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       navigation: sections,
       surface: surfaceFor(route, this.context, observed),
       ...(dashboard ? { dashboard } : {}),
+      ...(phase2UxFigma ? { phase2UxFigma } : {}),
       ...(phase1Summary ? { phase1Summary } : {}),
       ...(phase1ChangeImpact ? { phase1ChangeImpact } : {}),
       ...(changeImpact ? { changeImpact } : {}),
@@ -5654,6 +5705,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     if (!this.context.trusted() || !this.context.workspace() || !this.context.engine()) return empty
     const engine = this.context.engine()!
     const phase1SummaryRequired = ["phase-1b-product", "phase-1c-acceptance"].includes(this.context.deliveryPhase())
+    const phase2DashboardRequired = this.context.deliveryPhase() === "phase-2-design"
     try {
       empty.product = await engine.readProduct()
       empty.productState = "available"
@@ -6684,7 +6736,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.designApplicability) {
+    if ((route === "architecture" || phase2DashboardRequired) && engine.designApplicability) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.designApplicability!.project(initiative.id)),
@@ -6726,7 +6778,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "users-jobs" && engine.designPersonaRoleModel) {
+    if ((route === "users-jobs" || phase2DashboardRequired) && engine.designPersonaRoleModel) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.designPersonaRoleModel!.project(initiative.id)),
@@ -6768,7 +6820,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "users-jobs" && engine.userJourneyModel) {
+    if ((route === "users-jobs" || phase2DashboardRequired) && engine.userJourneyModel) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.userJourneyModel!.project(initiative.id)),
@@ -6810,7 +6862,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "users-jobs" && engine.informationArchitectureModel) {
+    if ((route === "users-jobs" || phase2DashboardRequired) && engine.informationArchitectureModel) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.informationArchitectureModel!.project(initiative.id)),
@@ -6852,7 +6904,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "users-jobs" && engine.screenStateInventory) {
+    if ((route === "users-jobs" || phase2DashboardRequired) && engine.screenStateInventory) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.screenStateInventory!.project(initiative.id)),
@@ -6894,7 +6946,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "scope" && engine.designRequirements) {
+    if ((route === "scope" || phase2DashboardRequired) && engine.designRequirements) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.designRequirements!.project(initiative.id)),
@@ -6936,7 +6988,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "scope" && engine.designSystemTokenContract) {
+    if ((route === "scope" || phase2DashboardRequired) && engine.designSystemTokenContract) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.designSystemTokenContract!.project(initiative.id)),
@@ -6978,7 +7030,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "scope" && engine.accessibilityDesignRules) {
+    if ((route === "scope" || phase2DashboardRequired) && engine.accessibilityDesignRules) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.accessibilityDesignRules!.project(initiative.id)),
@@ -7020,7 +7072,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "scope" && engine.responsiveMultiPlatformTargets) {
+    if ((route === "scope" || phase2DashboardRequired) && engine.responsiveMultiPlatformTargets) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.responsiveMultiPlatformTargets!.project(initiative.id)),
@@ -7062,7 +7114,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "scope" && engine.manualFigmaExecutionPath) {
+    if ((route === "scope" || phase2DashboardRequired) && engine.manualFigmaExecutionPath) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.manualFigmaExecutionPath!.project(initiative.id)),
@@ -7104,7 +7156,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "scope" && engine.figmaMcpCapabilityDiscovery) {
+    if ((route === "scope" || phase2DashboardRequired) && engine.figmaMcpCapabilityDiscovery) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.figmaMcpCapabilityDiscovery!.project(initiative.id)),
@@ -7146,7 +7198,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "scope" && engine.figmaReadSnapshot) {
+    if ((route === "scope" || phase2DashboardRequired) && engine.figmaReadSnapshot) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.figmaReadSnapshot!.project(initiative.id)),
@@ -7188,7 +7240,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "scope" && engine.figmaContextImport) {
+    if ((route === "scope" || phase2DashboardRequired) && engine.figmaContextImport) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.figmaContextImport!.project(initiative.id)),
@@ -7230,7 +7282,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "scope" && engine.outboundDesignBriefPackage) {
+    if ((route === "scope" || phase2DashboardRequired) && engine.outboundDesignBriefPackage) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.outboundDesignBriefPackage!.project(initiative.id)),
@@ -7272,7 +7324,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "scope" && engine.governedFigmaWrite) {
+    if ((route === "scope" || phase2DashboardRequired) && engine.governedFigmaWrite) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.governedFigmaWrite!.project(initiative.id)),
@@ -7314,7 +7366,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "scope" && engine.finalizedFigmaSnapshotImport) {
+    if ((route === "scope" || phase2DashboardRequired) && engine.finalizedFigmaSnapshotImport) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.finalizedFigmaSnapshotImport!.project(initiative.id)),
@@ -7356,7 +7408,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "scope" && engine.designToRequirementBinding) {
+    if ((route === "scope" || phase2DashboardRequired) && engine.designToRequirementBinding) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.designToRequirementBinding!.project(initiative.id)),
@@ -7398,7 +7450,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "readiness" && engine.designerReadyGate) {
+    if ((route === "readiness" || phase2DashboardRequired) && engine.designerReadyGate) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.designerReadyGate!.project(initiative.id)),
@@ -7440,7 +7492,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "readiness" && engine.designDelta) {
+    if ((route === "readiness" || phase2DashboardRequired) && engine.designDelta) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.designDelta!.project(initiative.id)),
@@ -7482,7 +7534,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "readiness" && engine.designConflictResolution) {
+    if ((route === "readiness" || phase2DashboardRequired) && engine.designConflictResolution) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.designConflictResolution!.project(initiative.id)),
@@ -7524,7 +7576,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "readiness" && engine.humanDesignApproval) {
+    if ((route === "readiness" || phase2DashboardRequired) && engine.humanDesignApproval) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.humanDesignApproval!.project(initiative.id)),
@@ -7566,7 +7618,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "readiness" && engine.designBaseline) {
+    if ((route === "readiness" || phase2DashboardRequired) && engine.designBaseline) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.designBaseline!.project(initiative.id)),
@@ -7608,7 +7660,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "readiness" && engine.designDriftDetection) {
+    if ((route === "readiness" || phase2DashboardRequired) && engine.designDriftDetection) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.designDriftDetection!.project(initiative.id)),

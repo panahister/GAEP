@@ -4247,6 +4247,53 @@ describe("current-engine Product Studio data source", () => {
     expect(diagnostics).toEqual([])
   })
 
+  it("composes a derived Phase 2 UX/Figma dashboard with explicit unavailable sources and no authority", async () => {
+    const projection = designDriftDetectionProjection()
+    const { source, diagnostics } = harness({
+      deliveryPhase: "phase-2-design",
+      designDriftDetectionProjection: projection,
+    })
+    const snapshot = await source.readSnapshot("overview")
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.dashboard).toMatchObject({ phase: { id: "phase-2-design" } })
+    expect(snapshot.dashboard?.panels).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "ux-figma", state: "attention-required" }),
+    ]))
+    expect(snapshot.phase2UxFigma).toMatchObject({
+      kind: "phase-2-ux-figma-dashboard",
+      product: { recordId: product.id, revision: product.revision },
+      initiative: { recordId: initiative.id, revision: initiative.revision, state: initiative.state },
+      phaseStatus: {
+        state: "attention-required",
+        currentSourceCount: 0,
+        attentionRequiredSourceCount: 1,
+        unavailableSourceCount: 22,
+        productOwnerAcceptance: "not-established",
+        readinessAuthority: "not-established",
+        phaseEntryAuthority: "not-established",
+      },
+      governance: {
+        baselineDesignationState: "not-established",
+        approvalState: "not-established",
+        readinessState: "not-established",
+        remediationEffectState: "not-applied",
+      },
+      figma: { connectionState: "not-established", writeExecutionState: "not-performed", importExecutionState: "not-performed" },
+      drift: { observationCount: projection.status.observationCount, driftCount: projection.status.driftCount },
+    })
+    const dashboard = snapshot.phase2UxFigma
+    if (!dashboard) throw new Error("Expected exact Phase 2 UX/Figma dashboard")
+    const { snapshotDigest, ...content } = dashboard
+    expect(snapshotDigest).toBe(canonicalDigest(content))
+    expect(JSON.stringify(dashboard)).not.toContain(product.name)
+    expect(JSON.stringify(dashboard)).not.toContain(initiative.title)
+    const tampered = structuredClone(snapshot)
+    if (!tampered.phase2UxFigma) throw new Error("Expected Phase 2 dashboard to tamper")
+    tampered.phase2UxFigma.drift.driftCount += 1
+    expect(isStudioSnapshot(tampered)).toBe(false)
+    expect(diagnostics).toEqual([])
+  })
+
   it("projects exact privacy-safe Source, candidate Baseline, and Provenance metadata on Delivery", async () => {
     const projection = sourceGovernanceProjection()
     const { source } = harness({ sourceGovernanceProjection: projection })
