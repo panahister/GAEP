@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { agentModelDashboardRequestSchema } from "./dashboard.js"
+
 const digestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/)
 const countSchema = z.number().int().nonnegative().max(10_000_000)
 const availabilitySchema = z.enum(["current", "attention-required", "unavailable"])
@@ -17,8 +19,7 @@ export const phase2ChangeImpactAgentModelDashboardRequestSchema = z.object({
   expectedInitiativeId: z.string().uuid(),
   expectedInitiativeRevision: z.number().int().positive(),
   expectedInitiativeDigest: digestSchema,
-  expectedPhase2UxFigmaSnapshotDigest: digestSchema,
-  expectedAgentModelSnapshotDigest: digestSchema,
+  agentModel: agentModelDashboardRequestSchema,
 }).strict()
 
 const dashboardFields = {

@@ -54,8 +54,6 @@ export function composePhase2ChangeImpactAgentModelDashboard(
       request.expectedProductRevision !== productRevision || request.expectedProductDigest !== productDigest ||
       request.expectedInitiativeId.toLowerCase() !== initiative.id.toLowerCase() ||
       request.expectedInitiativeRevision !== initiativeRevision || request.expectedInitiativeDigest !== initiativeDigest ||
-      request.expectedPhase2UxFigmaSnapshotDigest !== phase2.snapshotDigest ||
-      request.expectedAgentModelSnapshotDigest !== agentModel.snapshotDigest ||
       initiative.productId.toLowerCase() !== product.id.toLowerCase() ||
       phase2.product.recordId.toLowerCase() !== product.id.toLowerCase() ||
       phase2.product.revision !== productRevision || phase2.product.digest !== productDigest ||

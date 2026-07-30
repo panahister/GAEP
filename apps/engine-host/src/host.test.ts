@@ -3777,6 +3777,72 @@ describe("engine host protocol", () => {
     })
     expect(JSON.stringify(phase1)).not.toContain(workspace)
     expect(JSON.stringify(phase1)).not.toContain(product.name)
+
+    const phase2IntegratedParams = {
+      expectedProductId: product.id,
+      expectedProductRevision: product.revision ?? 1,
+      expectedProductDigest: canonicalDigest(product),
+      expectedInitiativeId: initiative.id,
+      expectedInitiativeRevision: initiative.revision ?? 1,
+      expectedInitiativeDigest: canonicalDigest(initiative),
+      agentModel: params,
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 72,
+      protocolVersion: 1,
+      method: "dashboard.phase2ChangeImpactAgentModel",
+      params: phase2IntegratedParams,
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    const phase2Integrated = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 73,
+      protocolVersion: 2,
+      method: "dashboard.phase2ChangeImpactAgentModel",
+      params: phase2IntegratedParams,
+    }) as Record<string, unknown>
+    expect(phase2Integrated).toMatchObject({
+      kind: "phase-2-change-impact-agent-model-dashboard",
+      product: { recordId: productId, revision: product.revision },
+      initiative: { recordId: initiativeId, revision: initiative.revision, state: "active" },
+      synchronizationChange: {
+        state: "attention-required",
+        figmaWriteExecutionState: "not-performed",
+        synchronizationEffectState: "not-applied",
+      },
+      impact: { state: "current-bounded-observation", coverage: "bounded-not-complete" },
+      agentModel: {
+        selectionState: "selected",
+        capabilities: { selected: 1 },
+        runs: { shown: 0, total: 0 },
+        providerMetrics: { usage: "unavailable", cost: "unavailable" },
+      },
+      governance: {
+        automaticSelectionAuthority: "not-granted",
+        runLaunchAuthority: "not-granted",
+        effectAuthority: "not-granted",
+        productOwnerAcceptance: "not-established",
+      },
+    })
+    const { snapshotDigest: phase2IntegratedDigest, ...phase2IntegratedContent } = phase2Integrated
+    expect(phase2IntegratedDigest).toBe(canonicalDigest(phase2IntegratedContent))
+    expect(JSON.stringify(phase2Integrated)).not.toContain(workspace)
+    expect(JSON.stringify(phase2Integrated)).not.toContain(product.name)
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 74,
+      protocolVersion: 2,
+      method: "dashboard.phase2ChangeImpactAgentModel",
+      params: { ...phase2IntegratedParams, expectedInitiativeDigest: `sha256:${"0".repeat(64)}` },
+    })).rejects.toMatchObject({ kind: "PHASE2_CHANGE_IMPACT_AGENT_MODEL_CONTEXT_CHANGED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 75,
+      protocolVersion: 2,
+      method: "dashboard.phase2ChangeImpactAgentModel",
+      params: { ...phase2IntegratedParams, authorizeLaunch: true },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+
     await expect(host.dispatch({
       jsonrpc: "2.0",
       id: 70,

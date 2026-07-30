@@ -28,6 +28,7 @@ import {
   composeChangeImpactDashboard,
   composePhaseDashboardFramework,
   composePhase2UxFigmaDashboard,
+  composePhase2ChangeImpactAgentModelDashboard,
   composePhase1AgentModelDashboard,
   composePhase1SummaryDashboard,
   composePhase1ChangeImpactDashboard,
@@ -35,6 +36,7 @@ import {
   GaepEngine,
   Phase1AgentModelBindingError,
   Phase2UxFigmaDashboardBindingError,
+  Phase2ChangeImpactAgentModelBindingError,
   Phase1SummaryBindingError,
   Phase1ChangeImpactBindingError,
 } from "@gaep/engine"
@@ -81,6 +83,7 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "managed.review.discard",
   "dashboard.framework",
   "dashboard.phase2UxFigma",
+  "dashboard.phase2ChangeImpactAgentModel",
   "dashboard.phase1Summary",
   "dashboard.phase1ChangeImpact",
   "dashboard.changeImpact.changes",
@@ -776,6 +779,103 @@ export class EngineHost {
             )
           }
           throw error
+        }
+      }
+      case "dashboard.phase2ChangeImpactAgentModel": {
+        const audit = await this.engine.repository.verifyAudit()
+        if (!audit.valid) {
+          throw new HostRpcError(
+            -32_055,
+            "PHASE2_CHANGE_IMPACT_AGENT_MODEL_AUDIT_INVALID",
+            "The audit chain is invalid or unavailable; no Phase 2 Change, Impact, Agent and Model dashboard was composed",
+          )
+        }
+        try {
+          const initiativeId = request.params.expectedInitiativeId
+          const capabilities = this.boundCapabilitySnapshots(request.params.agentModel.expectedCapabilities)
+          const [product, initiative, selection, allRuns, allHandoffs, allManagedRuns, ...projections] = await Promise.all([
+            this.engine.readProduct(),
+            this.engine.readInitiative(initiativeId),
+            this.engine.readSelectionState(),
+            this.engine.listRuns(),
+            this.engine.listHandoffs(),
+            this.engine.listManagedRuns(),
+            this.engine.designApplicability.project(initiativeId),
+            this.engine.designPersonaRoleModel.project(initiativeId),
+            this.engine.userJourneyModel.project(initiativeId),
+            this.engine.informationArchitectureModel.project(initiativeId),
+            this.engine.screenStateInventory.project(initiativeId),
+            this.engine.designRequirements.project(initiativeId),
+            this.engine.designSystemTokenContract.project(initiativeId),
+            this.engine.accessibilityDesignRules.project(initiativeId),
+            this.engine.responsiveMultiPlatformTargets.project(initiativeId),
+            this.engine.manualFigmaExecutionPath.project(initiativeId),
+            this.engine.figmaMcpCapabilityDiscovery.project(initiativeId),
+            this.engine.figmaReadSnapshot.project(initiativeId),
+            this.engine.figmaContextImport.project(initiativeId),
+            this.engine.outboundDesignBriefPackage.project(initiativeId),
+            this.engine.governedFigmaWrite.project(initiativeId),
+            this.engine.finalizedFigmaSnapshotImport.project(initiativeId),
+            this.engine.designToRequirementBinding.project(initiativeId),
+            this.engine.designerReadyGate.project(initiativeId),
+            this.engine.designDelta.project(initiativeId),
+            this.engine.designConflictResolution.project(initiativeId),
+            this.engine.humanDesignApproval.project(initiativeId),
+            this.engine.designBaseline.project(initiativeId),
+            this.engine.designDriftDetection.project(initiativeId),
+          ])
+          const normalizedInitiativeId = initiative.id.toLowerCase()
+          const runs = allRuns.filter((run) => run.initiativeId.toLowerCase() === normalizedInitiativeId)
+          const handoffs = allHandoffs.filter((handoff) => handoff.initiativeId.toLowerCase() === normalizedInitiativeId)
+          const managedRecords = allManagedRuns.filter((record) => record.initiativeId.toLowerCase() === normalizedInitiativeId)
+          const managedRuns = await Promise.all(managedRecords.map(async (record) => {
+            if (!record.resultId) return { record }
+            const result = await this.engine.readManagedRunResult(record.resultId)
+            const evidence = await this.engine.readManagedRunEvidence(result.evidenceId)
+            return { record, result, evidence }
+          }))
+          const phase2 = composePhase2UxFigmaDashboard(product, initiative, projections, {
+            expectedProductId: request.params.expectedProductId,
+            expectedProductRevision: request.params.expectedProductRevision,
+            expectedProductDigest: request.params.expectedProductDigest,
+            expectedInitiativeId: request.params.expectedInitiativeId,
+            expectedInitiativeRevision: request.params.expectedInitiativeRevision,
+            expectedInitiativeDigest: request.params.expectedInitiativeDigest,
+          })
+          const agentModel = composeAgentModelDashboard({
+            product, capabilities, selection, runs, handoffs, handoffTotal: handoffs.length,
+            managedRuns, managedRunTotal: managedRuns.length,
+          }, request.params.agentModel)
+          return composePhase2ChangeImpactAgentModelDashboard(product, initiative, phase2, agentModel, request.params)
+        } catch (error) {
+          if (error instanceof AgentModelCapabilityBindingError) {
+            throw new HostRpcError(
+              -32_046,
+              "AGENT_MODEL_CAPABILITIES_CHANGED",
+              "Agent capabilities changed before the dashboard was composed; probe the current agents again",
+            )
+          }
+          if (error instanceof AgentModelSelectionBindingError) {
+            throw new HostRpcError(
+              -32_047,
+              "AGENT_MODEL_SELECTION_CHANGED",
+              "The Agent Selection changed before the dashboard was composed; reload the current selection",
+            )
+          }
+          if (error instanceof Phase2UxFigmaDashboardBindingError ||
+              error instanceof Phase2ChangeImpactAgentModelBindingError || error instanceof AgentModelProductBindingError) {
+            throw new HostRpcError(
+              -32_056,
+              "PHASE2_CHANGE_IMPACT_AGENT_MODEL_CONTEXT_CHANGED",
+              "The Product, Initiative, Phase 2, or Agent and Model source changed before dashboard composition; reload the exact governed context",
+            )
+          }
+          if (error instanceof HostRpcError) throw error
+          throw new HostRpcError(
+            -32_057,
+            "PHASE2_CHANGE_IMPACT_AGENT_MODEL_DASHBOARD_INVALID",
+            "The current Phase 2 Change, Impact, Agent and Model sources could not be verified",
+          )
         }
       }
       case "dashboard.phase1Summary": {

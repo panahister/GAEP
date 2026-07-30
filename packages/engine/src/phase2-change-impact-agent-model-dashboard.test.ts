@@ -76,8 +76,13 @@ function sourceSet() {
   const request: Phase2ChangeImpactAgentModelDashboardRequest = {
     expectedProductId: product.id, expectedProductRevision: product.revision ?? 1, expectedProductDigest: canonicalDigest(product),
     expectedInitiativeId: initiative.id, expectedInitiativeRevision: initiative.revision ?? 1, expectedInitiativeDigest: canonicalDigest(initiative),
-    expectedPhase2UxFigmaSnapshotDigest: phase2.snapshotDigest,
-    expectedAgentModelSnapshotDigest: agents.snapshotDigest,
+    agentModel: {
+      expectedProductId: product.id, expectedProductRevision: product.revision ?? 1, expectedProductDigest: canonicalDigest(product),
+      expectedSelection: { status: "unselected" },
+      expectedCapabilities: [{
+        adapterId: "gaep.codex-cli", agentId: "codex-cli", capabilityDigest: canonicalDigest("capability"),
+      }],
+    },
   }
   return { phase2, agents, request }
 }
@@ -98,9 +103,9 @@ describe("Phase 2 Change, Impact, Agent and Model dashboard composition", () => 
 
   it("rejects stale source requests and rebound Initiative context", () => {
     const { phase2, agents, request } = sourceSet()
-    expect(() => composePhase2ChangeImpactAgentModelDashboard(product, initiative, phase2, agents, {
-      ...request, expectedAgentModelSnapshotDigest: canonicalDigest("stale"),
-    })).toThrow(Phase2ChangeImpactAgentModelBindingError)
+    const hostile = { ...agents, snapshotDigest: canonicalDigest("stale") }
+    expect(() => composePhase2ChangeImpactAgentModelDashboard(product, initiative, phase2, hostile, request))
+      .toThrow(Phase2ChangeImpactAgentModelBindingError)
     expect(() => composePhase2ChangeImpactAgentModelDashboard(product, { ...initiative, revision: 4 }, phase2, agents, request))
       .toThrow(Phase2ChangeImpactAgentModelBindingError)
   })
