@@ -112,6 +112,7 @@ import { DesignToRequirementBindingService } from "./design-to-requirement-bindi
 import { DesignerReadyGateService } from "./designer-ready-gate.js"
 import { DesignDeltaService } from "./design-delta.js"
 import { DesignConflictResolutionService } from "./design-conflict-resolution.js"
+import { HumanDesignApprovalService } from "./human-design-approval.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -313,6 +314,7 @@ export class GaepEngine {
   readonly designerReadyGate: DesignerReadyGateService
   readonly designDelta: DesignDeltaService
   readonly designConflictResolution: DesignConflictResolutionService
+  readonly humanDesignApproval: HumanDesignApprovalService
   readonly managedExecution: ManagedExecutionService
   readonly adapters = new Map<string, AgentAdapter>()
 
@@ -728,6 +730,19 @@ export class GaepEngine {
       this.sourceGovernance,
       this.designDelta,
     )
+    this.humanDesignApproval = new HumanDesignApprovalService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.sourceGovernance,
+      {
+        "design-conflict-resolution": this.designConflictResolution,
+        "design-delta": this.designDelta,
+        "design-to-requirement-binding": this.designToRequirementBinding,
+        "designer-ready-gate": this.designerReadyGate,
+        "finalized-figma-snapshot-import": this.finalizedFigmaSnapshotImport,
+      },
+    )
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.id)) throw new Error(`Duplicate adapter ${adapter.id}`)
       this.adapters.set(adapter.id, adapter)
@@ -821,7 +836,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues, figmaContextImportIssues, outboundDesignBriefPackageIssues, governedFigmaWriteIssues, finalizedFigmaSnapshotImportIssues, designToRequirementBindingIssues, designerReadyGateIssues, designDeltaIssues, designConflictResolutionIssues] = await Promise.all([
+      const [productIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues, figmaContextImportIssues, outboundDesignBriefPackageIssues, governedFigmaWriteIssues, finalizedFigmaSnapshotImportIssues, designToRequirementBindingIssues, designerReadyGateIssues, designDeltaIssues, designConflictResolutionIssues, humanDesignApprovalIssues] = await Promise.all([
         this.productStudio.healthIssues(),
         this.sourceGovernance.healthIssues(),
         this.businessUnderstanding.healthIssues(),
@@ -865,6 +880,7 @@ export class GaepEngine {
         this.designerReadyGate.healthIssues(),
         this.designDelta.healthIssues(),
         this.designConflictResolution.healthIssues(),
+        this.humanDesignApproval.healthIssues(),
       ])
       domainIssues = [
         ...productIssues,
@@ -910,6 +926,7 @@ export class GaepEngine {
         ...designerReadyGateIssues,
         ...designDeltaIssues,
         ...designConflictResolutionIssues,
+        ...humanDesignApprovalIssues,
       ]
     } catch (error) {
       domainIssues = [{
