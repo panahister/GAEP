@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-3a-delivery-planning",
+  "evidenceScope": "phase-3a-route-screen-component-mapping-local",
+  "recordedAt": "2026-07-30T21:29:13Z",
+  "sourceCommit": "cf8e471647258a124506fd5c6c0bc7c62e5a7f7f",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 91,
+    "hostAssessments": 364,
+    "hostAssessmentsImplemented": 364,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:c60c30fc4552eecd3cf737e73c69f23813ff5222e3a57d42cfd88b1a43687345",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 255686,
+      "digest": "sha256:b8fbbaf12f29a580b596459eb9374b248f969084cdbbc6e4bad890a2a62be4f8",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260730T211403Z-phase-3a-route-screen-component-mapping-packages.json",
+      "bytes": 4354,
+      "digest": "sha256:2bdf572d5498f54d9eb96f16c434cc05b486daa11920916433e6d934cc703d06",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260730T211403Z-phase-3a-route-screen-component-mapping-host-behavior.json",
+      "bytes": 3576,
+      "digest": "sha256:a9c04002e0483a01e4b98c50875f50420db7cd0d8a79896dd8f37ed9addeb367",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260730T211403Z-phase-3a-route-screen-component-mapping.json",
+      "bytes": 61976,
+      "digest": "sha256:6298791b75a908cebbad1d3a7b73e79752606fce1749bc8a8d5f6842a7fef11a",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
+      "bytes": 5234,
+      "digest": "sha256:f44e4a370357cf7738fbf691a49178cd3da20ff4d01e593e2af1565cfc1b71d7",
+      "kind": "gaep-phase2-realistic-figma-loop-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 122,
+        "testsPassed": 1000,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:9eb71881ea77f386f297050bce172bfc963eab034a9f7388558ebbb2c0a85a7a"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:b8ad2d9774cf81045177c59ffef83ff7d0128596d8cbfb2dcd29e76eedbe01a9"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 26,
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:2e93e55a9475009f6f167d03bddbcc1ce916e0c7b983e2b3044c14ffa1a5b5e8"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:3ed48d0b29e0366b940512d3d4429f988b64e2cce75f85bc964693be9a5a3864"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:d9fd08f969b5f5118b23fa7f1df22d53b4c505cec85c16ee6ec3aaacfb52a169"
+    }
+  ],
+  "testsDigest": "sha256:6aee0d5f5ebad08b4947d5d76552fb1a950ee401424e1c0c414cf16d7562e195",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-3a-route-screen-component-mapping-closure",
+      "state": "not-established",
+      "basis": "the exact versioned Route, Screen, and Component Mapping candidate lifecycle, one exact route, screen, state, or component subject per current Information Architecture and Screen and State Inventory source subject, typed route-screen, screen-state, screen-component and component-component relationships, mapped, conflict, unmapped and not-assessed candidate outcomes, exact Requirement, Acceptance Criteria, Implementation Unit, Design-to-Code Binding and optional test-hook trace candidates, evidence and attributable review candidates, deterministic subject-catalog, relationship-catalog, trace, mapping and assessment receipts, exact current Information Architecture, Screen and State Inventory, Design Requirements, Design Baseline, Design-to-Requirement Binding, Figma-to-Boilerplate Mapping, Design-to-Code Binding Registry, Implementation Unit Model and Acceptance Criteria bindings, immutable revisions, privacy-safe Product Studio table and four host projections are implemented locally; candidates do not connect to or call Figma, establish returned Figma content, navigation or mapping truth, UI or design validity, requirement, acceptance-criteria, test-coverage, repository, path or symbol truth, create or change code or design targets, establish implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, native-host interaction or Product Owner acceptance"
+    }
+  ],
+  "knownGapsDigest": "sha256:4462215b54ff047dbb1aff59fd702c2b80dedb514266c1b12ee3083815d8a65f",
+  "claimBoundary": "This report binds the exact governed Route, Screen, and Component Mapping candidate lifecycle, immutable revision history, one exact route, screen, state, or component subject per current source subject, typed route-screen, screen-state, screen-component and component-component relationships, mapped, conflict, unmapped and not-assessed candidate outcomes, exact Requirement, Acceptance Criteria, Implementation Unit, Design-to-Code Binding and optional test-hook trace candidates, evidence and attributable review candidates, deterministic subject-catalog, relationship-catalog, trace, mapping and assessment receipts, exact current Product, Initiative, Information Architecture, Screen and State Inventory, Design Requirements, Design Baseline, Design-to-Requirement Binding, Figma-to-Boilerplate Mapping, Design-to-Code Binding Registry, Implementation Unit Model and Acceptance Criteria bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Route, Screen, and Component mappings remain governed candidates only. This report does not connect to or call Figma; establish returned Figma content, navigation or mapping truth, UI or design validity, requirement, acceptance-criteria, test-coverage, repository, path or symbol truth; create or change code or design targets; establish implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+}
