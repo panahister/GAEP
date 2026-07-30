@@ -8,6 +8,7 @@ import { prioritizationModelInputSchema } from "./prioritization-model.js"
 import { acceptanceCriteriaInputSchema } from "./acceptance-criteria.js"
 import { definitionOfReadyInputSchema } from "./definition-of-ready.js"
 import { definitionOfDoneInputSchema } from "./definition-of-done.js"
+import { implementationUnitModelInputSchema } from "./implementation-unit-model.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -675,6 +676,18 @@ export const hostDefinitionOfDoneReviseParamsSchema = z.object({
   record: definitionOfDoneInputSchema,
 }).strict()
 
+export const hostImplementationUnitModelCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: implementationUnitModelInputSchema,
+}).strict()
+
+export const hostImplementationUnitModelReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: implementationUnitModelInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -959,6 +972,11 @@ export const hostMethodSchema = z.enum([
   "planning.definitionOfDone.revise",
   "planning.definitionOfDone.assess",
   "planning.definitionOfDone.snapshot",
+  "planning.implementationUnits.read",
+  "planning.implementationUnits.create",
+  "planning.implementationUnits.revise",
+  "planning.implementationUnits.assess",
+  "planning.implementationUnits.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1282,6 +1300,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.definitionOfDone.revise", hostDefinitionOfDoneReviseParamsSchema),
   requestVariant("planning.definitionOfDone.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.definitionOfDone.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.implementationUnits.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.implementationUnits.create", hostImplementationUnitModelCreateParamsSchema),
+  requestVariant("planning.implementationUnits.revise", hostImplementationUnitModelReviseParamsSchema),
+  requestVariant("planning.implementationUnits.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.implementationUnits.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

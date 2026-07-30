@@ -124,6 +124,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.definitionOfDone.revise",
   "planning.definitionOfDone.assess",
   "planning.definitionOfDone.snapshot",
+  "planning.implementationUnits.read",
+  "planning.implementationUnits.create",
+  "planning.implementationUnits.revise",
+  "planning.implementationUnits.assess",
+  "planning.implementationUnits.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1372,6 +1377,21 @@ export class EngineHost {
         return this.engine.definitionOfDone.assess(request.params.initiativeId)
       case "planning.definitionOfDone.snapshot":
         return this.engine.definitionOfDone.project(request.params.initiativeId)
+      case "planning.implementationUnits.read":
+        return await this.engine.implementationUnitModel.readCurrent(request.params.initiativeId) ?? null
+      case "planning.implementationUnits.create":
+        return this.engine.implementationUnitModel.create(request.params.record, actorId(request.params.actorId))
+      case "planning.implementationUnits.revise":
+        return this.engine.implementationUnitModel.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.implementationUnits.assess":
+        return this.engine.implementationUnitModel.assess(request.params.initiativeId)
+      case "planning.implementationUnits.snapshot":
+        return this.engine.implementationUnitModel.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":

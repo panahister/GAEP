@@ -654,14 +654,106 @@ describe("Backlog Hierarchy host protocol", () => {
     })
     expect(JSON.stringify(doneSnapshot)).not.toContain(doneInput.title)
     expect(JSON.stringify(doneSnapshot)).not.toContain(doneInput.itemEvaluations[0]!.rationale)
-    await expect(host.dispatch({
+    const doneRevised = await host.dispatch({
       jsonrpc: "2.0", id: "done-revise", protocolVersion: 2,
       method: "planning.definitionOfDone.revise",
       params: {
         actorId: "host-test", recordId: doneCreated.id, expectedRevision: doneCreated.revision,
         record: { ...doneInput, title: "Host reviewed Definition of Done item evaluations" },
       },
-    })).resolves.toMatchObject({ id: doneCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+    }) as typeof doneCreated & { predecessorDigest: string }
+    expect(doneRevised).toMatchObject({ id: doneCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+
+    const unitIds = [randomUUID(), randomUUID()]
+    const subjects = exactHierarchy.nodes.filter((node) => node.level === "story" || node.level === "task")
+    const implementationUnitInput = {
+      initiativeId: initiative.id,
+      context: input.context,
+      informationClassification: "internal" as const,
+      title: "Host implementation unit model candidate",
+      hierarchy: { recordId: created.id, revision: created.revision, digest: canonicalDigest(created) },
+      mvpSliceDefinition: criteriaInput.mvpSliceDefinition,
+      acceptanceCriteria: { recordId: criteriaRevised.id, revision: criteriaRevised.revision, digest: canonicalDigest(criteriaRevised) },
+      definitionOfReady: { recordId: readyRevised.id, revision: readyRevised.revision, digest: canonicalDigest(readyRevised) },
+      definitionOfDone: { recordId: doneRevised.id, revision: doneRevised.revision, digest: canonicalDigest(doneRevised) },
+      units: [
+        {
+          id: unitIds[0]!, ordinal: 1, key: "api-service", kind: "service" as const,
+          title: "Host API service candidate", boundary: "Owns the candidate protocol API boundary",
+          subjectNodeIds: [subjects[0]!.id], requirementReferences: structuredClone(subjects[0]!.requirements),
+          repository: { repositoryKey: "gaep", modulePath: "apps/engine-host", placementState: "candidate-not-verified" as const, evidenceReferences: [] },
+          ownerCandidate: { kind: "human" as const, id: "host-maintainer-candidate" }, dependencyUnitIds: [],
+          blastRadius: {
+            assessmentState: "candidate-assessed" as const, affectedUnitIds: [unitIds[1]!], affectedSurfaceKeys: ["host-protocol"],
+            rationale: "Protocol changes may affect the candidate native-host projection surface",
+            assessedBy: { kind: "human" as const, id: "host-architecture-reviewer" }, assessedAt: "2026-07-30T00:00:00.000Z",
+          },
+        },
+        {
+          id: unitIds[1]!, ordinal: 2, key: "native-host-projection", kind: "integration" as const,
+          title: "Native host projection candidate", boundary: "Owns the candidate native-host inspection boundary",
+          subjectNodeIds: [subjects[1]!.id], requirementReferences: structuredClone(subjects[1]!.requirements),
+          repository: { repositoryKey: "gaep", modulePath: "apps/vscode", placementState: "candidate-not-verified" as const, evidenceReferences: [] },
+          ownerCandidate: { kind: "human" as const, id: "native-host-maintainer-candidate" }, dependencyUnitIds: [unitIds[0]!],
+          blastRadius: {
+            assessmentState: "candidate-assessed" as const, affectedUnitIds: [], affectedSurfaceKeys: ["native-host-ui"],
+            rationale: "Projection changes are assessed against the candidate native-host inspection surface",
+            assessedBy: { kind: "human" as const, id: "host-architecture-reviewer" }, assessedAt: "2026-07-30T00:00:00.000Z",
+          },
+        },
+      ],
+      unresolvedQuestions: [], limitations: ["Repository, owner, dependency, and impact claims remain candidates for human review."],
+      reviewState: "ready-for-human-review" as const,
+      repositoryTruthState: "not-established" as const, ownershipAppointmentState: "not-established" as const,
+      dependencyCompletenessState: "not-established" as const, impactCompletenessState: "not-established" as const,
+      implementationReadinessState: "not-established" as const, implementationCompletenessState: "not-established" as const,
+      assignmentExecutionState: "not-established" as const, approvalState: "not-established" as const,
+      acceptanceDecisionState: "not-established" as const, mergeReadinessState: "not-established" as const,
+      releaseReadinessState: "not-established" as const, deploymentReadinessState: "not-established" as const,
+      actionAuthorityState: "not-granted" as const,
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "units-v1-rejected", protocolVersion: 1,
+      method: "planning.implementationUnits.snapshot", params: { initiativeId: initiative.id },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "units-read-empty", protocolVersion: 2,
+      method: "planning.implementationUnits.read", params: { initiativeId: initiative.id },
+    })).resolves.toBeNull()
+    const unitsCreated = await host.dispatch({
+      jsonrpc: "2.0", id: "units-create", protocolVersion: 2,
+      method: "planning.implementationUnits.create", params: { actorId: "host-test", record: implementationUnitInput },
+    }) as { id: string; revision: number; assessmentReceiptDigest: string }
+    expect(unitsCreated).toMatchObject({ revision: 1, assessmentReceiptDigest: expect.stringMatching(/^sha256:/u) })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "units-assess", protocolVersion: 2,
+      method: "planning.implementationUnits.assess", params: { initiativeId: initiative.id },
+    })).resolves.toMatchObject({
+      state: "candidate-complete", unitCount: 2, subjectCount: 2, requirementReferenceCount: 2,
+      repositoryCandidateCount: 2, ownerCandidateCount: 2, dependencyEdgeCount: 1,
+      candidateAssessedBlastRadiusCount: 2,
+    })
+    const unitsSnapshot = await host.dispatch({
+      jsonrpc: "2.0", id: "units-snapshot", protocolVersion: 2,
+      method: "planning.implementationUnits.snapshot", params: { initiativeId: initiative.id },
+    }) as Record<string, unknown> & { snapshotDigest: string }
+    const { snapshotDigest: unitsSnapshotDigest, ...unitsSnapshotBody } = unitsSnapshot
+    expect(unitsSnapshotDigest).toBe(canonicalDigest(unitsSnapshotBody))
+    expect(unitsSnapshot).toMatchObject({
+      candidate: { id: unitsCreated.id, unitCount: 2, subjectCount: 2, requirementReferenceCount: 2 },
+      privacyBoundary: expect.stringContaining("not-unit-titles-boundaries-subject-or-requirement-identities"),
+      authorityBoundary: expect.stringContaining("does-not-establish-repository-truth-ownership-appointment"),
+    })
+    expect(JSON.stringify(unitsSnapshot)).not.toContain(implementationUnitInput.title)
+    expect(JSON.stringify(unitsSnapshot)).not.toContain(implementationUnitInput.units[0]!.repository.modulePath)
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "units-revise", protocolVersion: 2,
+      method: "planning.implementationUnits.revise",
+      params: {
+        actorId: "host-test", recordId: unitsCreated.id, expectedRevision: unitsCreated.revision,
+        record: { ...implementationUnitInput, title: "Host reviewed implementation unit model candidate" },
+      },
+    })).resolves.toMatchObject({ id: unitsCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
 
     const revised = await host.dispatch({
       jsonrpc: "2.0",
