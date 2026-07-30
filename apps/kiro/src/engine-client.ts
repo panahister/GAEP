@@ -43,6 +43,7 @@ import {
   boilerplateCompatibilityValidationProjectionSchema,
   figmaToBoilerplateMappingProjectionSchema,
   designToCodeBindingRegistryProjectionSchema,
+  routeScreenComponentMappingProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -112,6 +113,7 @@ import {
   type BoilerplateCompatibilityValidationProjection,
   type FigmaToBoilerplateMappingProjection,
   type DesignToCodeBindingRegistryProjection,
+  type RouteScreenComponentMappingProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -1016,6 +1018,21 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = designToCodeBindingRegistryProjectionSchema.safeParse(
         await this.request("planning.designToCodeBindingRegistry.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId ||
+          snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readRouteScreenComponentMapping(initiativeValue: string): Promise<RouteScreenComponentMappingProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = routeScreenComponentMappingProjectionSchema.safeParse(
+        await this.request("planning.routeScreenComponentMapping.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

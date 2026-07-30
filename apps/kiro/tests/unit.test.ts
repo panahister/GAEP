@@ -2430,6 +2430,68 @@ test("protocol-v2 Design-to-Code Binding Registry projection is exact, private-s
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 Route, Screen, and Component Mapping projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-route-screen-component-mapping-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-route-screen-component-mapping-snapshot-binding",
+    "bad-route-screen-component-mapping-snapshot-digest",
+    "bad-route-screen-component-mapping-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath, engineExecutable: process.execPath, engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readRouteScreenComponentMapping(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.sourceRouteCount, 2)
+    assert.equal(projection.status.sourceScreenCount, 3)
+    assert.equal(projection.status.sourceStateCount, 5)
+    assert.equal(projection.status.sourceComponentCount, 4)
+    assert.equal(projection.status.subjectCount, 14)
+    assert.equal(projection.status.mappedCandidateCount, 12)
+    assert.equal(projection.status.conflictCandidateCount, 1)
+    assert.equal(projection.status.relationshipCount, 18)
+    assert.equal(projection.status.definedRelationshipCount, 16)
+    assert.equal(projection.status.missingRelationshipCount, 2)
+    assert.equal(projection.status.componentPlacementGapCount, 1)
+    assert.equal(projection.status.testHookGapCount, 1)
+    assert.equal(projection.status.staleDependencyCount, 0)
+    assert.equal(projection.candidate?.subjectCatalogDigest, `sha256:${"3".repeat(64)}`)
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"routePattern":'), false)
+    assert.equal(serialized.includes('"screenKey":'), false)
+    assert.equal(serialized.includes('"stateKey":'), false)
+    assert.equal(serialized.includes('"componentKey":'), false)
+    assert.equal(serialized.includes('"implementationUnitId":'), false)
+    assert.equal(serialized.includes('"pathCandidates":'), false)
+    assert.equal(serialized.includes('"testHookCandidates":'), false)
+    assert.equal(serialized.includes('"evidenceReferences":'), false)
+    assert.equal(serialized.includes('"reviewedBy":'), false)
+    assert.equal(serialized.includes('"subjects":'), false)
+    assert.equal(serialized.includes('"relationships":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readRouteScreenComponentMapping(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 Design System and Token Contract projection is exact, private-safe, and non-authorizing", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-design-system-token-contract-"))
   const workspace = join(root, "workspace")

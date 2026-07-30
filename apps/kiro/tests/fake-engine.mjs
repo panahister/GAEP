@@ -70,6 +70,7 @@ const boilerplateSelectionBindingId = "91919191-9191-4191-8191-919191919191"
 const boilerplateCompatibilityValidationId = "92929292-9292-4292-8292-929292929292"
 const figmaToBoilerplateMappingId = "93939393-9393-4393-8393-939393939393"
 const designToCodeBindingRegistryId = "94949494-9494-4494-8494-949494949494"
+const routeScreenComponentMappingId = "95959595-9595-4595-8595-959595959595"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -208,6 +209,8 @@ input.on("line", (line) => {
       return readFigmaToBoilerplateMapping(id, request.params)
     case "planning.designToCodeBindingRegistry.snapshot":
       return readDesignToCodeBindingRegistry(id, request.params)
+    case "planning.routeScreenComponentMapping.snapshot":
+      return readRouteScreenComponentMapping(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -3244,6 +3247,109 @@ function readDesignToCodeBindingRegistry(id, params) {
   if (workspacePath.endsWith("bad-design-to-code-binding-registry-snapshot-digest")) value.candidate.subjectCount = 3
   if (workspacePath.endsWith("bad-design-to-code-binding-registry-snapshot-private")) {
     value.repositoryPath = `${privateRoot}/${privateCredential}`
+    value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
+  }
+  return writeResult(id, value)
+}
+
+function readRouteScreenComponentMapping(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE ROUTE SCREEN COMPONENT MAPPING PARAMS")
+  }
+  const candidateDigest = `sha256:${"2".repeat(64)}`
+  const reference = (recordId, value) => ({ recordId, revision: 2, digest: `sha256:${value.repeat(64)}` })
+  const status = {
+    schemaVersion: 1,
+    kind: "route-screen-component-mapping-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: routeScreenComponentMappingId, revision: 2, digest: candidateDigest },
+    informationArchitecture: reference(informationArchitectureId, "a"),
+    screenStateInventory: reference(screenStateInventoryId, "c"),
+    designRequirements: reference(designRequirementsId, "e"),
+    designBaseline: reference(designBaselineId, "6"),
+    designToRequirementBinding: reference(designToRequirementBindingId, "5"),
+    figmaToBoilerplateMapping: reference(figmaToBoilerplateMappingId, "4"),
+    designToCodeBindingRegistry: reference(designToCodeBindingRegistryId, "c"),
+    implementationUnitModel: reference(implementationUnitModelId, "7"),
+    acceptanceCriteria: reference(acceptanceCriteriaId, "4"),
+    sourceRouteCount: 2,
+    sourceScreenCount: 3,
+    sourceStateCount: 5,
+    sourceComponentCount: 4,
+    subjectCount: 14,
+    routeSubjectCount: 2,
+    screenSubjectCount: 3,
+    stateSubjectCount: 5,
+    componentSubjectCount: 4,
+    mappedCandidateCount: 12,
+    conflictCandidateCount: 1,
+    unmappedCandidateCount: 1,
+    notAssessedCount: 0,
+    relationshipCount: 18,
+    definedRelationshipCount: 16,
+    conflictRelationshipCount: 1,
+    notAssessedRelationshipCount: 1,
+    missingSubjectCount: 1,
+    extraSubjectCount: 1,
+    invalidSubjectCount: 1,
+    missingRelationshipCount: 2,
+    invalidRelationshipCount: 1,
+    traceGapCount: 2,
+    evidenceGapCount: 1,
+    componentPlacementGapCount: 1,
+    testHookGapCount: 1,
+    staleBindingCount: 0,
+    staleDependencyCount: 0,
+    invalidCandidateCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Route, Screen, and Component Mapping subjects require human review"],
+    assessedAt: "2026-07-31T00:30:00.000Z",
+    authorityBoundary: "route-screen-component-mapping-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-navigation-route-screen-state-component-responsive-platform-requirement-acceptance-criteria-test-coverage-repository-path-symbol-or-mapping-truth-or-completeness-create-or-change-code-or-design-targets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "route-screen-component-mapping-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: routeScreenComponentMappingId,
+      revision: 2,
+      digest: candidateDigest,
+      state: "candidate",
+      subjectCatalogDigest: `sha256:${"3".repeat(64)}`,
+      relationshipCatalogDigest: `sha256:${"4".repeat(64)}`,
+      traceReceiptDigest: `sha256:${"5".repeat(64)}`,
+      mappingReceiptDigest: `sha256:${"6".repeat(64)}`,
+      assessmentReceiptDigest: `sha256:${"7".repeat(64)}`,
+      subjectCount: 14,
+      routeSubjectCount: 2,
+      screenSubjectCount: 3,
+      stateSubjectCount: 5,
+      componentSubjectCount: 4,
+      mappedCandidateCount: 12,
+      conflictCandidateCount: 1,
+      unmappedCandidateCount: 1,
+      notAssessedCount: 0,
+      relationshipCount: 18,
+      definedRelationshipCount: 16,
+      reviewState: "held",
+      updatedAt: "2026-07-31T00:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-subject-relationship-trace-mapping-assessment-snapshot-digests-only-not-route-pattern-screen-state-component-design-requirement-criterion-unit-repository-module-path-symbol-test-hook-evidence-reviewer-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "route-screen-component-mapping-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-navigation-route-screen-state-component-responsive-platform-requirement-acceptance-criteria-test-coverage-repository-path-symbol-or-mapping-truth-or-completeness-create-or-change-code-or-design-targets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-route-screen-component-mapping-snapshot-binding")) content.initiative.id = routeScreenComponentMappingId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-route-screen-component-mapping-snapshot-digest")) value.candidate.subjectCount = 15
+  if (workspacePath.endsWith("bad-route-screen-component-mapping-snapshot-private")) {
+    value.routePattern = `${privateRoot}/${privateCredential}`
     value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
   }
   return writeResult(id, value)
