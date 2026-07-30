@@ -2651,6 +2651,28 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         return AccessibleDashboardTables.phase2UxFigma(client.readPhase2UxFigmaDashboard(product, initiative))
     }
 
+    fun readPhase2ChangeImpactAgentModelDashboard(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        require(initiative.productId == product.id) {
+            "The Initiative does not target the exact current Product. Reload the Product and Initiative."
+        }
+        return renderPhase2ChangeImpactAgentModelDashboard(
+            client.readPhase2ChangeImpactAgentModelDashboard(product, initiative),
+        )
+    }
+
+    fun readPhase2ChangeImpactAgentModelDashboardTables(initiativeId: UUID): List<AccessibleMetadataTable> {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        require(initiative.productId == product.id) {
+            "The Initiative does not target the exact current Product. Reload the Product and Initiative."
+        }
+        return AccessibleDashboardTables.phase2ChangeImpactAgentModel(
+            client.readPhase2ChangeImpactAgentModelDashboard(product, initiative),
+        )
+    }
+
     fun readPhase1Summary(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)
@@ -3134,6 +3156,65 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         append(
             "Boundary: this derived read-only view is not a second source of truth and grants no completeness, validity, " +
                 "approval, baseline, readiness, phase-entry, Figma, remediation, implementation, release, or action authority.",
+        )
+    }
+
+    private fun renderPhase2ChangeImpactAgentModelDashboard(
+        dashboard: Phase2ChangeImpactAgentModelDashboard,
+    ): String = buildString {
+        appendLine("GAEP exact Phase 2 Change, Impact, Agent and Model dashboard")
+        appendLine()
+        appendLine("Initiative: ${dashboard.initiativeId}@${dashboard.initiativeRevision} · ${dashboard.initiativeState}")
+        appendLine(
+            "Synchronization: ${dashboard.synchronization.state} · design delta ${dashboard.synchronization.designDelta} · " +
+                "conflicts ${dashboard.synchronization.conflictResolution} · human approval ${dashboard.synchronization.humanDesignApproval} · " +
+                "baseline ${dashboard.synchronization.designBaseline} · drift ${dashboard.synchronization.designDriftDetection}",
+        )
+        appendLine(
+            "Synchronization effects: ${dashboard.synchronization.synchronizationEffectState} · " +
+                "Figma connection ${dashboard.synchronization.figmaConnectionState} · " +
+                "write ${dashboard.synchronization.figmaWriteExecutionState} · import ${dashboard.synchronization.figmaImportExecutionState}",
+        )
+        appendLine(
+            "Bounded impact: ${dashboard.impact.state} · ${dashboard.impact.requirementCount} requirements · " +
+                "${dashboard.impact.designBindingCount} bindings · ${dashboard.impact.unboundDesignItemCount} unbound items · " +
+                "${dashboard.impact.driftCount} drift · ${dashboard.impact.unassessedCount} unassessed",
+        )
+        appendLine("Impact boundary: bounded-not-complete · completeness not-established · design validity not-established · revalidation not-established")
+        appendLine(
+            "Capabilities: ${dashboard.capabilities.shown}/${dashboard.capabilities.total} shown · " +
+                "${dashboard.capabilities.detected} detected · ${dashboard.capabilities.selected} selected · " +
+                "selection ${dashboard.selectionState}",
+        )
+        appendLine(
+            "Runs: ${dashboard.runs.shown}/${dashboard.runs.total} shown · ${dashboard.runs.terminal} terminal · " +
+                "${dashboard.runs.nonTerminal} non-terminal · ${dashboard.runs.resultBound} results bound · " +
+                "${dashboard.runs.actualEffectCount} recorded actual effects",
+        )
+        appendLine(
+            "Handoffs: ${dashboard.handoffs.shown}/${dashboard.handoffs.total} shown · " +
+                "${dashboard.handoffs.pendingAcknowledgement} pending acknowledgement · ${dashboard.handoffs.acknowledged} acknowledged",
+        )
+        appendLine("Provider usage and cost: unavailable/unavailable · live provider quality not-assessed · semantic output quality not-assessed")
+        appendLine("Freshness: ${dashboard.freshnessState} · Phase 2 ${dashboard.phase2State} · Agent/Model ${dashboard.agentModelState}")
+        appendLine(
+            "Product Owner acceptance: ${dashboard.productOwnerAcceptance} · Run launch authority: " +
+                "${dashboard.runLaunchAuthority} · effect authority: ${dashboard.effectAuthority}",
+        )
+        appendLine("Snapshot digest: ${dashboard.snapshotDigest}")
+        appendLine("Phase 2 source digest: ${dashboard.phase2UxFigmaSnapshotDigest}")
+        appendLine("Agent/Model source digest: ${dashboard.agentModelSnapshotDigest}")
+        appendLine()
+        dashboard.limitations.forEach { appendLine("Limit: $it") }
+        appendLine()
+        appendLine(
+            "Boundary: these derived read-only views are not a second source of truth and grant no impact completeness, " +
+                "design validity, provider quality, selection, Run launch, approval, baseline, readiness, remediation, " +
+                "Figma, implementation, effect, release, or action authority.",
+        )
+        append(
+            "Design content, Product text, Run narrative, provider output, prompts, source bytes, machine paths, " +
+                "credentials, permissions, and sensitive setting values are withheld.",
         )
     }
 

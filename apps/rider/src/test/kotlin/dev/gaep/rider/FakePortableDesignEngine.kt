@@ -366,6 +366,11 @@ fun main(arguments: Array<String>) {
                 request.getAsJsonObject("params"),
                 workspacePath,
             )
+            "dashboard.phase2ChangeImpactAgentModel" -> handlePhase2ChangeImpactAgentModelDashboard(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
             "dashboard.phase1Summary" -> handlePhase1Summary(
                 id,
                 request.getAsJsonObject("params"),
@@ -6040,6 +6045,144 @@ private fun handleAgentModel(id: Long, params: JsonObject, workspacePath: String
     } else {
         writeResult(id, response)
     }
+}
+
+private fun handlePhase2ChangeImpactAgentModelDashboard(id: Long, params: JsonObject, workspacePath: String) {
+    val productDigest = canonicalDigest(productRecord())
+    val initiativeRevision = initiativeState.get("revision").asLong
+    val initiativeDigest = canonicalDigest(initiativeState)
+    if (params.keySet() != setOf(
+            "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+            "expectedInitiativeRevision", "expectedInitiativeDigest", "agentModel",
+        ) || params.get("expectedProductId").asString != productId.toString() ||
+        params.get("expectedProductRevision").asLong != 7L || params.get("expectedProductDigest").asString != productDigest ||
+        params.get("expectedInitiativeId").asString != initiativeId.toString() ||
+        params.get("expectedInitiativeRevision").asLong != initiativeRevision ||
+        params.get("expectedInitiativeDigest").asString != initiativeDigest
+    ) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PHASE 2 INTEGRATED PARAMS")
+        return
+    }
+    val agentModel = buildAgentModel(params.getAsJsonObject("agentModel"), workspacePath)
+    if (agentModel == null) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PHASE 2 INTEGRATED PARAMS")
+        return
+    }
+    val capabilities = agentModel.getAsJsonArray("capabilities")
+    val detected = capabilities.count { it.asJsonObject.get("detected").asBoolean }
+    val selected = capabilities.count { it.asJsonObject.get("selected").asBoolean }
+    val selection = agentModel.getAsJsonObject("selection")
+    fun zeroCounts(vararg keys: String) = JsonObject().apply { keys.forEach { addProperty(it, 0) } }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "phase-2-change-impact-agent-model-dashboard")
+        addProperty("viewDefinitionVersion", "gaep-phase-2-change-impact-agent-model-dashboard-v1")
+        add("phase", JsonObject().apply {
+            addProperty("id", "phase-2-design")
+            addProperty("label", "Phase 2 — UX and Figma Loop")
+        })
+        add("product", exactReference("product", productId, 7, productDigest))
+        add("initiative", JsonObject().apply {
+            addProperty("recordType", "initiative")
+            addProperty("recordId", initiativeId.toString())
+            addProperty("revision", initiativeRevision)
+            addProperty("digest", initiativeDigest)
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("sources", JsonObject().apply {
+            addProperty("phase2UxFigmaSnapshotDigest", canonicalDigest(JsonObject().apply { addProperty("fixture", "phase2") }))
+            addProperty("phase2SourceCatalogDigest", canonicalDigest(JsonObject().apply { addProperty("expected", 23) }))
+            addProperty("agentModelSnapshotDigest", agentModel.get("snapshotDigest").asString)
+        })
+        add("synchronizationChange", JsonObject().apply {
+            addProperty("state", "attention-required")
+            listOf("designDelta", "conflictResolution", "humanDesignApproval", "designBaseline", "designDriftDetection")
+                .forEach { addProperty(it, "unavailable") }
+            addProperty("figmaConnectionState", "not-established")
+            addProperty("figmaWriteExecutionState", "not-performed")
+            addProperty("figmaImportExecutionState", "not-performed")
+            addProperty("synchronizationEffectState", "not-applied")
+        })
+        add("impact", zeroCounts(
+            "requirementCount", "designBindingCount", "unboundDesignItemCount", "driftObservationCount", "driftCount",
+            "unassessedCount", "blockerCount", "highSeverityCount", "remediationCandidateCount", "staleBindingCount",
+            "staleSourceReferenceCount", "unresolvedQuestionCount",
+        ).apply {
+            addProperty("state", "current-bounded-observation")
+            addProperty("coverage", "bounded-not-complete")
+            addProperty("impactCompleteness", "not-established")
+            addProperty("designValidity", "not-established")
+            addProperty("revalidationState", "not-established")
+        })
+        add("agentModel", JsonObject().apply {
+            addProperty("selectionState", selection.get("status").asString)
+            add("capabilities", JsonObject().apply {
+                addProperty("shown", capabilities.size())
+                addProperty("total", capabilities.size())
+                addProperty("omitted", 0)
+                addProperty("detected", detected)
+                addProperty("unavailable", capabilities.size() - detected)
+                addProperty("selected", selected)
+            })
+            add("runs", zeroCounts(
+                "shown", "total", "omitted", "terminal", "nonTerminal", "managedObserved", "resultBound", "actualEffectCount",
+            ))
+            add("managedRuns", zeroCounts("shown", "total", "omitted"))
+            add("handoffs", zeroCounts("shown", "total", "omitted", "pendingAcknowledgement", "acknowledged"))
+            add("providerMetrics", JsonObject().apply {
+                addProperty("usage", "unavailable")
+                addProperty("cost", "unavailable")
+            })
+            addProperty("liveProviderQuality", "not-assessed")
+            addProperty("semanticOutputQuality", "not-assessed")
+        })
+        add("freshness", JsonObject().apply {
+            addProperty("state", "attention-required")
+            addProperty("phase2State", "attention-required")
+            addProperty("agentModelState", agentModel.getAsJsonObject("freshness").get("state").asString)
+            addProperty("selectionCapabilityState", agentModel.getAsJsonObject("freshness").get("selectionCapabilityState").asString)
+            addProperty("phase2ObservedAt", "2026-07-30T03:10:00.000Z")
+            addProperty("agentModelObservedAt", agentModel.get("observedAt").asString)
+            addProperty("oldestCapabilityObservedAt", agentModel.getAsJsonObject("freshness").get("oldestCapabilityObservedAt").asString)
+            addProperty("newestCapabilityObservedAt", agentModel.getAsJsonObject("freshness").get("newestCapabilityObservedAt").asString)
+            addProperty("truncated", false)
+        })
+        add("governance", JsonObject().apply {
+            listOf(
+                "humanDesignApproval", "baselineDesignation", "impactAcceptance", "providerAccountReadiness",
+                "providerPreference", "phaseReadinessAuthority", "productOwnerAcceptance",
+            ).forEach { addProperty(it, "not-established") }
+            listOf("automaticSelectionAuthority", "runLaunchAuthority", "effectAuthority")
+                .forEach { addProperty(it, "not-granted") }
+        })
+        add("evidenceCues", dashboardEvidenceCues("unknown"))
+        addProperty("observedAt", "2026-07-30T03:12:00.000Z")
+        addProperty("sourceBoundary", "exact-derived-phase-2-dashboard-and-current-initiative-scoped-agent-model-metadata-only")
+        addProperty(
+            "privacyBoundary",
+            "dashboard-exposes-identities-digests-counts-statuses-and-times-not-design-content-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-permissions-or-machine-paths",
+        )
+        add("limitations", JsonArray().apply {
+            add("Synchronization and impact panels remain exact bounded derived evidence.")
+            add("Agent and model counts remain bounded to the exact current Initiative.")
+            add("No dashboard state grants approval, baseline, readiness, remediation, launch, or effect authority.")
+        })
+        addProperty(
+            "authorityBoundary",
+            "phase-2-change-impact-agent-model-dashboard-is-derived-read-only-evidence-not-a-second-source-of-truth-impact-completeness-design-validity-provider-quality-selection-run-launch-approval-baseline-readiness-remediation-effect-release-or-action-authority",
+        )
+    }
+    if (workspacePath.endsWith("bad-phase2-integrated-binding")) {
+        content.getAsJsonObject("product").addProperty("digest", "sha256:${"0".repeat(64)}")
+    }
+    if (workspacePath.endsWith("bad-phase2-integrated-private")) {
+        content.addProperty("sourceRoot", "$privateRoot/$privateCredential")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-phase2-integrated-digest")) {
+        value.getAsJsonObject("agentModel").getAsJsonObject("capabilities").addProperty("detected", 0)
+    }
+    writeResult(id, value)
 }
 
 private fun handlePhase1AgentModel(id: Long, params: JsonObject, workspacePath: String) {

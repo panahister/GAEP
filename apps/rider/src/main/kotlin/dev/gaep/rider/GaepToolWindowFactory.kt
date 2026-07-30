@@ -836,6 +836,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += phase2UxFigmaButton
         actions.add(phase2UxFigmaButton)
 
+        val phase2IntegratedButton = JButton("Show Phase 2 Change, Impact, Agent and Model dashboard…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Design, Product, Run, provider output, prompts, source bytes, machine paths, credentials, permissions, and authority content is withheld.",
+                    "GAEP Phase 2 Change, Impact, Agent and Model Dashboard",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Show Phase 2 Change, Impact, Agent and Model dashboard", status, output, buttons) {
+                    controller.readPhase2ChangeImpactAgentModelDashboard(initiativeId)
+                }
+            }
+        }
+        buttons += phase2IntegratedButton
+        actions.add(phase2IntegratedButton)
+
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

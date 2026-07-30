@@ -2412,6 +2412,55 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Phase 2 integrated dashboard is exact accessible private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("phase2-integrated-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val product = client.readProductBinding()
+            val initiative = client.readInitiative(entryId)
+            val dashboard = client.readPhase2ChangeImpactAgentModelDashboard(product, initiative)
+            assertEquals("attention-required", dashboard.synchronization.state)
+            assertEquals("current-bounded-observation", dashboard.impact.state)
+            assertEquals(2, dashboard.capabilities.shown)
+            assertEquals("not-granted", dashboard.runLaunchAuthority)
+            assertEquals("not-established", dashboard.productOwnerAcceptance)
+
+            val controller = RiderProductController(client)
+            val rendered = controller.readPhase2ChangeImpactAgentModelDashboard(entryId)
+            assertTrue(rendered.contains("GAEP exact Phase 2 Change, Impact, Agent and Model dashboard"))
+            assertTrue(rendered.contains("Synchronization: attention-required"))
+            assertTrue(rendered.contains("Impact boundary: bounded-not-complete"))
+            assertTrue(rendered.contains("Capabilities: 2/2 shown"))
+            assertTrue(rendered.contains("Runs: 0/0 shown"))
+            assertTrue(rendered.contains("not a second source of truth"))
+            assertFalse(rendered.contains("Founder Product"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+
+            val tables = controller.readPhase2ChangeImpactAgentModelDashboardTables(entryId)
+            assertEquals(
+                listOf("phase2-synchronization-change", "phase2-bounded-impact", "phase2-agent-model-execution"),
+                tables.map { it.id },
+            )
+            assertTrue(tables.all { it.snapshotDigest == dashboard.snapshotDigest })
+            assertTrue(tables.all { it.authorityBoundary.contains("not-a-second-source-of-truth") })
+        }
+
+        listOf("bad-phase2-integrated-binding", "bad-phase2-integrated-digest", "bad-phase2-integrated-private")
+            .forEach { name ->
+                val root = Files.createDirectory(temporaryRoot.resolve(name))
+                GaepEngineClient(root, executable.toString()).use { client ->
+                    val product = client.readProductBinding()
+                    val initiative = client.readInitiative(entryId)
+                    val error = hostError { client.readPhase2ChangeImpactAgentModelDashboard(product, initiative) }
+                    assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                    assertPrivateTextWithheld(error)
+                }
+            }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

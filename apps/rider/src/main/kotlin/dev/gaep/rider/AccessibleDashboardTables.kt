@@ -239,6 +239,73 @@ internal object AccessibleDashboardTables {
         )
     }
 
+    fun phase2ChangeImpactAgentModel(
+        dashboard: Phase2ChangeImpactAgentModelDashboard,
+    ): List<AccessibleMetadataTable> {
+        val sourceBoundary = "exact-derived-phase-2-dashboard-and-current-initiative-scoped-agent-model-metadata-only"
+        val authorityBoundary =
+            "phase-2-change-impact-agent-model-dashboard-is-derived-read-only-evidence-not-a-second-source-of-truth-impact-completeness-design-validity-provider-quality-selection-run-launch-approval-baseline-readiness-remediation-effect-release-or-action-authority"
+        return listOf(
+            table(
+                id = "phase2-synchronization-change",
+                title = "Phase 2 synchronization change evidence",
+                columns = columns("source" to "Governed source", "state" to "Availability", "effect" to "Effect boundary"),
+                rows = listOf(
+                    row("design-delta", "source" to "Design delta", "state" to dashboard.synchronization.designDelta, "effect" to "Not applied"),
+                    row("conflicts", "source" to "Conflict resolution", "state" to dashboard.synchronization.conflictResolution, "effect" to "Not applied"),
+                    row("approval", "source" to "Human design approval", "state" to dashboard.synchronization.humanDesignApproval, "effect" to "Not applied"),
+                    row("baseline", "source" to "Design baseline", "state" to dashboard.synchronization.designBaseline, "effect" to "Not applied"),
+                    row("drift", "source" to "Design drift detection", "state" to dashboard.synchronization.designDriftDetection, "effect" to "Not applied"),
+                ),
+                total = 5L, omitted = 0L, snapshotDigest = dashboard.snapshotDigest,
+                sourceBoundary = sourceBoundary, authorityBoundary = authorityBoundary,
+            ),
+            table(
+                id = "phase2-bounded-impact",
+                title = "Phase 2 bounded impact signals",
+                columns = columns("area" to "Area", "counts" to "Observed counts", "boundary" to "Coverage boundary"),
+                rows = listOf(
+                    row(
+                        "trace", "area" to "Design and trace",
+                        "counts" to "${dashboard.impact.requirementCount} requirements · ${dashboard.impact.designBindingCount} bindings · ${dashboard.impact.unboundDesignItemCount} unbound items",
+                        "boundary" to "Impact completeness and design validity are not established.",
+                    ),
+                    row(
+                        "drift", "area" to "Drift",
+                        "counts" to "${dashboard.impact.driftObservationCount} observations · ${dashboard.impact.driftCount} drift · ${dashboard.impact.unassessedCount} unassessed",
+                        "boundary" to "No remediation or revalidation effect is applied.",
+                    ),
+                ),
+                total = 2L, omitted = 0L, snapshotDigest = dashboard.snapshotDigest,
+                sourceBoundary = sourceBoundary, authorityBoundary = authorityBoundary,
+            ),
+            table(
+                id = "phase2-agent-model-execution",
+                title = "Initiative-scoped agent and model execution truth",
+                columns = columns("area" to "Area", "counts" to "Bounded counts", "authority" to "Authority boundary"),
+                rows = listOf(
+                    row(
+                        "capabilities", "area" to "Capabilities and selection",
+                        "counts" to "${dashboard.capabilities.shown}/${dashboard.capabilities.total} shown · ${dashboard.capabilities.detected} detected · ${dashboard.capabilities.selected} selected",
+                        "authority" to "No automatic selection or provider preference authority.",
+                    ),
+                    row(
+                        "runs", "area" to "Runs and Managed Runs",
+                        "counts" to "${dashboard.runs.shown}/${dashboard.runs.total} shown · ${dashboard.runs.terminal} terminal · ${dashboard.runs.resultBound} results bound",
+                        "authority" to "No Run launch or effect authority.",
+                    ),
+                    row(
+                        "handoffs", "area" to "Handoffs",
+                        "counts" to "${dashboard.handoffs.shown}/${dashboard.handoffs.total} shown · ${dashboard.handoffs.acknowledged} acknowledged",
+                        "authority" to "No handoff acknowledgement or action authority.",
+                    ),
+                ),
+                total = 3L, omitted = 0L, snapshotDigest = dashboard.snapshotDigest,
+                sourceBoundary = sourceBoundary, authorityBoundary = authorityBoundary,
+            ),
+        )
+    }
+
     fun changeImpact(dashboard: ChangeImpactDashboard): List<AccessibleMetadataTable> {
         val common = Triple(
             dashboard.snapshotDigest,

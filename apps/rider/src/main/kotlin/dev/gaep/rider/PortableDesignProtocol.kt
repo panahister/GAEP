@@ -141,6 +141,76 @@ data class Phase2UxFigmaDashboard(
     val snapshotDigest: String,
 )
 
+data class Phase2IntegratedSynchronization(
+    val state: String,
+    val designDelta: String,
+    val conflictResolution: String,
+    val humanDesignApproval: String,
+    val designBaseline: String,
+    val designDriftDetection: String,
+    val figmaConnectionState: String,
+    val figmaWriteExecutionState: String,
+    val figmaImportExecutionState: String,
+    val synchronizationEffectState: String,
+)
+
+data class Phase2IntegratedImpact(
+    val state: String,
+    val requirementCount: Long,
+    val designBindingCount: Long,
+    val unboundDesignItemCount: Long,
+    val driftObservationCount: Long,
+    val driftCount: Long,
+    val unassessedCount: Long,
+    val blockerCount: Long,
+    val highSeverityCount: Long,
+    val remediationCandidateCount: Long,
+    val staleBindingCount: Long,
+    val staleSourceReferenceCount: Long,
+    val unresolvedQuestionCount: Long,
+)
+
+data class Phase2IntegratedRunTruth(
+    val shown: Long,
+    val total: Long,
+    val omitted: Long,
+    val terminal: Long,
+    val nonTerminal: Long,
+    val managedObserved: Long,
+    val resultBound: Long,
+    val actualEffectCount: Long,
+)
+
+data class Phase2ChangeImpactAgentModelDashboard(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val phase2UxFigmaSnapshotDigest: String,
+    val phase2SourceCatalogDigest: String,
+    val agentModelSnapshotDigest: String,
+    val synchronization: Phase2IntegratedSynchronization,
+    val impact: Phase2IntegratedImpact,
+    val selectionState: String,
+    val capabilities: Phase1AgentModelCapabilityTruth,
+    val runs: Phase2IntegratedRunTruth,
+    val managedRuns: AgentModelLimit,
+    val handoffs: Phase1AgentModelHandoffTruth,
+    val freshnessState: String,
+    val phase2State: String,
+    val agentModelState: String,
+    val selectionCapabilityState: String,
+    val productOwnerAcceptance: String,
+    val runLaunchAuthority: String,
+    val effectAuthority: String,
+    val observedAt: Instant,
+    val limitations: List<String>,
+    val snapshotDigest: String,
+)
+
 data class Phase1SummaryDashboard(
     val productId: UUID,
     val productRevision: Long,
@@ -3303,6 +3373,12 @@ internal object PortableDesignProtocol {
         "dashboard-exposes-identities-counts-statuses-times-and-digests-not-design-requirement-figma-source-human-or-personal-content-secrets-credentials-or-permissions"
     private const val PHASE2_UX_FIGMA_AUTHORITY_BOUNDARY =
         "phase-2-dashboard-is-a-derived-read-only-view-not-a-second-source-of-truth-or-completeness-validity-approval-baseline-readiness-remediation-figma-implementation-or-action-authority"
+    private const val PHASE2_INTEGRATED_SOURCE_BOUNDARY =
+        "exact-derived-phase-2-dashboard-and-current-initiative-scoped-agent-model-metadata-only"
+    private const val PHASE2_INTEGRATED_PRIVACY_BOUNDARY =
+        "dashboard-exposes-identities-digests-counts-statuses-and-times-not-design-content-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-permissions-or-machine-paths"
+    private const val PHASE2_INTEGRATED_AUTHORITY_BOUNDARY =
+        "phase-2-change-impact-agent-model-dashboard-is-derived-read-only-evidence-not-a-second-source-of-truth-impact-completeness-design-validity-provider-quality-selection-run-launch-approval-baseline-readiness-remediation-effect-release-or-action-authority"
     private const val PHASE1_SUMMARY_AUTHORITY_BOUNDARY =
         "phase-1-summary-is-read-only-candidate-evidence-not-readiness-approval-acceptance-phase-entry-release-or-action-authority"
     private const val PHASE1_SUMMARY_SOURCE_BOUNDARY =
@@ -11005,6 +11081,247 @@ internal object PortableDesignProtocol {
             drift.getValue("observationCount"), drift.getValue("driftCount"), drift.getValue("unassessedCount"),
             drift.getValue("remediationCandidateCount"), freshnessState, staleBindingCount,
             staleSourceReferenceCount, unresolvedQuestionCount, sources, limitations, snapshotDigest,
+        )
+    }
+
+    fun parsePhase2ChangeImpactAgentModelDashboardEnvelope(
+        envelope: JsonObject,
+        expectedProduct: ProductBinding,
+        expectedInitiative: InitiativeEntryRecord,
+        expectedCapabilities: List<AgentReadinessSnapshot>,
+        expectedSelection: AgentSelectionState,
+    ): Phase2ChangeImpactAgentModelDashboard {
+        val dashboard = readResult(envelope).requireObject()
+        dashboard.requireExactKeys(
+            "schemaVersion", "kind", "viewDefinitionVersion", "phase", "product", "initiative", "sources",
+            "synchronizationChange", "impact", "agentModel", "freshness", "governance", "evidenceCues",
+            "observedAt", "sourceBoundary", "privacyBoundary", "limitations", "authorityBoundary", "snapshotDigest",
+        )
+        if (dashboard.requireInt("schemaVersion") != 1 ||
+            dashboard.requireString("kind") != "phase-2-change-impact-agent-model-dashboard" ||
+            dashboard.requireString("viewDefinitionVersion") != "gaep-phase-2-change-impact-agent-model-dashboard-v1" ||
+            dashboard.requireString("sourceBoundary") != PHASE2_INTEGRATED_SOURCE_BOUNDARY ||
+            dashboard.requireString("privacyBoundary") != PHASE2_INTEGRATED_PRIVACY_BOUNDARY ||
+            dashboard.requireString("authorityBoundary") != PHASE2_INTEGRATED_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val phase = dashboard.get("phase").requireObject()
+        phase.requireExactKeys("id", "label")
+        if (phase.requireString("id") != "phase-2-design" ||
+            phase.requireString("label") != "Phase 2 — UX and Figma Loop"
+        ) throw invalidResponse()
+
+        val product = dashboard.get("product").requireObject()
+        product.requireExactKeys("recordType", "recordId", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("recordId")
+        val productRevision = product.requireLong("revision")
+        val productDigest = product.requireDigest("digest")
+        if (product.requireString("recordType") != "product" || productId != expectedProduct.id ||
+            productRevision != expectedProduct.revision || productDigest != expectedProduct.digest
+        ) throw invalidResponse()
+        val initiative = dashboard.get("initiative").requireObject()
+        initiative.requireExactKeys("recordType", "recordId", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("recordId")
+        val initiativeRevision = initiative.requireLong("revision")
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("active", "blocked", "cancelled", "completed", "proposed"))
+        if (initiative.requireString("recordType") != "initiative" || initiativeId != expectedInitiative.id ||
+            initiativeRevision != expectedInitiative.revision || initiativeDigest != expectedInitiative.digest ||
+            initiativeState != expectedInitiative.state || expectedInitiative.productId != expectedProduct.id
+        ) throw invalidResponse()
+
+        val sources = dashboard.get("sources").requireObject()
+        sources.requireExactKeys("phase2UxFigmaSnapshotDigest", "phase2SourceCatalogDigest", "agentModelSnapshotDigest")
+        val phase2UxFigmaSnapshotDigest = sources.requireDigest("phase2UxFigmaSnapshotDigest")
+        val phase2SourceCatalogDigest = sources.requireDigest("phase2SourceCatalogDigest")
+        val agentModelSnapshotDigest = sources.requireDigest("agentModelSnapshotDigest")
+
+        val synchronizationObject = dashboard.get("synchronizationChange").requireObject()
+        synchronizationObject.requireExactKeys(
+            "state", "designDelta", "conflictResolution", "humanDesignApproval", "designBaseline",
+            "designDriftDetection", "figmaConnectionState", "figmaWriteExecutionState",
+            "figmaImportExecutionState", "synchronizationEffectState",
+        )
+        val availability = setOf("current", "attention-required", "unavailable")
+        val synchronization = Phase2IntegratedSynchronization(
+            synchronizationObject.requireOneOf("state", setOf("candidate-current", "attention-required")),
+            synchronizationObject.requireOneOf("designDelta", availability),
+            synchronizationObject.requireOneOf("conflictResolution", availability),
+            synchronizationObject.requireOneOf("humanDesignApproval", availability),
+            synchronizationObject.requireOneOf("designBaseline", availability),
+            synchronizationObject.requireOneOf("designDriftDetection", availability),
+            synchronizationObject.requireOneOf("figmaConnectionState", setOf("not-established")),
+            synchronizationObject.requireOneOf("figmaWriteExecutionState", setOf("not-performed")),
+            synchronizationObject.requireOneOf("figmaImportExecutionState", setOf("not-performed")),
+            synchronizationObject.requireOneOf("synchronizationEffectState", setOf("not-applied")),
+        )
+        val changeAttention = listOf(
+            synchronization.designDelta, synchronization.conflictResolution, synchronization.humanDesignApproval,
+            synchronization.designBaseline, synchronization.designDriftDetection,
+        ).any { it != "current" }
+        if ((synchronization.state == "attention-required") != changeAttention) throw invalidResponse()
+
+        val impactObject = dashboard.get("impact").requireObject()
+        impactObject.requireExactKeys(
+            "state", "coverage", "requirementCount", "designBindingCount", "unboundDesignItemCount",
+            "driftObservationCount", "driftCount", "unassessedCount", "blockerCount", "highSeverityCount",
+            "remediationCandidateCount", "staleBindingCount", "staleSourceReferenceCount",
+            "unresolvedQuestionCount", "impactCompleteness", "designValidity", "revalidationState",
+        )
+        if (impactObject.requireString("coverage") != "bounded-not-complete" ||
+            impactObject.requireString("impactCompleteness") != "not-established" ||
+            impactObject.requireString("designValidity") != "not-established" ||
+            impactObject.requireString("revalidationState") != "not-established"
+        ) throw invalidResponse()
+        val impact = Phase2IntegratedImpact(
+            impactObject.requireOneOf("state", setOf("current-bounded-observation", "attention-required")),
+            impactObject.requireBoundedNonNegativeLong("requirementCount", 10_000_000),
+            impactObject.requireBoundedNonNegativeLong("designBindingCount", 10_000_000),
+            impactObject.requireBoundedNonNegativeLong("unboundDesignItemCount", 10_000_000),
+            impactObject.requireBoundedNonNegativeLong("driftObservationCount", 10_000_000),
+            impactObject.requireBoundedNonNegativeLong("driftCount", 10_000_000),
+            impactObject.requireBoundedNonNegativeLong("unassessedCount", 10_000_000),
+            impactObject.requireBoundedNonNegativeLong("blockerCount", 10_000_000),
+            impactObject.requireBoundedNonNegativeLong("highSeverityCount", 10_000_000),
+            impactObject.requireBoundedNonNegativeLong("remediationCandidateCount", 10_000_000),
+            impactObject.requireBoundedNonNegativeLong("staleBindingCount", 10_000_000),
+            impactObject.requireBoundedNonNegativeLong("staleSourceReferenceCount", 10_000_000),
+            impactObject.requireBoundedNonNegativeLong("unresolvedQuestionCount", 10_000_000),
+        )
+        val impactAttention = impact.driftCount > 0 || impact.unassessedCount > 0 || impact.staleBindingCount > 0 ||
+            impact.staleSourceReferenceCount > 0 || impact.unresolvedQuestionCount > 0
+        if (impact.driftCount + impact.unassessedCount > impact.driftObservationCount ||
+            (impact.state == "attention-required") != impactAttention
+        ) throw invalidResponse()
+
+        val agent = dashboard.get("agentModel").requireObject()
+        agent.requireExactKeys(
+            "selectionState", "capabilities", "runs", "managedRuns", "handoffs", "providerMetrics",
+            "liveProviderQuality", "semanticOutputQuality",
+        )
+        val expectedSelectionState = when (expectedSelection) {
+            AgentSelectionState.Unselected -> "unselected"
+            AgentSelectionState.Invalid -> "invalid"
+            is AgentSelectionState.Selected -> "selected"
+            is AgentSelectionState.MigrationRequired -> "migration-required"
+        }
+        val selectionState = agent.requireOneOf("selectionState", setOf("unselected", "selected", "migration-required", "invalid"))
+        if (selectionState != expectedSelectionState) throw invalidResponse()
+        val capabilitiesObject = agent.get("capabilities").requireObject()
+        capabilitiesObject.requireExactKeys("shown", "total", "omitted", "detected", "unavailable", "selected")
+        val capabilities = Phase1AgentModelCapabilityTruth(
+            capabilitiesObject.requireBoundedNonNegativeLong("shown", 10_000_000),
+            capabilitiesObject.requireBoundedNonNegativeLong("total", 10_000_000),
+            capabilitiesObject.requireBoundedNonNegativeLong("omitted", 10_000_000),
+            capabilitiesObject.requireBoundedNonNegativeLong("detected", 10_000_000),
+            capabilitiesObject.requireBoundedNonNegativeLong("unavailable", 10_000_000),
+            capabilitiesObject.requireBoundedNonNegativeLong("selected", 1),
+        )
+        val expectedDetected = expectedCapabilities.count { it.detected }.toLong()
+        val expectedSelected = if (expectedSelection is AgentSelectionState.Selected) 1L else 0L
+        if (capabilities.shown != expectedCapabilities.size.toLong() || capabilities.total != capabilities.shown ||
+            capabilities.omitted != 0L || capabilities.detected != expectedDetected ||
+            capabilities.unavailable != capabilities.shown - expectedDetected || capabilities.selected != expectedSelected
+        ) throw invalidResponse()
+        val runObject = agent.get("runs").requireObject()
+        runObject.requireExactKeys(
+            "shown", "total", "omitted", "terminal", "nonTerminal", "managedObserved", "resultBound", "actualEffectCount",
+        )
+        val runs = Phase2IntegratedRunTruth(
+            runObject.requireBoundedNonNegativeLong("shown", 10_000_000),
+            runObject.requireBoundedNonNegativeLong("total", 10_000_000),
+            runObject.requireBoundedNonNegativeLong("omitted", 10_000_000),
+            runObject.requireBoundedNonNegativeLong("terminal", 10_000_000),
+            runObject.requireBoundedNonNegativeLong("nonTerminal", 10_000_000),
+            runObject.requireBoundedNonNegativeLong("managedObserved", 10_000_000),
+            runObject.requireBoundedNonNegativeLong("resultBound", 10_000_000),
+            runObject.requireBoundedNonNegativeLong("actualEffectCount", 10_000_000),
+        )
+        val managedRuns = parseAgentModelLimit(agent.get("managedRuns"))
+        val handoffObject = agent.get("handoffs").requireObject()
+        handoffObject.requireExactKeys("shown", "total", "omitted", "pendingAcknowledgement", "acknowledged")
+        val handoffs = Phase1AgentModelHandoffTruth(
+            handoffObject.requireBoundedNonNegativeLong("shown", 10_000_000),
+            handoffObject.requireBoundedNonNegativeLong("total", 10_000_000),
+            handoffObject.requireBoundedNonNegativeLong("omitted", 10_000_000),
+            handoffObject.requireBoundedNonNegativeLong("pendingAcknowledgement", 10_000_000),
+            handoffObject.requireBoundedNonNegativeLong("acknowledged", 10_000_000),
+        )
+        if (runs.shown + runs.omitted != runs.total || runs.terminal + runs.nonTerminal != runs.shown ||
+            runs.managedObserved > managedRuns.shown || runs.resultBound > runs.managedObserved ||
+            managedRuns.shown + managedRuns.omitted != managedRuns.total ||
+            handoffs.shown + handoffs.omitted != handoffs.total ||
+            handoffs.pendingAcknowledgement + handoffs.acknowledged != handoffs.shown
+        ) throw invalidResponse()
+        val metrics = agent.get("providerMetrics").requireObject()
+        metrics.requireExactKeys("usage", "cost")
+        if (metrics.requireString("usage") != "unavailable" || metrics.requireString("cost") != "unavailable" ||
+            agent.requireString("liveProviderQuality") != "not-assessed" ||
+            agent.requireString("semanticOutputQuality") != "not-assessed"
+        ) throw invalidResponse()
+
+        val freshness = dashboard.get("freshness").requireObject()
+        freshness.requireExactKeys(
+            "state", "phase2State", "agentModelState", "selectionCapabilityState", "phase2ObservedAt",
+            "agentModelObservedAt", "oldestCapabilityObservedAt", "newestCapabilityObservedAt", "truncated",
+        )
+        val freshnessState = freshness.requireOneOf("state", setOf("current", "attention-required"))
+        val phase2State = freshness.requireOneOf("phase2State", setOf("candidate-complete-for-human-review", "attention-required"))
+        val agentModelState = freshness.requireOneOf("agentModelState", setOf("current", "attention-required"))
+        val selectionCapabilityState = freshness.requireOneOf(
+            "selectionCapabilityState", setOf("current", "unselected", "stale", "migration-required", "invalid"),
+        )
+        val sourceTimes = listOf(
+            freshness.requireInstant("phase2ObservedAt"), freshness.requireInstant("agentModelObservedAt"),
+            freshness.requireInstant("oldestCapabilityObservedAt"), freshness.requireInstant("newestCapabilityObservedAt"),
+        )
+        val truncated = freshness.requireBoolean("truncated")
+        val expectedFreshnessAttention = phase2State == "attention-required" || agentModelState == "attention-required" ||
+            truncated || changeAttention || impactAttention
+        if ((freshnessState == "attention-required") != expectedFreshnessAttention || sourceTimes[2].isAfter(sourceTimes[3])) {
+            throw invalidResponse()
+        }
+
+        val governance = dashboard.get("governance").requireObject()
+        governance.requireExactKeys(
+            "humanDesignApproval", "baselineDesignation", "impactAcceptance", "providerAccountReadiness",
+            "providerPreference", "automaticSelectionAuthority", "runLaunchAuthority", "effectAuthority",
+            "phaseReadinessAuthority", "productOwnerAcceptance",
+        )
+        listOf(
+            "humanDesignApproval", "baselineDesignation", "impactAcceptance", "providerAccountReadiness",
+            "providerPreference", "phaseReadinessAuthority", "productOwnerAcceptance",
+        ).forEach { if (governance.requireString(it) != "not-established") throw invalidResponse() }
+        listOf("automaticSelectionAuthority", "runLaunchAuthority", "effectAuthority").forEach {
+            if (governance.requireString(it) != "not-granted") throw invalidResponse()
+        }
+        val evidence = dashboard.get("evidenceCues").requireObject()
+        evidence.requireExactKeys("freshness", "confidence")
+        val evidenceFreshness = evidence.requireOneOf("freshness", setOf("current", "potentially-stale", "unknown"))
+        val confidence = evidence.get("confidence").requireObject()
+        confidence.requireExactKeys("state", "basis")
+        if ((evidenceFreshness == "current") == expectedFreshnessAttention ||
+            confidence.requireString("state") != "not-assessed" ||
+            confidence.requireString("basis") != "no-governed-confidence-evaluation-is-bound"
+        ) throw invalidResponse()
+        val observedAt = dashboard.requireInstant("observedAt")
+        if (sourceTimes.any { it.isAfter(observedAt) }) throw invalidResponse()
+        val limitationsElement = dashboard.get("limitations")
+        if (limitationsElement == null || !limitationsElement.isJsonArray || limitationsElement.asJsonArray.size() !in 3..8) {
+            throw invalidResponse()
+        }
+        val limitations = limitationsElement.asJsonArray.map { value ->
+            portableText(value.requireString(), minimum = 4).also { if (it.length > 1_000) throw invalidResponse() }
+        }
+        val snapshotDigest = dashboard.requireDigest("snapshotDigest")
+        val digestBody = dashboard.deepCopy().apply { remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+        return Phase2ChangeImpactAgentModelDashboard(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState,
+            phase2UxFigmaSnapshotDigest, phase2SourceCatalogDigest, agentModelSnapshotDigest,
+            synchronization, impact, selectionState, capabilities, runs, managedRuns, handoffs,
+            freshnessState, phase2State, agentModelState, selectionCapabilityState,
+            governance.requireString("productOwnerAcceptance"), governance.requireString("runLaunchAuthority"),
+            governance.requireString("effectAuthority"), observedAt, limitations, snapshotDigest,
         )
     }
 
