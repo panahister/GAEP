@@ -71,6 +71,7 @@ const designerReadyGateId = "73737373-7373-4373-8373-737373737373"
 const designDeltaId = "74747474-7474-4474-8474-747474747474"
 const designConflictResolutionId = "75757575-7575-4575-8575-757575757575"
 const humanDesignApprovalId = "76767676-7676-4676-8676-767676767676"
+const designBaselineId = "77777777-7777-4777-8777-777777777777"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -194,6 +195,8 @@ input.on("line", (line) => {
       return readDesignConflictResolution(id, request.params)
     case "design.humanDesignApproval.snapshot":
       return readHumanDesignApproval(id, request.params)
+    case "design.designBaseline.snapshot":
+      return readDesignBaseline(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -3235,6 +3238,108 @@ function readHumanDesignApproval(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-human-design-approval-digest")) value.status.completePrerequisiteCount = 5
   if (workspacePath.endsWith("bad-human-design-approval-private")) value.decisionRationale = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readDesignBaseline(id, params) {
+  if (!exactKeys(params, ["initiativeId"])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"e".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "design-baseline-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: designBaselineId, revision: 3, digest: candidateDigest },
+    candidateSetCount: 1,
+    designationCandidateCount: 1,
+    supersessionCandidateCount: 1,
+    withdrawalCandidateCount: 0,
+    restorationCandidateCount: 0,
+    expiredDesignationCount: 1,
+    staleBindingCount: 2,
+    staleSourceReferenceCount: 3,
+    unresolvedQuestionCount: 4,
+    candidateResult: "supersession-candidate",
+    reviewState: "ready-for-human-review",
+    approvalDeterminationState: "not-established",
+    baselineDesignationState: "not-established",
+    state: "attention-required",
+    reasons: ["The baseline designation candidate is expired"],
+    assessedAt: "2026-07-30T01:40:00.000Z",
+    authorityBoundary: "design-baseline-status-is-observational-and-does-not-convert-an-approval-candidate-into-approval-verify-approver-authority-enforce-separation-of-duties-establish-a-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority",
+  }
+  const subject = {
+    kind: "finalized-figma-snapshot-import-candidate",
+    recordId: finalizedFigmaSnapshotImportId,
+    revision: 2,
+    digest: `sha256:${"5".repeat(64)}`,
+    membershipDigest: `sha256:${"6".repeat(64)}`,
+    externalFileIdentityDigest: `sha256:${"7".repeat(64)}`,
+    returnedExternalVersionDigest: `sha256:${"8".repeat(64)}`,
+    itemCatalogDigest: `sha256:${"9".repeat(64)}`,
+    itemCount: 18,
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "design-baseline-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: designBaselineId,
+      revision: 3,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"f".repeat(64)}`,
+      state: "candidate",
+      humanDesignApproval: {
+        kind: "human-design-approval-candidate",
+        recordId: humanDesignApprovalId,
+        revision: 2,
+        digest: `sha256:${"2".repeat(64)}`,
+        membershipDigest: `sha256:${"3".repeat(64)}`,
+        decisionReceiptDigest: `sha256:${"c".repeat(64)}`,
+        subjectDigest: subject.digest,
+        scopeDigest: `sha256:${"a".repeat(64)}`,
+        candidateResult: "approved-candidate",
+        reviewState: "recorded-human-decision",
+        assessmentDigest: `sha256:${"1".repeat(64)}`,
+        assessmentState: "complete-for-recorded-decision",
+      },
+      subject,
+      scopeDigest: `sha256:${"a".repeat(64)}`,
+      baselineLineageId: "78787878-7878-4878-8878-787878787878",
+      candidateSetId: "79797979-7979-4979-8979-797979797979",
+      candidateSetRevision: 3,
+      semanticVersion: "2.0.0",
+      versionPolicyDigest: `sha256:${"2".repeat(64)}`,
+      designationDefinitionDigest: `sha256:${"3".repeat(64)}`,
+      designationReceiptDigest: `sha256:${"4".repeat(64)}`,
+      designationKind: "supersede-baseline-candidate",
+      designationDigest: `sha256:${"5".repeat(64)}`,
+      supersedes: {
+        recordId: designBaselineId,
+        revision: 2,
+        digest: `sha256:${"6".repeat(64)}`,
+        membershipDigest: `sha256:${"7".repeat(64)}`,
+        baselineLineageId: "78787878-7878-4878-8878-787878787878",
+        semanticVersion: "1.0.0",
+      },
+      candidateResult: "supersession-candidate",
+      reviewState: "ready-for-human-review",
+      updatedAt: "2026-07-30T01:39:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-version-axes-counts-results-and-digests-only-not-design-content-rationale-evidence-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+    authorityBoundary: "design-baseline-projection-is-read-only-and-does-not-convert-an-approval-candidate-into-approval-verify-approver-authority-enforce-separation-of-duties-establish-a-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-design-baseline-binding")) content.initiative.id = designBaselineId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-design-baseline-digest")) value.status.candidateSetCount = 0
+  if (workspacePath.endsWith("bad-design-baseline-private")) value.designRationale = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }
 

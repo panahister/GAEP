@@ -2472,6 +2472,61 @@ test("protocol-v2 client validates privacy-safe Human Design Approval projection
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 client validates privacy-safe Design Baseline projections and rejects hostile responses", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-design-baseline-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-design-baseline-binding",
+    "bad-design-baseline-digest",
+    "bad-design-baseline-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readDesignBaseline(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.candidateResult, "supersession-candidate")
+    assert.equal(projection.status.reviewState, "ready-for-human-review")
+    assert.equal(projection.status.candidateSetCount, 1)
+    assert.equal(projection.status.designationCandidateCount, 1)
+    assert.equal(projection.status.supersessionCandidateCount, 1)
+    assert.equal(projection.status.approvalDeterminationState, "not-established")
+    assert.equal(projection.status.baselineDesignationState, "not-established")
+    assert.equal(projection.candidate?.semanticVersion, "2.0.0")
+    assert.equal(projection.candidate?.designationKind, "supersede-baseline-candidate")
+    assert.equal(
+      projection.authorityBoundary,
+      "design-baseline-projection-is-read-only-and-does-not-convert-an-approval-candidate-into-approval-verify-approver-authority-enforce-separation-of-duties-establish-a-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"designRationale":'), false)
+    assert.equal(serialized.includes('"evidence":'), false)
+    assert.equal(serialized.includes('"sources":'), false)
+    assert.equal(serialized.includes('"proposedBy":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readDesignBaseline(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client imports, lists, and exact-reads metadata without authority escalation", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-unit-"))
   const workspace = join(root, "workspace")

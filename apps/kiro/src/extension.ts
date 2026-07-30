@@ -45,6 +45,7 @@ import {
   type DesignDeltaProjection,
   type DesignConflictResolutionProjection,
   type HumanDesignApprovalProjection,
+  type DesignBaselineProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -161,6 +162,7 @@ const commandIds = {
   designDelta: "gaepKiro.designDelta.inspect",
   designConflictResolution: "gaepKiro.designConflictResolution.inspect",
   humanDesignApproval: "gaepKiro.humanDesignApproval.inspect",
+  designBaseline: "gaepKiro.designBaseline.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -296,6 +298,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.designDelta, (input?: unknown) => runUserCommand(() => showDesignDelta(pool, input))),
     vscode.commands.registerCommand(commandIds.designConflictResolution, (input?: unknown) => runUserCommand(() => showDesignConflictResolution(pool, input))),
     vscode.commands.registerCommand(commandIds.humanDesignApproval, (input?: unknown) => runUserCommand(() => showHumanDesignApproval(pool, input))),
+    vscode.commands.registerCommand(commandIds.designBaseline, (input?: unknown) => runUserCommand(() => showDesignBaseline(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -2360,6 +2363,53 @@ async function showHumanDesignApproval(
     ] : []),
     "",
     "Candidate identities, exact prerequisite and finalized-snapshot bindings, scope and receipt digests, decision kind, lifecycle, counts, and recorded states only; this view does not verify approver authority, enforce separation of duties, establish design approval, baseline, readiness, or phase entry, call Figma, request credentials, grant permissions, execute imports or writes, or grant implementation or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDesignBaseline(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DesignBaselineProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Design Baseline", "Initiative ID")
+  const projection = await client.readDesignBaseline(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP Design Baseline version candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate result: ${status.candidateResult} · ${status.state} · review state: ${status.reviewState}`,
+    `Candidate inventory: ${status.candidateSetCount} set · ${status.designationCandidateCount} designation · ${status.supersessionCandidateCount} supersession · ${status.withdrawalCandidateCount} withdrawal · ${status.restorationCandidateCount} restoration`,
+    `Candidate governance: approval determination ${status.approvalDeterminationState} · baseline designation ${status.baselineDesignationState}`,
+    `Candidate gaps: ${status.expiredDesignationCount} expired · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Approval candidate: ${record.humanDesignApproval.recordId}@${record.humanDesignApproval.revision} · ${record.humanDesignApproval.assessmentState}`,
+      `Design subject: ${record.subject.recordId}@${record.subject.revision} · returned version ${record.subject.returnedExternalVersionDigest} · ${record.subject.itemCount} items`,
+      `Scope digest: ${record.scopeDigest}`,
+      `Lineage: ${record.baselineLineageId} · candidate set ${record.candidateSetId}@${record.candidateSetRevision}`,
+      `Version: ${record.semanticVersion} · policy ${record.versionPolicyDigest}`,
+      `Designation evidence: definition ${record.designationDefinitionDigest} · receipt ${record.designationReceiptDigest}`,
+      `Designation candidate: ${record.designationKind ? `${record.designationKind} · ${record.designationDigest}` : "not proposed"}`,
+      `Exact predecessor: ${record.supersedes ? `${record.supersedes.recordId}@${record.supersedes.revision} · ${record.supersedes.semanticVersion}` : "initial candidate"}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, exact Human Design Approval and finalized-snapshot bindings, version axes, lineage, scope and receipt digests, designation kind, predecessor, counts, and recorded states only; this view does not convert an approval candidate into approval, verify approver authority, enforce separation of duties, establish a Baseline Set designation, readiness, or phase entry, call Figma, request credentials, grant permissions, execute imports or writes, or grant implementation or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,
