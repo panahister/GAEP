@@ -562,6 +562,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += backlogHierarchyButton
         actions.add(backlogHierarchyButton)
 
+        val mvpSliceDefinitionButton = JButton("Inspect MVP and Vertical Slices…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Slice titles, rationales, objectives, criteria, scope content, Requirement content, personal data, local paths, secrets, credentials, priority, commitment, scope approval, readiness, assignment, execution, and authority are withheld.",
+                    "GAEP MVP and Vertical Slice Definition",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect MVP and Vertical Slices", status, output, buttons) {
+                    controller.readMvpSliceDefinition(initiativeId)
+                }
+            }
+        }
+        buttons += mvpSliceDefinitionButton
+        actions.add(mvpSliceDefinitionButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

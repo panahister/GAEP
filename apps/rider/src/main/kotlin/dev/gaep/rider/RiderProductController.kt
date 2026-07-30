@@ -1533,6 +1533,62 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readMvpSliceDefinition(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val hierarchy = client.readBacklogHierarchy(initiativeId)
+        val projection = client.readMvpSliceDefinition(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while MVP and Vertical Slice Definition was read. Refresh the exact records." }
+        projection.candidate?.let {
+            val currentHierarchy = requireNotNull(hierarchy.candidate) {
+                "The current Backlog Hierarchy is unavailable. Refresh the exact records."
+            }
+            require(
+                projection.hierarchyRecordId == currentHierarchy.id &&
+                    projection.hierarchyRevision == currentHierarchy.revision &&
+                    projection.hierarchyDigest == currentHierarchy.digest && it.hierarchyDigest == currentHierarchy.digest
+            ) { "The Backlog Hierarchy changed while MVP and Vertical Slice Definition was read. Refresh the exact records." }
+        }
+        return renderMvpSliceDefinition(projection)
+    }
+
+    fun renderMvpSliceDefinition(projection: MvpSliceDefinitionProjection): String = buildString {
+        appendLine("GAEP governed MVP and Vertical Slice candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState} · scope: ${projection.scopeCompletenessState}")
+        appendLine("Scope: ${projection.scopeNodeCount} nodes · ${projection.mvpNodeCount} MVP · ${projection.laterNodeCount} later · ${projection.excludedNodeCount} excluded")
+        appendLine("Vertical Slices: ${projection.sliceCount} slices · ${projection.storyCount} Stories · ${projection.taskCount} Tasks · ${projection.dependencyCount} dependencies")
+        appendLine(
+            "Candidate gaps: ${projection.unassignedMvpStoryTaskCount} unassigned MVP Stories or Tasks · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleHierarchyCount} stale hierarchies · ${projection.invalidScopeCount} invalid scope entries · " +
+                "${projection.invalidSliceCount} invalid slices",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("MVP and Vertical Slice candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine("Exact Backlog Hierarchy digest: ${record.hierarchyDigest}")
+            appendLine("Candidate scope: ${record.scopeNodeCount} nodes · ${record.mvpNodeCount} MVP · ${record.laterNodeCount} later · ${record.excludedNodeCount} excluded")
+            appendLine("Candidate slices: ${record.sliceCount} slices · ${record.storyCount} Stories · ${record.taskCount} Tasks · ${record.reviewState}")
+        } ?: appendLine("MVP and Vertical Slice candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, scope and slice counts, statuses, and digests only; no slice " +
+                "titles, rationales, objectives, criteria, scope content, Requirement content, personal data, priority, " +
+                "commitment, scope approval, acceptance-criteria validity, ready or done, implementation readiness, " +
+                "assignment, execution, implementation authority, or action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)

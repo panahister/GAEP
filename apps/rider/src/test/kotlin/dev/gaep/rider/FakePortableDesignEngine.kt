@@ -43,6 +43,7 @@ private val informationArchitectureId = UUID.fromString("66666666-6666-4666-8666
 private val screenStateInventoryId = UUID.fromString("67676767-6767-4767-8767-676767676767")
 private val designRequirementsId = UUID.fromString("68686868-6868-4868-8868-686868686868")
 private val backlogHierarchyId = UUID.fromString("91919191-9191-4191-8191-919191919191")
+private val mvpSliceDefinitionId = UUID.fromString("92929292-9292-4292-8292-929292929292")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -273,6 +274,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "backlog.hierarchy.snapshot" -> handleBacklogHierarchy(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.mvpSlices.snapshot" -> handleMvpSliceDefinition(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3159,6 +3165,113 @@ private fun handleBacklogHierarchy(id: Long, params: JsonObject, workspacePath: 
         }
         workspacePath.endsWith("bad-backlog-hierarchy-snapshot-private") -> {
             value.addProperty("workItemObjective", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleMvpSliceDefinition(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE MVP SLICE PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-mvp-slice-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T10:20:00.000Z"
+    val candidateDigest = "sha256:${"a".repeat(64)}"
+    val hierarchyDigest = if (workspacePath.endsWith("bad-mvp-slice-hierarchy-binding")) {
+        "sha256:${"c".repeat(64)}"
+    } else {
+        "sha256:${"8".repeat(64)}"
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "mvp-slice-definition-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "mvp-slice-definition-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", mvpSliceDefinitionId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            add("hierarchy", JsonObject().apply {
+                addProperty("recordId", backlogHierarchyId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", hierarchyDigest)
+            })
+            addProperty("scopeNodeCount", 24)
+            addProperty("mvpNodeCount", 16)
+            addProperty("laterNodeCount", 5)
+            addProperty("excludedNodeCount", 3)
+            addProperty("sliceCount", 4)
+            addProperty("storyCount", 7)
+            addProperty("taskCount", 9)
+            addProperty("dependencyCount", 3)
+            addProperty("unassignedMvpStoryTaskCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleHierarchyCount", 0)
+            addProperty("invalidScopeCount", 0)
+            addProperty("invalidSliceCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("scopeCompletenessState", "not-assessed")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more MVP scope or Vertical Slice candidates require review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "mvp-slice-definition-status-is-observational-and-does-not-establish-priority-commitment-scope-approval-acceptance-criteria-validity-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", mvpSliceDefinitionId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"b".repeat(64)}")
+            addProperty("hierarchyDigest", hierarchyDigest)
+            addProperty("state", "candidate")
+            addProperty("scopeNodeCount", 24)
+            addProperty("mvpNodeCount", 16)
+            addProperty("laterNodeCount", 5)
+            addProperty("excludedNodeCount", 3)
+            addProperty("sliceCount", 4)
+            addProperty("storyCount", 7)
+            addProperty("taskCount", 9)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T10:19:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-scope-and-slice-counts-statuses-and-digests-only-not-slice-titles-rationales-objectives-criteria-scope-content-requirement-content-personal-data-secrets-credentials-or-machine-paths",
+        )
+        addProperty(
+            "authorityBoundary",
+            "mvp-slice-definition-projection-is-read-only-and-does-not-prioritize-commit-approve-scope-admit-assign-execute-or-authorize-implementation-or-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-mvp-slice-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("taskCount", 10)
+        }
+        workspacePath.endsWith("bad-mvp-slice-snapshot-private") -> {
+            value.addProperty("sliceRationale", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

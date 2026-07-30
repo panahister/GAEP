@@ -357,6 +357,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readMvpSliceDefinition(initiativeId: UUID): MvpSliceDefinitionProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("planning.mvpSlices.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseMvpSliceDefinitionEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }

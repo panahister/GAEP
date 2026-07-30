@@ -1568,6 +1568,61 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `MVP and Vertical Slice projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("mvp-slice-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readMvpSliceDefinition(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("not-assessed", projection.scopeCompletenessState)
+            assertEquals(24, projection.scopeNodeCount)
+            assertEquals(16, projection.mvpNodeCount)
+            assertEquals(5, projection.laterNodeCount)
+            assertEquals(3, projection.excludedNodeCount)
+            assertEquals(4, projection.sliceCount)
+            assertEquals(7, projection.storyCount)
+            assertEquals(9, projection.taskCount)
+            assertEquals(projection.hierarchyDigest, projection.candidate?.hierarchyDigest)
+
+            val rendered = RiderProductController(client).readMvpSliceDefinition(entryId)
+            assertTrue(rendered.contains("GAEP governed MVP and Vertical Slice candidate"))
+            assertTrue(rendered.contains("24 nodes · 16 MVP · 5 later · 3 excluded"))
+            assertTrue(rendered.contains("4 slices · 7 Stories · 9 Tasks"))
+            assertTrue(rendered.contains("no slice titles"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("sliceRationale"))
+        }
+
+        listOf(
+            "bad-mvp-slice-snapshot-digest",
+            "bad-mvp-slice-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readMvpSliceDefinition(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf(
+            "bad-mvp-slice-snapshot-binding",
+            "bad-mvp-slice-hierarchy-binding",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readMvpSliceDefinition(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
