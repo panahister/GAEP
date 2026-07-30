@@ -15,6 +15,7 @@ import { boilerplateRegistryInputSchema } from "./boilerplate-registry.js"
 import { boilerplateSelectionBindingInputSchema } from "./boilerplate-selection-binding.js"
 import { boilerplateCompatibilityValidationInputSchema } from "./boilerplate-compatibility-validation.js"
 import { figmaToBoilerplateMappingInputSchema } from "./figma-to-boilerplate-mapping.js"
+import { designToCodeBindingRegistryInputSchema } from "./design-to-code-binding-registry.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -766,6 +767,18 @@ export const hostFigmaToBoilerplateMappingReviseParamsSchema = z.object({
   record: figmaToBoilerplateMappingInputSchema,
 }).strict()
 
+export const hostDesignToCodeBindingRegistryCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: designToCodeBindingRegistryInputSchema,
+}).strict()
+
+export const hostDesignToCodeBindingRegistryReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: designToCodeBindingRegistryInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1085,6 +1098,11 @@ export const hostMethodSchema = z.enum([
   "planning.figmaToBoilerplateMapping.revise",
   "planning.figmaToBoilerplateMapping.assess",
   "planning.figmaToBoilerplateMapping.snapshot",
+  "planning.designToCodeBindingRegistry.read",
+  "planning.designToCodeBindingRegistry.create",
+  "planning.designToCodeBindingRegistry.revise",
+  "planning.designToCodeBindingRegistry.assess",
+  "planning.designToCodeBindingRegistry.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1443,6 +1461,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.figmaToBoilerplateMapping.revise", hostFigmaToBoilerplateMappingReviseParamsSchema),
   requestVariant("planning.figmaToBoilerplateMapping.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.figmaToBoilerplateMapping.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.designToCodeBindingRegistry.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.designToCodeBindingRegistry.create", hostDesignToCodeBindingRegistryCreateParamsSchema),
+  requestVariant("planning.designToCodeBindingRegistry.revise", hostDesignToCodeBindingRegistryReviseParamsSchema),
+  requestVariant("planning.designToCodeBindingRegistry.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.designToCodeBindingRegistry.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

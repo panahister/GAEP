@@ -159,6 +159,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.figmaToBoilerplateMapping.revise",
   "planning.figmaToBoilerplateMapping.assess",
   "planning.figmaToBoilerplateMapping.snapshot",
+  "planning.designToCodeBindingRegistry.read",
+  "planning.designToCodeBindingRegistry.create",
+  "planning.designToCodeBindingRegistry.revise",
+  "planning.designToCodeBindingRegistry.assess",
+  "planning.designToCodeBindingRegistry.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1515,6 +1520,21 @@ export class EngineHost {
         return this.engine.figmaToBoilerplateMapping.assess(request.params.initiativeId)
       case "planning.figmaToBoilerplateMapping.snapshot":
         return this.engine.figmaToBoilerplateMapping.project(request.params.initiativeId)
+      case "planning.designToCodeBindingRegistry.read":
+        return await this.engine.designToCodeBindingRegistry.readCurrent(request.params.initiativeId) ?? null
+      case "planning.designToCodeBindingRegistry.create":
+        return this.engine.designToCodeBindingRegistry.create(request.params.record, actorId(request.params.actorId))
+      case "planning.designToCodeBindingRegistry.revise":
+        return this.engine.designToCodeBindingRegistry.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.designToCodeBindingRegistry.assess":
+        return this.engine.designToCodeBindingRegistry.assess(request.params.initiativeId)
+      case "planning.designToCodeBindingRegistry.snapshot":
+        return this.engine.designToCodeBindingRegistry.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":
