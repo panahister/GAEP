@@ -2552,6 +2552,109 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadBoilerplateSelectionBindingAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var units = await client.ReadImplementationUnitModelAsync(initiativeId, cancellationToken);
+        var dependencyMapping = await client.ReadDependencyMappingAsync(initiativeId, cancellationToken);
+        var technologyProfile = await client.ReadTechnologyProfileAsync(initiativeId, cancellationToken);
+        var boilerplateRegistry = await client.ReadBoilerplateRegistryAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadBoilerplateSelectionBindingAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Boilerplate Selection and Binding was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (units.Candidate is not { } currentUnits || projection.ImplementationUnitModelRecordId != currentUnits.Id ||
+                projection.ImplementationUnitModelRevision != currentUnits.Revision ||
+                projection.ImplementationUnitModelDigest != currentUnits.Digest))
+        {
+            throw new ArgumentException("The Implementation Unit Model changed while Boilerplate Selection and Binding was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (dependencyMapping.Candidate is not { } currentDependencyMapping ||
+                projection.DependencyMappingRecordId != currentDependencyMapping.Id ||
+                projection.DependencyMappingRevision != currentDependencyMapping.Revision ||
+                projection.DependencyMappingDigest != currentDependencyMapping.Digest))
+        {
+            throw new ArgumentException("The Dependency Mapping changed while Boilerplate Selection and Binding was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (technologyProfile.Candidate is not { } currentTechnologyProfile ||
+                projection.TechnologyProfileRecordId != currentTechnologyProfile.Id ||
+                projection.TechnologyProfileRevision != currentTechnologyProfile.Revision ||
+                projection.TechnologyProfileDigest != currentTechnologyProfile.Digest))
+        {
+            throw new ArgumentException("The Technology Profile changed while Boilerplate Selection and Binding was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (boilerplateRegistry.Candidate is not { } currentBoilerplateRegistry ||
+                projection.BoilerplateRegistryRecordId != currentBoilerplateRegistry.Id ||
+                projection.BoilerplateRegistryRevision != currentBoilerplateRegistry.Revision ||
+                projection.BoilerplateRegistryDigest != currentBoilerplateRegistry.Digest))
+        {
+            throw new ArgumentException("The Boilerplate Registry changed while Boilerplate Selection and Binding was read. Refresh the exact records.");
+        }
+        return RenderBoilerplateSelectionBinding(projection);
+    }
+
+    public static string RenderBoilerplateSelectionBinding(BoilerplateSelectionBindingProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Boilerplate Selection and Binding candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Candidate coverage: {projection.DecisionCount} decisions · {projection.SelectedCandidateCount} selected · " +
+                $"{projection.NotApplicableCandidateCount} not applicable · {projection.DeferredCandidateCount} deferred · " +
+                $"{projection.NotAssessedCount} not assessed")
+            .AppendLine(
+                $"Candidate decision gaps: {projection.MissingUnitDecisionCount} missing unit decisions · " +
+                $"{projection.InvalidSelectionCount} invalid selections · {projection.RegistryGapCount} registry gaps · " +
+                $"{projection.ProfileMismatchCount} profile mismatches · {projection.UnitScopeMismatchCount} unit-scope mismatches · " +
+                $"{projection.VersionMismatchCount} version mismatches · {projection.MissingEvidenceCount} missing evidence")
+            .AppendLine(
+                $"Candidate freshness gaps: {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleImplementationUnitModelCount} stale Implementation Unit Models · " +
+                $"{projection.StaleDependencyMappingCount} stale Dependency Mappings · " +
+                $"{projection.StaleTechnologyProfileCount} stale Technology Profiles · " +
+                $"{projection.StaleBoilerplateRegistryCount} stale Boilerplate Registries · " +
+                $"{projection.InvalidCandidateCount} invalid candidates · {projection.UnresolvedQuestionCount} questions");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Boilerplate Selection and Binding candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Unit decision catalog digest: {candidate.UnitDecisionCatalogDigest}")
+                .AppendLine($"Selection receipt digest: {candidate.SelectionReceiptDigest}")
+                .AppendLine($"Binding receipt digest: {candidate.BindingReceiptDigest}")
+                .AppendLine($"Assessment receipt digest: {candidate.AssessmentReceiptDigest}")
+                .AppendLine($"Candidate coverage: {candidate.DecisionCount} decisions · {candidate.SelectedCandidateCount} selected · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Boilerplate Selection and Binding candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and unit-decision, selection, binding, assessment, " +
+                "and snapshot digests only; no boilerplate names, locators, versions, unit or profile identities, rationale, " +
+                "conditions, alternatives, deviations, evidence, decision roles, or personal data. Candidate completeness does " +
+                "not establish organizational designation, endorsement, approval, support commitment, effective selection or " +
+                "binding, compatibility truth, completeness, or validation, licensing or security approval, exception or waiver, " +
+                "source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, " +
+                "assignment, execution, acceptance, merge, release, deployment, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

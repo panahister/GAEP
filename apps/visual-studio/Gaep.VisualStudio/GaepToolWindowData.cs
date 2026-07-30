@@ -240,6 +240,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadDependencyMappingCommand = new AsyncCommand(LoadDependencyMappingAsync);
         LoadTechnologyProfileCommand = new AsyncCommand(LoadTechnologyProfileAsync);
         LoadBoilerplateRegistryCommand = new AsyncCommand(LoadBoilerplateRegistryAsync);
+        LoadBoilerplateSelectionBindingCommand = new AsyncCommand(LoadBoilerplateSelectionBindingAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -420,6 +421,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadBoilerplateRegistryCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadBoilerplateSelectionBindingCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1074,6 +1078,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Boilerplate Registry candidate",
             (controller, _, token) => controller.ReadBoilerplateRegistryAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadBoilerplateSelectionBindingAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Boilerplate Selection and Binding candidate",
+            (controller, _, token) => controller.ReadBoilerplateSelectionBindingAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>
