@@ -44,6 +44,7 @@ import {
   type DesignerReadyGateProjection,
   type DesignDeltaProjection,
   type DesignConflictResolutionProjection,
+  type HumanDesignApprovalProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -159,6 +160,7 @@ const commandIds = {
   designerReadyGate: "gaepKiro.designerReadyGate.inspect",
   designDelta: "gaepKiro.designDelta.inspect",
   designConflictResolution: "gaepKiro.designConflictResolution.inspect",
+  humanDesignApproval: "gaepKiro.humanDesignApproval.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -293,6 +295,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.designerReadyGate, (input?: unknown) => runUserCommand(() => showDesignerReadyGate(pool, input))),
     vscode.commands.registerCommand(commandIds.designDelta, (input?: unknown) => runUserCommand(() => showDesignDelta(pool, input))),
     vscode.commands.registerCommand(commandIds.designConflictResolution, (input?: unknown) => runUserCommand(() => showDesignConflictResolution(pool, input))),
+    vscode.commands.registerCommand(commandIds.humanDesignApproval, (input?: unknown) => runUserCommand(() => showHumanDesignApproval(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -2312,6 +2315,51 @@ async function showDesignConflictResolution(
     ] : []),
     "",
     "Candidate identities, exact Design Delta binding, receipts, catalog digests, counts, results, and recorded review states only; this view does not enforce separation of duties, resolve or apply conflicts, synchronize design, establish validity, approval, baseline, or readiness, call Figma, request credentials, grant permissions, execute imports or writes, or grant implementation or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showHumanDesignApproval(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<HumanDesignApprovalProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Human Design Approval", "Initiative ID")
+  const projection = await client.readHumanDesignApproval(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP Human Design Approval decision candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate result: ${status.candidateResult} · ${status.state} · review state: ${status.reviewState}`,
+    `Prerequisites: ${status.completePrerequisiteCount}/${status.prerequisiteCount} complete`,
+    `Recorded decisions: ${status.decisionCount} total · ${status.approveCount} approve · ${status.rejectCount} reject · ${status.requestChangeCount} request change · ${status.abstainCount} abstain`,
+    `Decision lifecycle: ${status.expiredDecisionCount} expired · ${status.revokedDecisionCount} revoked`,
+    `Candidate governance: approver authority ${status.approverAuthorityState} · separation enforcement ${status.separationOfDutiesEnforcementState}`,
+    `Candidate gaps: ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Approval subject: ${record.subject.recordId}@${record.subject.revision} · returned version ${record.subject.returnedExternalVersionDigest} · ${record.subject.itemCount} items`,
+      `Scope digest: ${record.scopeDigest}`,
+      `Decision evidence: definition ${record.decisionDefinitionDigest} · receipt ${record.decisionReceiptDigest}`,
+      `Recorded decision: ${record.decisionKind ? `${record.decisionKind} · ${record.decisionLifecycleState} · ${record.decisionDigest}` : "not recorded"}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, exact prerequisite and finalized-snapshot bindings, scope and receipt digests, decision kind, lifecycle, counts, and recorded states only; this view does not verify approver authority, enforce separation of duties, establish design approval, baseline, readiness, or phase entry, call Figma, request credentials, grant permissions, execute imports or writes, or grant implementation or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

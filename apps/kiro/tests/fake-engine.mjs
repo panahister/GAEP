@@ -70,6 +70,7 @@ const designToRequirementBindingId = "72727272-7272-4272-8272-727272727272"
 const designerReadyGateId = "73737373-7373-4373-8373-737373737373"
 const designDeltaId = "74747474-7474-4474-8474-747474747474"
 const designConflictResolutionId = "75757575-7575-4575-8575-757575757575"
+const humanDesignApprovalId = "76767676-7676-4676-8676-767676767676"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -191,6 +192,8 @@ input.on("line", (line) => {
       return readDesignDelta(id, request.params)
     case "design.designConflictResolution.snapshot":
       return readDesignConflictResolution(id, request.params)
+    case "design.humanDesignApproval.snapshot":
+      return readHumanDesignApproval(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -3153,6 +3156,85 @@ function readDesignConflictResolution(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-design-conflict-resolution-digest")) value.status.resolutionCount = 3
   if (workspacePath.endsWith("bad-design-conflict-resolution-private")) value.resolutionContent = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readHumanDesignApproval(id, params) {
+  if (!exactKeys(params, ["initiativeId"])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"2".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "human-design-approval-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: humanDesignApprovalId, revision: 2, digest: candidateDigest },
+    prerequisiteCount: 5,
+    completePrerequisiteCount: 4,
+    decisionCount: 1,
+    approveCount: 1,
+    rejectCount: 0,
+    requestChangeCount: 0,
+    abstainCount: 0,
+    expiredDecisionCount: 1,
+    revokedDecisionCount: 0,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    candidateResult: "approved-candidate",
+    reviewState: "recorded-human-decision",
+    approverAuthorityState: "not-established",
+    separationOfDutiesEnforcementState: "not-established",
+    state: "attention-required",
+    reasons: ["The recorded human design decision candidate is expired"],
+    assessedAt: "2026-07-30T00:55:00.000Z",
+    authorityBoundary: "human-design-approval-status-is-observational-and-does-not-verify-approver-authority-enforce-separation-of-duties-establish-design-approval-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "human-design-approval-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: humanDesignApprovalId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"3".repeat(64)}`,
+      state: "candidate",
+      prerequisiteCatalogDigest: `sha256:${"4".repeat(64)}`,
+      subject: {
+        kind: "finalized-figma-snapshot-import-candidate",
+        recordId: finalizedFigmaSnapshotImportId,
+        revision: 2,
+        digest: `sha256:${"5".repeat(64)}`,
+        membershipDigest: `sha256:${"6".repeat(64)}`,
+        externalFileIdentityDigest: `sha256:${"7".repeat(64)}`,
+        returnedExternalVersionDigest: `sha256:${"8".repeat(64)}`,
+        itemCatalogDigest: `sha256:${"9".repeat(64)}`,
+        itemCount: 18,
+      },
+      scopeDigest: `sha256:${"a".repeat(64)}`,
+      decisionDefinitionDigest: `sha256:${"b".repeat(64)}`,
+      decisionReceiptDigest: `sha256:${"c".repeat(64)}`,
+      decisionKind: "approve-candidate",
+      decisionDigest: `sha256:${"d".repeat(64)}`,
+      decisionLifecycleState: "active-candidate",
+      candidateResult: "approved-candidate",
+      reviewState: "recorded-human-decision",
+      updatedAt: "2026-07-30T00:54:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-decision-rationale-condition-evidence-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+    authorityBoundary: "human-design-approval-projection-is-read-only-and-does-not-verify-approver-authority-enforce-separation-of-duties-establish-design-approval-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-human-design-approval-binding")) content.initiative.id = humanDesignApprovalId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-human-design-approval-digest")) value.status.completePrerequisiteCount = 5
+  if (workspacePath.endsWith("bad-human-design-approval-private")) value.decisionRationale = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }
 

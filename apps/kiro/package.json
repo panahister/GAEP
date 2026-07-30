@@ -94,6 +94,7 @@
     "onCommand:gaepKiro.designerReadyGate.inspect",
     "onCommand:gaepKiro.designDelta.inspect",
     "onCommand:gaepKiro.designConflictResolution.inspect",
+    "onCommand:gaepKiro.humanDesignApproval.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -347,6 +348,10 @@
       {
         "command": "gaepKiro.designConflictResolution.inspect",
         "title": "GAEP for Kiro: Inspect Design Conflict Resolution Candidate"
+      },
+      {
+        "command": "gaepKiro.humanDesignApproval.inspect",
+        "title": "GAEP for Kiro: Inspect Human Design Approval Decision Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",
