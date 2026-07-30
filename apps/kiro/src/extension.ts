@@ -39,6 +39,7 @@ import {
   type ImplementationUnitModelProjection,
   type DependencyMappingProjection,
   type TechnologyProfileProjection,
+  type BoilerplateRegistryProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -170,6 +171,7 @@ const commandIds = {
   implementationUnitModel: "gaepKiro.implementationUnitModel.inspect",
   dependencyMapping: "gaepKiro.dependencyMapping.inspect",
   technologyProfile: "gaepKiro.technologyProfile.inspect",
+  boilerplateRegistry: "gaepKiro.boilerplateRegistry.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -318,6 +320,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.implementationUnitModel, (input?: unknown) => runUserCommand(() => showImplementationUnitModel(pool, input))),
     vscode.commands.registerCommand(commandIds.dependencyMapping, (input?: unknown) => runUserCommand(() => showDependencyMapping(pool, input))),
     vscode.commands.registerCommand(commandIds.technologyProfile, (input?: unknown) => runUserCommand(() => showTechnologyProfile(pool, input))),
+    vscode.commands.registerCommand(commandIds.boilerplateRegistry, (input?: unknown) => runUserCommand(() => showBoilerplateRegistry(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2137,6 +2140,50 @@ async function showTechnologyProfile(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and profile, selection, compatibility, assessment, and snapshot digests only; no technology names, versions, constraints, evidence, rationale, unit, architecture, repository, toolchain, license, security-policy, or personal data. Candidate completeness does not establish technology approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showBoilerplateRegistry(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<BoilerplateRegistryProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Boilerplate Registry inspection", "Initiative ID")
+  const projection = await client.readBoilerplateRegistry(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Boilerplate Registry candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Candidate coverage: ${status.entryCount} entries · ${status.exactVersionCandidateCount} exact versions · ${status.rangeVersionCandidateCount} ranges · ${status.unresolvedVersionCount} unresolved versions · ${status.mandatoryCandidateCount} mandatory candidates`,
+    `Candidate asset gaps: ${status.unavailableEntryCount} unavailable · ${status.integrityMismatchCount} integrity gaps · ${status.provenanceGapCount} provenance gaps · ${status.missingEvidenceCount} missing evidence`,
+    `Candidate policy gaps: ${status.unsupportedEntryCount} unsupported · ${status.lifecycleRiskCount} lifecycle risks · ${status.technologyConflictCount} technology conflicts · ${status.architectureConflictCount} architecture conflicts · ${status.licenseReviewRequiredCount} license reviews · ${status.licenseProhibitedCount} license-prohibited · ${status.securityReviewRequiredCount} security reviews · ${status.securityNonconformantCount} security-nonconformant · ${status.exceptionCandidateCount} exception candidates`,
+    `Candidate gaps: ${status.unresolvedQuestionCount} questions · ${status.invalidRegistryCount} invalid registries · ${status.staleBindingCount} stale bindings · ${status.staleImplementationUnitModelCount} stale Implementation Unit Models · ${status.staleTechnologyProfileCount} stale Technology Profiles`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Entry catalog digest: ${record.entryCatalogDigest}`,
+      `Source catalog digest: ${record.sourceCatalogDigest}`,
+      `Compatibility assessment receipt digest: ${record.compatibilityAssessmentReceiptDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`,
+      `Candidate coverage: ${record.entryCount} entries · ${record.mandatoryCandidateCount} mandatory candidates · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and entry, source, compatibility, assessment, and snapshot digests only; no boilerplate names, locators, versions, capabilities, limitations, evidence, rationale, technology, unit, architecture, repository, template, license, security-policy, or personal data. Candidate completeness does not establish organizational designation, endorsement, approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver, selection or binding, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

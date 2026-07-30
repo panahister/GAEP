@@ -65,6 +65,7 @@ const definitionOfDoneId = "86868686-8686-4686-8686-868686868686"
 const implementationUnitModelId = "87878787-8787-4787-8787-878787878787"
 const dependencyMappingId = "88888888-8888-4888-8888-888888888888"
 const technologyProfileId = "89898989-8989-4989-8989-898989898989"
+const boilerplateRegistryId = "90909090-9090-4090-8090-909090909090"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -193,6 +194,8 @@ input.on("line", (line) => {
       return readDependencyMapping(id, request.params)
     case "planning.technologyProfile.snapshot":
       return readTechnologyProfile(id, request.params)
+    case "planning.boilerplateRegistry.snapshot":
+      return readBoilerplateRegistry(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -2814,6 +2817,84 @@ function readTechnologyProfile(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-technology-profile-snapshot-digest")) value.candidate.unitProfileCount = 4
   if (workspacePath.endsWith("bad-technology-profile-snapshot-private")) {
+    value.rationale = `${privateRoot}/${privateCredential}`
+    value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
+  }
+  return writeResult(id, value)
+}
+
+function readBoilerplateRegistry(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BOILERPLATE REGISTRY PARAMS")
+  }
+  const candidateDigest = `sha256:${"3".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "boilerplate-registry-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: boilerplateRegistryId, revision: 2, digest: candidateDigest },
+    implementationUnitModel: { recordId: implementationUnitModelId, revision: 2, digest: `sha256:${"5".repeat(64)}` },
+    technologyProfile: { recordId: technologyProfileId, revision: 2, digest: `sha256:${"d".repeat(64)}` },
+    entryCount: 4,
+    exactVersionCandidateCount: 2,
+    rangeVersionCandidateCount: 1,
+    unresolvedVersionCount: 1,
+    mandatoryCandidateCount: 2,
+    missingEvidenceCount: 1,
+    unavailableEntryCount: 1,
+    integrityMismatchCount: 1,
+    provenanceGapCount: 1,
+    unsupportedEntryCount: 1,
+    lifecycleRiskCount: 1,
+    technologyConflictCount: 1,
+    architectureConflictCount: 1,
+    licenseReviewRequiredCount: 1,
+    licenseProhibitedCount: 0,
+    securityReviewRequiredCount: 1,
+    securityNonconformantCount: 0,
+    exceptionCandidateCount: 1,
+    staleBindingCount: 0,
+    staleImplementationUnitModelCount: 0,
+    staleTechnologyProfileCount: 0,
+    invalidRegistryCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Boilerplate Registry candidates require human review"],
+    assessedAt: "2026-07-30T17:00:00.000Z",
+    authorityBoundary: "boilerplate-registry-status-is-observational-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-selection-binding-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "boilerplate-registry-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: boilerplateRegistryId,
+      revision: 2,
+      digest: candidateDigest,
+      state: "candidate",
+      entryCatalogDigest: `sha256:${"4".repeat(64)}`,
+      sourceCatalogDigest: `sha256:${"5".repeat(64)}`,
+      compatibilityAssessmentReceiptDigest: `sha256:${"6".repeat(64)}`,
+      assessmentReceiptDigest: `sha256:${"7".repeat(64)}`,
+      entryCount: 4,
+      mandatoryCandidateCount: 2,
+      reviewState: "held",
+      updatedAt: "2026-07-30T16:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-entry-source-compatibility-assessment-snapshot-digests-only-not-boilerplate-names-locators-versions-capabilities-limitations-evidence-rationale-technology-unit-architecture-repository-template-license-security-policy-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "boilerplate-registry-projection-is-read-only-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-selection-binding-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-boilerplate-registry-snapshot-binding")) content.initiative.id = boilerplateRegistryId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-boilerplate-registry-snapshot-digest")) value.candidate.entryCount = 5
+  if (workspacePath.endsWith("bad-boilerplate-registry-snapshot-private")) {
     value.rationale = `${privateRoot}/${privateCredential}`
     value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
   }

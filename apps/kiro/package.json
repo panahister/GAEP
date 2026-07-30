@@ -91,6 +91,7 @@
     "onCommand:gaepKiro.implementationUnitModel.inspect",
     "onCommand:gaepKiro.dependencyMapping.inspect",
     "onCommand:gaepKiro.technologyProfile.inspect",
+    "onCommand:gaepKiro.boilerplateRegistry.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -349,6 +350,10 @@
       {
         "command": "gaepKiro.technologyProfile.inspect",
         "title": "GAEP for Kiro: Inspect Governed Technology Profile Candidate"
+      },
+      {
+        "command": "gaepKiro.boilerplateRegistry.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Boilerplate Registry Candidate"
       },
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",

@@ -38,6 +38,7 @@ import {
   implementationUnitModelProjectionSchema,
   dependencyMappingProjectionSchema,
   technologyProfileProjectionSchema,
+  boilerplateRegistryProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -102,6 +103,7 @@ import {
   type ImplementationUnitModelProjection,
   type DependencyMappingProjection,
   type TechnologyProfileProjection,
+  type BoilerplateRegistryProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -921,6 +923,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = technologyProfileProjectionSchema.safeParse(
         await this.request("planning.technologyProfile.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readBoilerplateRegistry(initiativeValue: string): Promise<BoilerplateRegistryProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = boilerplateRegistryProjectionSchema.safeParse(
+        await this.request("planning.boilerplateRegistry.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data
