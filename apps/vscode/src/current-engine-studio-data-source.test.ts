@@ -51,6 +51,7 @@ import {
   type MvpSliceDefinitionProjection,
   type PrioritizationModelProjection,
   type AcceptanceCriteriaProjection,
+  type DefinitionOfReadyProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -2170,6 +2171,85 @@ function acceptanceCriteriaProjection(
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function definitionOfReadyProjection(
+  hierarchy = backlogHierarchyProjection(),
+  mvp = mvpSliceDefinitionProjection(hierarchy),
+  priority = prioritizationModelProjection(mvp),
+  criteria = acceptanceCriteriaProjection(hierarchy, mvp, priority),
+): DefinitionOfReadyProjection {
+  const exactHierarchy = hierarchy.candidate!
+  const exactMvp = mvp.candidate!
+  const exactPriority = priority.candidate!
+  const exactCriteria = criteria.candidate!
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "definition-of-ready-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "f8f8f8f8-f8f8-48f8-88f8-f8f8f8f8f8f8", revision: 2, digest: `sha256:${"9".repeat(64)}` as const },
+    hierarchy: { recordId: exactHierarchy.id, revision: exactHierarchy.revision, digest: exactHierarchy.digest },
+    mvpSliceDefinition: { recordId: exactMvp.id, revision: exactMvp.revision, digest: exactMvp.digest },
+    prioritizationModel: { recordId: exactPriority.id, revision: exactPriority.revision, digest: exactPriority.digest },
+    acceptanceCriteria: { recordId: exactCriteria.id, revision: exactCriteria.revision, digest: exactCriteria.digest },
+    subjectCount: 4,
+    policyEntryCount: 5,
+    expectedEvaluationCount: 20,
+    evaluationCount: 18,
+    candidateSatisfiedCount: 12,
+    notSatisfiedCount: 2,
+    notApplicableCount: 3,
+    exceptionCandidateCount: 1,
+    notAssessedCount: 1,
+    staleEvaluationCount: 1,
+    invalidEvaluationCount: 1,
+    missingEvaluationCount: 2,
+    staleBindingCount: 0,
+    staleHierarchyCount: 0,
+    staleMvpSliceDefinitionCount: 0,
+    stalePrioritizationModelCount: 0,
+    staleAcceptanceCriteriaCount: 0,
+    expiredCount: 0,
+    unresolvedQuestionCount: 2,
+    reviewState: "held" as const,
+    result: "attention-required" as const,
+    reasons: ["One or more item prerequisites require review"],
+    assessedAt: "2026-07-30T13:20:00.000Z",
+    gateBoundary: "a-passing-definition-of-ready-candidate-is-an-evaluation-result-not-admission-readiness-assignment-execution-or-implementation-permission" as const,
+    authorityBoundary: "definition-of-ready-status-is-observational-and-does-not-establish-prerequisite-truth-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-exception-waiver-authority-phase-entry-implementation-readiness-assignment-execution-acceptance-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "definition-of-ready-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      state: "candidate" as const,
+      policyVersion: 3,
+      validUntil: "2026-08-30T13:19:00.000Z",
+      subjectCatalogDigest: `sha256:${"a".repeat(64)}` as const,
+      policyDigest: `sha256:${"b".repeat(64)}` as const,
+      evaluationDigest: `sha256:${"c".repeat(64)}` as const,
+      receiptDigest: `sha256:${"d".repeat(64)}` as const,
+      subjectCount: 4,
+      policyEntryCount: 5,
+      evaluationCount: 18,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-30T13:19:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-policy-evaluation-receipt-snapshot-digests-only-not-rules-rationales-evidence-identities-assessor-identities-personal-data-secrets-credentials-or-machine-paths" as const,
+    gateBoundary: "a-passing-definition-of-ready-candidate-is-an-evaluation-result-not-admission-readiness-assignment-execution-or-implementation-permission" as const,
+    authorityBoundary: "definition-of-ready-projection-is-read-only-and-does-not-establish-prerequisite-truth-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-exception-waiver-authority-phase-entry-implementation-readiness-assignment-execution-acceptance-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -3961,6 +4041,7 @@ interface HarnessOptions {
   mvpSliceDefinitionProjection?: MvpSliceDefinitionProjection
   prioritizationModelProjection?: PrioritizationModelProjection
   acceptanceCriteriaProjection?: AcceptanceCriteriaProjection
+  definitionOfReadyProjection?: DefinitionOfReadyProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -4131,6 +4212,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.acceptanceCriteriaProjection ? {
       acceptanceCriteria: {
         project: async () => options.acceptanceCriteriaProjection!,
+      },
+    } : {}),
+    ...(options.definitionOfReadyProjection ? {
+      definitionOfReady: {
+        project: async () => options.definitionOfReadyProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -4766,6 +4852,46 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private criterion text|private requirement identity|private verification evidence|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects exact privacy-safe Definition of Ready metadata on Delivery without turning a candidate into admission", async () => {
+    const hierarchy = backlogHierarchyProjection()
+    const mvp = mvpSliceDefinitionProjection(hierarchy)
+    const priority = prioritizationModelProjection(mvp)
+    const criteria = acceptanceCriteriaProjection(hierarchy, mvp, priority)
+    const projection = definitionOfReadyProjection(hierarchy, mvp, priority, criteria)
+    const { source } = harness({
+      backlogHierarchyProjection: hierarchy,
+      mvpSliceDefinitionProjection: mvp,
+      prioritizationModelProjection: priority,
+      acceptanceCriteriaProjection: criteria,
+      definitionOfReadyProjection: projection,
+    })
+    const snapshot = await source.readSnapshot("delivery")
+
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.kind === "delivery" && snapshot.page.definitionOfReady).toMatchObject({
+      id: "definition-of-ready",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          policyVersion: "3",
+          subjects: projection.candidate?.subjectCatalogDigest,
+          policy: projection.candidate?.policyDigest,
+          evaluations: projection.candidate?.evaluationDigest,
+          receipt: projection.candidate?.receiptDigest,
+          coverage: "4 subjects · 5 prerequisites · 18/20 evaluations · 2 missing",
+          assessment: "attention-required · held · 12 candidate-satisfied · 3 not-applicable candidates · 2 not satisfied · 1 exception candidates",
+          gaps: "2 questions · 1 unassessed · 1 stale evaluations · 1 invalid evaluations · 0 expired · 0 stale bindings · 0 stale hierarchies · 0 stale MVP definitions · 0 stale prioritization models · 0 stale Acceptance Criteria",
+          boundary: expect.stringContaining("A candidate pass is not admission or implementation permission"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private ready rule|private rationale|private evidence identity|private assessor|customer@example\.com|api_key/iu,
     )
   })
 

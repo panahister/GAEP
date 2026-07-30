@@ -606,6 +606,7 @@ class StudioShell {
       ...(page.mvpSliceDefinitions ? [page.mvpSliceDefinitions] : []),
       ...(page.prioritizationModels ? [page.prioritizationModels] : []),
       ...(page.acceptanceCriteria ? [page.acceptanceCriteria] : []),
+      ...(page.definitionOfReady ? [page.definitionOfReady] : []),
     ]) container.append(this.renderTable(table))
     if (page.transitionPreview) {
       const preview = element("section", "section grouped-section")

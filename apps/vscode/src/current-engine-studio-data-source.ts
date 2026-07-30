@@ -12,6 +12,7 @@ import type {
   MvpSliceDefinitionProjection,
   PrioritizationModelProjection,
   AcceptanceCriteriaProjection,
+  DefinitionOfReadyProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -195,6 +196,9 @@ export interface CurrentStudioEngineReader {
   acceptanceCriteria?: {
     project(initiativeId: string): Promise<AcceptanceCriteriaProjection>
   }
+  definitionOfReady?: {
+    project(initiativeId: string): Promise<DefinitionOfReadyProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -368,6 +372,7 @@ interface ObservedStudioState {
   mvpSliceDefinitionProjections: Map<string, MvpSliceDefinitionProjection>
   prioritizationModelProjections: Map<string, PrioritizationModelProjection>
   acceptanceCriteriaProjections: Map<string, AcceptanceCriteriaProjection>
+  definitionOfReadyProjections: Map<string, DefinitionOfReadyProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3788,6 +3793,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     mvpSliceDefinitions: mvpSliceDefinitionsTable(state),
     prioritizationModels: prioritizationModelsTable(state),
     acceptanceCriteria: acceptanceCriteriaTable(state),
+    definitionOfReady: definitionOfReadyTable(state),
   }
 }
 
@@ -4067,6 +4073,61 @@ function acceptanceCriteriaTable(state: ObservedStudioState): StudioTableSnapsho
       emptyState: emptySurface(
         "No governed Acceptance Criteria candidate",
         "Create the candidate through the governed engine workflow after exact Backlog Hierarchy, MVP and Vertical Slice, and Prioritization Model candidates exist. This view does not infer criterion validity or completeness, Requirement satisfaction, priority, commitment, approval, readiness, assignment, execution, acceptance, implementation authority, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function definitionOfReadyTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.definitionOfReadyProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        policyVersion: String(record.policyVersion),
+        subjects: record.subjectCatalogDigest,
+        policy: record.policyDigest,
+        evaluations: record.evaluationDigest,
+        receipt: record.receiptDigest,
+        coverage: `${status.subjectCount} subjects · ${status.policyEntryCount} prerequisites · ${status.evaluationCount}/${status.expectedEvaluationCount} evaluations · ${status.missingEvaluationCount} missing`,
+        assessment: `${status.result} · ${status.reviewState} · ${status.candidateSatisfiedCount} candidate-satisfied · ${status.notApplicableCount} not-applicable candidates · ${status.notSatisfiedCount} not satisfied · ${status.exceptionCandidateCount} exception candidates`,
+        gaps: `${status.unresolvedQuestionCount} questions · ${status.notAssessedCount} unassessed · ${status.staleEvaluationCount} stale evaluations · ${status.invalidEvaluationCount} invalid evaluations · ${status.expiredCount} expired · ${status.staleBindingCount} stale bindings · ${status.staleHierarchyCount} stale hierarchies · ${status.staleMvpSliceDefinitionCount} stale MVP definitions · ${status.stalePrioritizationModelCount} stale prioritization models · ${status.staleAcceptanceCriteriaCount} stale Acceptance Criteria`,
+        boundary: "Candidate identities, counts, statuses, validity time, and subject, policy, evaluation, receipt, and snapshot digests only; no rules, rationales, evidence identities, assessor identities, personal data, prerequisite truth, criterion validity or completeness, Requirement satisfaction, priority, commitment, approval, ready or done, exception or waiver authority, phase entry, implementation readiness, assignment, execution, acceptance, implementation authority, or action authority. A candidate pass is not admission or implementation permission.",
+      },
+      state: status.result,
+      actions: [],
+    }]
+  })
+  return {
+    id: "definition-of-ready",
+    title: "Governed Definition of Ready Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "policyVersion", label: "Policy version" },
+      { key: "subjects", label: "Subject catalog digest" },
+      { key: "policy", label: "Policy digest" },
+      { key: "evaluations", label: "Evaluation digest" },
+      { key: "receipt", label: "Receipt digest" },
+      { key: "coverage", label: "Privacy-safe coverage" },
+      { key: "assessment", label: "Candidate assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Definition of Ready candidate",
+        "Create the candidate through the governed engine workflow after exact Backlog Hierarchy, MVP and Vertical Slice, Prioritization Model, and Acceptance Criteria candidates exist. This view does not infer prerequisite truth, admission, readiness, approval, phase entry, assignment, execution, implementation permission, or action authority.",
       ),
     } : {}),
   }
@@ -5910,6 +5971,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       mvpSliceDefinitionProjections: new Map(),
       prioritizationModelProjections: new Map(),
       acceptanceCriteriaProjections: new Map(),
+      definitionOfReadyProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -6309,6 +6371,63 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "acceptance-criteria-unavailable",
           "Acceptance Criteria metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.definitionOfReady) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.definitionOfReady!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            const hierarchy = empty.backlogHierarchyProjections.get(initiative.id)?.candidate
+            const mvp = empty.mvpSliceDefinitionProjections.get(initiative.id)?.candidate
+            const priority = empty.prioritizationModelProjections.get(initiative.id)?.candidate
+            const criteria = empty.acceptanceCriteriaProjections.get(initiative.id)?.candidate
+            const candidate = projection.value.candidate
+            const exactDependencies = !candidate || (
+              hierarchy !== undefined && projection.value.status.hierarchy?.recordId === hierarchy.id &&
+              projection.value.status.hierarchy.revision === hierarchy.revision && projection.value.status.hierarchy.digest === hierarchy.digest &&
+              mvp !== undefined && projection.value.status.mvpSliceDefinition?.recordId === mvp.id &&
+              projection.value.status.mvpSliceDefinition.revision === mvp.revision && projection.value.status.mvpSliceDefinition.digest === mvp.digest &&
+              priority !== undefined && projection.value.status.prioritizationModel?.recordId === priority.id &&
+              projection.value.status.prioritizationModel.revision === priority.revision && projection.value.status.prioritizationModel.digest === priority.digest &&
+              criteria !== undefined && projection.value.status.acceptanceCriteria?.recordId === criteria.id &&
+              projection.value.status.acceptanceCriteria.revision === criteria.revision && projection.value.status.acceptanceCriteria.digest === criteria.digest
+            )
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              exactDependencies && snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.definitionOfReadyProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Definition of Ready projection was unavailable or did not bind exact Product, Initiative, Backlog Hierarchy, MVP and Slice Definition, Prioritization Model, and Acceptance Criteria revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `definition-of-ready-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Definition of Ready metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "definition-of-ready-unavailable",
+          "Definition of Ready metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
