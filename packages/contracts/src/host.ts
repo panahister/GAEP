@@ -18,6 +18,7 @@ import {
 import { phase1SummaryDashboardRequestSchema } from "./phase1-summary-dashboard.js"
 import { phase1ChangeImpactDashboardRequestSchema } from "./phase1-change-impact-dashboard.js"
 import { phase1AgentModelDashboardRequestSchema } from "./phase1-agent-model-dashboard.js"
+import { phase2UxFigmaDashboardRequestSchema } from "./phase2-ux-figma-dashboard.js"
 import { effectDescriptorSchema, toolPermissionSchema } from "./execution.js"
 import {
   initiativeApplicabilityMatrixInputSchema,
@@ -800,6 +801,7 @@ export const hostDesignDriftDetectionReviseParamsSchema = z.object({
 }).strict()
 
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
+export const hostPhase2UxFigmaDashboardParamsSchema = phase2UxFigmaDashboardRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
 export const hostChangeImpactChangeCatalogParamsSchema = changeImpactChangeCatalogRequestSchema
@@ -834,6 +836,7 @@ export const hostMethodSchema = z.enum([
   "managed.review.apply",
   "managed.review.discard",
   "dashboard.framework",
+  "dashboard.phase2UxFigma",
   "dashboard.phase1Summary",
   "dashboard.phase1ChangeImpact",
   "dashboard.changeImpact.changes",
@@ -1125,6 +1128,7 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("managed.review.apply", hostManagedReviewApplyParamsSchema),
   requestVariant("managed.review.discard", hostManagedReviewDiscardParamsSchema),
   requestVariant("dashboard.framework", hostDashboardFrameworkParamsSchema),
+  requestVariant("dashboard.phase2UxFigma", hostPhase2UxFigmaDashboardParamsSchema),
   requestVariant("dashboard.phase1Summary", hostPhase1SummaryDashboardParamsSchema),
   requestVariant("dashboard.phase1ChangeImpact", hostPhase1ChangeImpactDashboardParamsSchema),
   requestVariant("dashboard.changeImpact.changes", hostChangeImpactChangeCatalogParamsSchema),

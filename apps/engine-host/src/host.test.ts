@@ -3335,6 +3335,79 @@ describe("engine host protocol", () => {
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
   })
 
+  it("composes an exact Initiative-bound Phase 2 UX/Figma dashboard without authority or effects", async () => {
+    const { initiativeId } = await createProductAndInitiative()
+    const [product, initiative] = await Promise.all([
+      host.engine.readProduct(),
+      host.engine.readInitiative(initiativeId),
+    ])
+    const params = {
+      expectedProductId: product.id,
+      expectedProductRevision: product.revision ?? 1,
+      expectedProductDigest: canonicalDigest(product),
+      expectedInitiativeId: initiative.id,
+      expectedInitiativeRevision: initiative.revision ?? 1,
+      expectedInitiativeDigest: canonicalDigest(initiative),
+    }
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "dashboard.phase2UxFigma",
+      params,
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+
+    const result = await host.dispatch({
+      jsonrpc: "2.0",
+      id: 2,
+      protocolVersion: 2,
+      method: "dashboard.phase2UxFigma",
+      params,
+    }) as Record<string, unknown>
+    expect(result).toMatchObject({
+      kind: "phase-2-ux-figma-dashboard",
+      phase: { id: "phase-2-design" },
+      product: { recordId: product.id, revision: product.revision ?? 1 },
+      initiative: { recordId: initiative.id, revision: initiative.revision ?? 1 },
+      phaseStatus: {
+        expectedSourceCount: 23,
+        productOwnerAcceptance: "not-established",
+        readinessAuthority: "not-established",
+        phaseEntryAuthority: "not-established",
+      },
+      figma: {
+        connectionState: "not-established",
+        writeExecutionState: "not-performed",
+        importExecutionState: "not-performed",
+      },
+      governance: {
+        baselineDesignationState: "not-established",
+        approvalState: "not-established",
+        readinessState: "not-established",
+        remediationEffectState: "not-applied",
+      },
+    })
+    const { snapshotDigest, ...content } = result
+    expect(snapshotDigest).toBe(canonicalDigest(content))
+    expect(JSON.stringify(result)).not.toContain(workspace)
+    expect(JSON.stringify(result)).not.toContain(product.name)
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 3,
+      protocolVersion: 2,
+      method: "dashboard.phase2UxFigma",
+      params: { ...params, expectedInitiativeDigest: `sha256:${"0".repeat(64)}` },
+    })).rejects.toMatchObject({ kind: "PHASE2_UX_FIGMA_CONTEXT_CHANGED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: 4,
+      protocolVersion: 2,
+      method: "dashboard.phase2UxFigma",
+      params: { ...params, approved: true },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+  })
+
   it("composes an exact Initiative-bound Phase 1 summary without synthesizing readiness or owners", async () => {
     const { initiativeId } = await createProductAndInitiative()
     const [product, initiative] = await Promise.all([

@@ -27,12 +27,14 @@ import {
   composeChangeImpactChangeCatalog,
   composeChangeImpactDashboard,
   composePhaseDashboardFramework,
+  composePhase2UxFigmaDashboard,
   composePhase1AgentModelDashboard,
   composePhase1SummaryDashboard,
   composePhase1ChangeImpactDashboard,
   DashboardProductBindingError,
   GaepEngine,
   Phase1AgentModelBindingError,
+  Phase2UxFigmaDashboardBindingError,
   Phase1SummaryBindingError,
   Phase1ChangeImpactBindingError,
 } from "@gaep/engine"
@@ -78,6 +80,7 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "managed.review.apply",
   "managed.review.discard",
   "dashboard.framework",
+  "dashboard.phase2UxFigma",
   "dashboard.phase1Summary",
   "dashboard.phase1ChangeImpact",
   "dashboard.changeImpact.changes",
@@ -720,6 +723,56 @@ export class EngineHost {
               -32_039,
               "DASHBOARD_PRODUCT_CONTEXT_CHANGED",
               "The Product changed before the dashboard framework was composed; reload the current Product",
+            )
+          }
+          throw error
+        }
+      }
+      case "dashboard.phase2UxFigma": {
+        const audit = await this.engine.repository.verifyAudit()
+        if (!audit.valid) {
+          throw new HostRpcError(
+            -32_053,
+            "PHASE2_UX_FIGMA_AUDIT_INVALID",
+            "The audit chain is invalid or unavailable; no Phase 2 UX/Figma dashboard was composed",
+          )
+        }
+        const initiativeId = request.params.expectedInitiativeId
+        const [product, initiative, ...projections] = await Promise.all([
+          this.engine.readProduct(),
+          this.engine.readInitiative(initiativeId),
+          this.engine.designApplicability.project(initiativeId),
+          this.engine.designPersonaRoleModel.project(initiativeId),
+          this.engine.userJourneyModel.project(initiativeId),
+          this.engine.informationArchitectureModel.project(initiativeId),
+          this.engine.screenStateInventory.project(initiativeId),
+          this.engine.designRequirements.project(initiativeId),
+          this.engine.designSystemTokenContract.project(initiativeId),
+          this.engine.accessibilityDesignRules.project(initiativeId),
+          this.engine.responsiveMultiPlatformTargets.project(initiativeId),
+          this.engine.manualFigmaExecutionPath.project(initiativeId),
+          this.engine.figmaMcpCapabilityDiscovery.project(initiativeId),
+          this.engine.figmaReadSnapshot.project(initiativeId),
+          this.engine.figmaContextImport.project(initiativeId),
+          this.engine.outboundDesignBriefPackage.project(initiativeId),
+          this.engine.governedFigmaWrite.project(initiativeId),
+          this.engine.finalizedFigmaSnapshotImport.project(initiativeId),
+          this.engine.designToRequirementBinding.project(initiativeId),
+          this.engine.designerReadyGate.project(initiativeId),
+          this.engine.designDelta.project(initiativeId),
+          this.engine.designConflictResolution.project(initiativeId),
+          this.engine.humanDesignApproval.project(initiativeId),
+          this.engine.designBaseline.project(initiativeId),
+          this.engine.designDriftDetection.project(initiativeId),
+        ])
+        try {
+          return composePhase2UxFigmaDashboard(product, initiative, projections, request.params)
+        } catch (error) {
+          if (error instanceof Phase2UxFigmaDashboardBindingError) {
+            throw new HostRpcError(
+              -32_054,
+              "PHASE2_UX_FIGMA_CONTEXT_CHANGED",
+              "The Product, Initiative, or a Phase 2 projection changed before dashboard composition; reload the exact governed context",
             )
           }
           throw error
