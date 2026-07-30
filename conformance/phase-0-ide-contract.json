@@ -67,6 +67,7 @@
     { "id": "prioritization-model", "label": "Exact governed explainable Prioritization Model candidate projection over the current MVP and Vertical Slice definition with deterministic value, risk-reduction, dependency-enablement and inverse-cost scoring, evidence and uncertainty inputs, stable tie handling and no elevation of candidate scores into evidence validity, priority, commitment, scope decision, approval, ready or done state, implementation readiness, assignment, execution, implementation, write, or action authority" },
     { "id": "acceptance-criteria", "label": "Exact governed Acceptance Criteria candidate projection over current MVP Story and Task subjects with structured precondition, stimulus and expected-result criteria, exact Requirement traces, declared verification methods and exact current Backlog Hierarchy, MVP and Vertical Slice, and Prioritization Model bindings, without elevating candidate testability or coverage into criterion validity, completeness, Requirement satisfaction, priority, commitment, approval, ready or done state, implementation readiness, assignment, execution, acceptance, implementation, write, or action authority" },
     { "id": "definition-of-ready", "label": "Exact governed Definition of Ready item-evaluation candidate over current MVP Story and Task subjects with a versioned prerequisite policy, required or not-applicable candidate dispositions, exact evidence and assessor inputs, deterministic evaluation receipt, expiry and invalidation, and exact current Backlog Hierarchy, MVP and Vertical Slice, Prioritization Model, and Acceptance Criteria bindings, without elevating a candidate pass into prerequisite truth, criterion validity or completeness, Requirement satisfaction, priority, commitment, approval, ready or done state, exception or waiver authority, phase entry, implementation readiness, assignment, execution, acceptance, implementation, write, or action authority" },
+    { "id": "definition-of-done", "label": "Exact governed Definition of Done item-evaluation candidate over current MVP Story and Task subjects with a versioned completion policy, required or not-applicable candidate dispositions, exact evidence and assessor inputs, deterministic evaluation receipt, expiry and invalidation, and exact current Backlog Hierarchy, MVP and Vertical Slice, Prioritization Model, Acceptance Criteria, and Definition of Ready bindings, without elevating a candidate pass into evidence truth, test success, quality, Requirement or Acceptance Criteria satisfaction, approval, ready or done state, exception or waiver authority, implementation completeness, merge, release or deployment readiness, assignment, execution, acceptance, implementation, write, or action authority" },
     { "id": "design-system-token-contract", "label": "Exact governed Design System and Token Contract candidate projection with bounded system, token, variable, component and requirement-coverage metadata, without system, token, variable or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "accessibility-design-rules", "label": "Exact governed Accessibility Design Rules candidate projection with bounded target, rule, check, evidence-state and requirement-coverage metadata, without accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "responsive-multi-platform-targets", "label": "Exact governed Responsive and Multi-Platform Targets candidate projection with bounded platform-target, breakpoint, behavior, check, evidence-state and requirement-coverage metadata, without responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
@@ -94,7 +95,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T102500Z-phase-3a-definition-of-ready-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T114500Z-phase-3a-definition-of-done-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -302,6 +303,9 @@
         { "capabilityId": "definition-of-ready", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["definitionOfReady?: {", "engine.definitionOfReady!.project(initiative.id)", "id: \"definition-of-ready\"", "A candidate pass is not admission or implementation permission."] }
         ] },
+        { "capabilityId": "definition-of-done", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["definitionOfDone?: {", "engine.definitionOfDone!.project(initiative.id)", "id: \"definition-of-done\"", "A candidate pass is not completion, approval, merge, release, deployment, or action permission."] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designSystemTokenContract?: {", "engine.designSystemTokenContract!.project(initiative.id)", "id: \"design-system-token-contract\"", "no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."] }
         ] },
@@ -363,7 +367,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T102500Z-phase-3a-definition-of-ready-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T114500Z-phase-3a-definition-of-done-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -598,6 +602,10 @@
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDefinitionOfReady(", "this.request(\"planning.definitionOfReady.snapshot\"", "definitionOfReadyProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDefinitionOfReady", "GAEP governed Definition of Ready candidate", "A candidate pass is an evaluation result, not admission"] }
         ] },
+        { "capabilityId": "definition-of-done", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDefinitionOfDone(", "this.request(\"planning.definitionOfDone.snapshot\"", "definitionOfDoneProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDefinitionOfDone", "GAEP governed Definition of Done candidate", "A candidate pass is an evaluation result, not completion"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignSystemTokenContract(", "this.request(\"design.systemTokenContract.snapshot\"", "designSystemTokenContractProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignSystemTokenContract", "GAEP governed Design System and Token Contract candidate", "does not establish system, token, variable, or component validity"] }
@@ -676,7 +684,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T102500Z-phase-3a-definition-of-ready-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T114500Z-phase-3a-definition-of-done-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -958,6 +966,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Definition of Ready candidate", "Acceptance Criteria changed", "candidate pass is an evaluation result, not admission"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DefinitionOfReadyProjection", "DEFINITION_OF_READY_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] },
+        { "capabilityId": "definition-of-done", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDefinitionOfDone(", "portableRequest(\"planning.definitionOfDone.snapshot\"", "parseDefinitionOfDoneEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Definition of Done candidate", "Definition of Ready changed", "candidate pass is an evaluation result, not completion"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DefinitionOfDoneProjection", "DEFINITION_OF_DONE_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignSystemTokenContract(", "portableRequest(\"design.systemTokenContract.snapshot\"", "parseDesignSystemTokenContractEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design System and Token Contract candidate", "no system, token, variable", "ownership authority"] },
@@ -1053,7 +1066,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T102500Z-phase-3a-definition-of-ready-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T114500Z-phase-3a-definition-of-done-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1346,6 +1359,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDefinitionOfReadyAsync(", "\"planning.definitionOfReady.snapshot\"", "ParseDefinitionOfReadyResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Definition of Ready candidate", "Acceptance Criteria changed", "candidate pass is an evaluation result, not admission"] },
           { "path": "apps/visual-studio/Gaep.HostClient/DefinitionOfReadyProtocol.cs", "contains": ["DefinitionOfReadyProjection", "DefinitionOfReadyProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "definition-of-done", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDefinitionOfDoneAsync(", "\"planning.definitionOfDone.snapshot\"", "ParseDefinitionOfDoneResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Definition of Done candidate", "Definition of Ready changed", "candidate pass is an evaluation result, not completion"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/DefinitionOfDoneProtocol.cs", "contains": ["DefinitionOfDoneProjection", "DefinitionOfDoneProjectionAuthorityBoundary"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignSystemTokenContractAsync(", "\"design.systemTokenContract.snapshot\"", "ParseDesignSystemTokenContractResponse"] },
