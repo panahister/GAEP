@@ -62,6 +62,7 @@ import {
   type FigmaToBoilerplateMappingProjection,
   type DesignToCodeBindingRegistryProjection,
   type RouteScreenComponentMappingProjection,
+  type TestMethodologyProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -3006,6 +3007,66 @@ function routeScreenComponentMappingProjection(
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function testMethodologyProjection(
+  acceptanceCriteria: AcceptanceCriteriaProjection,
+  ready: DefinitionOfReadyProjection,
+  done: DefinitionOfDoneProjection,
+  units: ImplementationUnitModelProjection,
+  dependencyMapping: DependencyMappingProjection,
+  securityPrivacy: SecurityPrivacyAssessmentProjection,
+  routeMapping: RouteScreenComponentMappingProjection,
+): TestMethodologyProjection {
+  const exact = (candidate: { id: string; revision: number; digest: string }) => ({
+    recordId: candidate.id, revision: candidate.revision, digest: candidate.digest,
+  })
+  const status = {
+    schemaVersion: 1 as const, kind: "test-methodology-status" as const,
+    productId: product.id, productRevision: product.revision ?? 1,
+    initiativeId: initiative.id, initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "a6a6a6a6-a6a6-46a6-86a6-a6a6a6a6a6a6", revision: 2, digest: `sha256:${"1".repeat(64)}` as const },
+    acceptanceCriteria: exact(acceptanceCriteria.candidate!), definitionOfReady: exact(ready.candidate!),
+    definitionOfDone: exact(done.candidate!), implementationUnitModel: exact(units.candidate!),
+    dependencyMapping: exact(dependencyMapping.candidate!), securityPrivacyAssessment: exact(securityPrivacy.assessment!),
+    routeScreenComponentMapping: exact(routeMapping.candidate!),
+    sourceUnitCount: 4, sourceRequirementCount: 7, sourceCriterionCount: 12, sourceMappingSubjectCount: 14,
+    scopeCount: 4, decisionCount: 6, selectedDecisionCount: 4, conflictDecisionCount: 1,
+    notApplicableDecisionCount: 0, deferredDecisionCount: 1, notAssessedDecisionCount: 0,
+    environmentCount: 3, dataPolicyCount: 2, evidenceExpectationCount: 5,
+    entryCriterionCount: 4, exitCriterionCount: 4, missingScopeCount: 0, extraScopeCount: 0,
+    invalidDecisionCount: 1, environmentGapCount: 1, dataPolicyGapCount: 1, ownershipGapCount: 1,
+    traceGapCount: 2, evidenceGapCount: 1, criterionGapCount: 1, staleBindingCount: 0,
+    staleDependencyCount: 0, invalidCandidateCount: 1, unresolvedQuestionCount: 2,
+    reviewState: "held" as const, state: "attention-required" as const,
+    reasons: ["One or more Test Methodology decisions require human review"],
+    assessedAt: "2026-07-31T01:00:00.000Z",
+    authorityBoundary: "test-methodology-status-is-observational-and-does-not-establish-requirement-or-acceptance-criteria-truth-methodology-validity-or-completeness-environment-availability-test-data-fitness-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const, kind: "test-methodology-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId, revision: status.candidate.revision, digest: status.candidate.digest,
+      state: "candidate" as const, scopeCatalogDigest: `sha256:${"2".repeat(64)}` as const,
+      methodologyReceiptDigest: `sha256:${"3".repeat(64)}` as const,
+      environmentReceiptDigest: `sha256:${"4".repeat(64)}` as const,
+      dataPolicyReceiptDigest: `sha256:${"5".repeat(64)}` as const,
+      ownershipReceiptDigest: `sha256:${"6".repeat(64)}` as const,
+      traceReceiptDigest: `sha256:${"7".repeat(64)}` as const,
+      assessmentReceiptDigest: `sha256:${"8".repeat(64)}` as const,
+      scopeCount: 4, decisionCount: 6, selectedDecisionCount: 4, conflictDecisionCount: 1,
+      environmentCount: 3, dataPolicyCount: 2, evidenceExpectationCount: 5,
+      entryCriterionCount: 4, exitCriterionCount: 4, reviewState: "held" as const,
+      updatedAt: "2026-07-31T00:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-methodology-scope-environment-data-ownership-trace-assessment-snapshot-digests-only-not-requirement-criterion-method-rationale-environment-address-test-data-owner-evidence-result-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "test-methodology-projection-is-read-only-and-does-not-establish-requirement-or-acceptance-criteria-truth-methodology-validity-or-completeness-environment-availability-test-data-fitness-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -4808,6 +4869,7 @@ interface HarnessOptions {
   figmaToBoilerplateMappingProjection?: FigmaToBoilerplateMappingProjection
   designToCodeBindingRegistryProjection?: DesignToCodeBindingRegistryProjection
   routeScreenComponentMappingProjection?: RouteScreenComponentMappingProjection
+  testMethodologyProjection?: TestMethodologyProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -5033,6 +5095,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.routeScreenComponentMappingProjection ? {
       routeScreenComponentMapping: {
         project: async () => options.routeScreenComponentMappingProjection!,
+      },
+    } : {}),
+    ...(options.testMethodologyProjection ? {
+      testMethodology: {
+        project: async () => options.testMethodologyProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -6216,8 +6283,11 @@ describe("current-engine Product Studio data source", () => {
     const mvp = mvpSliceDefinitionProjection(hierarchy)
     const priority = prioritizationModelProjection(mvp)
     const acceptance = acceptanceCriteriaProjection(hierarchy, mvp, priority)
+    const ready = definitionOfReadyProjection(hierarchy, mvp, priority, acceptance)
+    const done = definitionOfDoneProjection(hierarchy, mvp, priority, acceptance, ready)
     const units = implementationUnitModelProjection()
     const dependencyMapping = dependencyMappingProjection(undefined, undefined, undefined, undefined, undefined, undefined, units)
+    const securityPrivacy = securityPrivacyAssessmentProjection()
     const technologyProfile = technologyProfileProjection(units, dependencyMapping)
     const boilerplateRegistry = boilerplateRegistryProjection(units, technologyProfile)
     const selectionBinding = boilerplateSelectionBindingProjection(units, dependencyMapping, technologyProfile, boilerplateRegistry)
@@ -6236,6 +6306,9 @@ describe("current-engine Product Studio data source", () => {
       informationArchitecture, screenInventory, designRequirements, designBaseline, designBinding,
       figmaMapping, designCodeBinding, units, acceptance,
     )
+    const methodology = testMethodologyProjection(
+      acceptance, ready, done, units, dependencyMapping, securityPrivacy, projection,
+    )
     const options = {
       informationArchitectureProjection: informationArchitecture,
       screenStateInventoryProjection: screenInventory,
@@ -6250,8 +6323,11 @@ describe("current-engine Product Studio data source", () => {
       mvpSliceDefinitionProjection: mvp,
       prioritizationModelProjection: priority,
       acceptanceCriteriaProjection: acceptance,
+      definitionOfReadyProjection: ready,
+      definitionOfDoneProjection: done,
       implementationUnitModelProjection: units,
       dependencyMappingProjection: dependencyMapping,
+      securityPrivacyAssessmentProjection: securityPrivacy,
       technologyProfileProjection: technologyProfile,
       boilerplateRegistryProjection: boilerplateRegistry,
       boilerplateSelectionBindingProjection: selectionBinding,
@@ -6259,6 +6335,7 @@ describe("current-engine Product Studio data source", () => {
       figmaToBoilerplateMappingProjection: figmaMapping,
       designToCodeBindingRegistryProjection: designCodeBinding,
       routeScreenComponentMappingProjection: projection,
+      testMethodologyProjection: methodology,
     }
     const snapshot = await harness(options).source.readSnapshot("delivery")
     expect(isStudioSnapshot(snapshot)).toBe(true)
@@ -6285,6 +6362,31 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private route|private screen|private component|private test hook|private path|private reviewer|customer@example\.com|api_key/iu,
+    )
+    expect(snapshot.page.kind === "delivery" && snapshot.page.testMethodologies).toMatchObject({
+      id: "test-methodology",
+      rows: [{
+        id: methodology.candidate?.id,
+        cells: {
+          initiative: initiative.id, revision: "2", scopes: methodology.candidate?.scopeCatalogDigest,
+          methodologyReceipt: methodology.candidate?.methodologyReceiptDigest,
+          environmentReceipt: methodology.candidate?.environmentReceiptDigest,
+          dataPolicyReceipt: methodology.candidate?.dataPolicyReceiptDigest,
+          ownershipReceipt: methodology.candidate?.ownershipReceiptDigest,
+          traceReceipt: methodology.candidate?.traceReceiptDigest,
+          assessmentReceipt: methodology.candidate?.assessmentReceiptDigest,
+          coverage: "4 units · 7 Requirements · 12 acceptance criteria · 14 mapping subjects · 4 methodology scopes",
+          outcomes: "4 selected · 1 conflicts · 0 not applicable · 1 deferred · 0 not assessed",
+          candidateResources: "3 environments · 2 data policies · 5 evidence expectations · 4 entry criteria · 4 exit criteria",
+          assessment: "attention-required · held",
+          methodologyGaps: "0 missing scopes · 0 extra scopes · 1 invalid decisions · 1 environment gaps · 1 data-policy gaps · 1 ownership gaps · 2 trace gaps · 1 evidence gaps · 1 criterion gaps",
+          staleGaps: "0 stale bindings · 0 stale dependencies · 1 invalid candidates · 2 questions",
+          boundary: expect.stringContaining("no Requirement, criterion, method rationale, environment address, test data, owner, evidence, result"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot.page.kind === "delivery" ? snapshot.page.testMethodologies : undefined)).not.toMatch(
+      /risk-based|quality-lead|private environment|private test data|customer@example\.com|api_key/iu,
     )
 
     const hostileBody = { ...projection, status: {

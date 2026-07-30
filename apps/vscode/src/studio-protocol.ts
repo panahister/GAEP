@@ -310,6 +310,7 @@ export interface DeliveryPageSnapshot extends StudioPageBase {
   figmaToBoilerplateMappings?: StudioTableSnapshot
   designToCodeBindingRegistries?: StudioTableSnapshot
   routeScreenComponentMappings?: StudioTableSnapshot
+  testMethodologies?: StudioTableSnapshot
   transitionPreview?: {
     recordType: "initiative" | "change" | "work-item"
     recordId: string
@@ -1370,7 +1371,7 @@ function isRecordFormPage(page: Record<string, unknown>, route: RecordFormRoute)
 function isDeliveryPage(page: Record<string, unknown>): boolean {
   if (!hasOnlyKeys(page, [
     "kind", "route", "title", "purpose", "source", "actions", "design", "initiatives", "sources",
-    "sourceBaselines", "sourceProvenance", "changes", "workItems", "backlogHierarchy", "mvpSliceDefinitions", "prioritizationModels", "acceptanceCriteria", "definitionOfReady", "definitionOfDone", "implementationUnits", "dependencyMappings", "technologyProfiles", "boilerplateRegistries", "boilerplateSelectionBindings", "boilerplateCompatibilityValidations", "figmaToBoilerplateMappings", "designToCodeBindingRegistries", "routeScreenComponentMappings", "transitionPreview",
+    "sourceBaselines", "sourceProvenance", "changes", "workItems", "backlogHierarchy", "mvpSliceDefinitions", "prioritizationModels", "acceptanceCriteria", "definitionOfReady", "definitionOfDone", "implementationUnits", "dependencyMappings", "technologyProfiles", "boilerplateRegistries", "boilerplateSelectionBindings", "boilerplateCompatibilityValidations", "figmaToBoilerplateMappings", "designToCodeBindingRegistries", "routeScreenComponentMappings", "testMethodologies", "transitionPreview",
   ]) || !isPageBase(page, "delivery") || page.kind !== "delivery" || !isTableSnapshot(page.initiatives) ||
     !isTableSnapshot(page.sources) || !isTableSnapshot(page.sourceBaselines) ||
     !isTableSnapshot(page.sourceProvenance) || !isTableSnapshot(page.changes) ||
@@ -1389,7 +1390,8 @@ function isDeliveryPage(page: Record<string, unknown>): boolean {
     (page.boilerplateCompatibilityValidations !== undefined && !isTableSnapshot(page.boilerplateCompatibilityValidations)) ||
     (page.figmaToBoilerplateMappings !== undefined && !isTableSnapshot(page.figmaToBoilerplateMappings)) ||
     (page.designToCodeBindingRegistries !== undefined && !isTableSnapshot(page.designToCodeBindingRegistries)) ||
-    (page.routeScreenComponentMappings !== undefined && !isTableSnapshot(page.routeScreenComponentMappings))) return false
+    (page.routeScreenComponentMappings !== undefined && !isTableSnapshot(page.routeScreenComponentMappings)) ||
+    (page.testMethodologies !== undefined && !isTableSnapshot(page.testMethodologies))) return false
   if (page.transitionPreview === undefined) return true
   return isRecord(page.transitionPreview) && hasOnlyKeys(page.transitionPreview, [
     "recordType", "recordId", "currentState", "allowedNextStates",

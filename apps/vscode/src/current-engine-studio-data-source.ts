@@ -23,6 +23,7 @@ import type {
   FigmaToBoilerplateMappingProjection,
   DesignToCodeBindingRegistryProjection,
   RouteScreenComponentMappingProjection,
+  TestMethodologyProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -239,6 +240,9 @@ export interface CurrentStudioEngineReader {
   routeScreenComponentMapping?: {
     project(initiativeId: string): Promise<RouteScreenComponentMappingProjection>
   }
+  testMethodology?: {
+    project(initiativeId: string): Promise<TestMethodologyProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -423,6 +427,7 @@ interface ObservedStudioState {
   figmaToBoilerplateMappingProjections: Map<string, FigmaToBoilerplateMappingProjection>
   designToCodeBindingRegistryProjections: Map<string, DesignToCodeBindingRegistryProjection>
   routeScreenComponentMappingProjections: Map<string, RouteScreenComponentMappingProjection>
+  testMethodologyProjections: Map<string, TestMethodologyProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3854,6 +3859,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     figmaToBoilerplateMappings: figmaToBoilerplateMappingTable(state),
     designToCodeBindingRegistries: designToCodeBindingRegistryTable(state),
     routeScreenComponentMappings: routeScreenComponentMappingTable(state),
+    testMethodologies: testMethodologyTable(state),
   }
 }
 
@@ -4756,6 +4762,71 @@ function routeScreenComponentMappingTable(state: ObservedStudioState): StudioTab
       emptyState: emptySurface(
         "No governed Route, Screen, and Component Mapping candidate",
         "Create the candidate through the governed engine workflow after all nine exact information-architecture, screen/state, design, mapping, binding, implementation-unit, and acceptance-criteria candidates exist. This view does not connect to Figma, expose source content, establish navigation or UI truth, mutate code or design targets, establish readiness, accept, release, deploy, or grant action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function testMethodologyTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.testMethodologyProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        scopes: record.scopeCatalogDigest,
+        methodologyReceipt: record.methodologyReceiptDigest,
+        environmentReceipt: record.environmentReceiptDigest,
+        dataPolicyReceipt: record.dataPolicyReceiptDigest,
+        ownershipReceipt: record.ownershipReceiptDigest,
+        traceReceipt: record.traceReceiptDigest,
+        assessmentReceipt: record.assessmentReceiptDigest,
+        coverage: `${status.sourceUnitCount} units · ${status.sourceRequirementCount} Requirements · ${status.sourceCriterionCount} acceptance criteria · ${status.sourceMappingSubjectCount} mapping subjects · ${status.scopeCount} methodology scopes`,
+        outcomes: `${status.selectedDecisionCount} selected · ${status.conflictDecisionCount} conflicts · ${status.notApplicableDecisionCount} not applicable · ${status.deferredDecisionCount} deferred · ${status.notAssessedDecisionCount} not assessed`,
+        candidateResources: `${status.environmentCount} environments · ${status.dataPolicyCount} data policies · ${status.evidenceExpectationCount} evidence expectations · ${status.entryCriterionCount} entry criteria · ${status.exitCriterionCount} exit criteria`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        methodologyGaps: `${status.missingScopeCount} missing scopes · ${status.extraScopeCount} extra scopes · ${status.invalidDecisionCount} invalid decisions · ${status.environmentGapCount} environment gaps · ${status.dataPolicyGapCount} data-policy gaps · ${status.ownershipGapCount} ownership gaps · ${status.traceGapCount} trace gaps · ${status.evidenceGapCount} evidence gaps · ${status.criterionGapCount} criterion gaps`,
+        staleGaps: `${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+        boundary: "Candidate identities, counts, statuses, and methodology scope, environment, data, ownership, trace, assessment, and snapshot digests only; no Requirement, criterion, method rationale, environment address, test data, owner, evidence, result, personal data, secrets, credentials, or machine paths. This view does not establish methodology validity or completeness, environment availability, data fitness, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "test-methodology",
+    title: "Governed Test Methodology Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "scopes", label: "Scope catalog digest" },
+      { key: "methodologyReceipt", label: "Methodology receipt" },
+      { key: "environmentReceipt", label: "Environment receipt" },
+      { key: "dataPolicyReceipt", label: "Data-policy receipt" },
+      { key: "ownershipReceipt", label: "Ownership receipt" },
+      { key: "traceReceipt", label: "Trace receipt" },
+      { key: "assessmentReceipt", label: "Assessment receipt" },
+      { key: "coverage", label: "Privacy-safe source coverage" },
+      { key: "outcomes", label: "Candidate decisions" },
+      { key: "candidateResources", label: "Candidate resources and criteria" },
+      { key: "assessment", label: "Candidate assessment" },
+      { key: "methodologyGaps", label: "Candidate methodology gaps" },
+      { key: "staleGaps", label: "Candidate freshness gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Test Methodology candidate",
+        "Create the candidate through the governed engine workflow after all seven exact acceptance, ready, done, implementation-unit, dependency, security/privacy, and route/screen/component mapping candidates exist. This view does not execute tests, access environments or providers, create test data, establish results or evidence truth, approve security/privacy, appoint owners, accept, release, deploy, or grant action authority.",
       ),
     } : {}),
   }
@@ -6610,6 +6681,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       figmaToBoilerplateMappingProjections: new Map(),
       designToCodeBindingRegistryProjections: new Map(),
       routeScreenComponentMappingProjections: new Map(),
+      testMethodologyProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -7678,6 +7750,77 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "route-screen-component-mapping-unavailable",
           "Route, Screen, and Component Mapping metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.testMethodology) {
+      if (auditSemanticsVerified) {
+        const dependencyReaders = [
+          engine.acceptanceCriteria, engine.definitionOfReady, engine.definitionOfDone,
+          engine.implementationUnitModel, engine.dependencyMapping, engine.securityPrivacyAssessment,
+          engine.routeScreenComponentMapping,
+        ]
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const methodology = await engine.testMethodology!.project(initiative.id)
+          const dependencies = dependencyReaders.every((reader) => reader !== undefined)
+            ? await Promise.all(dependencyReaders.map((reader) => reader!.project(initiative.id)))
+            : undefined
+          return { methodology, dependencies }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.methodology
+            const { snapshotDigest, ...projectionBody } = value
+            const references = [
+              value.status.acceptanceCriteria, value.status.definitionOfReady, value.status.definitionOfDone,
+              value.status.implementationUnitModel, value.status.dependencyMapping,
+              value.status.securityPrivacyAssessment, value.status.routeScreenComponentMapping,
+            ]
+            const exactDependencies = !value.candidate || (
+              projection.value.dependencies !== undefined &&
+              references.every((reference, dependencyIndex) => {
+                const dependencyProjection = projection.value.dependencies?.[dependencyIndex]
+                const dependency = dependencyProjection && "candidate" in dependencyProjection
+                  ? dependencyProjection.candidate
+                  : dependencyProjection && "assessment" in dependencyProjection
+                    ? dependencyProjection.assessment
+                    : undefined
+                return reference !== undefined && dependency !== undefined &&
+                  reference.recordId === dependency.id && reference.revision === dependency.revision &&
+                  reference.digest === dependency.digest
+              })
+            )
+            if (
+              value.product.id === empty.product?.id &&
+              value.product.revision === (empty.product.revision ?? 1) &&
+              value.product.digest === canonicalDigest(empty.product) &&
+              value.initiative.id === initiative.id &&
+              value.initiative.revision === (initiative.revision ?? 1) &&
+              value.initiative.digest === canonicalDigest(initiative) &&
+              exactDependencies && snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.testMethodologyProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Test Methodology projection was unavailable or did not bind all 7 exact current governed dependencies",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `test-methodology-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Test Methodology metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "test-methodology-unavailable",
+          "Test Methodology metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
