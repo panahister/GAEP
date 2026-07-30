@@ -10,6 +10,7 @@ import type {
   BusinessCapabilityMapProjection,
   BacklogHierarchyProjection,
   MvpSliceDefinitionProjection,
+  PrioritizationModelProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -187,6 +188,9 @@ export interface CurrentStudioEngineReader {
   mvpSliceDefinition?: {
     project(initiativeId: string): Promise<MvpSliceDefinitionProjection>
   }
+  prioritizationModel?: {
+    project(initiativeId: string): Promise<PrioritizationModelProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -358,6 +362,7 @@ interface ObservedStudioState {
   businessCapabilityMapProjections: Map<string, BusinessCapabilityMapProjection>
   backlogHierarchyProjections: Map<string, BacklogHierarchyProjection>
   mvpSliceDefinitionProjections: Map<string, MvpSliceDefinitionProjection>
+  prioritizationModelProjections: Map<string, PrioritizationModelProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3776,6 +3781,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     workItems: workItemsTable(state.workItems),
     backlogHierarchy: backlogHierarchyTable(state),
     mvpSliceDefinitions: mvpSliceDefinitionsTable(state),
+    prioritizationModels: prioritizationModelsTable(state),
   }
 }
 
@@ -3951,6 +3957,57 @@ function mvpSliceDefinitionsTable(state: ObservedStudioState): StudioTableSnapsh
       emptyState: emptySurface(
         "No governed MVP and Vertical Slice candidate",
         "Create the candidate through the governed engine workflow after an exact Backlog Hierarchy exists. This view does not infer priority, commitment, scope approval, acceptance-criteria validity, Definition of Ready or Done, implementation readiness, assignment, execution, implementation authority, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function prioritizationModelsTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.prioritizationModelProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        method: record.methodDigest,
+        ranking: record.rankingDigest,
+        coverage: `${status.subjectCount} slices · ${status.scoredSubjectCount} scored · ${status.unassessedSubjectCount} unassessed · ${status.evidenceReferenceCount} evidence references`,
+        assessment: `${status.state} · ${status.reviewState} · ${status.tieCount} score ties`,
+        gaps: `${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleMvpSliceDefinitionCount} stale MVP definitions · ${status.invalidSubjectCount} invalid subjects · ${status.invalidScoreCount} invalid scores`,
+        boundary: "Candidate identities, counts, statuses, method, membership, ranking, and snapshot digests only; no dimension estimates, evidence identities, uncertainty, slice content, personal data, evidence validity, priority decision, commitment, scope decision, approval, ready or done, implementation readiness, assignment, execution, implementation authority, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "prioritization-models",
+    title: "Governed Prioritization Model Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "method", label: "Method digest" },
+      { key: "ranking", label: "Candidate ranking digest" },
+      { key: "coverage", label: "Privacy-safe coverage" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Prioritization Model candidate",
+        "Create the candidate through the governed engine workflow after an exact MVP and Vertical Slice candidate exists. This view does not infer evidence validity, priority, commitment, scope decisions, approval, readiness, assignment, execution, implementation authority, or action authority.",
       ),
     } : {}),
   }
@@ -5792,6 +5849,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       initiatives: [], initiativeEntryAssessments: new Map(), businessUnderstandingProjections: new Map(),
       backlogHierarchyProjections: new Map(),
       mvpSliceDefinitionProjections: new Map(),
+      prioritizationModelProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -6087,6 +6145,56 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "mvp-slice-definition-unavailable",
           "MVP and Vertical Slice metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.prioritizationModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.prioritizationModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            const mvp = empty.mvpSliceDefinitionProjections.get(initiative.id)?.candidate
+            const mvpReference = projection.value.status.mvpSliceDefinition
+            const candidate = projection.value.candidate
+            const exactMvp = !candidate || (
+              mvpReference !== undefined && mvp !== undefined &&
+              mvpReference.recordId === mvp.id && mvpReference.revision === mvp.revision &&
+              mvpReference.digest === mvp.digest
+            )
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              exactMvp && snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.prioritizationModelProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Prioritization Model projection was unavailable or did not bind the exact Product, Initiative, and current MVP and Slice Definition revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `prioritization-model-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Prioritization Model metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "prioritization-model-unavailable",
+          "Prioritization Model metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

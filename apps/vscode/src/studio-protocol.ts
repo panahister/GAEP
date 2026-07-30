@@ -297,6 +297,7 @@ export interface DeliveryPageSnapshot extends StudioPageBase {
   workItems: StudioTableSnapshot
   backlogHierarchy?: StudioTableSnapshot
   mvpSliceDefinitions?: StudioTableSnapshot
+  prioritizationModels?: StudioTableSnapshot
   transitionPreview?: {
     recordType: "initiative" | "change" | "work-item"
     recordId: string
@@ -1357,13 +1358,14 @@ function isRecordFormPage(page: Record<string, unknown>, route: RecordFormRoute)
 function isDeliveryPage(page: Record<string, unknown>): boolean {
   if (!hasOnlyKeys(page, [
     "kind", "route", "title", "purpose", "source", "actions", "design", "initiatives", "sources",
-    "sourceBaselines", "sourceProvenance", "changes", "workItems", "backlogHierarchy", "mvpSliceDefinitions", "transitionPreview",
+    "sourceBaselines", "sourceProvenance", "changes", "workItems", "backlogHierarchy", "mvpSliceDefinitions", "prioritizationModels", "transitionPreview",
   ]) || !isPageBase(page, "delivery") || page.kind !== "delivery" || !isTableSnapshot(page.initiatives) ||
     !isTableSnapshot(page.sources) || !isTableSnapshot(page.sourceBaselines) ||
     !isTableSnapshot(page.sourceProvenance) || !isTableSnapshot(page.changes) ||
     !isTableSnapshot(page.workItems) ||
     (page.backlogHierarchy !== undefined && !isTableSnapshot(page.backlogHierarchy)) ||
-    (page.mvpSliceDefinitions !== undefined && !isTableSnapshot(page.mvpSliceDefinitions))) return false
+    (page.mvpSliceDefinitions !== undefined && !isTableSnapshot(page.mvpSliceDefinitions)) ||
+    (page.prioritizationModels !== undefined && !isTableSnapshot(page.prioritizationModels))) return false
   if (page.transitionPreview === undefined) return true
   return isRecord(page.transitionPreview) && hasOnlyKeys(page.transitionPreview, [
     "recordType", "recordId", "currentState", "allowedNextStates",
