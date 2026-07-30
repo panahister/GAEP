@@ -7,6 +7,7 @@ import { mvpSliceDefinitionInputSchema } from "./mvp-slice-definition.js"
 import { prioritizationModelInputSchema } from "./prioritization-model.js"
 import { acceptanceCriteriaInputSchema } from "./acceptance-criteria.js"
 import { definitionOfReadyInputSchema } from "./definition-of-ready.js"
+import { definitionOfDoneInputSchema } from "./definition-of-done.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -662,6 +663,18 @@ export const hostDefinitionOfReadyReviseParamsSchema = z.object({
   record: definitionOfReadyInputSchema,
 }).strict()
 
+export const hostDefinitionOfDoneCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: definitionOfDoneInputSchema,
+}).strict()
+
+export const hostDefinitionOfDoneReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: definitionOfDoneInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -941,6 +954,11 @@ export const hostMethodSchema = z.enum([
   "planning.definitionOfReady.revise",
   "planning.definitionOfReady.assess",
   "planning.definitionOfReady.snapshot",
+  "planning.definitionOfDone.read",
+  "planning.definitionOfDone.create",
+  "planning.definitionOfDone.revise",
+  "planning.definitionOfDone.assess",
+  "planning.definitionOfDone.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1259,6 +1277,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.definitionOfReady.revise", hostDefinitionOfReadyReviseParamsSchema),
   requestVariant("planning.definitionOfReady.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.definitionOfReady.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.definitionOfDone.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.definitionOfDone.create", hostDefinitionOfDoneCreateParamsSchema),
+  requestVariant("planning.definitionOfDone.revise", hostDefinitionOfDoneReviseParamsSchema),
+  requestVariant("planning.definitionOfDone.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.definitionOfDone.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),
