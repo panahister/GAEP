@@ -22,8 +22,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260730T123100Z-phase-3a-implementation-unit-model-packages.json",
-  conformance: "evidence/ide-conformance/20260730T123100Z-phase-3a-implementation-unit-model.json",
+  packages: "evidence/local-packages/20260730T134600Z-phase-3a-dependency-mapping-packages.json",
+  conformance: "evidence/ide-conformance/20260730T134600Z-phase-3a-dependency-mapping.json",
   example: "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
 }
 const gateDefinitions = [
@@ -203,7 +203,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -230,7 +230,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    implementationUnitModel
+    dependencyMapping
+      ? {
+          id: "phase-3a-dependency-mapping-closure",
+          state: "not-established",
+          basis: "the exact versioned Dependency Mapping candidate lifecycle, complete current Implementation Unit node catalog, typed directed acyclic dependency edges, required, conditional and advisory strengths, evidence states, deterministic longest candidate-effort critical path, canonical tie handling, graph, critical-path and assessment receipts, exact current Backlog Hierarchy, MVP and Vertical Slice, and Implementation Unit Model bindings, immutable revisions, privacy-safe Product Studio table and four host projections are implemented locally; candidates do not establish dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, native-host interaction or Product Owner acceptance",
+        }
+      : implementationUnitModel
       ? {
           id: "phase-3a-implementation-unit-model-closure",
           state: "not-established",
@@ -503,6 +509,9 @@ export async function buildPhase0AcceptanceReport({
   const implementationUnitModel = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "implementation-unit-model" && capability.state === "implemented"))
+  const dependencyMapping = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "dependency-mapping" && capability.state === "implemented"))
   const designSystemTokenContract = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-system-token-contract" && capability.state === "implemented"))
@@ -575,6 +584,7 @@ export async function buildPhase0AcceptanceReport({
     definitionOfReady,
     definitionOfDone,
     implementationUnitModel,
+    dependencyMapping,
     designSystemTokenContract,
     accessibilityDesignRules,
     responsiveMultiPlatformTargets,
@@ -612,8 +622,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: implementationUnitModel
+    phase: dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: dependencyMapping
+      ? "phase-3a-dependency-mapping-local"
+      : implementationUnitModel
       ? "phase-3a-implementation-unit-model-local"
       : definitionOfDone
       ? "phase-3a-definition-of-done-local"
@@ -721,7 +733,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: implementationUnitModel
+    claimBoundary: dependencyMapping
+      ? "This report binds the exact governed Dependency Mapping candidate lifecycle, immutable revision history, complete current Implementation Unit node catalog, typed directed acyclic dependency edges, required, conditional and advisory strengths, evidence states, deterministic longest candidate-effort critical path with canonical tie handling, graph, critical-path and assessment receipts, exact current Product, Initiative, Backlog Hierarchy, MVP and Vertical Slice, and Implementation Unit Model bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Dependency maps and critical paths remain governed candidates only. This report does not establish dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : implementationUnitModel
       ? "This report binds the exact governed Implementation Unit Model candidate lifecycle, immutable revision history, complete current MVP Story and Task membership, exact Requirement membership, candidate repository and module placement, owner candidates, dependency edges, blast-radius assessments, deterministic membership, placement and assessment receipts, exact current Product, Initiative, Backlog Hierarchy, MVP and Vertical Slice, Acceptance Criteria, Definition of Ready and Definition of Done bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Implementation units remain governed candidates only. This report does not establish repository truth, appoint ownership, prove dependency or impact completeness, grant implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : definitionOfDone
       ? "This report binds the exact governed Definition of Done item-evaluation candidate lifecycle, immutable revision history, complete current MVP Story and Task subject catalog, versioned completion policy, required or not-applicable candidate dispositions, exact evidence and assessor inputs, deterministic evaluation receipt, expiry and invalidation, exact current Product, Initiative, Backlog Hierarchy, MVP and Vertical Slice, Prioritization Model, Acceptance Criteria, and Definition of Ready bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. A candidate pass remains an evaluation result only. This report does not establish evidence truth, test success, quality, Requirement or Acceptance Criteria satisfaction, approval, ready or done state, exception or waiver authority, implementation completeness, merge, release or deployment readiness, assignment, execution, acceptance, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
