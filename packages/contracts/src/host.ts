@@ -13,6 +13,7 @@ import { dependencyMappingInputSchema } from "./dependency-mapping.js"
 import { technologyProfileInputSchema } from "./technology-profile.js"
 import { boilerplateRegistryInputSchema } from "./boilerplate-registry.js"
 import { boilerplateSelectionBindingInputSchema } from "./boilerplate-selection-binding.js"
+import { boilerplateCompatibilityValidationInputSchema } from "./boilerplate-compatibility-validation.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -740,6 +741,18 @@ export const hostBoilerplateSelectionBindingReviseParamsSchema = z.object({
   record: boilerplateSelectionBindingInputSchema,
 }).strict()
 
+export const hostBoilerplateCompatibilityValidationCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: boilerplateCompatibilityValidationInputSchema,
+}).strict()
+
+export const hostBoilerplateCompatibilityValidationReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: boilerplateCompatibilityValidationInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1049,6 +1062,11 @@ export const hostMethodSchema = z.enum([
   "planning.boilerplateSelectionBinding.revise",
   "planning.boilerplateSelectionBinding.assess",
   "planning.boilerplateSelectionBinding.snapshot",
+  "planning.boilerplateCompatibilityValidation.read",
+  "planning.boilerplateCompatibilityValidation.create",
+  "planning.boilerplateCompatibilityValidation.revise",
+  "planning.boilerplateCompatibilityValidation.assess",
+  "planning.boilerplateCompatibilityValidation.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1397,6 +1415,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.boilerplateSelectionBinding.revise", hostBoilerplateSelectionBindingReviseParamsSchema),
   requestVariant("planning.boilerplateSelectionBinding.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.boilerplateSelectionBinding.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.boilerplateCompatibilityValidation.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.boilerplateCompatibilityValidation.create", hostBoilerplateCompatibilityValidationCreateParamsSchema),
+  requestVariant("planning.boilerplateCompatibilityValidation.revise", hostBoilerplateCompatibilityValidationReviseParamsSchema),
+  requestVariant("planning.boilerplateCompatibilityValidation.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.boilerplateCompatibilityValidation.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

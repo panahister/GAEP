@@ -149,6 +149,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.boilerplateSelectionBinding.revise",
   "planning.boilerplateSelectionBinding.assess",
   "planning.boilerplateSelectionBinding.snapshot",
+  "planning.boilerplateCompatibilityValidation.read",
+  "planning.boilerplateCompatibilityValidation.create",
+  "planning.boilerplateCompatibilityValidation.revise",
+  "planning.boilerplateCompatibilityValidation.assess",
+  "planning.boilerplateCompatibilityValidation.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1472,6 +1477,24 @@ export class EngineHost {
         return this.engine.boilerplateSelectionBinding.assess(request.params.initiativeId)
       case "planning.boilerplateSelectionBinding.snapshot":
         return this.engine.boilerplateSelectionBinding.project(request.params.initiativeId)
+      case "planning.boilerplateCompatibilityValidation.read":
+        return await this.engine.boilerplateCompatibilityValidation.readCurrent(request.params.initiativeId) ?? null
+      case "planning.boilerplateCompatibilityValidation.create":
+        return this.engine.boilerplateCompatibilityValidation.create(
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.boilerplateCompatibilityValidation.revise":
+        return this.engine.boilerplateCompatibilityValidation.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.boilerplateCompatibilityValidation.assess":
+        return this.engine.boilerplateCompatibilityValidation.assess(request.params.initiativeId)
+      case "planning.boilerplateCompatibilityValidation.snapshot":
+        return this.engine.boilerplateCompatibilityValidation.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":

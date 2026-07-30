@@ -3,13 +3,14 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type {
-  AcceptanceCriteriaInput,
-  BacklogHierarchy,
-  BacklogHierarchyInput,
-  MvpSliceDefinition,
-  MvpSliceDefinitionInput,
-  PrioritizationModelInput,
+import {
+  boilerplateCompatibilityDimensions,
+  type AcceptanceCriteriaInput,
+  type BacklogHierarchy,
+  type BacklogHierarchyInput,
+  type MvpSliceDefinition,
+  type MvpSliceDefinitionInput,
+  type PrioritizationModelInput,
 } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -1147,14 +1148,142 @@ describe("Backlog Hierarchy host protocol", () => {
     expect(JSON.stringify(bindingSnapshot)).not.toContain(boilerplateSelectionBindingInput.title)
     expect(JSON.stringify(bindingSnapshot)).not.toContain(boilerplateSelectionBindingInput.decisions[0]!.implementationUnitId)
     expect(JSON.stringify(bindingSnapshot)).not.toContain(boilerplateSelectionBindingInput.decisions[0]!.boilerplateRegistryEntryId)
-    await expect(host.dispatch({
+    const bindingRevised = await host.dispatch({
       jsonrpc: "2.0", id: "boilerplate-binding-revise", protocolVersion: 2,
       method: "planning.boilerplateSelectionBinding.revise",
       params: {
         actorId: "host-test", recordId: bindingCreated.id, expectedRevision: bindingCreated.revision,
         record: { ...boilerplateSelectionBindingInput, title: "Host reviewed Boilerplate Selection and Binding candidate" },
       },
-    })).resolves.toMatchObject({ id: bindingCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+    }) as typeof bindingCreated & { predecessorDigest: string }
+    expect(bindingRevised).toMatchObject({
+      id: bindingCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u),
+    })
+
+    const boilerplateCompatibilityValidationInput = {
+      initiativeId: initiative.id,
+      context: input.context,
+      informationClassification: "internal" as const,
+      title: "Host Boilerplate Compatibility Validation candidate",
+      implementationUnitModel: {
+        recordId: unitsRevised.id, revision: unitsRevised.revision, digest: canonicalDigest(unitsRevised),
+      },
+      dependencyMapping: {
+        recordId: dependencyRevised.id, revision: dependencyRevised.revision, digest: canonicalDigest(dependencyRevised),
+      },
+      technologyProfile: {
+        recordId: technologyRevised.id, revision: technologyRevised.revision, digest: canonicalDigest(technologyRevised),
+      },
+      boilerplateRegistry: {
+        recordId: boilerplateRevised.id, revision: boilerplateRevised.revision, digest: canonicalDigest(boilerplateRevised),
+      },
+      boilerplateSelectionBinding: {
+        recordId: bindingRevised.id, revision: bindingRevised.revision, digest: canonicalDigest(bindingRevised),
+      },
+      subjects: boilerplateSelectionBindingInput.decisions.map((decision, subjectIndex) => ({
+        id: randomUUID(), ordinal: subjectIndex + 1, bindingDecisionId: decision.id,
+        implementationUnitId: decision.implementationUnitId,
+        technologyProfileId: decision.technologyProfileId,
+        boilerplateRegistryEntryId: decision.boilerplateRegistryEntryId!,
+        boilerplateVersionCandidate: decision.boilerplateVersionCandidate!,
+        outcome: "candidate-compatible" as const,
+        dimensionAssessments: boilerplateCompatibilityDimensions.map((dimension, dimensionIndex) => ({
+          id: randomUUID(), ordinal: dimensionIndex + 1, dimension,
+          outcome: "candidate-compatible" as const,
+          claim: `The host ${dimension} dimension is an evidence-backed compatibility candidate only`,
+          evidenceReferences: [{
+            kind: "evidence" as const, sourceId: `${decision.id}-${dimension}-host-evidence`, revision: 1,
+            digest: canonicalDigest({ decisionId: decision.id, dimension, subjectIndex, context: input.context }),
+            evidenceState: "observed-not-validated" as const,
+          }],
+          exceptionReferenceCandidates: [],
+          assessedBy: { kind: "human" as const, id: "host-compatibility-reviewer" },
+          assessedAt: "2026-07-30T00:00:00.000Z",
+          compatibilityTruthState: "not-established" as const,
+          approvalState: "not-established" as const,
+          exceptionWaiverState: "not-established" as const,
+        })),
+      })),
+      unresolvedQuestions: [],
+      limitations: ["Candidate validation does not establish actual asset behavior or compatibility truth"],
+      reviewState: "ready-for-human-review" as const,
+      compatibilityTruthState: "not-established" as const,
+      compatibilityCompletenessState: "not-established" as const,
+      validationDecisionState: "not-established" as const,
+      actualAssetBehaviorState: "not-established" as const,
+      testExecutionState: "not-established" as const,
+      designValidityState: "not-established" as const,
+      securityPrivacyApprovalState: "not-established" as const,
+      licensingApprovalState: "not-established" as const,
+      exceptionWaiverState: "not-established" as const,
+      selectionBindingEffectivenessState: "not-established" as const,
+      sourceRetrievalState: "not-established" as const,
+      assetImportInstantiationState: "not-established" as const,
+      architectureBaselineDesignationState: "not-established" as const,
+      implementationReadinessState: "not-established" as const,
+      implementationCompletenessState: "not-established" as const,
+      assignmentExecutionState: "not-established" as const,
+      acceptanceDecisionState: "not-established" as const,
+      mergeReadinessState: "not-established" as const,
+      releaseReadinessState: "not-established" as const,
+      deploymentReadinessState: "not-established" as const,
+      actionAuthorityState: "not-granted" as const,
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-compatibility-v1-rejected", protocolVersion: 1,
+      method: "planning.boilerplateCompatibilityValidation.snapshot", params: { initiativeId: initiative.id },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-compatibility-read-empty", protocolVersion: 2,
+      method: "planning.boilerplateCompatibilityValidation.read", params: { initiativeId: initiative.id },
+    })).resolves.toBeNull()
+    const compatibilityCreated = await host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-compatibility-create", protocolVersion: 2,
+      method: "planning.boilerplateCompatibilityValidation.create",
+      params: { actorId: "host-test", record: boilerplateCompatibilityValidationInput },
+    }) as typeof boilerplateCompatibilityValidationInput & {
+      id: string; revision: number; validationSubjectCatalogDigest: string; dimensionCatalogDigest: string
+    }
+    expect(compatibilityCreated).toMatchObject({
+      revision: 1, validationSubjectCatalogDigest: expect.stringMatching(/^sha256:/u),
+      dimensionCatalogDigest: expect.stringMatching(/^sha256:/u),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-compatibility-assess", protocolVersion: 2,
+      method: "planning.boilerplateCompatibilityValidation.assess", params: { initiativeId: initiative.id },
+    })).resolves.toMatchObject({
+      state: "candidate-complete", selectedBindingCount: 2, subjectCount: 2,
+      compatibleCandidateCount: 2, dimensionAssessmentCount: 28,
+      missingSubjectCount: 0, staleSelectionBindingCount: 0,
+    })
+    const compatibilitySnapshot = await host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-compatibility-snapshot", protocolVersion: 2,
+      method: "planning.boilerplateCompatibilityValidation.snapshot", params: { initiativeId: initiative.id },
+    }) as Record<string, unknown> & { snapshotDigest: string }
+    const { snapshotDigest: compatibilitySnapshotDigest, ...compatibilitySnapshotBody } = compatibilitySnapshot
+    expect(compatibilitySnapshotDigest).toBe(canonicalDigest(compatibilitySnapshotBody))
+    expect(compatibilitySnapshot).toMatchObject({
+      candidate: { id: compatibilityCreated.id, subjectCount: 2, compatibleCandidateCount: 2 },
+      privacyBoundary: expect.stringContaining("not-boilerplate-names-locators-versions-unit-profile-entry-or-binding-identities"),
+      authorityBoundary: expect.stringContaining("does-not-establish-compatibility-truth-or-completeness"),
+    })
+    expect(JSON.stringify(compatibilitySnapshot)).not.toContain(boilerplateCompatibilityValidationInput.title)
+    expect(JSON.stringify(compatibilitySnapshot)).not.toContain(boilerplateCompatibilityValidationInput.subjects[0]!.bindingDecisionId)
+    expect(JSON.stringify(compatibilitySnapshot)).not.toContain(boilerplateCompatibilityValidationInput.subjects[0]!.dimensionAssessments[0]!.claim)
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-compatibility-revise", protocolVersion: 2,
+      method: "planning.boilerplateCompatibilityValidation.revise",
+      params: {
+        actorId: "host-test", recordId: compatibilityCreated.id,
+        expectedRevision: compatibilityCreated.revision,
+        record: {
+          ...boilerplateCompatibilityValidationInput,
+          title: "Host reviewed Boilerplate Compatibility Validation candidate",
+        },
+      },
+    })).resolves.toMatchObject({
+      id: compatibilityCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u),
+    })
 
     const revised = await host.dispatch({
       jsonrpc: "2.0",
