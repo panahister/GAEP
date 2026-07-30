@@ -74,7 +74,8 @@
     { "id": "designer-ready-gate", "label": "Exact governed Designer-Ready Gate evaluation-candidate projection over twelve current attributable human-reviewed prerequisites with bounded candidate-result, assessment-receipt, exception-candidate, stale-binding, stale-source and unresolved-question metadata, without establishing design or external completeness, design validity, approval, baseline, readiness, exception or waiver authority, acceptance, phase entry, implementation, Figma connection or call, credential or permission authority, import or write execution, or action authority" },
     { "id": "design-delta", "label": "Exact governed Design Delta comparison-candidate projection over the current Designer-Ready prerequisite catalog, finalized Figma snapshot item catalog and Design-to-Requirement binding catalog with bounded exact dependency, source and target snapshot, comparison definition and receipt, delta catalog, added, changed, conflicting, missing, stale, unmapped, human-review and gap metadata, without establishing delta or external completeness, design validity, approval, baseline, readiness, conflict-resolution or synchronization authority, Figma connection or call, credential or permission authority, import or write execution, implementation, or action authority" },
     { "id": "design-conflict-resolution", "label": "Exact governed Design Conflict Resolution candidate projection over one exact conflicting Design Delta catalog with bounded accept-source, accept-target, merge, reject-change, escalation, human-review, distinct-actor-declaration, expiry, coverage, provenance, receipt, unresolved-conflict and gap metadata, without enforcing separation of duties, resolving or applying conflicts, synchronizing design, establishing design validity, approval, baseline or readiness, connecting to or calling Figma, requesting credentials, granting permissions, executing imports or writes, or granting implementation or action authority" },
-    { "id": "human-design-approval", "label": "Exact governed Human Design Approval recorded-decision candidate projection over five exact current design prerequisites and one exact finalized snapshot subject with bounded prerequisite, scope, decision, expiry, revocation, stale-binding and gap metadata, without verifying approver authority, enforcing separation of duties, establishing design approval, baseline, readiness or phase entry, connecting to or calling Figma, requesting credentials, granting permissions, executing imports or writes, or granting implementation or action authority" }
+    { "id": "human-design-approval", "label": "Exact governed Human Design Approval recorded-decision candidate projection over five exact current design prerequisites and one exact finalized snapshot subject with bounded prerequisite, scope, decision, expiry, revocation, stale-binding and gap metadata, without verifying approver authority, enforcing separation of duties, establishing design approval, baseline, readiness or phase entry, connecting to or calling Figma, requesting credentials, granting permissions, executing imports or writes, or granting implementation or action authority" },
+    { "id": "design-baseline", "label": "Exact governed Design Baseline version candidate projection over one exact Human Design Approval candidate and finalized snapshot scope with immutable lineage, candidate-set revision, semantic version, policy, designation receipt, exact predecessor, supersession, withdrawal, restoration, expiry, stale-binding and gap metadata, without converting an approval candidate into approval, verifying approver authority, enforcing separation of duties, establishing a Baseline Set designation, readiness or phase entry, connecting to or calling Figma, requesting credentials, granting permissions, executing imports or writes, or granting implementation or action authority" }
   ],
   "hosts": [
     {
@@ -85,7 +86,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T010650Z-phase-2-human-design-approval-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T015414Z-phase-2-design-baseline-versioning-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -312,6 +313,9 @@
         ] },
         { "capabilityId": "human-design-approval", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["humanDesignApproval?: {", "engine.humanDesignApproval!.project(initiative.id)", "id: \"human-design-approval\"", "does not verify approver authority"] }
+        ] },
+        { "capabilityId": "design-baseline", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designBaseline?: {", "engine.designBaseline!.project(initiative.id)", "id: \"design-baseline\"", "does not convert an approval candidate into approval"] }
         ] }
       ]
     },
@@ -323,7 +327,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T010650Z-phase-2-human-design-approval-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T015414Z-phase-2-design-baseline-versioning-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -587,6 +591,10 @@
         { "capabilityId": "human-design-approval", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readHumanDesignApproval(", "this.request(\"design.humanDesignApproval.snapshot\"", "humanDesignApprovalProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showHumanDesignApproval", "GAEP Human Design Approval decision candidate", "does not verify approver authority"] }
+        ] },
+        { "capabilityId": "design-baseline", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignBaseline(", "this.request(\"design.designBaseline.snapshot\"", "designBaselineProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignBaseline", "GAEP Design Baseline version candidate", "does not convert an approval candidate into approval"] }
         ] }
       ]
     },
@@ -598,7 +606,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T010650Z-phase-2-human-design-approval-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T015414Z-phase-2-design-baseline-versioning-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -917,6 +925,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readHumanDesignApproval(", "portableRequest(\"design.humanDesignApproval.snapshot\"", "parseHumanDesignApprovalEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP Human Design Approval decision candidate", "does not verify approver authority", "implementation or action authority"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["HumanDesignApprovalProjection", "HUMAN_DESIGN_APPROVAL_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "design-baseline", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignBaseline(", "portableRequest(\"design.designBaseline.snapshot\"", "parseDesignBaselineEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP Design Baseline version candidate", "does not convert an approval candidate into approval", "implementation or action authority"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DesignBaselineProjection", "DESIGN_BASELINE_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] }
       ]
     },
@@ -928,7 +941,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T010650Z-phase-2-human-design-approval-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T015414Z-phase-2-design-baseline-versioning-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1259,6 +1272,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadHumanDesignApprovalAsync(", "\"design.humanDesignApproval.snapshot\"", "ParseHumanDesignApprovalResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP Human Design Approval decision candidate", "does not verify approver authority", "implementation or action authority"] },
           { "path": "apps/visual-studio/Gaep.HostClient/HumanDesignApprovalProtocol.cs", "contains": ["HumanDesignApprovalProjection", "HumanDesignApprovalProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "design-baseline", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignBaselineAsync(", "\"design.designBaseline.snapshot\"", "ParseDesignBaselineResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP Design Baseline version candidate", "does not convert an approval candidate into approval", "implementation or action authority"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/DesignBaselineProtocol.cs", "contains": ["DesignBaselineProjection", "DesignBaselineProjectionAuthorityBoundary"] }
         ] }
       ]
     }
