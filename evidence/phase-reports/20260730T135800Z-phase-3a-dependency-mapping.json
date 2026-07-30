@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-3a-delivery-planning",
+  "evidenceScope": "phase-3a-dependency-mapping-local",
+  "recordedAt": "2026-07-30T14:07:51Z",
+  "sourceCommit": "bf05b668b2e7369411757f82033a88a5b9ea94ee",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 84,
+    "hostAssessments": 336,
+    "hostAssessmentsImplemented": 336,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:c60c30fc4552eecd3cf737e73c69f23813ff5222e3a57d42cfd88b1a43687345",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 229861,
+      "digest": "sha256:c00c2862142a0df0e32d891fff827630ac779e4b576ad83f540eb02fe3065523",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260730T134600Z-phase-3a-dependency-mapping-packages.json",
+      "bytes": 3417,
+      "digest": "sha256:7a88efaf6498d4a939c1c9a69d14cac5ad6646ac995be432f4b93bccf7b2516b",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260730T134500Z-phase-3a-dependency-mapping-host-behavior.json",
+      "bytes": 3575,
+      "digest": "sha256:def56f472c58f08bcf954a934358f3764dd522b0d0959ec0642d46e0f717629e",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260730T134600Z-phase-3a-dependency-mapping.json",
+      "bytes": 56823,
+      "digest": "sha256:b4926ebd7dabac0ad911277f174746800191f5997753736ba640a81329182079",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
+      "bytes": 5234,
+      "digest": "sha256:f44e4a370357cf7738fbf691a49178cd3da20ff4d01e593e2af1565cfc1b71d7",
+      "kind": "gaep-phase2-realistic-figma-loop-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 112,
+        "testsPassed": 952,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:68eb6d1731c0a1b0dbc10d7805476364ef8ee723a81e806f4cca46f052c0640a"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:08b0adb57413783a37d590b4811eee9439246e0230404e470c9d3d5bd58b5b0e"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 26,
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:0feaed66c0b5734381cbc5fbebbe0719a12149ffe0360fec56464783103951f4"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:626ff11426bfd65d191b0eebfacc71448d7956f136315457070814d5cafb6b8f"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:ebf57fb0791a9025ca89d84a4da62f4095fce5027a8631adc32e992c3cb1b082"
+    }
+  ],
+  "testsDigest": "sha256:b9f19edde9bf8f7ccee389ae9953caf84c7b14288e2f4360a013f3927fd4552b",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-3a-dependency-mapping-closure",
+      "state": "not-established",
+      "basis": "the exact versioned Dependency Mapping candidate lifecycle, complete current Implementation Unit node catalog, typed directed acyclic dependency edges, required, conditional and advisory strengths, evidence states, deterministic longest candidate-effort critical path, canonical tie handling, graph, critical-path and assessment receipts, exact current Backlog Hierarchy, MVP and Vertical Slice, and Implementation Unit Model bindings, immutable revisions, privacy-safe Product Studio table and four host projections are implemented locally; candidates do not establish dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, native-host interaction or Product Owner acceptance"
+    }
+  ],
+  "knownGapsDigest": "sha256:82b9051e593c617501e1276f7517bf81dfa9dac75c5fc17a11912ba33608f864",
+  "claimBoundary": "This report binds the exact governed Dependency Mapping candidate lifecycle, immutable revision history, complete current Implementation Unit node catalog, typed directed acyclic dependency edges, required, conditional and advisory strengths, evidence states, deterministic longest candidate-effort critical path with canonical tie handling, graph, critical-path and assessment receipts, exact current Product, Initiative, Backlog Hierarchy, MVP and Vertical Slice, and Implementation Unit Model bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Dependency maps and critical paths remain governed candidates only. This report does not establish dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+}
