@@ -161,6 +161,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/HumanDesignApprovalProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/DesignBaselineModels.cs",
       "apps/visual-studio/Gaep.HostClient/DesignBaselineProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/DesignDriftDetectionModels.cs",
+      "apps/visual-studio/Gaep.HostClient/DesignDriftDetectionProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/EngineClient.cs",
       "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs",
       "apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj",
@@ -177,7 +179,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (570)",
+        "GAEP Visual Studio host-client tests: PASS (577)",
       ],
     }],
   },
