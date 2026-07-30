@@ -2084,6 +2084,66 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Boilerplate Selection and Binding projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("boilerplate-selection-binding-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readBoilerplateSelectionBinding(entryId)
+            assertEquals("attention-required", projection.state)
+            assertEquals("held", projection.reviewState)
+            assertEquals(4, projection.decisionCount)
+            assertEquals(2, projection.selectedCandidateCount)
+            assertEquals(1, projection.notApplicableCandidateCount)
+            assertEquals(1, projection.deferredCandidateCount)
+            assertEquals(1, projection.missingUnitDecisionCount)
+            assertEquals(1, projection.invalidSelectionCount)
+            assertEquals(0, projection.staleDependencyMappingCount)
+            assertEquals(0, projection.staleBoilerplateRegistryCount)
+
+            val rendered = RiderProductController(client).readBoilerplateSelectionBinding(entryId)
+            assertTrue(rendered.contains("GAEP governed Boilerplate Selection and Binding candidate"))
+            assertTrue(rendered.contains("4 decisions · 2 selected · 1 not applicable · 1 deferred · 0 not assessed"))
+            assertTrue(rendered.contains("1 missing unit decisions · 1 invalid selections · 1 registry gaps"))
+            assertTrue(rendered.contains("no boilerplate names, locators, versions, unit or profile identities"))
+            assertTrue(rendered.contains("does not establish organizational designation, endorsement, approval"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("boilerplateRegistryEntryId"))
+            assertFalse(rendered.contains("technologyProfileId"))
+            assertFalse(rendered.contains("private rationale"))
+        }
+
+        listOf(
+            "bad-boilerplate-selection-binding-snapshot-digest",
+            "bad-boilerplate-selection-binding-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readBoilerplateSelectionBinding(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf(
+            "bad-boilerplate-selection-binding-snapshot-binding",
+            "bad-boilerplate-selection-binding-unit-model-binding",
+            "bad-boilerplate-selection-binding-dependency-mapping-binding",
+            "bad-boilerplate-selection-binding-technology-profile-binding",
+            "bad-boilerplate-selection-binding-registry-binding",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readBoilerplateSelectionBinding(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

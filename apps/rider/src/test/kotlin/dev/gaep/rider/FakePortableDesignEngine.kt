@@ -52,6 +52,7 @@ private val implementationUnitModelId = UUID.fromString("97979797-9797-4797-8797
 private val dependencyMappingId = UUID.fromString("98989898-9898-4898-8898-989898989898")
 private val technologyProfileId = UUID.fromString("89898989-8989-4989-8989-898989898989")
 private val boilerplateRegistryId = UUID.fromString("90909090-9090-4090-8090-909090909090")
+private val boilerplateSelectionBindingId = UUID.fromString("a9a9a9a9-a9a9-49a9-89a9-a9a9a9a9a9a9")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -327,6 +328,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.boilerplateRegistry.snapshot" -> handleBoilerplateRegistry(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.boilerplateSelectionBinding.snapshot" -> handleBoilerplateSelectionBinding(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4217,6 +4223,115 @@ private fun handleBoilerplateRegistry(id: Long, params: JsonObject, workspacePat
     when {
         workspacePath.endsWith("bad-boilerplate-registry-snapshot-digest") -> value.getAsJsonObject("candidate").addProperty("entryCount", 5)
         workspacePath.endsWith("bad-boilerplate-registry-snapshot-private") -> value.addProperty("rationale", "$privateRoot/$privateCredential")
+    }
+    writeResult(id, value)
+}
+
+private fun handleBoilerplateSelectionBinding(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BOILERPLATE SELECTION BINDING PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-boilerplate-selection-binding-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T18:30:00.000Z"
+    val candidateDigest = "sha256:${"8".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "boilerplate-selection-binding-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "boilerplate-selection-binding-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", boilerplateSelectionBindingId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            add("implementationUnitModel", JsonObject().apply {
+                addProperty("recordId", implementationUnitModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-boilerplate-selection-binding-unit-model-binding")) "sha256:${"4".repeat(64)}" else "sha256:${"5".repeat(64)}")
+            })
+            add("dependencyMapping", JsonObject().apply {
+                addProperty("recordId", dependencyMappingId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-boilerplate-selection-binding-dependency-mapping-binding")) "sha256:${"8".repeat(64)}" else "sha256:${"9".repeat(64)}")
+            })
+            add("technologyProfile", JsonObject().apply {
+                addProperty("recordId", technologyProfileId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-boilerplate-selection-binding-technology-profile-binding")) "sha256:${"7".repeat(64)}" else "sha256:${"6".repeat(64)}")
+            })
+            add("boilerplateRegistry", JsonObject().apply {
+                addProperty("recordId", boilerplateRegistryId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-boilerplate-selection-binding-registry-binding")) "sha256:${"2".repeat(64)}" else "sha256:${"3".repeat(64)}")
+            })
+            addProperty("decisionCount", 4)
+            addProperty("selectedCandidateCount", 2)
+            addProperty("notApplicableCandidateCount", 1)
+            addProperty("deferredCandidateCount", 1)
+            addProperty("notAssessedCount", 0)
+            addProperty("missingUnitDecisionCount", 1)
+            addProperty("invalidSelectionCount", 1)
+            addProperty("registryGapCount", 1)
+            addProperty("profileMismatchCount", 1)
+            addProperty("unitScopeMismatchCount", 1)
+            addProperty("versionMismatchCount", 1)
+            addProperty("missingEvidenceCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleImplementationUnitModelCount", 0)
+            addProperty("staleDependencyMappingCount", 0)
+            addProperty("staleTechnologyProfileCount", 0)
+            addProperty("staleBoilerplateRegistryCount", 0)
+            addProperty("invalidCandidateCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Boilerplate Selection and Binding decisions require human review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("authorityBoundary", "boilerplate-selection-binding-status-is-observational-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-selection-decision-effectiveness-binding-effectiveness-compatibility-truth-or-completeness-or-validation-licensing-or-security-approval-exception-waiver-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority")
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", boilerplateSelectionBindingId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("state", "candidate")
+            addProperty("unitDecisionCatalogDigest", "sha256:${"9".repeat(64)}")
+            addProperty("selectionReceiptDigest", "sha256:${"a".repeat(64)}")
+            addProperty("bindingReceiptDigest", "sha256:${"b".repeat(64)}")
+            addProperty("assessmentReceiptDigest", "sha256:${"c".repeat(64)}")
+            addProperty("decisionCount", 4)
+            addProperty("selectedCandidateCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T18:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-unit-decision-selection-binding-assessment-snapshot-digests-only-not-boilerplate-names-locators-versions-unit-or-profile-identities-rationale-conditions-alternatives-deviations-evidence-decision-roles-personal-data-secrets-credentials-or-machine-paths")
+        addProperty("authorityBoundary", "boilerplate-selection-binding-projection-is-read-only-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-selection-decision-effectiveness-binding-effectiveness-compatibility-truth-or-completeness-or-validation-licensing-or-security-approval-exception-waiver-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-boilerplate-selection-binding-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("decisionCount", 5)
+        }
+        workspacePath.endsWith("bad-boilerplate-selection-binding-snapshot-private") -> {
+            value.addProperty("rationale", "$privateRoot/$privateCredential")
+        }
     }
     writeResult(id, value)
 }
