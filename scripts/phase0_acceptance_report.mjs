@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260730T010650Z-phase-2-human-design-approval-packages.json",
-  conformance: "evidence/ide-conformance/20260730T010650Z-phase-2-human-design-approval.json",
+  packages: "evidence/local-packages/20260730T015414Z-phase-2-design-baseline-versioning-packages.json",
+  conformance: "evidence/ide-conformance/20260730T015414Z-phase-2-design-baseline-versioning.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    humanDesignApproval
+    designBaseline
+      ? {
+          id: "phase-2-design-baseline-versioning-closure",
+          state: "not-established",
+          basis: "the Design Baseline version candidate is implemented locally across the shared engine and four host projections; real Product research, an effective Human Design Approval determination, accountable baseline-designation authority, verified approver authority, enforced separation of duties, an actual Baseline Set designation, branch and merge governance, effective supersession, withdrawal or restoration, stale-state resolution, returned current Figma content, design validity, readiness, phase entry, native-host interaction and Product Owner acceptance remain incomplete",
+        }
+      : humanDesignApproval
       ? {
           id: "phase-2-human-design-approval-closure",
           state: "not-established",
@@ -452,6 +458,9 @@ export async function buildPhase0AcceptanceReport({
   const humanDesignApproval = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "human-design-approval" && capability.state === "implemented"))
+  const designBaseline = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "design-baseline" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -474,6 +483,7 @@ export async function buildPhase0AcceptanceReport({
     designDelta,
     designConflictResolution,
     humanDesignApproval,
+    designBaseline,
   })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
@@ -491,8 +501,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: humanDesignApproval
+    phase: designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: designBaseline
+      ? "phase-2-design-baseline-versioning-local"
+      : humanDesignApproval
       ? "phase-2-human-design-approval-local"
       : designConflictResolution
       ? "phase-2-design-conflict-resolution-local"
@@ -576,7 +588,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: humanDesignApproval
+    claimBoundary: designBaseline
+      ? "This report binds the exact Design Baseline version-candidate lifecycle, exact Product and Initiative identity, exact current Human Design Approval candidate and assessment, exact finalized-snapshot subject and scope, immutable candidate-set membership and revision, baseline lineage, semantic and schema version axes, version-policy, designation-definition and designation-receipt digests, exact predecessor references, bounded proposal, supersession, withdrawal and restoration candidates, attributable human proposal state, authority-evidence and independence declarations, expiration, stale-binding, stale-source and unresolved-gap metadata, immutable history, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. This report does not convert an approval candidate into approval, verify approver authority, enforce separation of duties, establish an Approval Determination or Baseline Set designation, apply supersession, withdrawal or restoration, establish branch or merge governance, readiness or phase entry, connect to or call Figma, request credentials, grant permissions, authorize or perform writes or imports, grant implementation or action authority, prove real Product research or returned current Figma content, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : humanDesignApproval
       ? "This report binds the exact Human Design Approval recorded-decision candidate lifecycle, exact Product and Initiative identity, five exact current design prerequisites, exact finalized-snapshot subject identity, revision, digest, external file and version digests, item catalog and count, exact included and excluded item scope, bounded approve, reject, request-change and abstain decision candidates, decision-definition and decision-receipt digests, attributable human decision state, authority-evidence and independence declarations, expiration, revocation, stale-binding, stale-source and unresolved-gap metadata, immutable history, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. Even an approve candidate does not verify approver authority, enforce separation of duties, establish design approval, a Design Baseline, readiness or phase entry, connect to or call Figma, request credentials, grant permissions, authorize or perform writes or imports, grant implementation or action authority, prove real Product research or a returned current Figma snapshot, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : designConflictResolution
       ? "This report binds the exact Design Conflict Resolution candidate lifecycle, exact Product and Initiative identity, exact current Design Delta and conflicting-delta digest, bounded accept-source, accept-target, merge, reject-change and escalate candidates, resolution-definition, resolution-receipt and resolution-catalog digests, attributable human proposal and review state, recorded distinct-actor declaration, expiration, coverage, provenance, stale-binding, stale-source and unresolved-gap metadata, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. This report does not enforce separation of duties, resolve or apply conflicts, synchronize design, establish conflict or design validity, approval, a Design Baseline or readiness, connect to or call Figma, request credentials, grant permissions, authorize or perform writes or imports, prove real Product research or a returned current Figma snapshot, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
