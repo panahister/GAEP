@@ -66,6 +66,7 @@ const commands = [
   "gaepKiro.designToRequirementBinding.inspect",
   "gaepKiro.designerReadyGate.inspect",
   "gaepKiro.designDelta.inspect",
+  "gaepKiro.designConflictResolution.inspect",
   "gaepKiro.portableDesign.import",
   "gaepKiro.portableDesign.list",
   "gaepKiro.portableDesign.read",

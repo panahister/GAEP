@@ -69,6 +69,7 @@ const finalizedFigmaSnapshotImportId = "71717171-7171-4171-8171-717171717171"
 const designToRequirementBindingId = "72727272-7272-4272-8272-727272727272"
 const designerReadyGateId = "73737373-7373-4373-8373-737373737373"
 const designDeltaId = "74747474-7474-4474-8474-747474747474"
+const designConflictResolutionId = "75757575-7575-4575-8575-757575757575"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -188,6 +189,8 @@ input.on("line", (line) => {
       return readDesignerReadyGate(id, request.params)
     case "design.designDelta.snapshot":
       return readDesignDelta(id, request.params)
+    case "design.designConflictResolution.snapshot":
+      return readDesignConflictResolution(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -3070,6 +3073,86 @@ function readDesignDelta(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-design-delta-digest")) value.status.deltaCount = 5
   if (workspacePath.endsWith("bad-design-delta-private")) value.deltaContent = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readDesignConflictResolution(id, params) {
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"2".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "design-conflict-resolution-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: designConflictResolutionId, revision: 2, digest: candidateDigest },
+    conflictCount: 5,
+    resolutionCount: 4,
+    acceptSourceCount: 1,
+    acceptTargetCount: 1,
+    mergeCount: 1,
+    rejectChangeCount: 0,
+    escalateCount: 1,
+    humanReviewedCount: 3,
+    distinctActorDeclaredCount: 2,
+    expiredCandidateCount: 1,
+    unresolvedConflictCount: 1,
+    unresolvedQuestionCount: 2,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 2,
+    coverageState: "partial",
+    provenanceState: "partial",
+    candidateResult: "escalation-plan-candidate",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["The candidate records unresolved design conflicts"],
+    assessedAt: "2026-07-30T00:10:00.000Z",
+    authorityBoundary: "design-conflict-resolution-status-is-observational-and-does-not-enforce-separation-of-duties-resolve-conflicts-synchronize-design-establish-validity-approval-baseline-readiness-or-grant-implementation-write-import-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "design-conflict-resolution-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: designConflictResolutionId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"3".repeat(64)}`,
+      state: "candidate",
+      designDelta: {
+        recordId: designDeltaId,
+        revision: 2,
+        digest: `sha256:${"8".repeat(64)}`,
+        membershipDigest: `sha256:${"9".repeat(64)}`,
+        deltaCatalogDigest: `sha256:${"1".repeat(64)}`,
+        comparisonReceiptDigest: `sha256:${"0".repeat(64)}`,
+        conflictingCount: 5,
+        candidateResult: "conflict-candidate",
+        reviewState: "ready-for-human-review",
+      },
+      resolutionDefinitionDigest: `sha256:${"4".repeat(64)}`,
+      resolutionReceiptDigest: `sha256:${"5".repeat(64)}`,
+      resolutionCatalogDigest: `sha256:${"6".repeat(64)}`,
+      conflictCount: 5,
+      resolutionCount: 4,
+      coverageState: "partial",
+      provenanceState: "partial",
+      candidateResult: "escalation-plan-candidate",
+      reviewState: "held",
+      updatedAt: "2026-07-30T00:09:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-delta-content-resolution-content-evidence-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+    authorityBoundary: "design-conflict-resolution-projection-is-read-only-and-does-not-enforce-separation-of-duties-resolve-conflicts-synchronize-design-establish-validity-approval-baseline-readiness-or-grant-implementation-write-import-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-design-conflict-resolution-binding")) content.initiative.id = designConflictResolutionId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-design-conflict-resolution-digest")) value.status.resolutionCount = 3
+  if (workspacePath.endsWith("bad-design-conflict-resolution-private")) value.resolutionContent = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }
 

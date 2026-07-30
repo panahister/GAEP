@@ -145,7 +145,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
     fail("package identity, host engine, entry point, or extension kind differs")
   }
   const commands = packagedManifest.contributes?.commands
-  if (!Array.isArray(commands) || commands.length !== 61 ||
+  if (!Array.isArray(commands) || commands.length !== 62 ||
       new Set(commands.map((command) => command.command)).size !== commands.length ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1Summary") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1ChangeImpact") ||
@@ -168,8 +168,9 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.finalizedFigmaSnapshotImport.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designToRequirementBinding.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designerReadyGate.inspect") ||
-      !commands.some((command) => command.command === "gaepKiro.designDelta.inspect")) {
-    fail("package command inventory must contain 61 unique commands including all three Phase 1 dashboards and governed Design phase candidates through Design Delta")
+      !commands.some((command) => command.command === "gaepKiro.designDelta.inspect") ||
+      !commands.some((command) => command.command === "gaepKiro.designConflictResolution.inspect")) {
+    fail("package command inventory must contain 62 unique commands including all three Phase 1 dashboards and governed Design phase candidates through Design Conflict Resolution")
   }
   const activationCommands = packagedManifest.activationEvents
     .filter((event) => event.startsWith("onCommand:"))
