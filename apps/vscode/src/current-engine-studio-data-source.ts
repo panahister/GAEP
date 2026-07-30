@@ -21,6 +21,7 @@ import type {
   BoilerplateSelectionBindingProjection,
   BoilerplateCompatibilityValidationProjection,
   FigmaToBoilerplateMappingProjection,
+  DesignToCodeBindingRegistryProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -231,6 +232,9 @@ export interface CurrentStudioEngineReader {
   figmaToBoilerplateMapping?: {
     project(initiativeId: string): Promise<FigmaToBoilerplateMappingProjection>
   }
+  designToCodeBindingRegistry?: {
+    project(initiativeId: string): Promise<DesignToCodeBindingRegistryProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -413,6 +417,7 @@ interface ObservedStudioState {
   boilerplateSelectionBindingProjections: Map<string, BoilerplateSelectionBindingProjection>
   boilerplateCompatibilityValidationProjections: Map<string, BoilerplateCompatibilityValidationProjection>
   figmaToBoilerplateMappingProjections: Map<string, FigmaToBoilerplateMappingProjection>
+  designToCodeBindingRegistryProjections: Map<string, DesignToCodeBindingRegistryProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3842,6 +3847,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     boilerplateSelectionBindings: boilerplateSelectionBindingTable(state),
     boilerplateCompatibilityValidations: boilerplateCompatibilityValidationTable(state),
     figmaToBoilerplateMappings: figmaToBoilerplateMappingTable(state),
+    designToCodeBindingRegistries: designToCodeBindingRegistryTable(state),
   }
 }
 
@@ -4624,6 +4630,65 @@ function figmaToBoilerplateMappingTable(state: ObservedStudioState): StudioTable
       emptyState: emptySurface(
         "No governed Figma-to-Boilerplate Mapping candidate",
         "Create the candidate through the governed engine workflow after all 11 exact Design, Figma, implementation-unit, technology, registry, selection, and compatibility candidates exist. This view does not connect to Figma, expose returned Figma content, validate or approve design, designate a baseline, establish mapping truth or completeness, make selection or compatibility effective, retrieve, import, instantiate, generate code, establish implementation readiness or completeness, assign, execute, accept, merge, release, deploy, or grant action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function designToCodeBindingRegistryTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.designToCodeBindingRegistryProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        subjects: record.bindingSubjectCatalogDigest,
+        targets: record.codeTargetCatalogDigest,
+        traceReceipt: record.traceReceiptDigest,
+        bindingReceipt: record.bindingReceiptDigest,
+        assessmentReceipt: record.assessmentReceiptDigest,
+        coverage: `${status.mappingSubjectCount} mapping subjects · ${status.subjectCount} binding subjects`,
+        outcomes: `${status.boundCandidateCount} bound candidates · ${status.conflictCandidateCount} conflicts · ${status.unboundCandidateCount} unbound · ${status.notAssessedCount} not assessed`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        bindingGaps: `${status.missingSubjectCount} missing subjects · ${status.invalidSubjectCount} invalid subjects · ${status.targetGapCount} target gaps · ${status.traceGapCount} trace gaps · ${status.evidenceGapCount} evidence gaps · ${status.duplicateTargetCount} duplicate targets`,
+        staleGaps: `${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+        boundary: "Candidate identities, counts, statuses, and subject, target, trace, binding, assessment, and snapshot digests only; no Figma content, design-item, mapping, unit, requirement, repository, module, path, symbol, evidence, reviewer, or personal data. This view does not establish design validity, approval or baseline, mapping or binding truth or completeness, repository/path/symbol truth, create or change code targets, retrieve, import, instantiate, generate or execute assets, establish implementation readiness or completeness, assign, execute, accept, merge, release, deploy, or grant action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "design-to-code-binding-registry",
+    title: "Governed Design-to-Code Binding Registry Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "subjects", label: "Binding subject catalog digest" },
+      { key: "targets", label: "Code target catalog digest" },
+      { key: "traceReceipt", label: "Trace receipt" },
+      { key: "bindingReceipt", label: "Binding receipt" },
+      { key: "assessmentReceipt", label: "Assessment receipt" },
+      { key: "coverage", label: "Privacy-safe binding coverage" },
+      { key: "outcomes", label: "Candidate outcomes" },
+      { key: "assessment", label: "Candidate assessment" },
+      { key: "bindingGaps", label: "Candidate binding gaps" },
+      { key: "staleGaps", label: "Candidate freshness gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Design-to-Code Binding Registry candidate",
+        "Create the candidate through the governed engine workflow after all eight exact design, mapping, implementation-unit, technology, selection, and compatibility candidates exist. This view does not connect to Figma, expose returned Figma or source content, validate or approve design, designate a baseline, establish mapping, binding, repository, path, or symbol truth, create or change code targets, retrieve, import, instantiate, generate, execute, accept, merge, release, deploy, or grant action authority.",
       ),
     } : {}),
   }
@@ -6476,6 +6541,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       boilerplateSelectionBindingProjections: new Map(),
       boilerplateCompatibilityValidationProjections: new Map(),
       figmaToBoilerplateMappingProjections: new Map(),
+      designToCodeBindingRegistryProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -7409,6 +7475,73 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "figma-to-boilerplate-mapping-unavailable",
           "Figma-to-Boilerplate Mapping metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.designToCodeBindingRegistry) {
+      if (auditSemanticsVerified) {
+        const dependencyReaders = [
+          engine.designBaseline, engine.finalizedFigmaSnapshotImport, engine.designToRequirementBinding,
+          engine.figmaToBoilerplateMapping, engine.implementationUnitModel, engine.technologyProfile,
+          engine.boilerplateSelectionBinding, engine.boilerplateCompatibilityValidation,
+        ]
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const registry = await engine.designToCodeBindingRegistry!.project(initiative.id)
+          const dependencies = dependencyReaders.every((reader) => reader !== undefined)
+            ? await Promise.all(dependencyReaders.map((reader) => reader!.project(initiative.id)))
+            : undefined
+          return { registry, dependencies }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.registry
+            const { snapshotDigest, ...projectionBody } = value
+            const references = [
+              value.status.designBaseline, value.status.finalizedFigmaSnapshotImport,
+              value.status.designToRequirementBinding, value.status.figmaToBoilerplateMapping,
+              value.status.implementationUnitModel, value.status.technologyProfile,
+              value.status.boilerplateSelectionBinding, value.status.boilerplateCompatibilityValidation,
+            ]
+            const exactDependencies = !value.candidate || (
+              projection.value.dependencies !== undefined &&
+              references.every((reference, dependencyIndex) => {
+                const dependency = projection.value.dependencies?.[dependencyIndex]?.candidate
+                return reference !== undefined && dependency !== undefined &&
+                  reference.recordId === dependency.id && reference.revision === dependency.revision &&
+                  reference.digest === dependency.digest
+              })
+            )
+            if (
+              value.product.id === empty.product?.id &&
+              value.product.revision === (empty.product.revision ?? 1) &&
+              value.product.digest === canonicalDigest(empty.product) &&
+              value.initiative.id === initiative.id &&
+              value.initiative.revision === (initiative.revision ?? 1) &&
+              value.initiative.digest === canonicalDigest(initiative) &&
+              exactDependencies && snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.designToCodeBindingRegistryProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Design-to-Code Binding Registry projection was unavailable or did not bind all 8 exact current governed dependencies",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `design-to-code-binding-registry-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Design-to-Code Binding Registry metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "design-to-code-binding-registry-unavailable",
+          "Design-to-Code Binding Registry metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
