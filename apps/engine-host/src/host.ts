@@ -144,6 +144,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.boilerplateRegistry.revise",
   "planning.boilerplateRegistry.assess",
   "planning.boilerplateRegistry.snapshot",
+  "planning.boilerplateSelectionBinding.read",
+  "planning.boilerplateSelectionBinding.create",
+  "planning.boilerplateSelectionBinding.revise",
+  "planning.boilerplateSelectionBinding.assess",
+  "planning.boilerplateSelectionBinding.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1452,6 +1457,21 @@ export class EngineHost {
         return this.engine.boilerplateRegistry.assess(request.params.initiativeId)
       case "planning.boilerplateRegistry.snapshot":
         return this.engine.boilerplateRegistry.project(request.params.initiativeId)
+      case "planning.boilerplateSelectionBinding.read":
+        return await this.engine.boilerplateSelectionBinding.readCurrent(request.params.initiativeId) ?? null
+      case "planning.boilerplateSelectionBinding.create":
+        return this.engine.boilerplateSelectionBinding.create(request.params.record, actorId(request.params.actorId))
+      case "planning.boilerplateSelectionBinding.revise":
+        return this.engine.boilerplateSelectionBinding.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.boilerplateSelectionBinding.assess":
+        return this.engine.boilerplateSelectionBinding.assess(request.params.initiativeId)
+      case "planning.boilerplateSelectionBinding.snapshot":
+        return this.engine.boilerplateSelectionBinding.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":

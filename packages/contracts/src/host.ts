@@ -12,6 +12,7 @@ import { implementationUnitModelInputSchema } from "./implementation-unit-model.
 import { dependencyMappingInputSchema } from "./dependency-mapping.js"
 import { technologyProfileInputSchema } from "./technology-profile.js"
 import { boilerplateRegistryInputSchema } from "./boilerplate-registry.js"
+import { boilerplateSelectionBindingInputSchema } from "./boilerplate-selection-binding.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -727,6 +728,18 @@ export const hostBoilerplateRegistryReviseParamsSchema = z.object({
   record: boilerplateRegistryInputSchema,
 }).strict()
 
+export const hostBoilerplateSelectionBindingCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: boilerplateSelectionBindingInputSchema,
+}).strict()
+
+export const hostBoilerplateSelectionBindingReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: boilerplateSelectionBindingInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1031,6 +1044,11 @@ export const hostMethodSchema = z.enum([
   "planning.boilerplateRegistry.revise",
   "planning.boilerplateRegistry.assess",
   "planning.boilerplateRegistry.snapshot",
+  "planning.boilerplateSelectionBinding.read",
+  "planning.boilerplateSelectionBinding.create",
+  "planning.boilerplateSelectionBinding.revise",
+  "planning.boilerplateSelectionBinding.assess",
+  "planning.boilerplateSelectionBinding.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1374,6 +1392,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.boilerplateRegistry.revise", hostBoilerplateRegistryReviseParamsSchema),
   requestVariant("planning.boilerplateRegistry.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.boilerplateRegistry.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.boilerplateSelectionBinding.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.boilerplateSelectionBinding.create", hostBoilerplateSelectionBindingCreateParamsSchema),
+  requestVariant("planning.boilerplateSelectionBinding.revise", hostBoilerplateSelectionBindingReviseParamsSchema),
+  requestVariant("planning.boilerplateSelectionBinding.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.boilerplateSelectionBinding.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

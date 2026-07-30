@@ -1012,7 +1012,7 @@ describe("Backlog Hierarchy host protocol", () => {
     const boilerplateCreated = await host.dispatch({
       jsonrpc: "2.0", id: "boilerplate-create", protocolVersion: 2,
       method: "planning.boilerplateRegistry.create", params: { actorId: "host-test", record: boilerplateRegistryInput },
-    }) as { id: string; revision: number; entryCatalogDigest: string; sourceCatalogDigest: string }
+    }) as typeof boilerplateRegistryInput & { id: string; revision: number; entryCatalogDigest: string; sourceCatalogDigest: string }
     expect(boilerplateCreated).toMatchObject({
       revision: 1, entryCatalogDigest: expect.stringMatching(/^sha256:/u), sourceCatalogDigest: expect.stringMatching(/^sha256:/u),
     })
@@ -1037,14 +1037,124 @@ describe("Backlog Hierarchy host protocol", () => {
     expect(JSON.stringify(boilerplateSnapshot)).not.toContain(boilerplateRegistryInput.title)
     expect(JSON.stringify(boilerplateSnapshot)).not.toContain(boilerplateRegistryInput.entries[0]!.canonicalName)
     expect(JSON.stringify(boilerplateSnapshot)).not.toContain(boilerplateRegistryInput.entries[0]!.sourceReference)
-    await expect(host.dispatch({
+    const boilerplateRevised = await host.dispatch({
       jsonrpc: "2.0", id: "boilerplate-revise", protocolVersion: 2,
       method: "planning.boilerplateRegistry.revise",
       params: {
         actorId: "host-test", recordId: boilerplateCreated.id, expectedRevision: boilerplateCreated.revision,
         record: { ...boilerplateRegistryInput, title: "Host reviewed Boilerplate Registry candidate" },
       },
-    })).resolves.toMatchObject({ id: boilerplateCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+    }) as typeof boilerplateCreated & { predecessorDigest: string }
+    expect(boilerplateRevised).toMatchObject({ id: boilerplateCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+
+    const boilerplateSelectionBindingInput = {
+      initiativeId: initiative.id,
+      context: input.context,
+      informationClassification: "internal" as const,
+      title: "Host Boilerplate Selection and Binding candidate",
+      implementationUnitModel: {
+        recordId: unitsRevised.id, revision: unitsRevised.revision, digest: canonicalDigest(unitsRevised),
+      },
+      dependencyMapping: {
+        recordId: dependencyRevised.id, revision: dependencyRevised.revision, digest: canonicalDigest(dependencyRevised),
+      },
+      technologyProfile: {
+        recordId: technologyRevised.id, revision: technologyRevised.revision, digest: canonicalDigest(technologyRevised),
+      },
+      boilerplateRegistry: {
+        recordId: boilerplateRevised.id, revision: boilerplateRevised.revision, digest: canonicalDigest(boilerplateRevised),
+      },
+      decisions: technologyProfileInput.profiles.map((profile, index) => {
+        const registryEntry = boilerplateRegistryInput.entries.find((entry) =>
+          entry.applicableTechnologyProfileIds.includes(profile.id) &&
+          entry.applicableImplementationUnitIds.includes(profile.implementationUnitId))!
+        return {
+          id: randomUUID(), ordinal: index + 1, implementationUnitId: profile.implementationUnitId,
+          technologyProfileId: profile.id, disposition: "candidate-selected" as const,
+          boilerplateRegistryEntryId: registryEntry.id,
+          boilerplateVersionCandidate: registryEntry.versionCandidate, bindingRole: "primary-foundation" as const,
+          accountableDecisionRoleCandidate: "organizational-boilerplate-owner-candidate",
+          rationale: "The exact current host registry entry is a bounded candidate for this unit and profile",
+          conditions: ["Accountable approval and compatibility validation remain required"],
+          alternativeRegistryEntryIds: [], deviationCandidates: ["No effective deviation is granted"],
+          exceptionReferenceCandidates: [],
+          evidenceReferences: [{
+            kind: "boilerplate-registry" as const, sourceId: registryEntry.id,
+            revision: boilerplateRevised.revision, digest: canonicalDigest(registryEntry),
+            evidenceState: "observed-not-validated" as const,
+          }],
+          assessedBy: { kind: "human" as const, id: "host-binding-reviewer" },
+          assessedAt: "2026-07-30T00:00:00.000Z",
+          organizationalApprovalState: "not-established" as const,
+          selectionDecisionEffectivenessState: "not-established" as const,
+          bindingEffectivenessState: "not-established" as const,
+          compatibilityValidationState: "not-established" as const,
+        }
+      }),
+      unresolvedQuestions: [], limitations: ["Candidate decisions require accountable organizational review"],
+      reviewState: "ready-for-human-review" as const,
+      organizationalDesignationState: "not-established" as const,
+      endorsementApprovalState: "not-established" as const, supportCommitmentState: "not-established" as const,
+      selectionDecisionState: "not-established" as const, bindingEffectivenessState: "not-established" as const,
+      compatibilityTruthState: "not-established" as const, compatibilityCompletenessState: "not-established" as const,
+      compatibilityValidationState: "not-established" as const, licensingApprovalState: "not-established" as const,
+      securityApprovalState: "not-established" as const, exceptionWaiverState: "not-established" as const,
+      sourceRetrievalState: "not-established" as const, assetImportInstantiationState: "not-established" as const,
+      architectureBaselineDesignationState: "not-established" as const,
+      implementationReadinessState: "not-established" as const,
+      implementationCompletenessState: "not-established" as const,
+      assignmentExecutionState: "not-established" as const, acceptanceDecisionState: "not-established" as const,
+      mergeReadinessState: "not-established" as const, releaseReadinessState: "not-established" as const,
+      deploymentReadinessState: "not-established" as const, actionAuthorityState: "not-granted" as const,
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-binding-v1-rejected", protocolVersion: 1,
+      method: "planning.boilerplateSelectionBinding.snapshot", params: { initiativeId: initiative.id },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-binding-read-empty", protocolVersion: 2,
+      method: "planning.boilerplateSelectionBinding.read", params: { initiativeId: initiative.id },
+    })).resolves.toBeNull()
+    const bindingCreated = await host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-binding-create", protocolVersion: 2,
+      method: "planning.boilerplateSelectionBinding.create",
+      params: { actorId: "host-test", record: boilerplateSelectionBindingInput },
+    }) as typeof boilerplateSelectionBindingInput & {
+      id: string; revision: number; unitDecisionCatalogDigest: string; selectionReceiptDigest: string
+    }
+    expect(bindingCreated).toMatchObject({
+      revision: 1, unitDecisionCatalogDigest: expect.stringMatching(/^sha256:/u),
+      selectionReceiptDigest: expect.stringMatching(/^sha256:/u),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-binding-assess", protocolVersion: 2,
+      method: "planning.boilerplateSelectionBinding.assess", params: { initiativeId: initiative.id },
+    })).resolves.toMatchObject({
+      state: "candidate-complete", decisionCount: 2, selectedCandidateCount: 2,
+      missingUnitDecisionCount: 0, invalidSelectionCount: 0, staleBoilerplateRegistryCount: 0,
+    })
+    const bindingSnapshot = await host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-binding-snapshot", protocolVersion: 2,
+      method: "planning.boilerplateSelectionBinding.snapshot", params: { initiativeId: initiative.id },
+    }) as Record<string, unknown> & { snapshotDigest: string }
+    const { snapshotDigest: bindingSnapshotDigest, ...bindingSnapshotBody } = bindingSnapshot
+    expect(bindingSnapshotDigest).toBe(canonicalDigest(bindingSnapshotBody))
+    expect(bindingSnapshot).toMatchObject({
+      candidate: { id: bindingCreated.id, decisionCount: 2, selectedCandidateCount: 2 },
+      privacyBoundary: expect.stringContaining("not-boilerplate-names-locators-versions-unit-or-profile-identities"),
+      authorityBoundary: expect.stringContaining("does-not-establish-organizational-designation-endorsement-approval"),
+    })
+    expect(JSON.stringify(bindingSnapshot)).not.toContain(boilerplateSelectionBindingInput.title)
+    expect(JSON.stringify(bindingSnapshot)).not.toContain(boilerplateSelectionBindingInput.decisions[0]!.implementationUnitId)
+    expect(JSON.stringify(bindingSnapshot)).not.toContain(boilerplateSelectionBindingInput.decisions[0]!.boilerplateRegistryEntryId)
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-binding-revise", protocolVersion: 2,
+      method: "planning.boilerplateSelectionBinding.revise",
+      params: {
+        actorId: "host-test", recordId: bindingCreated.id, expectedRevision: bindingCreated.revision,
+        record: { ...boilerplateSelectionBindingInput, title: "Host reviewed Boilerplate Selection and Binding candidate" },
+      },
+    })).resolves.toMatchObject({ id: bindingCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
 
     const revised = await host.dispatch({
       jsonrpc: "2.0",
