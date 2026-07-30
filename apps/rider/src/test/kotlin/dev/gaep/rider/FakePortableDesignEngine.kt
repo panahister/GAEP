@@ -46,6 +46,7 @@ private val backlogHierarchyId = UUID.fromString("91919191-9191-4191-8191-919191
 private val mvpSliceDefinitionId = UUID.fromString("92929292-9292-4292-8292-929292929292")
 private val prioritizationModelId = UUID.fromString("93939393-9393-4393-8393-939393939393")
 private val acceptanceCriteriaId = UUID.fromString("94949494-9494-4494-8494-949494949494")
+private val definitionOfReadyId = UUID.fromString("95959595-9595-4595-8595-959595959595")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -291,6 +292,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.acceptanceCriteria.snapshot" -> handleAcceptanceCriteria(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.definitionOfReady.snapshot" -> handleDefinitionOfReady(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3512,6 +3518,120 @@ private fun handleAcceptanceCriteria(id: Long, params: JsonObject, workspacePath
         }
         workspacePath.endsWith("bad-acceptance-criteria-snapshot-private") -> {
             value.addProperty("criterionText", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDefinitionOfReady(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DEFINITION OF READY PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-definition-of-ready-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T13:20:00.000Z"
+    val candidateDigest = "sha256:${"6".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "definition-of-ready-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "definition-of-ready-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", definitionOfReadyId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            add("hierarchy", JsonObject().apply {
+                addProperty("recordId", backlogHierarchyId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-definition-of-ready-hierarchy-binding")) "sha256:${"7".repeat(64)}" else "sha256:${"8".repeat(64)}")
+            })
+            add("mvpSliceDefinition", JsonObject().apply {
+                addProperty("recordId", mvpSliceDefinitionId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-definition-of-ready-mvp-binding")) "sha256:${"9".repeat(64)}" else "sha256:${"a".repeat(64)}")
+            })
+            add("prioritizationModel", JsonObject().apply {
+                addProperty("recordId", prioritizationModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-definition-of-ready-prioritization-binding")) "sha256:${"b".repeat(64)}" else "sha256:${"c".repeat(64)}")
+            })
+            add("acceptanceCriteria", JsonObject().apply {
+                addProperty("recordId", acceptanceCriteriaId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-definition-of-ready-criteria-binding")) "sha256:${"0".repeat(64)}" else "sha256:${"1".repeat(64)}")
+            })
+            addProperty("subjectCount", 16)
+            addProperty("policyEntryCount", 9)
+            addProperty("expectedEvaluationCount", 144)
+            addProperty("evaluationCount", 140)
+            addProperty("candidateSatisfiedCount", 130)
+            addProperty("notSatisfiedCount", 3)
+            addProperty("notApplicableCount", 12)
+            addProperty("exceptionCandidateCount", 2)
+            addProperty("notAssessedCount", 2)
+            addProperty("staleEvaluationCount", 2)
+            addProperty("invalidEvaluationCount", 1)
+            addProperty("missingEvaluationCount", 4)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleHierarchyCount", 0)
+            addProperty("staleMvpSliceDefinitionCount", 0)
+            addProperty("stalePrioritizationModelCount", 0)
+            addProperty("staleAcceptanceCriteriaCount", 0)
+            addProperty("expiredCount", 0)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("result", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more item prerequisites require review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("gateBoundary", "a-passing-definition-of-ready-candidate-is-an-evaluation-result-not-admission-readiness-assignment-execution-or-implementation-permission")
+            addProperty("authorityBoundary", "definition-of-ready-status-is-observational-and-does-not-establish-prerequisite-truth-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-exception-waiver-authority-phase-entry-implementation-readiness-assignment-execution-acceptance-or-action-authority")
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", definitionOfReadyId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("state", "candidate")
+            addProperty("policyVersion", 3)
+            addProperty("validUntil", "2026-08-30T13:19:00.000Z")
+            addProperty("subjectCatalogDigest", "sha256:${"2".repeat(64)}")
+            addProperty("policyDigest", "sha256:${"3".repeat(64)}")
+            addProperty("evaluationDigest", "sha256:${"4".repeat(64)}")
+            addProperty("receiptDigest", "sha256:${"5".repeat(64)}")
+            addProperty("subjectCount", 16)
+            addProperty("policyEntryCount", 9)
+            addProperty("evaluationCount", 140)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T13:19:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-policy-evaluation-receipt-snapshot-digests-only-not-rules-rationales-evidence-identities-assessor-identities-personal-data-secrets-credentials-or-machine-paths")
+        addProperty("gateBoundary", "a-passing-definition-of-ready-candidate-is-an-evaluation-result-not-admission-readiness-assignment-execution-or-implementation-permission")
+        addProperty("authorityBoundary", "definition-of-ready-projection-is-read-only-and-does-not-establish-prerequisite-truth-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-exception-waiver-authority-phase-entry-implementation-readiness-assignment-execution-acceptance-or-action-authority")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-definition-of-ready-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("evaluationCount", 141)
+        }
+        workspacePath.endsWith("bad-definition-of-ready-snapshot-private") -> {
+            value.addProperty("rationale", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)
