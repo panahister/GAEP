@@ -496,7 +496,7 @@ describe("Backlog Hierarchy host protocol", () => {
     })
     expect(JSON.stringify(criteriaSnapshot)).not.toContain(criteriaInput.title)
     expect(JSON.stringify(criteriaSnapshot)).not.toContain(criteriaInput.criteria[0]!.expectedResult)
-    await expect(host.dispatch({
+    const criteriaRevised = await host.dispatch({
       jsonrpc: "2.0", id: "criteria-revise", protocolVersion: 2,
       method: "planning.acceptanceCriteria.revise",
       params: {
@@ -505,7 +505,84 @@ describe("Backlog Hierarchy host protocol", () => {
         expectedRevision: criteriaCreated.revision,
         record: { ...criteriaInput, title: "Host reviewed structured Acceptance Criteria candidate" },
       },
-    })).resolves.toMatchObject({ id: criteriaCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+    }) as typeof criteriaCreated & { predecessorDigest: string }
+    expect(criteriaRevised).toMatchObject({ id: criteriaCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+
+    const readyInput = {
+      initiativeId: initiative.id,
+      context: input.context,
+      informationClassification: "internal" as const,
+      title: "Host Definition of Ready item evaluations",
+      hierarchy: { recordId: created.id, revision: created.revision, digest: canonicalDigest(created) },
+      mvpSliceDefinition: criteriaInput.mvpSliceDefinition,
+      prioritizationModel: criteriaInput.prioritizationModel,
+      acceptanceCriteria: { recordId: criteriaRevised.id, revision: criteriaRevised.revision, digest: canonicalDigest(criteriaRevised) },
+      policyVersion: 1,
+      policyEntries: [{
+        key: "acceptance-criteria", kind: "acceptance-criteria" as const, title: "Acceptance Criteria candidate",
+        rule: "The exact current Acceptance Criteria candidate must be available", notApplicableAllowed: false, evidenceRequired: true,
+      }],
+      itemEvaluations: exactHierarchy.nodes.filter((node) => node.level === "story" || node.level === "task").map((node, index) => ({
+        id: randomUUID(), ordinal: index + 1, subjectNodeId: node.id, subjectKey: node.key,
+        subjectLevel: node.level as "story" | "task", prerequisiteKey: "acceptance-criteria", applicability: "required" as const,
+        assessmentState: "candidate-satisfied" as const,
+        rationale: `The current candidate covers the exact ${node.level} for human review`,
+        evidenceReferences: [{ kind: "acceptance-criteria" as const, recordId: criteriaRevised.id, revision: criteriaRevised.revision, digest: canonicalDigest(criteriaRevised) }],
+        assessedBy: { kind: "human" as const, id: "host-reviewer" }, assessedAt: "2026-07-30T00:00:00.000Z",
+      })),
+      validUntil: "2099-07-30T00:00:00.000Z",
+      unresolvedQuestions: [], limitations: ["Passing does not admit an item or grant implementation permission."],
+      reviewState: "ready-for-human-review" as const,
+      prerequisiteTruthState: "not-established" as const, criterionValidityState: "not-established" as const,
+      requirementSatisfactionState: "not-established" as const, priorityDecisionState: "not-established" as const,
+      commitmentState: "not-established" as const, approvalState: "not-established" as const,
+      readyDoneState: "not-established" as const, exceptionWaiverAuthorityState: "not-established" as const,
+      phaseEntryState: "not-established" as const, implementationReadinessState: "not-established" as const,
+      assignmentExecutionState: "not-established" as const, acceptanceDecisionState: "not-established" as const,
+      implementationAuthorityState: "not-granted" as const,
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "ready-v1-rejected", protocolVersion: 1,
+      method: "planning.definitionOfReady.snapshot", params: { initiativeId: initiative.id },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "ready-read-empty", protocolVersion: 2,
+      method: "planning.definitionOfReady.read", params: { initiativeId: initiative.id },
+    })).resolves.toBeNull()
+    const readyCreated = await host.dispatch({
+      jsonrpc: "2.0", id: "ready-create", protocolVersion: 2,
+      method: "planning.definitionOfReady.create", params: { actorId: "host-test", record: readyInput },
+    }) as { id: string; revision: number; receiptDigest: string }
+    expect(readyCreated).toMatchObject({ revision: 1, receiptDigest: expect.stringMatching(/^sha256:/u) })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "ready-assess", protocolVersion: 2,
+      method: "planning.definitionOfReady.assess", params: { initiativeId: initiative.id },
+    })).resolves.toMatchObject({
+      result: "candidate-passed", subjectCount: 2, policyEntryCount: 1, expectedEvaluationCount: 2,
+      evaluationCount: 2, candidateSatisfiedCount: 2,
+      gateBoundary: expect.stringContaining("not-admission-readiness-assignment-execution-or-implementation-permission"),
+    })
+    const readySnapshot = await host.dispatch({
+      jsonrpc: "2.0", id: "ready-snapshot", protocolVersion: 2,
+      method: "planning.definitionOfReady.snapshot", params: { initiativeId: initiative.id },
+    }) as Record<string, unknown> & { snapshotDigest: string }
+    const { snapshotDigest: readySnapshotDigest, ...readySnapshotBody } = readySnapshot
+    expect(readySnapshotDigest).toBe(canonicalDigest(readySnapshotBody))
+    expect(readySnapshot).toMatchObject({
+      candidate: { id: readyCreated.id, subjectCount: 2, policyEntryCount: 1, evaluationCount: 2 },
+      privacyBoundary: expect.stringContaining("not-rules-rationales-evidence-identities-assessor-identities"),
+      authorityBoundary: expect.stringContaining("does-not-establish-prerequisite-truth"),
+    })
+    expect(JSON.stringify(readySnapshot)).not.toContain(readyInput.title)
+    expect(JSON.stringify(readySnapshot)).not.toContain(readyInput.itemEvaluations[0]!.rationale)
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "ready-revise", protocolVersion: 2,
+      method: "planning.definitionOfReady.revise",
+      params: {
+        actorId: "host-test", recordId: readyCreated.id, expectedRevision: readyCreated.revision,
+        record: { ...readyInput, title: "Host reviewed Definition of Ready item evaluations" },
+      },
+    })).resolves.toMatchObject({ id: readyCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
 
     const revised = await host.dispatch({
       jsonrpc: "2.0",

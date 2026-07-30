@@ -6,6 +6,7 @@ import { backlogHierarchyInputSchema } from "./backlog-hierarchy.js"
 import { mvpSliceDefinitionInputSchema } from "./mvp-slice-definition.js"
 import { prioritizationModelInputSchema } from "./prioritization-model.js"
 import { acceptanceCriteriaInputSchema } from "./acceptance-criteria.js"
+import { definitionOfReadyInputSchema } from "./definition-of-ready.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -649,6 +650,18 @@ export const hostAcceptanceCriteriaReviseParamsSchema = z.object({
   record: acceptanceCriteriaInputSchema,
 }).strict()
 
+export const hostDefinitionOfReadyCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: definitionOfReadyInputSchema,
+}).strict()
+
+export const hostDefinitionOfReadyReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: definitionOfReadyInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -923,6 +936,11 @@ export const hostMethodSchema = z.enum([
   "planning.acceptanceCriteria.revise",
   "planning.acceptanceCriteria.assess",
   "planning.acceptanceCriteria.snapshot",
+  "planning.definitionOfReady.read",
+  "planning.definitionOfReady.create",
+  "planning.definitionOfReady.revise",
+  "planning.definitionOfReady.assess",
+  "planning.definitionOfReady.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1236,6 +1254,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.acceptanceCriteria.revise", hostAcceptanceCriteriaReviseParamsSchema),
   requestVariant("planning.acceptanceCriteria.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.acceptanceCriteria.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.definitionOfReady.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.definitionOfReady.create", hostDefinitionOfReadyCreateParamsSchema),
+  requestVariant("planning.definitionOfReady.revise", hostDefinitionOfReadyReviseParamsSchema),
+  requestVariant("planning.definitionOfReady.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.definitionOfReady.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

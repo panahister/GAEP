@@ -114,6 +114,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.acceptanceCriteria.revise",
   "planning.acceptanceCriteria.assess",
   "planning.acceptanceCriteria.snapshot",
+  "planning.definitionOfReady.read",
+  "planning.definitionOfReady.create",
+  "planning.definitionOfReady.revise",
+  "planning.definitionOfReady.assess",
+  "planning.definitionOfReady.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1332,6 +1337,21 @@ export class EngineHost {
         return this.engine.acceptanceCriteria.assess(request.params.initiativeId)
       case "planning.acceptanceCriteria.snapshot":
         return this.engine.acceptanceCriteria.project(request.params.initiativeId)
+      case "planning.definitionOfReady.read":
+        return await this.engine.definitionOfReady.readCurrent(request.params.initiativeId) ?? null
+      case "planning.definitionOfReady.create":
+        return this.engine.definitionOfReady.create(request.params.record, actorId(request.params.actorId))
+      case "planning.definitionOfReady.revise":
+        return this.engine.definitionOfReady.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.definitionOfReady.assess":
+        return this.engine.definitionOfReady.assess(request.params.initiativeId)
+      case "planning.definitionOfReady.snapshot":
+        return this.engine.definitionOfReady.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":
