@@ -44,6 +44,7 @@ import {
   type DesignDeltaProjection,
   type DesignConflictResolutionProjection,
   type HumanDesignApprovalProjection,
+  type DesignBaselineProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2899,6 +2900,91 @@ function humanDesignApprovalProjection(): HumanDesignApprovalProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function designBaselineProjection(): DesignBaselineProjection {
+  const approval = humanDesignApprovalProjection()
+  const approved = approval.candidate!
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "design-baseline-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "84848484-8484-4484-8484-848484848484", revision: 3, digest: `sha256:${"1".repeat(64)}` as const },
+    candidateSetCount: 1,
+    designationCandidateCount: 1,
+    supersessionCandidateCount: 1,
+    withdrawalCandidateCount: 0,
+    restorationCandidateCount: 0,
+    expiredDesignationCount: 1,
+    staleBindingCount: 2,
+    staleSourceReferenceCount: 3,
+    unresolvedQuestionCount: 4,
+    candidateResult: "supersession-candidate" as const,
+    reviewState: "ready-for-human-review" as const,
+    approvalDeterminationState: "not-established" as const,
+    baselineDesignationState: "not-established" as const,
+    state: "attention-required" as const,
+    reasons: ["The baseline designation candidate is expired"],
+    assessedAt: "2026-07-30T01:40:00.000Z",
+    authorityBoundary: "design-baseline-status-is-observational-and-does-not-convert-an-approval-candidate-into-approval-verify-approver-authority-enforce-separation-of-duties-establish-a-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "design-baseline-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"2".repeat(64)}` as const,
+      state: "candidate" as const,
+      humanDesignApproval: {
+        kind: "human-design-approval-candidate" as const,
+        recordId: approved.id,
+        revision: approved.revision,
+        digest: approved.digest,
+        membershipDigest: approved.membershipDigest,
+        decisionReceiptDigest: approved.decisionReceiptDigest,
+        subjectDigest: approved.subject.digest,
+        scopeDigest: approved.scopeDigest,
+        candidateResult: "approved-candidate" as const,
+        reviewState: "recorded-human-decision" as const,
+        assessmentDigest: `sha256:${"3".repeat(64)}` as const,
+        assessmentState: "complete-for-recorded-decision" as const,
+      },
+      subject: approved.subject,
+      scopeDigest: approved.scopeDigest,
+      baselineLineageId: "85858585-8585-4585-8585-858585858585",
+      candidateSetId: "86868686-8686-4686-8686-868686868686",
+      candidateSetRevision: 3,
+      semanticVersion: "2.0.0",
+      versionPolicyDigest: `sha256:${"4".repeat(64)}` as const,
+      designationDefinitionDigest: `sha256:${"5".repeat(64)}` as const,
+      designationReceiptDigest: `sha256:${"6".repeat(64)}` as const,
+      designationKind: "supersede-baseline-candidate" as const,
+      designationDigest: `sha256:${"7".repeat(64)}` as const,
+      supersedes: {
+        recordId: status.candidate.recordId,
+        revision: 2,
+        digest: `sha256:${"8".repeat(64)}` as const,
+        membershipDigest: `sha256:${"9".repeat(64)}` as const,
+        baselineLineageId: "85858585-8585-4585-8585-858585858585",
+        semanticVersion: "1.0.0",
+      },
+      candidateResult: status.candidateResult,
+      reviewState: status.reviewState,
+      updatedAt: "2026-07-30T01:39:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-version-axes-counts-results-and-digests-only-not-design-content-rationale-evidence-source-content-human-attribution-personal-content-secrets-credentials-or-permissions" as const,
+    authorityBoundary: "design-baseline-projection-is-read-only-and-does-not-convert-an-approval-candidate-into-approval-verify-approver-authority-enforce-separation-of-duties-establish-a-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -3568,6 +3654,8 @@ interface HarnessOptions {
   designConflictResolutionProjectionError?: Error
   humanDesignApprovalProjection?: HumanDesignApprovalProjection
   humanDesignApprovalProjectionError?: Error
+  designBaselineProjection?: DesignBaselineProjection
+  designBaselineProjectionError?: Error
   commandResult?: unknown
 }
 
@@ -3881,6 +3969,14 @@ function harness(options: HarnessOptions = {}) {
         project: async () => {
           if (options.humanDesignApprovalProjectionError) throw options.humanDesignApprovalProjectionError
           return options.humanDesignApprovalProjection!
+        },
+      },
+    } : {}),
+    ...(options.designBaselineProjection || options.designBaselineProjectionError ? {
+      designBaseline: {
+        project: async () => {
+          if (options.designBaselineProjectionError) throw options.designBaselineProjectionError
+          return options.designBaselineProjection!
         },
       },
     } : {}),
@@ -5111,6 +5207,67 @@ describe("current-engine Product Studio data source", () => {
     expect(invalidAuditSnapshot.page.kind === "readiness" && invalidAuditSnapshot.page.humanDesignApprovals.rows).toEqual([])
     expect(invalidAuditSnapshot.page.kind === "readiness" && invalidAuditSnapshot.page.gaps).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "human-design-approval-unavailable", severity: "blocker" }),
+    ]))
+  })
+
+  it("projects privacy-safe Design Baseline version metadata on the native readiness page", async () => {
+    const projection = designBaselineProjection()
+    const { source } = harness({ designBaselineProjection: projection })
+    const snapshot = await source.readSnapshot("readiness")
+    expect(snapshot.page.kind === "readiness" && snapshot.page.designBaselines).toMatchObject({
+      id: "design-baseline",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "3",
+          membership: projection.candidate?.membershipDigest,
+          approval: `${projection.candidate?.humanDesignApproval.recordId} · r2 · complete-for-recorded-decision`,
+          subject: `${projection.candidate?.subject.recordId} · r2 · returned version ${projection.candidate?.subject.returnedExternalVersionDigest} · 18 items`,
+          scope: `${projection.candidate?.scopeDigest} · exact finalized snapshot`,
+          lineage: `${projection.candidate?.baselineLineageId} · set ${projection.candidate?.candidateSetId} r3`,
+          version: `2.0.0 · policy ${projection.candidate?.versionPolicyDigest}`,
+          evidence: `definition ${projection.candidate?.designationDefinitionDigest} · receipt ${projection.candidate?.designationReceiptDigest}`,
+          designation: `supersede-baseline-candidate · ${projection.candidate?.designationDigest}`,
+          predecessor: `${projection.candidate?.supersedes?.recordId} · r2 · 1.0.0`,
+          result: "supersession-candidate · attention-required · ready-for-human-review",
+          governance: "approval determination not-established · baseline designation not-established",
+          gaps: "1 expired · 4 questions · 2 stale bindings · 3 stale Source references",
+          boundary: expect.stringContaining("does not convert an approval candidate into approval"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private design content|private rationale|private evidence|private source content|private human attribution|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("fails closed when Design Baseline metadata is unavailable, mismatched, or audit-invalid", async () => {
+    const unavailable = harness({ designBaselineProjectionError: new Error("private upstream failure") })
+    const unavailableSnapshot = await unavailable.source.readSnapshot("readiness")
+    expect(unavailableSnapshot.page.kind === "readiness" && unavailableSnapshot.page.designBaselines.rows).toEqual([])
+    expect(unavailableSnapshot.page.kind === "readiness" && unavailableSnapshot.page.gaps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: `design-baseline-${initiative.id}-unavailable`, severity: "warning" }),
+    ]))
+    expect(unavailable.diagnostics.join(" ")).not.toContain("private upstream failure")
+
+    const projection = designBaselineProjection()
+    const body = { ...projection, product: { ...projection.product, digest: `sha256:${"0".repeat(64)}` as const } }
+    const mismatched = harness({ designBaselineProjection: { ...body, snapshotDigest: canonicalDigest(body) } })
+    const mismatchedSnapshot = await mismatched.source.readSnapshot("readiness")
+    expect(mismatchedSnapshot.page.kind === "readiness" && mismatchedSnapshot.page.designBaselines.rows).toEqual([])
+    expect(mismatched.diagnostics).toEqual(expect.arrayContaining([
+      expect.stringContaining("did not bind the exact Product and Initiative revisions"),
+    ]))
+
+    const invalidAudit = harness({
+      audit: { valid: false, events: 1 },
+      designBaselineProjection: designBaselineProjection(),
+    })
+    const invalidAuditSnapshot = await invalidAudit.source.readSnapshot("readiness")
+    expect(invalidAuditSnapshot.page.kind === "readiness" && invalidAuditSnapshot.page.designBaselines.rows).toEqual([])
+    expect(invalidAuditSnapshot.page.kind === "readiness" && invalidAuditSnapshot.page.gaps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "design-baseline-unavailable", severity: "blocker" }),
     ]))
   })
 

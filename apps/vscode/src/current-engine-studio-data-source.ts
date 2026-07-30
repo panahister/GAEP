@@ -72,6 +72,7 @@ import type {
   DesignDeltaProjection,
   DesignConflictResolutionProjection,
   HumanDesignApprovalProjection,
+  DesignBaselineProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -295,6 +296,9 @@ export interface CurrentStudioEngineReader {
   humanDesignApproval?: {
     project(initiativeId: string): Promise<HumanDesignApprovalProjection>
   }
+  designBaseline?: {
+    project(initiativeId: string): Promise<DesignBaselineProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -376,6 +380,7 @@ interface ObservedStudioState {
   designDeltaProjections: Map<string, DesignDeltaProjection>
   designConflictResolutionProjections: Map<string, DesignConflictResolutionProjection>
   humanDesignApprovalProjections: Map<string, HumanDesignApprovalProjection>
+  designBaselineProjections: Map<string, DesignBaselineProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2770,6 +2775,73 @@ function humanDesignApprovalTable(state: ObservedStudioState): StudioTableSnapsh
   }
 }
 
+function designBaselineTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.designBaselineProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        approval: `${record.humanDesignApproval.recordId} · r${record.humanDesignApproval.revision} · ${record.humanDesignApproval.assessmentState}`,
+        subject: `${record.subject.recordId} · r${record.subject.revision} · returned version ${record.subject.returnedExternalVersionDigest} · ${record.subject.itemCount} items`,
+        scope: `${record.scopeDigest} · exact finalized snapshot`,
+        lineage: `${record.baselineLineageId} · set ${record.candidateSetId} r${record.candidateSetRevision}`,
+        version: `${record.semanticVersion} · policy ${record.versionPolicyDigest}`,
+        evidence: `definition ${record.designationDefinitionDigest} · receipt ${record.designationReceiptDigest}`,
+        designation: record.designationKind
+          ? `${record.designationKind} · ${record.designationDigest}`
+          : "not-proposed",
+        predecessor: record.supersedes
+          ? `${record.supersedes.recordId} · r${record.supersedes.revision} · ${record.supersedes.semanticVersion}`
+          : "initial-candidate",
+        result: `${status.candidateResult} · ${status.state} · ${status.reviewState}`,
+        governance: `approval determination ${status.approvalDeterminationState} · baseline designation ${status.baselineDesignationState}`,
+        gaps: `${status.expiredDesignationCount} expired · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, exact Human Design Approval and finalized-snapshot bindings, version axes, lineage, scope and receipt digests, designation kind, predecessor, counts, and recorded states only; no design, rationale, evidence, Source, human-attribution, personal, secret, credential, or permission content. This view does not convert an approval candidate into approval, verify approver authority, enforce separation of duties, establish a Baseline Set designation, readiness, or phase entry, call Figma, request credentials, grant permissions, execute imports or writes, or grant implementation or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "design-baseline",
+    title: "Design Baseline Version Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "approval", label: "Exact approval candidate" },
+      { key: "subject", label: "Exact design subject" },
+      { key: "scope", label: "Candidate scope" },
+      { key: "lineage", label: "Baseline lineage" },
+      { key: "version", label: "Version axes" },
+      { key: "evidence", label: "Designation receipts" },
+      { key: "designation", label: "Designation candidate" },
+      { key: "predecessor", label: "Exact predecessor" },
+      { key: "result", label: "Candidate result" },
+      { key: "governance", label: "Authority boundary state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No Design Baseline candidate",
+        "Propose an exact versioned baseline candidate through the governed engine workflow. This view does not convert an approval candidate into approval, establish a Baseline Set designation, readiness, or phase entry, access Figma, execute imports or writes, or grant implementation or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -4481,6 +4553,7 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
   const designDeltas = designDeltaTable(state)
   const designConflictResolutions = designConflictResolutionTable(state)
   const humanDesignApprovals = humanDesignApprovalTable(state)
+  const designBaselines = designBaselineTable(state)
   const portableDesignInventory = portableDesignPage
     ? `${portableDesignPage.total} governed record${portableDesignPage.total === 1 ? "" : "s"}; every validated import remains pending human review.`
     : "Unavailable until audit and governed snapshot inventory verification both succeed."
@@ -4512,6 +4585,7 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
     designDeltas,
     designConflictResolutions,
     humanDesignApprovals,
+    designBaselines,
     portability: [
       { term: "Export", value: "Portable bundle only; authority, readiness, runtime bindings, credentials, and implementation approval are not conferred." },
       { term: "Product export preview", value: state.importPreview ? `${state.importPreview.status}; preview only; no mutation performed.` : "No Product export preview is loaded; that preview workflow never mutates Product state." },
@@ -4615,6 +4689,7 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       designDeltas: capTable(page.designDeltas),
       designConflictResolutions: capTable(page.designConflictResolutions),
       humanDesignApprovals: capTable(page.humanDesignApprovals),
+      designBaselines: capTable(page.designBaselines),
     }
   }
 }
@@ -4699,6 +4774,7 @@ function addDomainPagination(page: StudioPageSnapshot, state: ObservedStudioStat
       designDeltas: page.designDeltas,
       designConflictResolutions: page.designConflictResolutions,
       humanDesignApprovals: page.humanDesignApprovals,
+      designBaselines: page.designBaselines,
     }
   }
 }
@@ -5484,6 +5560,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       designDeltaProjections: new Map(),
       designConflictResolutionProjections: new Map(),
       humanDesignApprovalProjections: new Map(),
+      designBaselineProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -7410,6 +7487,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "human-design-approval-unavailable",
           "Human Design Approval metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "readiness" && engine.designBaseline) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.designBaseline!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.designBaselineProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Design Baseline projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `design-baseline-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Design Baseline metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "design-baseline-unavailable",
+          "Design Baseline metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

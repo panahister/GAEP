@@ -266,6 +266,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         designDeltas: table("design-deltas"),
         designConflictResolutions: table("design-conflict-resolutions"),
         humanDesignApprovals: table("human-design-approvals"),
+        designBaselines: table("design-baselines"),
         portability: [{
           term: "Upstream source review",
           value: "The preserved claim is not GAEP approval, a Design Baseline, implementation readiness, or release readiness.",

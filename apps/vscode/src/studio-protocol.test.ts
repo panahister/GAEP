@@ -112,6 +112,7 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         designDeltas: table("design-deltas"),
         designConflictResolutions: table("design-conflict-resolutions"),
         humanDesignApprovals: table("human-design-approvals"),
+        designBaselines: table("design-baselines"),
         portability: [],
       }
   }
