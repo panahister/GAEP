@@ -67,6 +67,7 @@ import { finalizedFigmaSnapshotImportInputSchema } from "./finalized-figma-snaps
 import { designToRequirementBindingInputSchema } from "./design-to-requirement-binding.js"
 import { designerReadyGateInputSchema } from "./designer-ready-gate.js"
 import { designDeltaInputSchema } from "./design-delta.js"
+import { designConflictResolutionInputSchema } from "./design-conflict-resolution.js"
 
 export const hostProtocolVersionSchema = z.number().int().positive().max(1_000)
 export const supportedHostProtocolVersionSchema = z.union([z.literal(1), z.literal(2)])
@@ -747,6 +748,18 @@ export const hostDesignDeltaReviseParamsSchema = z.object({
   record: designDeltaInputSchema,
 }).strict()
 
+export const hostDesignConflictResolutionCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: designConflictResolutionInputSchema,
+}).strict()
+
+export const hostDesignConflictResolutionReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: designConflictResolutionInputSchema,
+}).strict()
+
 export const hostDashboardFrameworkParamsSchema = phaseDashboardCompositionRequestSchema
 export const hostPhase1SummaryDashboardParamsSchema = phase1SummaryDashboardRequestSchema
 export const hostPhase1ChangeImpactDashboardParamsSchema = phase1ChangeImpactDashboardRequestSchema
@@ -1009,6 +1022,11 @@ export const hostMethodSchema = z.enum([
   "design.designDelta.revise",
   "design.designDelta.assess",
   "design.designDelta.snapshot",
+  "design.designConflictResolution.read",
+  "design.designConflictResolution.create",
+  "design.designConflictResolution.revise",
+  "design.designConflictResolution.assess",
+  "design.designConflictResolution.snapshot",
 ])
 
 const requestEnvelopeFields = {
@@ -1280,6 +1298,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("design.designDelta.revise", hostDesignDeltaReviseParamsSchema),
   requestVariant("design.designDelta.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("design.designDelta.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designConflictResolution.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designConflictResolution.create", hostDesignConflictResolutionCreateParamsSchema),
+  requestVariant("design.designConflictResolution.revise", hostDesignConflictResolutionReviseParamsSchema),
+  requestVariant("design.designConflictResolution.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("design.designConflictResolution.snapshot", hostBusinessInitiativeParamsSchema),
 ])
 
 export const hostSuccessSchema = z.object({

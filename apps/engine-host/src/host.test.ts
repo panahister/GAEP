@@ -2183,6 +2183,54 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "design-conflict-resolution-read-empty",
+      protocolVersion: 2,
+      method: "design.designConflictResolution.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-conflict-resolution-assess-empty",
+      protocolVersion: 2,
+      method: "design.designConflictResolution.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      conflictCount: 0,
+      resolutionCount: 0,
+      acceptSourceCount: 0,
+      acceptTargetCount: 0,
+      mergeCount: 0,
+      rejectChangeCount: 0,
+      escalateCount: 0,
+      humanReviewedCount: 0,
+      distinctActorDeclaredCount: 0,
+      expiredCandidateCount: 0,
+      unresolvedConflictCount: 0,
+      unresolvedQuestionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      coverageState: "not-assessed",
+      provenanceState: "not-assessed",
+      candidateResult: "not-assessed",
+      reviewState: "draft",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-enforce-separation-of-duties"),
+    })
+    const conflictResolutionProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-conflict-resolution-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.designConflictResolution.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: conflictResolutionDigest, ...conflictResolutionProjectionBody } = conflictResolutionProjection
+    expect(conflictResolutionDigest).toBe(canonicalDigest(conflictResolutionProjectionBody))
+    expect(conflictResolutionProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-design-content-delta-content-resolution-content"),
+      authorityBoundary: expect.stringContaining("does-not-enforce-separation-of-duties"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -2329,6 +2377,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "design-delta-v1-block",
       method: "design.designDelta.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "design-conflict-resolution-v1-block",
+      method: "design.designConflictResolution.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

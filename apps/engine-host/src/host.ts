@@ -304,6 +304,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.designDelta.revise",
   "design.designDelta.assess",
   "design.designDelta.snapshot",
+  "design.designConflictResolution.read",
+  "design.designConflictResolution.create",
+  "design.designConflictResolution.revise",
+  "design.designConflictResolution.assess",
+  "design.designConflictResolution.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1822,6 +1827,21 @@ export class EngineHost {
         return this.engine.designDelta.assess(request.params.initiativeId)
       case "design.designDelta.snapshot":
         return this.engine.designDelta.project(request.params.initiativeId)
+      case "design.designConflictResolution.read":
+        return await this.engine.designConflictResolution.readCurrent(request.params.initiativeId) ?? null
+      case "design.designConflictResolution.create":
+        return this.engine.designConflictResolution.create(request.params.record, actorId(request.params.actorId))
+      case "design.designConflictResolution.revise":
+        return this.engine.designConflictResolution.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.designConflictResolution.assess":
+        return this.engine.designConflictResolution.assess(request.params.initiativeId)
+      case "design.designConflictResolution.snapshot":
+        return this.engine.designConflictResolution.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {
