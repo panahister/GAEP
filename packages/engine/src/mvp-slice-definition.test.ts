@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type { AcceptanceCriteriaInput, BacklogHierarchyInput, DefinitionOfDoneInput, DefinitionOfReadyInput, DependencyMappingInput, ImplementationUnitModelInput, MvpSliceDefinitionInput, PrioritizationModelInput } from "@gaep/contracts"
+import type { AcceptanceCriteriaInput, BacklogHierarchyInput, DefinitionOfDoneInput, DefinitionOfReadyInput, DependencyMappingInput, ImplementationUnitModelInput, MvpSliceDefinitionInput, PrioritizationModelInput, TechnologyProfileInput } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -536,6 +536,99 @@ describe("MVP and Slice Definition engine", () => {
       criticalPathAuthorityState: "not-established",
       sequencingCommitmentState: "not-established",
       ownershipAppointmentState: "not-established",
+      implementationReadinessState: "not-established",
+      implementationCompletenessState: "not-established",
+      assignmentExecutionState: "not-established",
+      approvalState: "not-established",
+      acceptanceDecisionState: "not-established",
+      mergeReadinessState: "not-established",
+      releaseReadinessState: "not-established",
+      deploymentReadinessState: "not-established",
+      actionAuthorityState: "not-granted",
+    }
+  }
+
+  function technologyProfileInput(
+    initiativeId: string,
+    context: MvpSliceDefinitionInput["context"],
+    units: Awaited<ReturnType<typeof engine.implementationUnitModel.create>>,
+    dependencyMapping: Awaited<ReturnType<typeof engine.dependencyMapping.create>>,
+  ): TechnologyProfileInput {
+    const architectureEvidence = {
+      kind: "architecture" as const,
+      sourceId: "atlas-system-solution-architecture-candidate",
+      revision: 1,
+      digest: canonicalDigest({ initiativeId, context, kind: "architecture-candidate" }),
+      observationState: "candidate-asserted" as const,
+    }
+    return {
+      initiativeId,
+      context,
+      informationClassification: "internal",
+      title: "Atlas implementation-unit technology profiles",
+      implementationUnitModel: { recordId: units.id, revision: units.revision, digest: canonicalDigest(units) },
+      dependencyMapping: {
+        recordId: dependencyMapping.id, revision: dependencyMapping.revision, digest: canonicalDigest(dependencyMapping),
+      },
+      architectureEvidenceReferences: [architectureEvidence],
+      profiles: units.units.map((unit, index) => {
+        const observation = {
+          kind: "manifest-observation" as const,
+          sourceId: `${unit.key}-package-manifest-observation`,
+          revision: 1,
+          digest: canonicalDigest({ repository: unit.repository.repositoryKey, module: unit.repository.modulePath }),
+          observationState: "observed-not-validated" as const,
+        }
+        return {
+          id: randomUUID(),
+          ordinal: index + 1,
+          implementationUnitId: unit.id,
+          profileKind: unit.kind === "service" ? "service" as const : "client" as const,
+          choices: [{
+            id: randomUUID(),
+            ordinal: 1,
+            category: "runtime" as const,
+            canonicalName: "Node.js",
+            versionConstraint: "24.4.1",
+            versionState: "exact-candidate" as const,
+            selectionState: "candidate-selected" as const,
+            registryStatus: "candidate-supported" as const,
+            supportState: "candidate-supported" as const,
+            lifecycleState: "active" as const,
+            compatibilityState: "candidate-compatible" as const,
+            licenseState: "candidate-allowed" as const,
+            securityPolicyState: "candidate-conformant" as const,
+            rationale: "The exact repository manifest observation identifies this candidate runtime version",
+            evidenceReferences: [observation],
+            assessedBy: { kind: "human" as const, id: "technology-reviewer" },
+            assessedAt: "2026-07-30T00:00:00.000Z",
+          }],
+          constraints: [{
+            id: randomUUID(),
+            ordinal: 1,
+            kind: "platform" as const,
+            requirement: "The candidate runtime must remain portable across the declared host platforms",
+            disposition: "mandatory" as const,
+            assessmentState: "candidate-satisfied" as const,
+            evidenceReferences: [architectureEvidence],
+            assessedBy: { kind: "human" as const, id: "technology-reviewer" },
+            assessedAt: "2026-07-30T00:00:00.000Z",
+          }],
+          assuranceObligations: ["Verify the exact runtime candidate through governed package evidence"],
+          observabilityObligations: ["Retain bounded runtime and package lifecycle evidence"],
+        }
+      }),
+      unresolvedQuestions: [],
+      limitations: ["Observed facts and selected technologies remain candidates for accountable review"],
+      reviewState: "ready-for-human-review",
+      technologyApprovalState: "not-established",
+      supportCommitmentState: "not-established",
+      compatibilityTruthState: "not-established",
+      compatibilityCompletenessState: "not-established",
+      licensingApprovalState: "not-established",
+      securityApprovalState: "not-established",
+      exceptionWaiverState: "not-established",
+      architectureBaselineDesignationState: "not-established",
       implementationReadinessState: "not-established",
       implementationCompletenessState: "not-established",
       assignmentExecutionState: "not-established",
@@ -1192,5 +1285,120 @@ describe("MVP and Slice Definition engine", () => {
     const mappingInput = dependencyMappingInput(initiative.id, input.context, hierarchy, mvp, units)
     mappingInput.edges = []
     await expect(engine.dependencyMapping.create(mappingInput, actorId)).rejects.toThrow(/every exact implementation unit and declared dependency/u)
+  })
+
+  it("persists, revises, assesses, and privately projects exact Technology Profile candidates", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteria = await engine.acceptanceCriteria.create(
+      acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority), actorId,
+    )
+    const ready = await engine.definitionOfReady.create(
+      definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria), actorId,
+    )
+    const done = await engine.definitionOfDone.create(
+      definitionOfDoneInput(initiative.id, input.context, hierarchy, mvp, priority, criteria, ready), actorId,
+    )
+    const units = await engine.implementationUnitModel.create(
+      implementationUnitModelInput(initiative.id, input.context, hierarchy, mvp, criteria, ready, done), actorId,
+    )
+    const mappingInput = dependencyMappingInput(initiative.id, input.context, hierarchy, mvp, units)
+    const mapping = await engine.dependencyMapping.create(mappingInput, actorId)
+    const profileInput = technologyProfileInput(initiative.id, input.context, units, mapping)
+    const created = await engine.technologyProfile.create(profileInput, actorId)
+    const revised = await engine.technologyProfile.revise(created.id, created.revision, {
+      ...profileInput,
+      title: "Atlas reviewed implementation-unit technology profiles",
+    }, actorId)
+    expect(revised).toMatchObject({ revision: 2, predecessorDigest: canonicalDigest(created) })
+    expect((await engine.technologyProfile.listHistory(created.id)).map((record) => record.revision)).toEqual([2, 1])
+    expect((await engine.technologyProfile.readRevision(created.id, 1)).title).toBe(profileInput.title)
+
+    const status = await engine.technologyProfile.assess(initiative.id)
+    expect(status).toMatchObject({
+      state: "candidate-complete", unitProfileCount: 2, technologyChoiceCount: 2,
+      exactVersionCandidateCount: 2, rangeVersionCandidateCount: 0, unresolvedVersionCount: 0,
+      constraintCount: 2, missingProfileCount: 0, invalidProfileCount: 0, missingEvidenceCount: 0,
+      unsupportedChoiceCount: 0, lifecycleRiskCount: 0, compatibilityConflictCount: 0,
+      licenseReviewRequiredCount: 0, licenseProhibitedCount: 0, securityReviewRequiredCount: 0,
+      securityNonconformantCount: 0, exceptionCandidateCount: 0, constraintConflictCount: 0,
+      staleImplementationUnitModelCount: 0, staleDependencyMappingCount: 0,
+    })
+    const projection = await engine.technologyProfile.project(initiative.id)
+    expect(projection.candidate).toMatchObject({
+      id: revised.id, revision: 2, unitProfileCount: 2, technologyChoiceCount: 2, constraintCount: 2,
+    })
+    expect(projection.snapshotDigest).toMatch(/^sha256:[0-9a-f]{64}$/u)
+    const serialized = JSON.stringify(projection)
+    expect(serialized).not.toContain(profileInput.title)
+    expect(serialized).not.toContain("Node.js")
+    expect(serialized).not.toContain(units.units[0]!.id)
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    const event = events.findLast((entry) => entry.eventType === "technology-profile.revised")
+    expect(event?.payload).toMatchObject({
+      revision: 2, unitProfileCount: 2, technologyChoiceCount: 2, exactVersionCandidateCount: 2,
+      constraintCount: 2, technologyApprovalState: "not-established",
+      supportCommitmentState: "not-established", compatibilityTruthState: "not-established",
+      compatibilityCompletenessState: "not-established", licensingApprovalState: "not-established",
+      securityApprovalState: "not-established", exceptionWaiverState: "not-established",
+      architectureBaselineDesignationState: "not-established", implementationReadinessState: "not-established",
+      implementationCompletenessState: "not-established", assignmentExecutionState: "not-established",
+      approvalState: "not-established", acceptanceDecisionState: "not-established",
+      mergeReadinessState: "not-established", releaseReadinessState: "not-established",
+      deploymentReadinessState: "not-established", actionAuthorityState: "not-granted",
+    })
+    expect(JSON.stringify(event)).not.toContain(profileInput.title)
+    expect(JSON.stringify(event)).not.toContain("Node.js")
+    expect((await engine.repository.verifyAudit()).valid).toBe(true)
+
+    await engine.dependencyMapping.revise(mapping.id, mapping.revision, {
+      ...mappingInput,
+      title: "Superseding Atlas dependency mapping candidate",
+    }, actorId)
+    expect(await engine.technologyProfile.assess(initiative.id)).toMatchObject({
+      state: "attention-required", staleDependencyMappingCount: 1,
+    })
+    expect(await engine.technologyProfile.healthIssues()).toEqual([
+      expect.objectContaining({ code: "technology-profile.binding-review-required", severity: "warning" }),
+    ])
+  })
+
+  it("fails closed when a review-ready Technology Profile omits a current unit or records a compatibility conflict", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteria = await engine.acceptanceCriteria.create(
+      acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority), actorId,
+    )
+    const ready = await engine.definitionOfReady.create(
+      definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria), actorId,
+    )
+    const done = await engine.definitionOfDone.create(
+      definitionOfDoneInput(initiative.id, input.context, hierarchy, mvp, priority, criteria, ready), actorId,
+    )
+    const units = await engine.implementationUnitModel.create(
+      implementationUnitModelInput(initiative.id, input.context, hierarchy, mvp, criteria, ready, done), actorId,
+    )
+    const mapping = await engine.dependencyMapping.create(
+      dependencyMappingInput(initiative.id, input.context, hierarchy, mvp, units), actorId,
+    )
+    const profileInput = technologyProfileInput(initiative.id, input.context, units, mapping)
+    await expect(engine.technologyProfile.create({
+      ...profileInput,
+      profiles: profileInput.profiles.slice(0, 1),
+    }, actorId)).rejects.toThrow(/cover every exact implementation unit/u)
+    await expect(engine.technologyProfile.create({
+      ...profileInput,
+      profiles: profileInput.profiles.map((profile, profileIndex) => ({
+        ...profile,
+        choices: profile.choices.map((choice) => ({
+          ...choice,
+          compatibilityState: profileIndex === 0 ? "candidate-conflict" as const : choice.compatibilityState,
+        })),
+      })),
+    }, actorId)).rejects.toThrow(/supported compatible lifecycle-safe/u)
   })
 })

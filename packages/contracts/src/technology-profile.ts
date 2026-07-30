@@ -240,7 +240,7 @@ export const technologyProfileStatusSchema = z.object({
     status.licenseReviewRequiredCount + status.licenseProhibitedCount + status.securityReviewRequiredCount +
     status.securityNonconformantCount + status.exceptionCandidateCount + status.constraintConflictCount +
     status.staleBindingCount + status.staleImplementationUnitModelCount + status.staleDependencyMappingCount +
-    status.unresolvedVersionCount + status.unresolvedQuestionCount
+    status.rangeVersionCandidateCount + status.unresolvedVersionCount + status.unresolvedQuestionCount
   if (status.state === "candidate-complete" &&
       (gaps > 0 || !status.candidate || !status.implementationUnitModel || !status.dependencyMapping ||
        status.reviewState !== "ready-for-human-review" || status.unitProfileCount < 1 ||

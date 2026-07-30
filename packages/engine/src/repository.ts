@@ -64,6 +64,7 @@ import {
   definitionOfDoneSchema,
   implementationUnitModelSchema,
   dependencyMappingSchema,
+  technologyProfileSchema,
   businessRuleCatalogSchema,
   businessUnderstandingSchema,
   changeSchema,
@@ -152,6 +153,8 @@ const directoryNames = [
   "implementation-unit-model-history",
   "dependency-mappings",
   "dependency-mapping-history",
+  "technology-profiles",
+  "technology-profile-history",
   "value-stream-models",
   "value-stream-model-history",
   "operating-models",
@@ -1021,6 +1024,8 @@ export class GaepRepository {
       ["implementation-unit-model-history", /^implementation-unit-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["dependency-mappings", /^[0-9a-f-]+\.json$/i],
       ["dependency-mapping-history", /^dependency-mapping-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["technology-profiles", /^[0-9a-f-]+\.json$/i],
+      ["technology-profile-history", /^technology-profile-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["value-stream-models", /^[0-9a-f-]+\.json$/i],
       ["value-stream-model-history", /^value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["operating-models", /^[0-9a-f-]+\.json$/i],
@@ -1228,6 +1233,10 @@ export class GaepRepository {
     if (/^dependency-mappings\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^dependency-mapping-history\/dependency-mapping-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, dependencyMappingSchema)
+    }
+    if (/^technology-profiles\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^technology-profile-history\/technology-profile-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, technologyProfileSchema)
     }
     if (/^value-stream-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^value-stream-model-history\/value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
