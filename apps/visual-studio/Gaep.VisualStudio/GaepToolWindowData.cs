@@ -244,6 +244,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadBoilerplateCompatibilityValidationCommand = new AsyncCommand(LoadBoilerplateCompatibilityValidationAsync);
         LoadFigmaToBoilerplateMappingCommand = new AsyncCommand(LoadFigmaToBoilerplateMappingAsync);
         LoadDesignToCodeBindingRegistryCommand = new AsyncCommand(LoadDesignToCodeBindingRegistryAsync);
+        LoadRouteScreenComponentMappingCommand = new AsyncCommand(LoadRouteScreenComponentMappingAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -434,6 +435,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadDesignToCodeBindingRegistryCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadRouteScreenComponentMappingCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1112,6 +1116,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Design-to-Code Binding Registry candidate",
             (controller, _, token) => controller.ReadDesignToCodeBindingRegistryAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadRouteScreenComponentMappingAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Route, Screen, and Component Mapping candidate",
+            (controller, _, token) => controller.ReadRouteScreenComponentMappingAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

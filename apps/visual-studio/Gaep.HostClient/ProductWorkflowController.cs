@@ -2997,6 +2997,125 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadRouteScreenComponentMappingAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var informationArchitecture = await client.ReadInformationArchitectureModelAsync(initiativeId, cancellationToken);
+        var screenInventory = await client.ReadScreenStateInventoryAsync(initiativeId, cancellationToken);
+        var designRequirements = await client.ReadDesignRequirementsAsync(initiativeId, cancellationToken);
+        var designBaseline = await client.ReadDesignBaselineAsync(initiativeId, cancellationToken);
+        var designBinding = await client.ReadDesignToRequirementBindingAsync(initiativeId, cancellationToken);
+        var figmaMapping = await client.ReadFigmaToBoilerplateMappingAsync(initiativeId, cancellationToken);
+        var designCodeBinding = await client.ReadDesignToCodeBindingRegistryAsync(initiativeId, cancellationToken);
+        var units = await client.ReadImplementationUnitModelAsync(initiativeId, cancellationToken);
+        var acceptance = await client.ReadAcceptanceCriteriaAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadRouteScreenComponentMappingAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Route, Screen, and Component Mapping was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null)
+        {
+            void RequireDependency(string name, Guid id, long revision, string digest)
+            {
+                if (!projection.Dependencies.TryGetValue(name, out var reference) || reference.RecordId != id ||
+                    reference.Revision != revision || reference.Digest != digest)
+                {
+                    throw new ArgumentException($"The {name} candidate changed while Route, Screen, and Component Mapping was read. Refresh the exact records.");
+                }
+            }
+            if (informationArchitecture.Candidate is not { } informationArchitectureCandidate ||
+                screenInventory.Candidate is not { } screenInventoryCandidate ||
+                designRequirements.Candidate is not { } designRequirementsCandidate ||
+                designBaseline.Candidate is not { } designBaselineCandidate ||
+                designBinding.Candidate is not { } designBindingCandidate ||
+                figmaMapping.Candidate is not { } figmaMappingCandidate ||
+                designCodeBinding.Candidate is not { } designCodeBindingCandidate ||
+                units.Candidate is not { } unitsCandidate ||
+                acceptance.Candidate is not { } acceptanceCandidate)
+            {
+                throw new ArgumentException("One or more exact current dependency candidates are unavailable. Refresh the exact records.");
+            }
+            RequireDependency("informationArchitecture", informationArchitectureCandidate.Id, informationArchitectureCandidate.Revision, informationArchitectureCandidate.Digest);
+            RequireDependency("screenStateInventory", screenInventoryCandidate.Id, screenInventoryCandidate.Revision, screenInventoryCandidate.Digest);
+            RequireDependency("designRequirements", designRequirementsCandidate.Id, designRequirementsCandidate.Revision, designRequirementsCandidate.Digest);
+            RequireDependency("designBaseline", designBaselineCandidate.Id, designBaselineCandidate.Revision, designBaselineCandidate.Digest);
+            RequireDependency("designToRequirementBinding", designBindingCandidate.Id, designBindingCandidate.Revision, designBindingCandidate.Digest);
+            RequireDependency("figmaToBoilerplateMapping", figmaMappingCandidate.Id, figmaMappingCandidate.Revision, figmaMappingCandidate.Digest);
+            RequireDependency("designToCodeBindingRegistry", designCodeBindingCandidate.Id, designCodeBindingCandidate.Revision, designCodeBindingCandidate.Digest);
+            RequireDependency("implementationUnitModel", unitsCandidate.Id, unitsCandidate.Revision, unitsCandidate.Digest);
+            RequireDependency("acceptanceCriteria", acceptanceCandidate.Id, acceptanceCandidate.Revision, acceptanceCandidate.Digest);
+        }
+        return RenderRouteScreenComponentMapping(projection);
+    }
+
+    public static string RenderRouteScreenComponentMapping(RouteScreenComponentMappingProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Route, Screen, and Component Mapping candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Source coverage: {projection.SourceRouteCount} routes · {projection.SourceScreenCount} screens · " +
+                $"{projection.SourceStateCount} states · {projection.SourceComponentCount} components")
+            .AppendLine(
+                $"Candidate coverage: {projection.SubjectCount} subjects · {projection.RouteSubjectCount} routes · " +
+                $"{projection.ScreenSubjectCount} screens · {projection.StateSubjectCount} states · " +
+                $"{projection.ComponentSubjectCount} components")
+            .AppendLine(
+                $"Candidate outcomes: {projection.MappedCandidateCount} mapped · {projection.ConflictCandidateCount} conflicts · " +
+                $"{projection.UnmappedCandidateCount} unmapped · {projection.NotAssessedCount} not assessed")
+            .AppendLine(
+                $"Candidate relationships: {projection.RelationshipCount} total · {projection.DefinedRelationshipCount} defined · " +
+                $"{projection.ConflictRelationshipCount} conflicts · {projection.NotAssessedRelationshipCount} not assessed")
+            .AppendLine(
+                $"Candidate mapping gaps: {projection.MissingSubjectCount} missing subjects · {projection.ExtraSubjectCount} extra subjects · " +
+                $"{projection.InvalidSubjectCount} invalid subjects · {projection.MissingRelationshipCount} missing relationships · " +
+                $"{projection.InvalidRelationshipCount} invalid relationships · {projection.TraceGapCount} trace gaps · " +
+                $"{projection.EvidenceGapCount} evidence gaps · {projection.ComponentPlacementGapCount} component placement gaps · " +
+                $"{projection.TestHookGapCount} test-hook gaps")
+            .AppendLine(
+                $"Candidate freshness gaps: {projection.StaleBindingCount} stale bindings · {projection.StaleDependencyCount} stale dependencies · " +
+                $"{projection.InvalidCandidateCount} invalid candidates · {projection.UnresolvedQuestionCount} questions");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Route, Screen, and Component Mapping candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Subject catalog digest: {candidate.SubjectCatalogDigest}")
+                .AppendLine($"Relationship catalog digest: {candidate.RelationshipCatalogDigest}")
+                .AppendLine($"Trace receipt digest: {candidate.TraceReceiptDigest}")
+                .AppendLine($"Mapping receipt digest: {candidate.MappingReceiptDigest}")
+                .AppendLine($"Assessment receipt digest: {candidate.AssessmentReceiptDigest}")
+                .AppendLine(
+                    $"Candidate coverage: {candidate.SubjectCount} subjects · {candidate.RelationshipCount} relationships · " +
+                    $"{candidate.MappedCandidateCount} mapped · {candidate.ConflictCandidateCount} conflicts · " +
+                    $"{candidate.UnmappedCandidateCount} unmapped · {candidate.NotAssessedCount} not assessed · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Route, Screen, and Component Mapping candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and subject, relationship, trace, mapping, " +
+                "assessment, and snapshot digests only; no route patterns, screen, state, component, design, Requirement, " +
+                "Acceptance Criteria, Implementation Unit, repository, module, path, symbol, test-hook, evidence, reviewer, " +
+                "or personal data. This inspection does not connect to or call Figma, establish returned Figma content, " +
+                "navigation or mapping truth, UI or design validity, repository or test truth, create or change code or " +
+                "design targets, establish implementation readiness or completeness, assign, execute, accept, merge, " +
+                "release, deploy, or grant action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

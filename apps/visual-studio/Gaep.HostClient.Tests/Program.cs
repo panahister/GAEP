@@ -85,6 +85,7 @@ internal static class Program
     private static readonly Guid BoilerplateCompatibilityValidationId = Guid.Parse("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
     private static readonly Guid FigmaToBoilerplateMappingId = Guid.Parse("abababab-abab-4bab-8bab-abababababab");
     private static readonly Guid DesignToCodeBindingRegistryId = Guid.Parse("bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc");
+    private static readonly Guid RouteScreenComponentMappingId = Guid.Parse("cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -323,6 +324,10 @@ internal static class Program
         var badDesignToCodeBindingRegistrySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-to-code-binding-registry-snapshot-digest");
         var badDesignToCodeBindingRegistrySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-to-code-binding-registry-snapshot-private");
         var badDesignToCodeBindingRegistryDependencyBindingRoot = Path.Combine(temporaryRoot, "bad-design-to-code-binding-registry-dependency-binding");
+        var badRouteScreenComponentMappingSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-route-screen-component-mapping-snapshot-binding");
+        var badRouteScreenComponentMappingSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-route-screen-component-mapping-snapshot-digest");
+        var badRouteScreenComponentMappingSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-route-screen-component-mapping-snapshot-private");
+        var badRouteScreenComponentMappingDependencyBindingRoot = Path.Combine(temporaryRoot, "bad-route-screen-component-mapping-dependency-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -1737,6 +1742,70 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadDesignToCodeBindingRegistryAsync(InitiativeId),
                 "Design-to-Code Binding Registry workflow rejects substituted Product or exact current dependency bindings");
+        }
+        var routeScreenComponentMappingProjection = await client.ReadRouteScreenComponentMappingAsync(InitiativeId);
+        Check(routeScreenComponentMappingProjection.ProductId == product.Id &&
+              routeScreenComponentMappingProjection.ProductRevision == product.Revision &&
+              routeScreenComponentMappingProjection.ProductDigest == product.Digest &&
+              routeScreenComponentMappingProjection.InitiativeId == resolved.Id &&
+              routeScreenComponentMappingProjection.InitiativeRevision == resolved.Revision &&
+              routeScreenComponentMappingProjection.InitiativeDigest == resolved.Digest &&
+              routeScreenComponentMappingProjection.State == "attention-required" &&
+              routeScreenComponentMappingProjection.ReviewState == "held" &&
+              routeScreenComponentMappingProjection.SourceRouteCount == 2 &&
+              routeScreenComponentMappingProjection.SourceScreenCount == 3 &&
+              routeScreenComponentMappingProjection.SourceStateCount == 5 &&
+              routeScreenComponentMappingProjection.SourceComponentCount == 4 &&
+              routeScreenComponentMappingProjection.SubjectCount == 14 &&
+              routeScreenComponentMappingProjection.MappedCandidateCount == 12 &&
+              routeScreenComponentMappingProjection.RelationshipCount == 18 &&
+              routeScreenComponentMappingProjection.DefinedRelationshipCount == 16 &&
+              routeScreenComponentMappingProjection.MissingRelationshipCount == 2 &&
+              routeScreenComponentMappingProjection.ComponentPlacementGapCount == 1 &&
+              routeScreenComponentMappingProjection.TestHookGapCount == 1 &&
+              routeScreenComponentMappingProjection.Dependencies.Count == 9 &&
+              routeScreenComponentMappingProjection.Candidate?.SubjectCatalogDigest == $"sha256:{new string('3', 64)}" &&
+              routeScreenComponentMappingProjection.Candidate?.RelationshipCatalogDigest == $"sha256:{new string('4', 64)}",
+            "Typed Route, Screen, and Component Mapping projection preserves exact Product, Initiative, nine-dependency, subject, relationship, trace, and privacy-safe metadata");
+        var routeScreenComponentMappingOutput = await initiativeController.ReadRouteScreenComponentMappingAsync(InitiativeId);
+        Check(routeScreenComponentMappingOutput.Contains("GAEP governed Route, Screen, and Component Mapping candidate", StringComparison.Ordinal) &&
+              routeScreenComponentMappingOutput.Contains("2 routes · 3 screens · 5 states · 4 components", StringComparison.Ordinal) &&
+              routeScreenComponentMappingOutput.Contains("12 mapped · 1 conflicts · 1 unmapped · 0 not assessed", StringComparison.Ordinal) &&
+              routeScreenComponentMappingOutput.Contains("18 total · 16 defined · 1 conflicts · 1 not assessed", StringComparison.Ordinal) &&
+              routeScreenComponentMappingOutput.Contains("2 missing relationships · 1 invalid relationships", StringComparison.Ordinal) &&
+              routeScreenComponentMappingOutput.Contains("no route patterns, screen, state, component", StringComparison.Ordinal) &&
+              routeScreenComponentMappingOutput.Contains("does not connect to or call Figma", StringComparison.Ordinal) &&
+              routeScreenComponentMappingOutput.Contains("create or change code or design targets", StringComparison.Ordinal) &&
+              !routeScreenComponentMappingOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !routeScreenComponentMappingOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !routeScreenComponentMappingOutput.Contains("routePattern", StringComparison.Ordinal) &&
+              !routeScreenComponentMappingOutput.Contains("testHookCandidates", StringComparison.Ordinal) &&
+              !routeScreenComponentMappingOutput.Contains("evidenceReferences", StringComparison.Ordinal) &&
+              !routeScreenComponentMappingOutput.Contains("reviewedBy", StringComparison.Ordinal),
+            "Route, Screen, and Component Mapping workflow renders privacy-safe metadata with explicit Figma, navigation, design, repository, test, implementation, and action boundaries");
+        foreach (var hostileRoot in new[]
+                 {
+                     badRouteScreenComponentMappingSnapshotDigestRoot,
+                     badRouteScreenComponentMappingSnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadRouteScreenComponentMappingAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Route, Screen, and Component Mapping projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[]
+                 {
+                     badRouteScreenComponentMappingSnapshotBindingRoot,
+                     badRouteScreenComponentMappingDependencyBindingRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadRouteScreenComponentMappingAsync(InitiativeId),
+                "Route, Screen, and Component Mapping workflow rejects substituted Product or exact current dependency bindings");
         }
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
@@ -5095,6 +5164,14 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-design-to-code-binding-registry-snapshot-private";
         var badDesignToCodeBindingRegistryDependencyBinding =
             Path.GetFileName(workspace) == "bad-design-to-code-binding-registry-dependency-binding";
+        var badRouteScreenComponentMappingSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-route-screen-component-mapping-snapshot-binding";
+        var badRouteScreenComponentMappingSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-route-screen-component-mapping-snapshot-digest";
+        var badRouteScreenComponentMappingSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-route-screen-component-mapping-snapshot-private";
+        var badRouteScreenComponentMappingDependencyBinding =
+            Path.GetFileName(workspace) == "bad-route-screen-component-mapping-dependency-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -5787,6 +5864,18 @@ internal static class Program
                         badDesignToCodeBindingRegistrySnapshotDigest,
                         badDesignToCodeBindingRegistrySnapshotPrivate,
                         badDesignToCodeBindingRegistryDependencyBinding);
+                    break;
+                case "planning.routeScreenComponentMapping.snapshot":
+                    await HandleRouteScreenComponentMappingAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badRouteScreenComponentMappingSnapshotBinding,
+                        badRouteScreenComponentMappingSnapshotDigest,
+                        badRouteScreenComponentMappingSnapshotPrivate,
+                        badRouteScreenComponentMappingDependencyBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -10722,6 +10811,124 @@ internal static class Program
         if (includePrivateField) result["repositoryPath"] = $"{PrivateRoot}/{PrivateCredential}";
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["subjectCount"] = 3;
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleRouteScreenComponentMappingAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeDependencyBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID ROUTE SCREEN COMPONENT MAPPING");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-31T00:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('2', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        Dictionary<string, object?> Reference(Guid recordId, long revision, char digestCharacter) => new()
+        {
+            ["recordId"] = recordId.ToString("D"),
+            ["revision"] = revision,
+            ["digest"] = $"sha256:{new string(digestCharacter, 64)}",
+        };
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = RouteScreenComponentMappingId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["state"] = "candidate",
+            ["subjectCatalogDigest"] = $"sha256:{new string('3', 64)}",
+            ["relationshipCatalogDigest"] = $"sha256:{new string('4', 64)}",
+            ["traceReceiptDigest"] = $"sha256:{new string('5', 64)}",
+            ["mappingReceiptDigest"] = $"sha256:{new string('6', 64)}",
+            ["assessmentReceiptDigest"] = $"sha256:{new string('7', 64)}",
+            ["subjectCount"] = 14,
+            ["routeSubjectCount"] = 2,
+            ["screenSubjectCount"] = 3,
+            ["stateSubjectCount"] = 5,
+            ["componentSubjectCount"] = 4,
+            ["mappedCandidateCount"] = 12,
+            ["conflictCandidateCount"] = 1,
+            ["unmappedCandidateCount"] = 1,
+            ["notAssessedCount"] = 0,
+            ["relationshipCount"] = 18,
+            ["definedRelationshipCount"] = 16,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-31T00:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "route-screen-component-mapping-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"), ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"), ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)), ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "route-screen-component-mapping-status",
+                ["productId"] = ProductId.ToString("D"), ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"), ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = RouteScreenComponentMappingId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                },
+                ["informationArchitecture"] = Reference(InformationArchitectureId, 2, forgeDependencyBinding ? '0' : 'a'),
+                ["screenStateInventory"] = Reference(ScreenStateInventoryId, 2, 'c'),
+                ["designRequirements"] = Reference(DesignRequirementsId, 2, 'e'),
+                ["designBaseline"] = Reference(DesignBaselineId, 3, 'e'),
+                ["designToRequirementBinding"] = Reference(DesignToRequirementBindingId, 2, 'd'),
+                ["figmaToBoilerplateMapping"] = Reference(FigmaToBoilerplateMappingId, 2, '4'),
+                ["designToCodeBindingRegistry"] = Reference(DesignToCodeBindingRegistryId, 2, 'c'),
+                ["implementationUnitModel"] = Reference(ImplementationUnitModelId, 2, '5'),
+                ["acceptanceCriteria"] = Reference(AcceptanceCriteriaId, 2, '1'),
+                ["sourceRouteCount"] = 2, ["sourceScreenCount"] = 3,
+                ["sourceStateCount"] = 5, ["sourceComponentCount"] = 4,
+                ["subjectCount"] = 14, ["routeSubjectCount"] = 2,
+                ["screenSubjectCount"] = 3, ["stateSubjectCount"] = 5, ["componentSubjectCount"] = 4,
+                ["mappedCandidateCount"] = 12, ["conflictCandidateCount"] = 1,
+                ["unmappedCandidateCount"] = 1, ["notAssessedCount"] = 0,
+                ["relationshipCount"] = 18, ["definedRelationshipCount"] = 16,
+                ["conflictRelationshipCount"] = 1, ["notAssessedRelationshipCount"] = 1,
+                ["missingSubjectCount"] = 1, ["extraSubjectCount"] = 1, ["invalidSubjectCount"] = 1,
+                ["missingRelationshipCount"] = 2, ["invalidRelationshipCount"] = 1,
+                ["traceGapCount"] = 2, ["evidenceGapCount"] = 1,
+                ["componentPlacementGapCount"] = 1, ["testHookGapCount"] = 1,
+                ["staleBindingCount"] = 0, ["staleDependencyCount"] = 0,
+                ["invalidCandidateCount"] = 1, ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held", ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Route, Screen, and Component Mapping subjects require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "route-screen-component-mapping-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-navigation-route-screen-state-component-responsive-platform-requirement-acceptance-criteria-test-coverage-repository-path-symbol-or-mapping-truth-or-completeness-create-or-change-code-or-design-targets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-subject-relationship-trace-mapping-assessment-snapshot-digests-only-not-route-pattern-screen-state-component-design-requirement-criterion-unit-repository-module-path-symbol-test-hook-evidence-reviewer-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "route-screen-component-mapping-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-navigation-route-screen-state-component-responsive-platform-requirement-acceptance-criteria-test-coverage-repository-path-symbol-or-mapping-truth-or-completeness-create-or-change-code-or-design-targets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+        };
+        if (includePrivateField) result["routePattern"] = $"{PrivateRoot}/{PrivateCredential}";
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["subjectCount"] = 15;
         await WriteResultAsync(id, result);
     }
 

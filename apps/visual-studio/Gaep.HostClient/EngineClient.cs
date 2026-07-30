@@ -693,6 +693,20 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParseDesignToCodeBindingRegistryResponse(envelope, initiativeId));
     }
 
+    public async Task<RouteScreenComponentMappingProjection> ReadRouteScreenComponentMappingAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        using var response = await RequestPortableDesignAsync(
+            "planning.routeScreenComponentMapping.snapshot",
+            new Dictionary<string, object?> { ["initiativeId"] = initiativeId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseRouteScreenComponentMappingResponse(envelope, initiativeId));
+    }
+
     public async Task<AccessibilityDesignRulesProjection> ReadAccessibilityDesignRulesAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
