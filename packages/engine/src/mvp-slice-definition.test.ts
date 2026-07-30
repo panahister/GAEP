@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type { AcceptanceCriteriaInput, BacklogHierarchyInput, DefinitionOfDoneInput, DefinitionOfReadyInput, ImplementationUnitModelInput, MvpSliceDefinitionInput, PrioritizationModelInput } from "@gaep/contracts"
+import type { AcceptanceCriteriaInput, BacklogHierarchyInput, DefinitionOfDoneInput, DefinitionOfReadyInput, DependencyMappingInput, ImplementationUnitModelInput, MvpSliceDefinitionInput, PrioritizationModelInput } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -469,6 +469,73 @@ describe("MVP and Slice Definition engine", () => {
       ownershipAppointmentState: "not-established",
       dependencyCompletenessState: "not-established",
       impactCompletenessState: "not-established",
+      implementationReadinessState: "not-established",
+      implementationCompletenessState: "not-established",
+      assignmentExecutionState: "not-established",
+      approvalState: "not-established",
+      acceptanceDecisionState: "not-established",
+      mergeReadinessState: "not-established",
+      releaseReadinessState: "not-established",
+      deploymentReadinessState: "not-established",
+      actionAuthorityState: "not-granted",
+    }
+  }
+
+  function dependencyMappingInput(
+    initiativeId: string,
+    context: MvpSliceDefinitionInput["context"],
+    hierarchy: Awaited<ReturnType<typeof engine.backlogHierarchy.create>>,
+    mvp: Awaited<ReturnType<typeof engine.mvpSliceDefinition.create>>,
+    units: Awaited<ReturnType<typeof engine.implementationUnitModel.create>>,
+  ): DependencyMappingInput {
+    const edges = units.units.flatMap((unit) => unit.dependencyUnitIds.map((dependencyId) => ({
+      id: randomUUID(),
+      ordinal: 0,
+      predecessorUnitId: dependencyId,
+      successorUnitId: unit.id,
+      kind: "integration" as const,
+      strength: "required" as const,
+      evidenceState: "candidate-asserted" as const,
+      rationale: "The successor unit consumes the predecessor unit candidate contract",
+      evidenceReferences: [{
+        kind: "implementation-unit" as const,
+        recordId: units.id,
+        revision: units.revision,
+        digest: canonicalDigest(units),
+      }],
+      assessedBy: { kind: "human" as const, id: "architecture-reviewer" },
+      assessedAt: "2026-07-30T00:00:00.000Z",
+    }))).map((edge, index) => ({ ...edge, ordinal: index + 1 }))
+    return {
+      initiativeId,
+      context,
+      informationClassification: "internal",
+      title: "Atlas dependency mapping candidate",
+      hierarchy: { recordId: hierarchy.id, revision: hierarchy.revision, digest: canonicalDigest(hierarchy) },
+      mvpSliceDefinition: { recordId: mvp.id, revision: mvp.revision, digest: canonicalDigest(mvp) },
+      implementationUnitModel: { recordId: units.id, revision: units.revision, digest: canonicalDigest(units) },
+      nodes: units.units.map((unit, index) => ({
+        implementationUnitId: unit.id,
+        ordinal: index + 1,
+        candidateEffortPoints: index === 0 ? 8 : 5,
+        estimateState: "candidate-not-validated",
+        evidenceReferences: [],
+        assessedBy: { kind: "human", id: "architecture-reviewer" },
+        assessedAt: "2026-07-30T00:00:00.000Z",
+      })),
+      edges,
+      criticalPathPolicy: {
+        algorithm: "longest-candidate-effort-path-v1",
+        tieBreak: "canonical-unit-ordinal-v1",
+      },
+      unresolvedQuestions: [],
+      limitations: ["Dependency and critical-path results remain candidates for accountable human review."],
+      reviewState: "ready-for-human-review",
+      dependencyTruthState: "not-established",
+      dependencyCompletenessState: "not-established",
+      criticalPathAuthorityState: "not-established",
+      sequencingCommitmentState: "not-established",
+      ownershipAppointmentState: "not-established",
       implementationReadinessState: "not-established",
       implementationCompletenessState: "not-established",
       assignmentExecutionState: "not-established",
@@ -1026,5 +1093,104 @@ describe("MVP and Slice Definition engine", () => {
     unitInput.units = [unitInput.units[0]!]
     unitInput.units[0]!.blastRadius.affectedUnitIds = []
     await expect(engine.implementationUnitModel.create(unitInput, actorId)).rejects.toThrow(/assign every exact MVP Story and Task/u)
+  })
+
+  it("persists, revises, assesses, and privately projects exact dependency mapping candidates", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteria = await engine.acceptanceCriteria.create(
+      acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority), actorId,
+    )
+    const ready = await engine.definitionOfReady.create(
+      definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria), actorId,
+    )
+    const done = await engine.definitionOfDone.create(
+      definitionOfDoneInput(initiative.id, input.context, hierarchy, mvp, priority, criteria, ready), actorId,
+    )
+    const unitInput = implementationUnitModelInput(initiative.id, input.context, hierarchy, mvp, criteria, ready, done)
+    const units = await engine.implementationUnitModel.create(unitInput, actorId)
+    const mappingInput = dependencyMappingInput(initiative.id, input.context, hierarchy, mvp, units)
+    const created = await engine.dependencyMapping.create(mappingInput, actorId)
+    expect(created.criticalPath).toMatchObject({
+      orderedUnitIds: mappingInput.nodes.map((node) => node.implementationUnitId),
+      totalCandidateEffortPoints: 13,
+    })
+    const revised = await engine.dependencyMapping.revise(created.id, created.revision, {
+      ...mappingInput,
+      title: "Atlas reviewed dependency mapping candidate",
+    }, actorId)
+    expect(revised).toMatchObject({ revision: 2, predecessorDigest: canonicalDigest(created) })
+    expect((await engine.dependencyMapping.listHistory(created.id)).map((record) => record.revision)).toEqual([2, 1])
+    expect((await engine.dependencyMapping.readRevision(created.id, 1)).title).toBe(mappingInput.title)
+
+    const status = await engine.dependencyMapping.assess(initiative.id)
+    expect(status).toMatchObject({
+      state: "candidate-complete", nodeCount: 2, edgeCount: 1, requiredEdgeCount: 1,
+      rootNodeCount: 1, leafNodeCount: 1, criticalPathUnitCount: 2,
+      criticalPathCandidateEffortPoints: 13, missingNodeCount: 0, missingDeclaredEdgeCount: 0,
+      extraEdgeCount: 0, invalidNodeCount: 0, invalidEdgeCount: 0, cycleCount: 0,
+      staleImplementationUnitModelCount: 0,
+    })
+    const projection = await engine.dependencyMapping.project(initiative.id)
+    expect(projection.candidate).toMatchObject({
+      id: revised.id, revision: 2, nodeCount: 2, edgeCount: 1,
+      criticalPathUnitCount: 2, criticalPathCandidateEffortPoints: 13,
+    })
+    expect(projection.snapshotDigest).toMatch(/^sha256:[0-9a-f]{64}$/u)
+    const serialized = JSON.stringify(projection)
+    expect(serialized).not.toContain(mappingInput.title)
+    expect(serialized).not.toContain(mappingInput.nodes[0]!.implementationUnitId)
+    expect(serialized).not.toContain(mappingInput.edges[0]!.rationale)
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    const event = events.findLast((entry) => entry.eventType === "dependency-mapping.revised")
+    expect(event?.payload).toMatchObject({
+      revision: 2, nodeCount: 2, edgeCount: 1, requiredEdgeCount: 1,
+      criticalPathUnitCount: 2, criticalPathCandidateEffortPoints: 13,
+      dependencyTruthState: "not-established", dependencyCompletenessState: "not-established",
+      criticalPathAuthorityState: "not-established", sequencingCommitmentState: "not-established",
+      ownershipAppointmentState: "not-established", implementationReadinessState: "not-established",
+      implementationCompletenessState: "not-established", assignmentExecutionState: "not-established",
+      approvalState: "not-established", acceptanceDecisionState: "not-established",
+      mergeReadinessState: "not-established", releaseReadinessState: "not-established",
+      deploymentReadinessState: "not-established", actionAuthorityState: "not-granted",
+    })
+    expect(JSON.stringify(event)).not.toContain(mappingInput.title)
+    expect(JSON.stringify(event)).not.toContain(mappingInput.edges[0]!.rationale)
+    expect((await engine.repository.verifyAudit()).valid).toBe(true)
+
+    await engine.implementationUnitModel.revise(units.id, units.revision, {
+      ...unitInput,
+      title: "Superseding Atlas implementation unit model candidate",
+    }, actorId)
+    expect(await engine.dependencyMapping.assess(initiative.id)).toMatchObject({
+      state: "attention-required", staleImplementationUnitModelCount: 1,
+    })
+    expect(await engine.dependencyMapping.healthIssues()).toEqual([
+      expect.objectContaining({ code: "dependency-mapping.binding-review-required", severity: "warning" }),
+    ])
+  })
+
+  it("fails closed when a review-ready dependency mapping omits an exact declared edge", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteria = await engine.acceptanceCriteria.create(
+      acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority), actorId,
+    )
+    const ready = await engine.definitionOfReady.create(
+      definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria), actorId,
+    )
+    const done = await engine.definitionOfDone.create(
+      definitionOfDoneInput(initiative.id, input.context, hierarchy, mvp, priority, criteria, ready), actorId,
+    )
+    const units = await engine.implementationUnitModel.create(
+      implementationUnitModelInput(initiative.id, input.context, hierarchy, mvp, criteria, ready, done), actorId,
+    )
+    const mappingInput = dependencyMappingInput(initiative.id, input.context, hierarchy, mvp, units)
+    mappingInput.edges = []
+    await expect(engine.dependencyMapping.create(mappingInput, actorId)).rejects.toThrow(/every exact implementation unit and declared dependency/u)
   })
 })
