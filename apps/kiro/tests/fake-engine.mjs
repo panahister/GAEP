@@ -66,6 +66,7 @@ const implementationUnitModelId = "87878787-8787-4787-8787-878787878787"
 const dependencyMappingId = "88888888-8888-4888-8888-888888888888"
 const technologyProfileId = "89898989-8989-4989-8989-898989898989"
 const boilerplateRegistryId = "90909090-9090-4090-8090-909090909090"
+const boilerplateSelectionBindingId = "91919191-9191-4191-8191-919191919191"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -196,6 +197,8 @@ input.on("line", (line) => {
       return readTechnologyProfile(id, request.params)
     case "planning.boilerplateRegistry.snapshot":
       return readBoilerplateRegistry(id, request.params)
+    case "planning.boilerplateSelectionBinding.snapshot":
+      return readBoilerplateSelectionBinding(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -2895,6 +2898,82 @@ function readBoilerplateRegistry(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-boilerplate-registry-snapshot-digest")) value.candidate.entryCount = 5
   if (workspacePath.endsWith("bad-boilerplate-registry-snapshot-private")) {
+    value.rationale = `${privateRoot}/${privateCredential}`
+    value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
+  }
+  return writeResult(id, value)
+}
+
+function readBoilerplateSelectionBinding(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BOILERPLATE SELECTION BINDING PARAMS")
+  }
+  const candidateDigest = `sha256:${"8".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "boilerplate-selection-binding-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: boilerplateSelectionBindingId, revision: 2, digest: candidateDigest },
+    implementationUnitModel: { recordId: implementationUnitModelId, revision: 2, digest: `sha256:${"5".repeat(64)}` },
+    dependencyMapping: { recordId: dependencyMappingId, revision: 2, digest: `sha256:${"9".repeat(64)}` },
+    technologyProfile: { recordId: technologyProfileId, revision: 2, digest: `sha256:${"d".repeat(64)}` },
+    boilerplateRegistry: { recordId: boilerplateRegistryId, revision: 2, digest: `sha256:${"3".repeat(64)}` },
+    decisionCount: 4,
+    selectedCandidateCount: 2,
+    notApplicableCandidateCount: 1,
+    deferredCandidateCount: 1,
+    notAssessedCount: 0,
+    missingUnitDecisionCount: 1,
+    invalidSelectionCount: 1,
+    registryGapCount: 1,
+    profileMismatchCount: 1,
+    unitScopeMismatchCount: 1,
+    versionMismatchCount: 1,
+    missingEvidenceCount: 1,
+    staleBindingCount: 0,
+    staleImplementationUnitModelCount: 0,
+    staleDependencyMappingCount: 0,
+    staleTechnologyProfileCount: 0,
+    staleBoilerplateRegistryCount: 0,
+    invalidCandidateCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Boilerplate Selection and Binding decisions require human review"],
+    assessedAt: "2026-07-30T18:00:00.000Z",
+    authorityBoundary: "boilerplate-selection-binding-status-is-observational-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-selection-decision-effectiveness-binding-effectiveness-compatibility-truth-or-completeness-or-validation-licensing-or-security-approval-exception-waiver-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "boilerplate-selection-binding-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: boilerplateSelectionBindingId,
+      revision: 2,
+      digest: candidateDigest,
+      state: "candidate",
+      unitDecisionCatalogDigest: `sha256:${"9".repeat(64)}`,
+      selectionReceiptDigest: `sha256:${"a".repeat(64)}`,
+      bindingReceiptDigest: `sha256:${"b".repeat(64)}`,
+      assessmentReceiptDigest: `sha256:${"c".repeat(64)}`,
+      decisionCount: 4,
+      selectedCandidateCount: 2,
+      reviewState: "held",
+      updatedAt: "2026-07-30T17:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-unit-decision-selection-binding-assessment-snapshot-digests-only-not-boilerplate-names-locators-versions-unit-or-profile-identities-rationale-conditions-alternatives-deviations-evidence-decision-roles-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "boilerplate-selection-binding-projection-is-read-only-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-selection-decision-effectiveness-binding-effectiveness-compatibility-truth-or-completeness-or-validation-licensing-or-security-approval-exception-waiver-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-boilerplate-selection-binding-snapshot-binding")) content.initiative.id = boilerplateSelectionBindingId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-boilerplate-selection-binding-snapshot-digest")) value.candidate.decisionCount = 5
+  if (workspacePath.endsWith("bad-boilerplate-selection-binding-snapshot-private")) {
     value.rationale = `${privateRoot}/${privateCredential}`
     value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
   }

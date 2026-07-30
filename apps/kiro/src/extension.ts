@@ -40,6 +40,7 @@ import {
   type DependencyMappingProjection,
   type TechnologyProfileProjection,
   type BoilerplateRegistryProjection,
+  type BoilerplateSelectionBindingProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -172,6 +173,7 @@ const commandIds = {
   dependencyMapping: "gaepKiro.dependencyMapping.inspect",
   technologyProfile: "gaepKiro.technologyProfile.inspect",
   boilerplateRegistry: "gaepKiro.boilerplateRegistry.inspect",
+  boilerplateSelectionBinding: "gaepKiro.boilerplateSelectionBinding.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -321,6 +323,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.dependencyMapping, (input?: unknown) => runUserCommand(() => showDependencyMapping(pool, input))),
     vscode.commands.registerCommand(commandIds.technologyProfile, (input?: unknown) => runUserCommand(() => showTechnologyProfile(pool, input))),
     vscode.commands.registerCommand(commandIds.boilerplateRegistry, (input?: unknown) => runUserCommand(() => showBoilerplateRegistry(pool, input))),
+    vscode.commands.registerCommand(commandIds.boilerplateSelectionBinding, (input?: unknown) => runUserCommand(() => showBoilerplateSelectionBinding(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2184,6 +2187,49 @@ async function showBoilerplateRegistry(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and entry, source, compatibility, assessment, and snapshot digests only; no boilerplate names, locators, versions, capabilities, limitations, evidence, rationale, technology, unit, architecture, repository, template, license, security-policy, or personal data. Candidate completeness does not establish organizational designation, endorsement, approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver, selection or binding, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showBoilerplateSelectionBinding(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<BoilerplateSelectionBindingProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Boilerplate Selection and Binding inspection", "Initiative ID")
+  const projection = await client.readBoilerplateSelectionBinding(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Boilerplate Selection and Binding candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Candidate coverage: ${status.decisionCount} decisions · ${status.selectedCandidateCount} selected · ${status.notApplicableCandidateCount} not applicable · ${status.deferredCandidateCount} deferred · ${status.notAssessedCount} not assessed`,
+    `Candidate decision gaps: ${status.missingUnitDecisionCount} missing unit decisions · ${status.invalidSelectionCount} invalid selections · ${status.registryGapCount} registry gaps · ${status.profileMismatchCount} profile mismatches · ${status.unitScopeMismatchCount} unit-scope mismatches · ${status.versionMismatchCount} version mismatches · ${status.missingEvidenceCount} missing evidence`,
+    `Candidate freshness gaps: ${status.staleBindingCount} stale bindings · ${status.staleImplementationUnitModelCount} stale Implementation Unit Models · ${status.staleDependencyMappingCount} stale Dependency Mappings · ${status.staleTechnologyProfileCount} stale Technology Profiles · ${status.staleBoilerplateRegistryCount} stale Boilerplate Registries · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Unit decision catalog digest: ${record.unitDecisionCatalogDigest}`,
+      `Selection receipt digest: ${record.selectionReceiptDigest}`,
+      `Binding receipt digest: ${record.bindingReceiptDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`,
+      `Candidate coverage: ${record.decisionCount} decisions · ${record.selectedCandidateCount} selected · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and unit-decision, selection, binding, assessment, and snapshot digests only; no boilerplate names, locators, versions, unit or profile identities, rationale, conditions, alternatives, deviations, evidence, decision roles, or personal data. Candidate completeness does not establish organizational designation, endorsement, approval, support commitment, effective selection or binding, compatibility truth, completeness, or validation, licensing or security approval, exception or waiver, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

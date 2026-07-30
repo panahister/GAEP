@@ -65,6 +65,7 @@ const commands = [
   "gaepKiro.dependencyMapping.inspect",
   "gaepKiro.technologyProfile.inspect",
   "gaepKiro.boilerplateRegistry.inspect",
+  "gaepKiro.boilerplateSelectionBinding.inspect",
   "gaepKiro.designSystemTokenContract.inspect",
   "gaepKiro.accessibilityDesignRules.inspect",
   "gaepKiro.responsiveMultiPlatformTargets.inspect",

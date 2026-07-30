@@ -2205,6 +2205,60 @@ test("protocol-v2 Boilerplate Registry projection is exact, private-safe, and no
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 Boilerplate Selection and Binding projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-boilerplate-selection-binding-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-boilerplate-selection-binding-snapshot-binding",
+    "bad-boilerplate-selection-binding-snapshot-digest",
+    "bad-boilerplate-selection-binding-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readBoilerplateSelectionBinding(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.decisionCount, 4)
+    assert.equal(projection.status.selectedCandidateCount, 2)
+    assert.equal(projection.status.notApplicableCandidateCount, 1)
+    assert.equal(projection.status.deferredCandidateCount, 1)
+    assert.equal(projection.status.missingUnitDecisionCount, 1)
+    assert.equal(projection.status.invalidSelectionCount, 1)
+    assert.equal(projection.status.staleBoilerplateRegistryCount, 0)
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"boilerplateRegistryEntryId":'), false)
+    assert.equal(serialized.includes('"boilerplateVersionCandidate":'), false)
+    assert.equal(serialized.includes('"implementationUnitId":'), false)
+    assert.equal(serialized.includes('"technologyProfileId":'), false)
+    assert.equal(serialized.includes('"rationale":'), false)
+    assert.equal(serialized.includes('"conditions":'), false)
+    assert.equal(serialized.includes('"evidenceReferences":'), false)
+    assert.equal(serialized.includes('"decisions":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readBoilerplateSelectionBinding(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 Design System and Token Contract projection is exact, private-safe, and non-authorizing", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-design-system-token-contract-"))
   const workspace = join(root, "workspace")
