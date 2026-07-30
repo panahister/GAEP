@@ -271,6 +271,66 @@ public static partial class AccessibleDashboardTables
         });
     }
 
+    public static IReadOnlyList<AccessibleMetadataTable> Phase2ChangeImpactAgentModel(
+        Phase2ChangeImpactAgentModelDashboard dashboard)
+    {
+        const string source = "exact-derived-phase-2-dashboard-and-current-initiative-scoped-agent-model-metadata-only";
+        const string authority =
+            "phase-2-change-impact-agent-model-dashboard-is-derived-read-only-evidence-not-a-second-source-of-truth-impact-completeness-design-validity-provider-quality-selection-run-launch-approval-baseline-readiness-remediation-effect-release-or-action-authority";
+        return Array.AsReadOnly(new[]
+        {
+            Table(
+                "phase2-synchronization-change",
+                "Phase 2 synchronization change evidence",
+                Columns(("source", "Governed source"), ("state", "Availability"), ("effect", "Effect boundary")),
+                new[]
+                {
+                    Row("design-delta", ("source", "Design delta"), ("state", dashboard.Synchronization.DesignDelta), ("effect", "Not applied")),
+                    Row("conflicts", ("source", "Conflict resolution"), ("state", dashboard.Synchronization.ConflictResolution), ("effect", "Not applied")),
+                    Row("approval", ("source", "Human design approval"), ("state", dashboard.Synchronization.HumanDesignApproval), ("effect", "Not applied")),
+                    Row("baseline", ("source", "Design baseline"), ("state", dashboard.Synchronization.DesignBaseline), ("effect", "Not applied")),
+                    Row("drift", ("source", "Design drift detection"), ("state", dashboard.Synchronization.DesignDriftDetection), ("effect", "Not applied")),
+                },
+                5, 0, dashboard.SnapshotDigest, source, authority),
+            Table(
+                "phase2-bounded-impact",
+                "Phase 2 bounded impact signals",
+                Columns(("area", "Area"), ("counts", "Observed counts"), ("boundary", "Coverage boundary")),
+                new[]
+                {
+                    Row(
+                        "trace", ("area", "Design and trace"),
+                        ("counts", $"{dashboard.Impact.RequirementCount} requirements · {dashboard.Impact.DesignBindingCount} bindings · {dashboard.Impact.UnboundDesignItemCount} unbound items"),
+                        ("boundary", "Impact completeness and design validity are not established.")),
+                    Row(
+                        "drift", ("area", "Drift"),
+                        ("counts", $"{dashboard.Impact.DriftObservationCount} observations · {dashboard.Impact.DriftCount} drift · {dashboard.Impact.UnassessedCount} unassessed"),
+                        ("boundary", "No remediation or revalidation effect is applied.")),
+                },
+                2, 0, dashboard.SnapshotDigest, source, authority),
+            Table(
+                "phase2-agent-model-execution",
+                "Initiative-scoped agent and model execution truth",
+                Columns(("area", "Area"), ("counts", "Bounded counts"), ("authority", "Authority boundary")),
+                new[]
+                {
+                    Row(
+                        "capabilities", ("area", "Capabilities and selection"),
+                        ("counts", $"{dashboard.Capabilities.Shown}/{dashboard.Capabilities.Total} shown · {dashboard.Capabilities.Detected} detected · {dashboard.Capabilities.Selected} selected"),
+                        ("authority", "No automatic selection or provider preference authority.")),
+                    Row(
+                        "runs", ("area", "Runs and Managed Runs"),
+                        ("counts", $"{dashboard.Runs.Shown}/{dashboard.Runs.Total} shown · {dashboard.Runs.Terminal} terminal · {dashboard.Runs.ResultBound} results bound"),
+                        ("authority", "No Run launch or effect authority.")),
+                    Row(
+                        "handoffs", ("area", "Handoffs"),
+                        ("counts", $"{dashboard.Handoffs.Shown}/{dashboard.Handoffs.Total} shown · {dashboard.Handoffs.Acknowledged} acknowledged"),
+                        ("authority", "No handoff acknowledgement or action authority.")),
+                },
+                3, 0, dashboard.SnapshotDigest, source, authority),
+        });
+    }
+
     public static IReadOnlyList<AccessibleMetadataTable> ChangeImpact(ChangeImpactDashboard dashboard)
     {
         const string source = "current-governed-records-and-bounded-trace-analysis";

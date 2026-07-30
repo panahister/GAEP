@@ -3001,6 +3001,21 @@ public sealed class ProductWorkflowController(EngineClient client)
         return RenderPhase2UxFigmaDashboard(await client.ReadPhase2UxFigmaDashboardAsync(product, initiative, cancellationToken));
     }
 
+    public async Task<string> ReadPhase2ChangeImpactAgentModelDashboardAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        if (initiative.ProductId != product.Id)
+        {
+            throw new ArgumentException("The Initiative does not target the exact current Product. Reload the Product and Initiative.");
+        }
+        return RenderPhase2ChangeImpactAgentModelDashboard(
+            await client.ReadPhase2ChangeImpactAgentModelDashboardAsync(product, initiative, cancellationToken));
+    }
+
     public async Task<string> ReadPhase1SummaryAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
@@ -3063,6 +3078,21 @@ public sealed class ProductWorkflowController(EngineClient client)
         }
         return AccessibleDashboardTables.Phase2UxFigma(
             await client.ReadPhase2UxFigmaDashboardAsync(product, initiative, cancellationToken));
+    }
+
+    public async Task<IReadOnlyList<AccessibleMetadataTable>> ReadPhase2ChangeImpactAgentModelDashboardTablesAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        if (initiative.ProductId != product.Id)
+        {
+            throw new ArgumentException("The Initiative does not target the exact current Product. Reload the Product and Initiative.");
+        }
+        return AccessibleDashboardTables.Phase2ChangeImpactAgentModel(
+            await client.ReadPhase2ChangeImpactAgentModelDashboardAsync(product, initiative, cancellationToken));
     }
 
     public async Task<ChangeImpactContext> ReadChangeImpactContextAsync(
@@ -3685,6 +3715,59 @@ public sealed class ProductWorkflowController(EngineClient client)
             .Append(
                 "Boundary: this derived read-only view is not a second source of truth and grants no completeness, " +
                 "validity, approval, baseline, readiness, phase-entry, Figma, remediation, implementation, release, or action authority.")
+            .ToString();
+    }
+
+    private static string RenderPhase2ChangeImpactAgentModelDashboard(
+        Phase2ChangeImpactAgentModelDashboard dashboard)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP exact Phase 2 Change, Impact, Agent and Model dashboard")
+            .AppendLine()
+            .AppendLine($"Initiative: {dashboard.InitiativeId:D}@{dashboard.InitiativeRevision} · {dashboard.InitiativeState}")
+            .AppendLine(
+                $"Synchronization: {dashboard.Synchronization.State} · design delta {dashboard.Synchronization.DesignDelta} · " +
+                $"conflicts {dashboard.Synchronization.ConflictResolution} · human approval {dashboard.Synchronization.HumanDesignApproval} · " +
+                $"baseline {dashboard.Synchronization.DesignBaseline} · drift {dashboard.Synchronization.DesignDriftDetection}")
+            .AppendLine(
+                $"Synchronization effects: {dashboard.Synchronization.SynchronizationEffectState} · " +
+                $"Figma connection {dashboard.Synchronization.FigmaConnectionState} · " +
+                $"write {dashboard.Synchronization.FigmaWriteExecutionState} · import {dashboard.Synchronization.FigmaImportExecutionState}")
+            .AppendLine(
+                $"Bounded impact: {dashboard.Impact.State} · {dashboard.Impact.RequirementCount} requirements · " +
+                $"{dashboard.Impact.DesignBindingCount} bindings · {dashboard.Impact.UnboundDesignItemCount} unbound items · " +
+                $"{dashboard.Impact.DriftCount} drift · {dashboard.Impact.UnassessedCount} unassessed")
+            .AppendLine("Impact boundary: bounded-not-complete · completeness not-established · design validity not-established · revalidation not-established")
+            .AppendLine(
+                $"Capabilities: {dashboard.Capabilities.Shown}/{dashboard.Capabilities.Total} shown · " +
+                $"{dashboard.Capabilities.Detected} detected · {dashboard.Capabilities.Selected} selected · " +
+                $"selection {dashboard.SelectionState}")
+            .AppendLine(
+                $"Runs: {dashboard.Runs.Shown}/{dashboard.Runs.Total} shown · {dashboard.Runs.Terminal} terminal · " +
+                $"{dashboard.Runs.NonTerminal} non-terminal · {dashboard.Runs.ResultBound} results bound · " +
+                $"{dashboard.Runs.ActualEffectCount} recorded actual effects")
+            .AppendLine(
+                $"Handoffs: {dashboard.Handoffs.Shown}/{dashboard.Handoffs.Total} shown · " +
+                $"{dashboard.Handoffs.PendingAcknowledgement} pending acknowledgement · {dashboard.Handoffs.Acknowledged} acknowledged")
+            .AppendLine("Provider usage and cost: unavailable/unavailable · live provider quality not-assessed · semantic output quality not-assessed")
+            .AppendLine($"Freshness: {dashboard.FreshnessState} · Phase 2 {dashboard.Phase2State} · Agent/Model {dashboard.AgentModelState}")
+            .AppendLine(
+                $"Product Owner acceptance: {dashboard.ProductOwnerAcceptance} · Run launch authority: " +
+                $"{dashboard.RunLaunchAuthority} · effect authority: {dashboard.EffectAuthority}")
+            .AppendLine($"Snapshot digest: {dashboard.SnapshotDigest}")
+            .AppendLine($"Phase 2 source digest: {dashboard.Phase2UxFigmaSnapshotDigest}")
+            .AppendLine($"Agent/Model source digest: {dashboard.AgentModelSnapshotDigest}")
+            .AppendLine();
+        foreach (var limitation in dashboard.Limitations) output.AppendLine($"Limit: {limitation}");
+        return output
+            .AppendLine()
+            .AppendLine(
+                "Boundary: these derived read-only views are not a second source of truth and grant no impact completeness, " +
+                "design validity, provider quality, selection, Run launch, approval, baseline, readiness, remediation, " +
+                "Figma, implementation, effect, release, or action authority.")
+            .Append(
+                "Design content, Product text, Run narrative, provider output, prompts, source bytes, machine paths, " +
+                "credentials, permissions, and sensitive setting values are withheld.")
             .ToString();
     }
 

@@ -292,6 +292,9 @@ internal static class Program
         var badPhase2DashboardDigestRoot = Path.Combine(temporaryRoot, "bad-phase2-dashboard-digest");
         var badPhase2DashboardPrivateRoot = Path.Combine(temporaryRoot, "bad-phase2-dashboard-private");
         var badPhase2DashboardCatalogRoot = Path.Combine(temporaryRoot, "bad-phase2-dashboard-catalog");
+        var badPhase2IntegratedBindingRoot = Path.Combine(temporaryRoot, "bad-phase2-integrated-binding");
+        var badPhase2IntegratedDigestRoot = Path.Combine(temporaryRoot, "bad-phase2-integrated-digest");
+        var badPhase2IntegratedPrivateRoot = Path.Combine(temporaryRoot, "bad-phase2-integrated-private");
         var badChangeCatalogBindingRoot = Path.Combine(temporaryRoot, "bad-change-catalog-binding");
         var badChangeCatalogDigestRoot = Path.Combine(temporaryRoot, "bad-change-catalog-digest");
         var badChangeCatalogPrivateRoot = Path.Combine(temporaryRoot, "bad-change-catalog-private");
@@ -488,6 +491,9 @@ internal static class Program
         Directory.CreateDirectory(badPhase2DashboardDigestRoot);
         Directory.CreateDirectory(badPhase2DashboardPrivateRoot);
         Directory.CreateDirectory(badPhase2DashboardCatalogRoot);
+        Directory.CreateDirectory(badPhase2IntegratedBindingRoot);
+        Directory.CreateDirectory(badPhase2IntegratedDigestRoot);
+        Directory.CreateDirectory(badPhase2IntegratedPrivateRoot);
         Directory.CreateDirectory(badChangeCatalogBindingRoot);
         Directory.CreateDirectory(badChangeCatalogDigestRoot);
         Directory.CreateDirectory(badChangeCatalogPrivateRoot);
@@ -2776,6 +2782,50 @@ internal static class Program
                   !invalidDashboard.Message.Contains(PrivateCredential, StringComparison.Ordinal),
                 "Phase 2 dashboard rejects hostile digest and private-field drift");
         }
+
+        var phase2Integrated = await client.ReadPhase2ChangeImpactAgentModelDashboardAsync(product, phase2Initiative);
+        Check(
+            phase2Integrated.Synchronization.State == "attention-required" &&
+            phase2Integrated.Impact.State == "current-bounded-observation" &&
+            phase2Integrated.Capabilities.Shown == 2 &&
+            phase2Integrated.RunLaunchAuthority == "not-granted" &&
+            phase2Integrated.ProductOwnerAcceptance == "not-established",
+            "Typed integrated Phase 2 dashboard preserves bounded synchronization, impact, execution, and no-authority truth");
+        var phase2IntegratedOutput = await phase2Controller.ReadPhase2ChangeImpactAgentModelDashboardAsync(InitiativeId);
+        Check(
+            phase2IntegratedOutput.Contains("GAEP exact Phase 2 Change, Impact, Agent and Model dashboard", StringComparison.Ordinal) &&
+            phase2IntegratedOutput.Contains("Synchronization: attention-required", StringComparison.Ordinal) &&
+            phase2IntegratedOutput.Contains("Impact boundary: bounded-not-complete", StringComparison.Ordinal) &&
+            phase2IntegratedOutput.Contains("Capabilities: 2/2 shown", StringComparison.Ordinal) &&
+            phase2IntegratedOutput.Contains("not a second source of truth", StringComparison.Ordinal) &&
+            !phase2IntegratedOutput.Contains("Founder Product", StringComparison.Ordinal) &&
+            !phase2IntegratedOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+            !phase2IntegratedOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Integrated Phase 2 workflow renders bounded private-safe metadata and explicit no-authority state");
+        var phase2IntegratedTables = await phase2Controller.ReadPhase2ChangeImpactAgentModelDashboardTablesAsync(InitiativeId);
+        Check(
+            phase2IntegratedTables.Select(table => table.Id).SequenceEqual(new[]
+            {
+                "phase2-synchronization-change", "phase2-bounded-impact", "phase2-agent-model-execution",
+            }, StringComparer.Ordinal) &&
+            phase2IntegratedTables.All(table => table.SnapshotDigest == phase2Integrated.SnapshotDigest) &&
+            phase2IntegratedTables.All(table => table.AuthorityBoundary.Contains("not-a-second-source-of-truth", StringComparison.Ordinal)),
+            "Integrated Phase 2 accessible tables expose three exact read-only metadata groups");
+        foreach (var hostileRoot in new[]
+                 {
+                     badPhase2IntegratedBindingRoot, badPhase2IntegratedDigestRoot, badPhase2IntegratedPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var hostileProduct = await hostileClient.ReadProductBindingAsync();
+            var hostileInitiative = await hostileClient.ReadInitiativeAsync(InitiativeId);
+            var error = await CaptureHostErrorAsync(
+                () => hostileClient.ReadPhase2ChangeImpactAgentModelDashboardAsync(hostileProduct, hostileInitiative));
+            Check(error.Kind == "HOST_RESPONSE_INVALID" &&
+                  !error.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !error.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Hostile integrated Phase 2 response is rejected without private detail");
+        }
         var phase1Initiative = phase2Initiative;
         var phase1Summary = await client.ReadPhase1SummaryAsync(product, phase1Initiative);
         Check(phase1Summary.InitiativeId == InitiativeId && phase1Summary.PhaseState == "attention-required" &&
@@ -4135,6 +4185,9 @@ internal static class Program
         var badPhase2DashboardDigest = Path.GetFileName(workspace) == "bad-phase2-dashboard-digest";
         var badPhase2DashboardPrivate = Path.GetFileName(workspace) == "bad-phase2-dashboard-private";
         var badPhase2DashboardCatalog = Path.GetFileName(workspace) == "bad-phase2-dashboard-catalog";
+        var badPhase2IntegratedBinding = Path.GetFileName(workspace) == "bad-phase2-integrated-binding";
+        var badPhase2IntegratedDigest = Path.GetFileName(workspace) == "bad-phase2-integrated-digest";
+        var badPhase2IntegratedPrivate = Path.GetFileName(workspace) == "bad-phase2-integrated-private";
         var badChangeCatalogBinding = Path.GetFileName(workspace) == "bad-change-catalog-binding";
         var badChangeCatalogDigest = Path.GetFileName(workspace) == "bad-change-catalog-digest";
         var badChangeCatalogPrivate = Path.GetFileName(workspace) == "bad-change-catalog-private";
@@ -4764,6 +4817,18 @@ internal static class Program
                         badPhase2DashboardCatalog,
                         badPhase2DashboardDigest,
                         badPhase2DashboardPrivate);
+                    break;
+                case "dashboard.phase2ChangeImpactAgentModel":
+                    await HandlePhase2ChangeImpactAgentModelDashboardAsync(
+                        id,
+                        parameters,
+                        selectedAgent,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badPhase2IntegratedBinding,
+                        badPhase2IntegratedDigest,
+                        badPhase2IntegratedPrivate);
                     break;
                 case "dashboard.phase1Summary":
                     await HandlePhase1SummaryAsync(
@@ -11785,6 +11850,147 @@ internal static class Program
         {
             await WriteResultAsync(id, dashboard);
         }
+    }
+
+    private static async Task HandlePhase2ChangeImpactAgentModelDashboardAsync(
+        long id,
+        JsonElement parameters,
+        Dictionary<string, object?>? selectedAgent,
+        long initiativeRevision,
+        Dictionary<string, object?>? initiativeClassification,
+        Dictionary<string, object?>? initiativeApplicability,
+        bool mismatchBinding,
+        bool invalidateDigest,
+        bool includePrivateField)
+    {
+        var productDigest = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        var initiativeRecord = InitiativeRecord(initiativeRevision, initiativeClassification, initiativeApplicability);
+        var initiativeDigest = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord));
+        if (!HasOnlyProperties(
+                parameters,
+                "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+                "expectedInitiativeRevision", "expectedInitiativeDigest", "agentModel") ||
+            parameters.GetProperty("expectedProductId").GetString() != ProductId.ToString("D") ||
+            parameters.GetProperty("expectedProductRevision").GetInt64() != 7 ||
+            parameters.GetProperty("expectedProductDigest").GetString() != productDigest ||
+            parameters.GetProperty("expectedInitiativeId").GetString() != InitiativeId.ToString("D") ||
+            parameters.GetProperty("expectedInitiativeRevision").GetInt64() != initiativeRevision ||
+            parameters.GetProperty("expectedInitiativeDigest").GetString() != initiativeDigest)
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID PHASE 2 INTEGRATED REQUEST");
+            return;
+        }
+        var agentModel = BuildAgentModelDashboard(
+            parameters.GetProperty("agentModel"), selectedAgent, mismatchBinding: false, invalidateCount: false,
+            invalidateFreshness: false, invalidateMetrics: false, invalidateEvidenceCues: false,
+            invalidateDigest: false, includePrivateField: false);
+        if (agentModel is null)
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID PHASE 2 INTEGRATED REQUEST");
+            return;
+        }
+        var capabilities = (Dictionary<string, object?>[])agentModel["capabilities"]!;
+        var detected = capabilities.LongCount(capability => Equals(capability["detected"], true));
+        var selected = capabilities.LongCount(capability => Equals(capability["selected"], true));
+        var selection = (Dictionary<string, object?>)agentModel["selection"]!;
+        var nestedFreshness = (Dictionary<string, object?>)agentModel["freshness"]!;
+        static Dictionary<string, object?> ZeroCounts(params string[] names) =>
+            names.ToDictionary(name => name, _ => (object?)0, StringComparer.Ordinal);
+        var dashboard = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "phase-2-change-impact-agent-model-dashboard",
+            ["viewDefinitionVersion"] = "gaep-phase-2-change-impact-agent-model-dashboard-v1",
+            ["phase"] = new Dictionary<string, object?>
+            {
+                ["id"] = "phase-2-design", ["label"] = "Phase 2 — UX and Figma Loop",
+            },
+            ["product"] = ExactReference("product", ProductId, 7, mismatchBinding ? $"sha256:{new string('0', 64)}" : productDigest),
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["recordType"] = "initiative", ["recordId"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision, ["digest"] = initiativeDigest, ["state"] = initiativeRecord["state"],
+            },
+            ["sources"] = new Dictionary<string, object?>
+            {
+                ["phase2UxFigmaSnapshotDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(new { fixture = "phase2" })),
+                ["phase2SourceCatalogDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(new { expected = 23 })),
+                ["agentModelSnapshotDigest"] = agentModel["snapshotDigest"],
+            },
+            ["synchronizationChange"] = new Dictionary<string, object?>
+            {
+                ["state"] = "attention-required", ["designDelta"] = "unavailable",
+                ["conflictResolution"] = "unavailable", ["humanDesignApproval"] = "unavailable",
+                ["designBaseline"] = "unavailable", ["designDriftDetection"] = "unavailable",
+                ["figmaConnectionState"] = "not-established", ["figmaWriteExecutionState"] = "not-performed",
+                ["figmaImportExecutionState"] = "not-performed", ["synchronizationEffectState"] = "not-applied",
+            },
+            ["impact"] = ZeroCounts(
+                "requirementCount", "designBindingCount", "unboundDesignItemCount", "driftObservationCount", "driftCount",
+                "unassessedCount", "blockerCount", "highSeverityCount", "remediationCandidateCount", "staleBindingCount",
+                "staleSourceReferenceCount", "unresolvedQuestionCount").Concat(new Dictionary<string, object?>
+                {
+                    ["state"] = "current-bounded-observation", ["coverage"] = "bounded-not-complete",
+                    ["impactCompleteness"] = "not-established", ["designValidity"] = "not-established",
+                    ["revalidationState"] = "not-established",
+                }).ToDictionary(value => value.Key, value => value.Value, StringComparer.Ordinal),
+            ["agentModel"] = new Dictionary<string, object?>
+            {
+                ["selectionState"] = selection["status"],
+                ["capabilities"] = new Dictionary<string, object?>
+                {
+                    ["shown"] = capabilities.LongLength, ["total"] = capabilities.LongLength, ["omitted"] = 0,
+                    ["detected"] = detected, ["unavailable"] = capabilities.LongLength - detected, ["selected"] = selected,
+                },
+                ["runs"] = ZeroCounts(
+                    "shown", "total", "omitted", "terminal", "nonTerminal", "managedObserved", "resultBound", "actualEffectCount"),
+                ["managedRuns"] = ZeroCounts("shown", "total", "omitted"),
+                ["handoffs"] = ZeroCounts("shown", "total", "omitted", "pendingAcknowledgement", "acknowledged"),
+                ["providerMetrics"] = new Dictionary<string, object?> { ["usage"] = "unavailable", ["cost"] = "unavailable" },
+                ["liveProviderQuality"] = "not-assessed", ["semanticOutputQuality"] = "not-assessed",
+            },
+            ["freshness"] = new Dictionary<string, object?>
+            {
+                ["state"] = "attention-required", ["phase2State"] = "attention-required",
+                ["agentModelState"] = nestedFreshness["state"],
+                ["selectionCapabilityState"] = nestedFreshness["selectionCapabilityState"],
+                ["phase2ObservedAt"] = "2026-07-30T03:10:00.000Z", ["agentModelObservedAt"] = agentModel["observedAt"],
+                ["oldestCapabilityObservedAt"] = nestedFreshness["oldestCapabilityObservedAt"],
+                ["newestCapabilityObservedAt"] = nestedFreshness["newestCapabilityObservedAt"], ["truncated"] = false,
+            },
+            ["governance"] = new Dictionary<string, object?>
+            {
+                ["humanDesignApproval"] = "not-established", ["baselineDesignation"] = "not-established",
+                ["impactAcceptance"] = "not-established", ["providerAccountReadiness"] = "not-established",
+                ["providerPreference"] = "not-established", ["automaticSelectionAuthority"] = "not-granted",
+                ["runLaunchAuthority"] = "not-granted", ["effectAuthority"] = "not-granted",
+                ["phaseReadinessAuthority"] = "not-established", ["productOwnerAcceptance"] = "not-established",
+            },
+            ["evidenceCues"] = DashboardEvidenceCues("unknown"),
+            ["observedAt"] = "2026-07-30T03:12:00.000Z",
+            ["sourceBoundary"] = "exact-derived-phase-2-dashboard-and-current-initiative-scoped-agent-model-metadata-only",
+            ["privacyBoundary"] =
+                "dashboard-exposes-identities-digests-counts-statuses-and-times-not-design-content-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-permissions-or-machine-paths",
+            ["limitations"] = new[]
+            {
+                "Synchronization and impact panels remain exact bounded derived evidence.",
+                "Agent and model counts remain bounded to the exact current Initiative.",
+                "No dashboard state grants approval, baseline, readiness, remediation, launch, or effect authority.",
+            },
+            ["authorityBoundary"] =
+                "phase-2-change-impact-agent-model-dashboard-is-derived-read-only-evidence-not-a-second-source-of-truth-impact-completeness-design-validity-provider-quality-selection-run-launch-approval-baseline-readiness-remediation-effect-release-or-action-authority",
+        };
+        if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        RefreshCanonicalDigest(dashboard, "snapshotDigest");
+        if (invalidateDigest)
+        {
+            ((Dictionary<string, object?>)dashboard["agentModel"]!)["capabilities"] = new Dictionary<string, object?>
+            {
+                ["shown"] = capabilities.LongLength, ["total"] = capabilities.LongLength, ["omitted"] = 0,
+                ["detected"] = 0, ["unavailable"] = capabilities.LongLength - detected, ["selected"] = selected,
+            };
+        }
+        await WriteResultAsync(id, dashboard);
     }
 
     private static async Task HandlePhase1AgentModelAsync(
