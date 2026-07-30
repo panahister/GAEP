@@ -65,6 +65,7 @@ import {
   implementationUnitModelSchema,
   dependencyMappingSchema,
   technologyProfileSchema,
+  boilerplateRegistrySchema,
   businessRuleCatalogSchema,
   businessUnderstandingSchema,
   changeSchema,
@@ -155,6 +156,8 @@ const directoryNames = [
   "dependency-mapping-history",
   "technology-profiles",
   "technology-profile-history",
+  "boilerplate-registries",
+  "boilerplate-registry-history",
   "value-stream-models",
   "value-stream-model-history",
   "operating-models",
@@ -1026,6 +1029,8 @@ export class GaepRepository {
       ["dependency-mapping-history", /^dependency-mapping-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["technology-profiles", /^[0-9a-f-]+\.json$/i],
       ["technology-profile-history", /^technology-profile-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["boilerplate-registries", /^[0-9a-f-]+\.json$/i],
+      ["boilerplate-registry-history", /^boilerplate-registry-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["value-stream-models", /^[0-9a-f-]+\.json$/i],
       ["value-stream-model-history", /^value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["operating-models", /^[0-9a-f-]+\.json$/i],
@@ -1237,6 +1242,10 @@ export class GaepRepository {
     if (/^technology-profiles\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^technology-profile-history\/technology-profile-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, technologyProfileSchema)
+    }
+    if (/^boilerplate-registries\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^boilerplate-registry-history\/boilerplate-registry-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, boilerplateRegistrySchema)
     }
     if (/^value-stream-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^value-stream-model-history\/value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {

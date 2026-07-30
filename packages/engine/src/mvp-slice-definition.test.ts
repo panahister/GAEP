@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type { AcceptanceCriteriaInput, BacklogHierarchyInput, DefinitionOfDoneInput, DefinitionOfReadyInput, DependencyMappingInput, ImplementationUnitModelInput, MvpSliceDefinitionInput, PrioritizationModelInput, TechnologyProfileInput } from "@gaep/contracts"
+import type { AcceptanceCriteriaInput, BacklogHierarchyInput, BoilerplateRegistryInput, DefinitionOfDoneInput, DefinitionOfReadyInput, DependencyMappingInput, ImplementationUnitModelInput, MvpSliceDefinitionInput, PrioritizationModelInput, TechnologyProfileInput } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -633,6 +633,88 @@ describe("MVP and Slice Definition engine", () => {
       implementationCompletenessState: "not-established",
       assignmentExecutionState: "not-established",
       approvalState: "not-established",
+      acceptanceDecisionState: "not-established",
+      mergeReadinessState: "not-established",
+      releaseReadinessState: "not-established",
+      deploymentReadinessState: "not-established",
+      actionAuthorityState: "not-granted",
+    }
+  }
+
+  function boilerplateRegistryInput(
+    initiativeId: string,
+    context: MvpSliceDefinitionInput["context"],
+    units: Awaited<ReturnType<typeof engine.implementationUnitModel.create>>,
+    technologyProfile: Awaited<ReturnType<typeof engine.technologyProfile.create>>,
+  ): BoilerplateRegistryInput {
+    const architectureEvidence = {
+      kind: "architecture" as const,
+      sourceId: "atlas-system-solution-architecture-candidate",
+      revision: 1,
+      digest: canonicalDigest({ initiativeId, context, kind: "architecture-candidate" }),
+      observationState: "candidate-asserted" as const,
+    }
+    return {
+      initiativeId,
+      context,
+      informationClassification: "internal",
+      title: "Atlas candidate organizational boilerplate registry",
+      implementationUnitModel: { recordId: units.id, revision: units.revision, digest: canonicalDigest(units) },
+      technologyProfile: {
+        recordId: technologyProfile.id, revision: technologyProfile.revision, digest: canonicalDigest(technologyProfile),
+      },
+      architectureEvidenceReferences: [architectureEvidence],
+      entries: technologyProfile.profiles.map((profile, index) => ({
+        id: randomUUID(),
+        ordinal: index + 1,
+        canonicalName: `Candidate ${profile.profileKind} foundation ${index + 1}`,
+        kind: profile.profileKind === "service" ? "service-template" as const : "client-template" as const,
+        sourceKind: "local-repository" as const,
+        sourceReference: `templates/${profile.profileKind}-foundation-${index + 1}`,
+        versionCandidate: `candidate-commit-${index + 1}`,
+        versionState: "exact-candidate" as const,
+        applicabilityState: "candidate-preferred" as const,
+        availabilityState: "candidate-available" as const,
+        integrityState: "candidate-verified" as const,
+        provenanceState: "candidate-traceable" as const,
+        supportState: "candidate-supported" as const,
+        lifecycleState: "active" as const,
+        technologyCompatibilityState: "candidate-compatible" as const,
+        architectureCompatibilityState: "candidate-compatible" as const,
+        licenseState: "candidate-allowed" as const,
+        securityPolicyState: "candidate-conformant" as const,
+        exceptionState: "not-required-candidate" as const,
+        applicableTechnologyProfileIds: [profile.id],
+        applicableImplementationUnitIds: [profile.implementationUnitId],
+        capabilities: ["Provides a bounded candidate foundation for the current implementation-unit profile"],
+        knownLimitations: ["Registry evidence does not designate, approve, select, or bind the candidate asset"],
+        rationale: "The exact local repository observation identifies an inspectable candidate without asserting organizational authority",
+        evidenceReferences: [{
+          kind: "repository-observation" as const,
+          sourceId: `candidate-foundation-${index + 1}`,
+          revision: 1,
+          digest: canonicalDigest({ profileId: profile.id, implementationUnitId: profile.implementationUnitId, index }),
+          observationState: "observed-not-validated" as const,
+        }],
+        assessedBy: { kind: "human" as const, id: "boilerplate-reviewer" },
+        assessedAt: "2026-07-30T00:00:00.000Z",
+      })),
+      unresolvedQuestions: [],
+      limitations: ["Candidate entries require accountable organizational review before designation or use"],
+      reviewState: "ready-for-human-review",
+      organizationalDesignationState: "not-established",
+      endorsementApprovalState: "not-established",
+      supportCommitmentState: "not-established",
+      compatibilityTruthState: "not-established",
+      compatibilityCompletenessState: "not-established",
+      licensingApprovalState: "not-established",
+      securityApprovalState: "not-established",
+      exceptionWaiverState: "not-established",
+      selectionBindingState: "not-established",
+      architectureBaselineDesignationState: "not-established",
+      implementationReadinessState: "not-established",
+      implementationCompletenessState: "not-established",
+      assignmentExecutionState: "not-established",
       acceptanceDecisionState: "not-established",
       mergeReadinessState: "not-established",
       releaseReadinessState: "not-established",
@@ -1400,5 +1482,99 @@ describe("MVP and Slice Definition engine", () => {
         })),
       })),
     }, actorId)).rejects.toThrow(/supported compatible lifecycle-safe/u)
+  })
+
+  it("persists, revises, assesses, and privately projects exact Boilerplate Registry candidates", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteria = await engine.acceptanceCriteria.create(acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority), actorId)
+    const ready = await engine.definitionOfReady.create(definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria), actorId)
+    const done = await engine.definitionOfDone.create(definitionOfDoneInput(initiative.id, input.context, hierarchy, mvp, priority, criteria, ready), actorId)
+    const units = await engine.implementationUnitModel.create(implementationUnitModelInput(initiative.id, input.context, hierarchy, mvp, criteria, ready, done), actorId)
+    const mapping = await engine.dependencyMapping.create(dependencyMappingInput(initiative.id, input.context, hierarchy, mvp, units), actorId)
+    const profileInput = technologyProfileInput(initiative.id, input.context, units, mapping)
+    const technologyProfile = await engine.technologyProfile.create(profileInput, actorId)
+    const registryInput = boilerplateRegistryInput(initiative.id, input.context, units, technologyProfile)
+    const created = await engine.boilerplateRegistry.create(registryInput, actorId)
+    const revised = await engine.boilerplateRegistry.revise(created.id, created.revision, {
+      ...registryInput, title: "Atlas reviewed candidate organizational boilerplate registry",
+    }, actorId)
+    expect(revised).toMatchObject({ revision: 2, predecessorDigest: canonicalDigest(created) })
+    expect((await engine.boilerplateRegistry.listHistory(created.id)).map((record) => record.revision)).toEqual([2, 1])
+    expect((await engine.boilerplateRegistry.readRevision(created.id, 1)).title).toBe(registryInput.title)
+
+    const status = await engine.boilerplateRegistry.assess(initiative.id)
+    expect(status).toMatchObject({
+      state: "candidate-complete", entryCount: 2, exactVersionCandidateCount: 2,
+      rangeVersionCandidateCount: 0, unresolvedVersionCount: 0, mandatoryCandidateCount: 0,
+      missingEvidenceCount: 0, unavailableEntryCount: 0, integrityMismatchCount: 0, provenanceGapCount: 0,
+      unsupportedEntryCount: 0, lifecycleRiskCount: 0, technologyConflictCount: 0, architectureConflictCount: 0,
+      licenseReviewRequiredCount: 0, licenseProhibitedCount: 0, securityReviewRequiredCount: 0,
+      securityNonconformantCount: 0, exceptionCandidateCount: 0, staleImplementationUnitModelCount: 0,
+      staleTechnologyProfileCount: 0, invalidRegistryCount: 0,
+    })
+    const projection = await engine.boilerplateRegistry.project(initiative.id)
+    expect(projection.candidate).toMatchObject({ id: revised.id, revision: 2, entryCount: 2, mandatoryCandidateCount: 0 })
+    expect(projection.snapshotDigest).toMatch(/^sha256:[0-9a-f]{64}$/u)
+    const serialized = JSON.stringify(projection)
+    expect(serialized).not.toContain(registryInput.title)
+    expect(serialized).not.toContain(registryInput.entries[0]!.canonicalName)
+    expect(serialized).not.toContain(registryInput.entries[0]!.sourceReference)
+    expect(serialized).not.toContain(units.units[0]!.id)
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    const event = events.findLast((entry) => entry.eventType === "boilerplate-registry.revised")
+    expect(event?.payload).toMatchObject({
+      revision: 2, entryCount: 2, exactVersionCandidateCount: 2, mandatoryCandidateCount: 0,
+      organizationalDesignationState: "not-established", endorsementApprovalState: "not-established",
+      supportCommitmentState: "not-established", compatibilityTruthState: "not-established",
+      compatibilityCompletenessState: "not-established", licensingApprovalState: "not-established",
+      securityApprovalState: "not-established", exceptionWaiverState: "not-established",
+      selectionBindingState: "not-established", architectureBaselineDesignationState: "not-established",
+      implementationReadinessState: "not-established", implementationCompletenessState: "not-established",
+      assignmentExecutionState: "not-established", acceptanceDecisionState: "not-established",
+      mergeReadinessState: "not-established", releaseReadinessState: "not-established",
+      deploymentReadinessState: "not-established", actionAuthorityState: "not-granted",
+    })
+    expect(JSON.stringify(event)).not.toContain(registryInput.title)
+    expect(JSON.stringify(event)).not.toContain(registryInput.entries[0]!.canonicalName)
+    expect((await engine.repository.verifyAudit()).valid).toBe(true)
+
+    await engine.technologyProfile.revise(technologyProfile.id, technologyProfile.revision, {
+      ...profileInput, title: "Superseding Atlas technology profiles",
+    }, actorId)
+    expect(await engine.boilerplateRegistry.assess(initiative.id)).toMatchObject({
+      state: "attention-required", staleTechnologyProfileCount: 1,
+    })
+    expect(await engine.boilerplateRegistry.healthIssues()).toEqual([
+      expect.objectContaining({ code: "boilerplate-registry.binding-review-required", severity: "warning" }),
+    ])
+  })
+
+  it("fails closed when a review-ready Boilerplate Registry omits profile applicability or records an integrity gap", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteria = await engine.acceptanceCriteria.create(acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority), actorId)
+    const ready = await engine.definitionOfReady.create(definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria), actorId)
+    const done = await engine.definitionOfDone.create(definitionOfDoneInput(initiative.id, input.context, hierarchy, mvp, priority, criteria, ready), actorId)
+    const units = await engine.implementationUnitModel.create(implementationUnitModelInput(initiative.id, input.context, hierarchy, mvp, criteria, ready, done), actorId)
+    const mapping = await engine.dependencyMapping.create(dependencyMappingInput(initiative.id, input.context, hierarchy, mvp, units), actorId)
+    const technologyProfile = await engine.technologyProfile.create(technologyProfileInput(initiative.id, input.context, units, mapping), actorId)
+    const registryInput = boilerplateRegistryInput(initiative.id, input.context, units, technologyProfile)
+    await expect(engine.boilerplateRegistry.create({
+      ...registryInput,
+      entries: registryInput.entries.map((entry, index) => ({
+        ...entry, applicableTechnologyProfileIds: index === 0 ? [] : entry.applicableTechnologyProfileIds,
+      })),
+    }, actorId)).rejects.toThrow(/exact current dependencies and exact available/u)
+    await expect(engine.boilerplateRegistry.create({
+      ...registryInput,
+      entries: registryInput.entries.map((entry, index) => ({
+        ...entry, integrityState: index === 0 ? "candidate-mismatch" as const : entry.integrityState,
+      })),
+    }, actorId)).rejects.toThrow(/integrity-verified/u)
   })
 })

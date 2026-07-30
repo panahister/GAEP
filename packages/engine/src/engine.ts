@@ -81,6 +81,7 @@ import { DefinitionOfDoneService } from "./definition-of-done.js"
 import { ImplementationUnitModelService } from "./implementation-unit-model.js"
 import { DependencyMappingService } from "./dependency-mapping.js"
 import { TechnologyProfileService } from "./technology-profile.js"
+import { BoilerplateRegistryService } from "./boilerplate-registry.js"
 import { BusinessArchitectureBaselineService } from "./business-architecture-baseline.js"
 import { BusinessRuleCatalogService } from "./business-rule-catalog.js"
 import { BusinessUnderstandingService } from "./business-understanding.js"
@@ -295,6 +296,7 @@ export class GaepEngine {
   readonly implementationUnitModel: ImplementationUnitModelService
   readonly dependencyMapping: DependencyMappingService
   readonly technologyProfile: TechnologyProfileService
+  readonly boilerplateRegistry: BoilerplateRegistryService
   readonly valueStreamModel: ValueStreamModelService
   readonly operatingModel: OperatingModelService
   readonly businessRuleCatalog: BusinessRuleCatalogService
@@ -421,6 +423,13 @@ export class GaepEngine {
       (id) => this.readInitiative(id),
       this.implementationUnitModel,
       this.dependencyMapping,
+    )
+    this.boilerplateRegistry = new BoilerplateRegistryService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.implementationUnitModel,
+      this.technologyProfile,
     )
     this.sourceGovernance = new SourceGovernanceService(
       this.repository,
@@ -954,6 +963,7 @@ export class GaepEngine {
         this.implementationUnitModel.healthIssues(),
         this.dependencyMapping.healthIssues(),
         this.technologyProfile.healthIssues(),
+        this.boilerplateRegistry.healthIssues(),
       ])
       const [productIssues, backlogHierarchyIssues, mvpSliceDefinitionIssues, prioritizationModelIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues, figmaContextImportIssues, outboundDesignBriefPackageIssues, governedFigmaWriteIssues, finalizedFigmaSnapshotImportIssues, designToRequirementBindingIssues, designerReadyGateIssues, designDeltaIssues, designConflictResolutionIssues, humanDesignApprovalIssues, designBaselineIssues, designDriftDetectionIssues] = await Promise.all([
         this.productStudio.healthIssues(),
