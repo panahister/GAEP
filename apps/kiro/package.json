@@ -90,6 +90,7 @@
     "onCommand:gaepKiro.definitionOfDone.inspect",
     "onCommand:gaepKiro.implementationUnitModel.inspect",
     "onCommand:gaepKiro.dependencyMapping.inspect",
+    "onCommand:gaepKiro.technologyProfile.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -344,6 +345,10 @@
       {
         "command": "gaepKiro.dependencyMapping.inspect",
         "title": "GAEP for Kiro: Inspect Governed Dependency Mapping Candidate"
+      },
+      {
+        "command": "gaepKiro.technologyProfile.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Technology Profile Candidate"
       },
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",

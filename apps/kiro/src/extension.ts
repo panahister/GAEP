@@ -38,6 +38,7 @@ import {
   type DefinitionOfDoneProjection,
   type ImplementationUnitModelProjection,
   type DependencyMappingProjection,
+  type TechnologyProfileProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -168,6 +169,7 @@ const commandIds = {
   definitionOfDone: "gaepKiro.definitionOfDone.inspect",
   implementationUnitModel: "gaepKiro.implementationUnitModel.inspect",
   dependencyMapping: "gaepKiro.dependencyMapping.inspect",
+  technologyProfile: "gaepKiro.technologyProfile.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -315,6 +317,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.definitionOfDone, (input?: unknown) => runUserCommand(() => showDefinitionOfDone(pool, input))),
     vscode.commands.registerCommand(commandIds.implementationUnitModel, (input?: unknown) => runUserCommand(() => showImplementationUnitModel(pool, input))),
     vscode.commands.registerCommand(commandIds.dependencyMapping, (input?: unknown) => runUserCommand(() => showDependencyMapping(pool, input))),
+    vscode.commands.registerCommand(commandIds.technologyProfile, (input?: unknown) => runUserCommand(() => showTechnologyProfile(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2091,6 +2094,49 @@ async function showDependencyMapping(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and graph, critical-path, assessment-receipt, and snapshot digests only; no unit, node, edge, evidence, rationale, estimate, owner, repository, module, Requirement, architecture, risk, test, or personal data. Candidate completeness does not establish dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showTechnologyProfile(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<TechnologyProfileProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Technology Profile inspection", "Initiative ID")
+  const projection = await client.readTechnologyProfile(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Technology Profile candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Candidate coverage: ${status.unitProfileCount} unit profiles · ${status.technologyChoiceCount} choices · ${status.exactVersionCandidateCount} exact versions · ${status.rangeVersionCandidateCount} ranges · ${status.unresolvedVersionCount} unresolved versions · ${status.constraintCount} constraints`,
+    `Candidate policy gaps: ${status.unsupportedChoiceCount} unsupported · ${status.lifecycleRiskCount} lifecycle risks · ${status.compatibilityConflictCount} compatibility conflicts · ${status.licenseReviewRequiredCount} license reviews · ${status.licenseProhibitedCount} license-prohibited · ${status.securityReviewRequiredCount} security reviews · ${status.securityNonconformantCount} security-nonconformant · ${status.exceptionCandidateCount} exception candidates · ${status.constraintConflictCount} constraint conflicts`,
+    `Candidate gaps: ${status.unresolvedQuestionCount} questions · ${status.missingProfileCount} missing profiles · ${status.invalidProfileCount} invalid profiles · ${status.missingEvidenceCount} missing evidence · ${status.staleBindingCount} stale bindings · ${status.staleImplementationUnitModelCount} stale Implementation Unit Models · ${status.staleDependencyMappingCount} stale Dependency Mappings`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Profile catalog digest: ${record.profileCatalogDigest}`,
+      `Selection catalog digest: ${record.selectionCatalogDigest}`,
+      `Compatibility assessment receipt digest: ${record.compatibilityAssessmentReceiptDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`,
+      `Candidate coverage: ${record.unitProfileCount} unit profiles · ${record.technologyChoiceCount} choices · ${record.constraintCount} constraints · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and profile, selection, compatibility, assessment, and snapshot digests only; no technology names, versions, constraints, evidence, rationale, unit, architecture, repository, toolchain, license, security-policy, or personal data. Candidate completeness does not establish technology approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

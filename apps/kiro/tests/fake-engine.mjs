@@ -64,6 +64,7 @@ const definitionOfReadyId = "85858585-8585-4585-8585-858585858585"
 const definitionOfDoneId = "86868686-8686-4686-8686-868686868686"
 const implementationUnitModelId = "87878787-8787-4787-8787-878787878787"
 const dependencyMappingId = "88888888-8888-4888-8888-888888888888"
+const technologyProfileId = "89898989-8989-4989-8989-898989898989"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -190,6 +191,8 @@ input.on("line", (line) => {
       return readImplementationUnitModel(id, request.params)
     case "planning.dependencyMapping.snapshot":
       return readDependencyMapping(id, request.params)
+    case "planning.technologyProfile.snapshot":
+      return readTechnologyProfile(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -2735,6 +2738,84 @@ function readDependencyMapping(id, params) {
   if (workspacePath.endsWith("bad-dependency-mapping-snapshot-digest")) value.candidate.nodeCount = 4
   if (workspacePath.endsWith("bad-dependency-mapping-snapshot-private")) {
     value.rationale = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readTechnologyProfile(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE TECHNOLOGY PROFILE PARAMS")
+  }
+  const candidateDigest = `sha256:${"6".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "technology-profile-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: technologyProfileId, revision: 2, digest: candidateDigest },
+    implementationUnitModel: { recordId: implementationUnitModelId, revision: 2, digest: `sha256:${"5".repeat(64)}` },
+    dependencyMapping: { recordId: dependencyMappingId, revision: 2, digest: `sha256:${"9".repeat(64)}` },
+    unitProfileCount: 3,
+    technologyChoiceCount: 5,
+    exactVersionCandidateCount: 3,
+    rangeVersionCandidateCount: 1,
+    unresolvedVersionCount: 1,
+    constraintCount: 4,
+    missingProfileCount: 1,
+    invalidProfileCount: 1,
+    missingEvidenceCount: 2,
+    unsupportedChoiceCount: 1,
+    lifecycleRiskCount: 1,
+    compatibilityConflictCount: 1,
+    licenseReviewRequiredCount: 1,
+    licenseProhibitedCount: 0,
+    securityReviewRequiredCount: 1,
+    securityNonconformantCount: 0,
+    exceptionCandidateCount: 1,
+    constraintConflictCount: 1,
+    staleBindingCount: 0,
+    staleImplementationUnitModelCount: 0,
+    staleDependencyMappingCount: 0,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Technology Profile candidates require human review"],
+    assessedAt: "2026-07-30T16:00:00.000Z",
+    authorityBoundary: "technology-profile-status-is-observational-and-does-not-establish-technology-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-authority-architecture-baseline-designation-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "technology-profile-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: technologyProfileId,
+      revision: 2,
+      digest: candidateDigest,
+      state: "candidate",
+      profileCatalogDigest: `sha256:${"a".repeat(64)}`,
+      selectionCatalogDigest: `sha256:${"b".repeat(64)}`,
+      compatibilityAssessmentReceiptDigest: `sha256:${"c".repeat(64)}`,
+      assessmentReceiptDigest: `sha256:${"d".repeat(64)}`,
+      unitProfileCount: 3,
+      technologyChoiceCount: 5,
+      constraintCount: 4,
+      reviewState: "held",
+      updatedAt: "2026-07-30T15:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-profile-selection-compatibility-assessment-snapshot-digests-only-not-technology-names-versions-constraints-evidence-rationale-unit-architecture-repository-toolchain-license-security-policy-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "technology-profile-projection-is-read-only-and-does-not-establish-technology-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-authority-architecture-baseline-designation-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-technology-profile-snapshot-binding")) content.initiative.id = technologyProfileId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-technology-profile-snapshot-digest")) value.candidate.unitProfileCount = 4
+  if (workspacePath.endsWith("bad-technology-profile-snapshot-private")) {
+    value.rationale = `${privateRoot}/${privateCredential}`
+    value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
   }
   return writeResult(id, value)
 }

@@ -145,7 +145,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
     fail("package identity, host engine, entry point, or extension kind differs")
   }
   const commands = packagedManifest.contributes?.commands
-  if (!Array.isArray(commands) || commands.length !== 75 ||
+  if (!Array.isArray(commands) || commands.length !== 76 ||
       new Set(commands.map((command) => command.command)).size !== commands.length ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase2UxFigma") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase2ChangeImpactAgentModel") ||
@@ -166,6 +166,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.definitionOfDone.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.implementationUnitModel.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.dependencyMapping.inspect") ||
+      !commands.some((command) => command.command === "gaepKiro.technologyProfile.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designSystemTokenContract.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.accessibilityDesignRules.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.responsiveMultiPlatformTargets.inspect") ||
@@ -183,7 +184,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.humanDesignApproval.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designBaseline.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designDriftDetection.inspect")) {
-    fail("package command inventory must contain 75 unique commands including both Phase 2 dashboards, all three Phase 1 dashboards, Backlog Hierarchy, MVP and Vertical Slice Definition, Prioritization Model, Acceptance Criteria, Definition of Ready, Definition of Done, Implementation Unit Model, Dependency Mapping, and governed Design phase candidates through Design Drift Detection")
+    fail("package command inventory must contain 76 unique commands including both Phase 2 dashboards, all three Phase 1 dashboards, Backlog Hierarchy, MVP and Vertical Slice Definition, Prioritization Model, Acceptance Criteria, Definition of Ready, Definition of Done, Implementation Unit Model, Dependency Mapping, Technology Profile, and governed Design phase candidates through Design Drift Detection")
   }
   const activationCommands = packagedManifest.activationEvents
     .filter((event) => event.startsWith("onCommand:"))
