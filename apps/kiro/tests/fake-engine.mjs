@@ -71,6 +71,7 @@ const boilerplateCompatibilityValidationId = "92929292-9292-4292-8292-9292929292
 const figmaToBoilerplateMappingId = "93939393-9393-4393-8393-939393939393"
 const designToCodeBindingRegistryId = "94949494-9494-4494-8494-949494949494"
 const routeScreenComponentMappingId = "95959595-9595-4595-8595-959595959595"
+const testMethodologyId = "96969696-9696-4696-8696-969696969696"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -211,6 +212,8 @@ input.on("line", (line) => {
       return readDesignToCodeBindingRegistry(id, request.params)
     case "planning.routeScreenComponentMapping.snapshot":
       return readRouteScreenComponentMapping(id, request.params)
+    case "planning.testMethodology.snapshot":
+      return readTestMethodology(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -3350,6 +3353,69 @@ function readRouteScreenComponentMapping(id, params) {
   if (workspacePath.endsWith("bad-route-screen-component-mapping-snapshot-digest")) value.candidate.subjectCount = 15
   if (workspacePath.endsWith("bad-route-screen-component-mapping-snapshot-private")) {
     value.routePattern = `${privateRoot}/${privateCredential}`
+    value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
+  }
+  return writeResult(id, value)
+}
+
+function readTestMethodology(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE TEST METHODOLOGY PARAMS")
+  }
+  const candidateDigest = `sha256:${"8".repeat(64)}`
+  const reference = (recordId, value) => ({ recordId, revision: 2, digest: `sha256:${value.repeat(64)}` })
+  const status = {
+    schemaVersion: 1, kind: "test-methodology-status", productId, productRevision: 7,
+    initiativeId, initiativeRevision: initiativeState.revision,
+    candidate: { recordId: testMethodologyId, revision: 2, digest: candidateDigest },
+    acceptanceCriteria: reference(acceptanceCriteriaId, "4"),
+    definitionOfReady: reference(definitionOfReadyId, "5"),
+    definitionOfDone: reference(definitionOfDoneId, "6"),
+    implementationUnitModel: reference(implementationUnitModelId, "7"),
+    dependencyMapping: reference(dependencyMappingId, "8"),
+    securityPrivacyAssessment: reference(securityPrivacyAssessmentId, "9"),
+    routeScreenComponentMapping: reference(routeScreenComponentMappingId, "2"),
+    sourceUnitCount: 4, sourceRequirementCount: 7, sourceCriterionCount: 12, sourceMappingSubjectCount: 14,
+    scopeCount: 4, decisionCount: 6, selectedDecisionCount: 4, conflictDecisionCount: 1,
+    notApplicableDecisionCount: 0, deferredDecisionCount: 1, notAssessedDecisionCount: 0,
+    environmentCount: 3, dataPolicyCount: 2, evidenceExpectationCount: 5,
+    entryCriterionCount: 4, exitCriterionCount: 4, missingScopeCount: 0, extraScopeCount: 0,
+    invalidDecisionCount: 1, environmentGapCount: 1, dataPolicyGapCount: 1, ownershipGapCount: 1,
+    traceGapCount: 2, evidenceGapCount: 1, criterionGapCount: 1, staleBindingCount: 0,
+    staleDependencyCount: 0, invalidCandidateCount: 1, unresolvedQuestionCount: 2,
+    reviewState: "held", state: "attention-required",
+    reasons: ["One or more Test Methodology decisions require human review"],
+    assessedAt: "2026-07-31T01:00:00.000Z",
+    authorityBoundary: "test-methodology-status-is-observational-and-does-not-establish-requirement-or-acceptance-criteria-truth-methodology-validity-or-completeness-environment-availability-test-data-fitness-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1, kind: "test-methodology-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: testMethodologyId, revision: 2, digest: candidateDigest, state: "candidate",
+      scopeCatalogDigest: `sha256:${"1".repeat(64)}`,
+      methodologyReceiptDigest: `sha256:${"2".repeat(64)}`,
+      environmentReceiptDigest: `sha256:${"3".repeat(64)}`,
+      dataPolicyReceiptDigest: `sha256:${"4".repeat(64)}`,
+      ownershipReceiptDigest: `sha256:${"5".repeat(64)}`,
+      traceReceiptDigest: `sha256:${"6".repeat(64)}`,
+      assessmentReceiptDigest: `sha256:${"7".repeat(64)}`,
+      scopeCount: 4, decisionCount: 6, selectedDecisionCount: 4, conflictDecisionCount: 1,
+      environmentCount: 3, dataPolicyCount: 2, evidenceExpectationCount: 5,
+      entryCriterionCount: 4, exitCriterionCount: 4, reviewState: "held",
+      updatedAt: "2026-07-31T00:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-methodology-scope-environment-data-ownership-trace-assessment-snapshot-digests-only-not-requirement-criterion-method-rationale-environment-address-test-data-owner-evidence-result-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "test-methodology-projection-is-read-only-and-does-not-establish-requirement-or-acceptance-criteria-truth-methodology-validity-or-completeness-environment-availability-test-data-fitness-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-test-methodology-snapshot-binding")) content.initiative.id = testMethodologyId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-test-methodology-snapshot-digest")) value.candidate.scopeCount = 5
+  if (workspacePath.endsWith("bad-test-methodology-snapshot-private")) {
+    value.testData = `${privateRoot}/${privateCredential}`
     value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
   }
   return writeResult(id, value)

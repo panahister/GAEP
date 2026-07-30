@@ -70,6 +70,7 @@ const commands = [
   "gaepKiro.figmaToBoilerplateMapping.inspect",
   "gaepKiro.designToCodeBindingRegistry.inspect",
   "gaepKiro.routeScreenComponentMapping.inspect",
+  "gaepKiro.testMethodology.inspect",
   "gaepKiro.designSystemTokenContract.inspect",
   "gaepKiro.accessibilityDesignRules.inspect",
   "gaepKiro.responsiveMultiPlatformTargets.inspect",

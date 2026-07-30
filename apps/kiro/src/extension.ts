@@ -45,6 +45,7 @@ import {
   type FigmaToBoilerplateMappingProjection,
   type DesignToCodeBindingRegistryProjection,
   type RouteScreenComponentMappingProjection,
+  type TestMethodologyProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -182,6 +183,7 @@ const commandIds = {
   figmaToBoilerplateMapping: "gaepKiro.figmaToBoilerplateMapping.inspect",
   designToCodeBindingRegistry: "gaepKiro.designToCodeBindingRegistry.inspect",
   routeScreenComponentMapping: "gaepKiro.routeScreenComponentMapping.inspect",
+  testMethodology: "gaepKiro.testMethodology.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -336,6 +338,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.figmaToBoilerplateMapping, (input?: unknown) => runUserCommand(() => showFigmaToBoilerplateMapping(pool, input))),
     vscode.commands.registerCommand(commandIds.designToCodeBindingRegistry, (input?: unknown) => runUserCommand(() => showDesignToCodeBindingRegistry(pool, input))),
     vscode.commands.registerCommand(commandIds.routeScreenComponentMapping, (input?: unknown) => runUserCommand(() => showRouteScreenComponentMapping(pool, input))),
+    vscode.commands.registerCommand(commandIds.testMethodology, (input?: unknown) => runUserCommand(() => showTestMethodology(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2425,6 +2428,55 @@ async function showRouteScreenComponentMapping(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and subject, relationship, trace, mapping, assessment, and snapshot digests only; no route patterns, screen, state, component, design, Requirement, Acceptance Criteria, Implementation Unit, repository, module, path, symbol, test-hook, evidence, reviewer, or personal data. This inspection does not connect to or call Figma, establish returned Figma content, navigation or mapping truth, UI or design validity, repository or test truth, create or change code or design targets, establish implementation readiness or completeness, assign, execute, accept, merge, release, deploy, or grant action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showTestMethodology(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<TestMethodologyProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Test Methodology inspection", "Initiative ID")
+  const projection = await client.readTestMethodology(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Test Methodology candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Source coverage: ${status.sourceUnitCount} units · ${status.sourceRequirementCount} Requirements · ${status.sourceCriterionCount} Acceptance Criteria · ${status.sourceMappingSubjectCount} mapping subjects`,
+    `Candidate coverage: ${status.scopeCount} scopes · ${status.decisionCount} decisions · ${status.environmentCount} environments · ${status.dataPolicyCount} data policies · ${status.evidenceExpectationCount} evidence expectations`,
+    `Candidate outcomes: ${status.selectedDecisionCount} selected · ${status.conflictDecisionCount} conflicts · ${status.notApplicableDecisionCount} not applicable · ${status.deferredDecisionCount} deferred · ${status.notAssessedDecisionCount} not assessed`,
+    `Candidate criteria: ${status.entryCriterionCount} entry · ${status.exitCriterionCount} exit`,
+    `Candidate methodology gaps: ${status.missingScopeCount} missing scopes · ${status.extraScopeCount} extra scopes · ${status.invalidDecisionCount} invalid decisions · ${status.environmentGapCount} environment gaps · ${status.dataPolicyGapCount} data-policy gaps · ${status.ownershipGapCount} ownership gaps · ${status.traceGapCount} trace gaps · ${status.evidenceGapCount} evidence gaps · ${status.criterionGapCount} criterion gaps`,
+    `Candidate freshness gaps: ${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Scope catalog digest: ${record.scopeCatalogDigest}`,
+      `Methodology receipt digest: ${record.methodologyReceiptDigest}`,
+      `Environment receipt digest: ${record.environmentReceiptDigest}`,
+      `Data-policy receipt digest: ${record.dataPolicyReceiptDigest}`,
+      `Ownership receipt digest: ${record.ownershipReceiptDigest}`,
+      `Trace receipt digest: ${record.traceReceiptDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`,
+      `Candidate coverage: ${record.scopeCount} scopes · ${record.decisionCount} decisions · ${record.selectedDecisionCount} selected · ${record.conflictDecisionCount} conflicts · ${record.environmentCount} environments · ${record.dataPolicyCount} data policies · ${record.entryCriterionCount} entry criteria · ${record.exitCriterionCount} exit criteria · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and methodology scope, environment, data, ownership, trace, assessment, and snapshot digests only; no Requirement, criterion, method rationale, environment address, test data, owner, evidence, result, personal data, secret, credential, or machine path. This inspection does not establish methodology validity or completeness, environment availability, data fitness, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

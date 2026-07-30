@@ -44,6 +44,7 @@ import {
   figmaToBoilerplateMappingProjectionSchema,
   designToCodeBindingRegistryProjectionSchema,
   routeScreenComponentMappingProjectionSchema,
+  testMethodologyProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -114,6 +115,7 @@ import {
   type FigmaToBoilerplateMappingProjection,
   type DesignToCodeBindingRegistryProjection,
   type RouteScreenComponentMappingProjection,
+  type TestMethodologyProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -1033,6 +1035,21 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = routeScreenComponentMappingProjectionSchema.safeParse(
         await this.request("planning.routeScreenComponentMapping.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId ||
+          snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readTestMethodology(initiativeValue: string): Promise<TestMethodologyProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = testMethodologyProjectionSchema.safeParse(
+        await this.request("planning.testMethodology.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data
