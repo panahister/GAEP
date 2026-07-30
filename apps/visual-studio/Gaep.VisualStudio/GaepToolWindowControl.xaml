@@ -192,6 +192,10 @@
                 Command="{Binding LoadDesignConflictResolutionCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, exact Design Delta binding, receipt and catalog digests, counts, results, and recorded review states only; it withholds design, delta, resolution, evidence, Source, human-attribution, personal, secret, credential, and permission content. It does not enforce separation of duties, resolve or apply conflicts, synchronize design, establish validity, approval, baseline, or readiness, access Figma, execute imports or writes, or grant implementation or action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadHumanDesignApprovalButton" Content="Inspect Human Design Approval"
+                Command="{Binding LoadHumanDesignApprovalCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate identities, exact finalized-snapshot subject, prerequisite, scope, decision receipt digests, counts, and recorded results only; it withholds design, rationale, condition, evidence, Source, human-attribution, personal, secret, credential, and permission content. It does not verify approver authority, enforce separation of duties, establish design approval, baseline, readiness, or phase entry, access Figma, execute imports or writes, or grant implementation or action authority."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

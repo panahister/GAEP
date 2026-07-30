@@ -85,6 +85,7 @@ internal static class Program
     private static readonly Guid DesignerReadyGateId = Guid.Parse("80808080-8080-4080-8080-808080808080");
     private static readonly Guid DesignDeltaId = Guid.Parse("81818181-8181-4181-8181-818181818181");
     private static readonly Guid DesignConflictResolutionId = Guid.Parse("82828282-8282-4282-8282-828282828282");
+    private static readonly Guid HumanDesignApprovalId = Guid.Parse("83838383-8383-4383-8383-838383838383");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -269,6 +270,9 @@ internal static class Program
         var badDesignConflictResolutionBindingRoot = Path.Combine(temporaryRoot, "bad-design-conflict-resolution-binding");
         var badDesignConflictResolutionDigestRoot = Path.Combine(temporaryRoot, "bad-design-conflict-resolution-digest");
         var badDesignConflictResolutionPrivateRoot = Path.Combine(temporaryRoot, "bad-design-conflict-resolution-private");
+        var badHumanDesignApprovalBindingRoot = Path.Combine(temporaryRoot, "bad-human-design-approval-binding");
+        var badHumanDesignApprovalDigestRoot = Path.Combine(temporaryRoot, "bad-human-design-approval-digest");
+        var badHumanDesignApprovalPrivateRoot = Path.Combine(temporaryRoot, "bad-human-design-approval-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -453,6 +457,9 @@ internal static class Program
         Directory.CreateDirectory(badDesignConflictResolutionBindingRoot);
         Directory.CreateDirectory(badDesignConflictResolutionDigestRoot);
         Directory.CreateDirectory(badDesignConflictResolutionPrivateRoot);
+        Directory.CreateDirectory(badHumanDesignApprovalBindingRoot);
+        Directory.CreateDirectory(badHumanDesignApprovalDigestRoot);
+        Directory.CreateDirectory(badHumanDesignApprovalPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2553,6 +2560,49 @@ internal static class Program
                 "Design Conflict Resolution rejects a projection rebound to a substituted Product revision");
         }
 
+        var humanDesignApprovalProjection = await client.ReadHumanDesignApprovalAsync(InitiativeId);
+        Check(humanDesignApprovalProjection.ProductId == product.Id &&
+              humanDesignApprovalProjection.ProductRevision == product.Revision &&
+              humanDesignApprovalProjection.ProductDigest == product.Digest &&
+              humanDesignApprovalProjection.InitiativeId == resolved.Id &&
+              humanDesignApprovalProjection.InitiativeRevision == resolved.Revision &&
+              humanDesignApprovalProjection.InitiativeDigest == resolved.Digest &&
+              humanDesignApprovalProjection.AssessmentState == "attention-required" &&
+              humanDesignApprovalProjection.CandidateResult == "approved-candidate" &&
+              humanDesignApprovalProjection.ReviewState == "recorded-human-decision" &&
+              humanDesignApprovalProjection.PrerequisiteCount == 5 &&
+              humanDesignApprovalProjection.CompletePrerequisiteCount == 4 &&
+              humanDesignApprovalProjection.ApproveCount == 1 &&
+              humanDesignApprovalProjection.ApproverAuthorityState == "not-established" &&
+              humanDesignApprovalProjection.Candidate?.Subject.ItemCount == 18,
+            "Typed Human Design Approval preserves exact Product, Initiative, subject, assessment, and privacy-safe decision metadata");
+        var humanDesignApprovalOutput = await initiativeController.ReadHumanDesignApprovalAsync(InitiativeId);
+        Check(humanDesignApprovalOutput.Contains("GAEP Human Design Approval decision candidate", StringComparison.Ordinal) &&
+              humanDesignApprovalOutput.Contains("4/5 complete", StringComparison.Ordinal) &&
+              humanDesignApprovalOutput.Contains("1 approve · 0 reject", StringComparison.Ordinal) &&
+              humanDesignApprovalOutput.Contains("approver not-established · separation of duties not-established", StringComparison.Ordinal) &&
+              humanDesignApprovalOutput.Contains("does not verify approver authority", StringComparison.Ordinal) &&
+              humanDesignApprovalOutput.Contains("implementation or action authority", StringComparison.Ordinal) &&
+              !humanDesignApprovalOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !humanDesignApprovalOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !humanDesignApprovalOutput.Contains("decisionRationale=", StringComparison.Ordinal),
+            "Human Design Approval workflow renders privacy-safe exact metadata with explicit no-approval and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badHumanDesignApprovalDigestRoot, badHumanDesignApprovalPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadHumanDesignApprovalAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Human Design Approval rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badHumanDesignApprovalBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadHumanDesignApprovalAsync(InitiativeId),
+                "Human Design Approval rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3918,6 +3968,9 @@ internal static class Program
         var badDesignConflictResolutionBinding = Path.GetFileName(workspace) == "bad-design-conflict-resolution-binding";
         var badDesignConflictResolutionDigest = Path.GetFileName(workspace) == "bad-design-conflict-resolution-digest";
         var badDesignConflictResolutionPrivate = Path.GetFileName(workspace) == "bad-design-conflict-resolution-private";
+        var badHumanDesignApprovalBinding = Path.GetFileName(workspace) == "bad-human-design-approval-binding";
+        var badHumanDesignApprovalDigest = Path.GetFileName(workspace) == "bad-human-design-approval-digest";
+        var badHumanDesignApprovalPrivate = Path.GetFileName(workspace) == "bad-human-design-approval-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -4501,6 +4554,17 @@ internal static class Program
                         badDesignConflictResolutionBinding,
                         badDesignConflictResolutionDigest,
                         badDesignConflictResolutionPrivate);
+                    break;
+                case "design.humanDesignApproval.snapshot":
+                    await HandleHumanDesignApprovalAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badHumanDesignApprovalBinding,
+                        badHumanDesignApprovalDigest,
+                        badHumanDesignApprovalPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -9047,6 +9111,122 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) ((Dictionary<string, object?>)result["status"]!)["resolutionCount"] = 3;
         if (includePrivateField) result["resolutionContent"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleHumanDesignApprovalAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID HUMAN DESIGN APPROVAL");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T00:55:00.000Z";
+        var candidateDigest = $"sha256:{new string('2', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = HumanDesignApprovalId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('3', 64)}",
+            ["state"] = "candidate",
+            ["prerequisiteCatalogDigest"] = $"sha256:{new string('4', 64)}",
+            ["subject"] = new Dictionary<string, object?>
+            {
+                ["kind"] = "finalized-figma-snapshot-import-candidate",
+                ["recordId"] = FinalizedFigmaSnapshotImportId.ToString("D"),
+                ["revision"] = 2,
+                ["digest"] = $"sha256:{new string('5', 64)}",
+                ["membershipDigest"] = $"sha256:{new string('6', 64)}",
+                ["externalFileIdentityDigest"] = $"sha256:{new string('7', 64)}",
+                ["returnedExternalVersionDigest"] = $"sha256:{new string('8', 64)}",
+                ["itemCatalogDigest"] = $"sha256:{new string('9', 64)}",
+                ["itemCount"] = 18,
+            },
+            ["scopeDigest"] = $"sha256:{new string('a', 64)}",
+            ["decisionDefinitionDigest"] = $"sha256:{new string('b', 64)}",
+            ["decisionReceiptDigest"] = $"sha256:{new string('c', 64)}",
+            ["decisionKind"] = "approve-candidate",
+            ["decisionDigest"] = $"sha256:{new string('d', 64)}",
+            ["decisionLifecycleState"] = "active-candidate",
+            ["candidateResult"] = "approved-candidate",
+            ["reviewState"] = "recorded-human-decision",
+            ["updatedAt"] = "2026-07-30T00:54:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "human-design-approval-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "human-design-approval-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = HumanDesignApprovalId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["prerequisiteCount"] = 5,
+                ["completePrerequisiteCount"] = 4,
+                ["decisionCount"] = 1,
+                ["approveCount"] = 1,
+                ["rejectCount"] = 0,
+                ["requestChangeCount"] = 0,
+                ["abstainCount"] = 0,
+                ["expiredDecisionCount"] = 1,
+                ["revokedDecisionCount"] = 0,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 2,
+                ["unresolvedQuestionCount"] = 3,
+                ["candidateResult"] = "approved-candidate",
+                ["reviewState"] = "recorded-human-decision",
+                ["approverAuthorityState"] = "not-established",
+                ["separationOfDutiesEnforcementState"] = "not-established",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "The recorded human design decision candidate is expired" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "human-design-approval-status-is-observational-and-does-not-verify-approver-authority-enforce-separation-of-duties-establish-design-approval-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-decision-rationale-condition-evidence-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+            ["authorityBoundary"] =
+                "human-design-approval-projection-is-read-only-and-does-not-verify-approver-authority-enforce-separation-of-duties-establish-design-approval-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) ((Dictionary<string, object?>)result["status"]!)["completePrerequisiteCount"] = 5;
+        if (includePrivateField) result["decisionRationale"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

@@ -1,0 +1,56 @@
+namespace Gaep.HostClient;
+
+public sealed record HumanDesignApprovalSubjectView(
+    Guid RecordId,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    string ExternalFileIdentityDigest,
+    string ReturnedExternalVersionDigest,
+    string ItemCatalogDigest,
+    int ItemCount);
+
+public sealed record HumanDesignApprovalRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    string PrerequisiteCatalogDigest,
+    HumanDesignApprovalSubjectView Subject,
+    string ScopeDigest,
+    string DecisionDefinitionDigest,
+    string DecisionReceiptDigest,
+    string? DecisionKind,
+    string? DecisionDigest,
+    string? DecisionLifecycleState,
+    string CandidateResult,
+    string ReviewState);
+
+public sealed record HumanDesignApprovalProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string CandidateResult,
+    string ReviewState,
+    string AssessmentState,
+    int PrerequisiteCount,
+    int CompletePrerequisiteCount,
+    int DecisionCount,
+    int ApproveCount,
+    int RejectCount,
+    int RequestChangeCount,
+    int AbstainCount,
+    int ExpiredDecisionCount,
+    int RevokedDecisionCount,
+    int StaleBindingCount,
+    int StaleSourceReferenceCount,
+    int UnresolvedQuestionCount,
+    string ApproverAuthorityState,
+    string SeparationOfDutiesEnforcementState,
+    IReadOnlyList<string> Reasons,
+    HumanDesignApprovalRecordView? Candidate,
+    string SnapshotDigest);

@@ -2630,6 +2630,75 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadHumanDesignApprovalAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadHumanDesignApprovalAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Human Design Approval was read. Refresh the exact records.");
+        }
+        return RenderHumanDesignApproval(projection);
+    }
+
+    public static string RenderHumanDesignApproval(HumanDesignApprovalProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP Human Design Approval decision candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate result: {projection.CandidateResult} · {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine($"Prerequisites: {projection.CompletePrerequisiteCount}/{projection.PrerequisiteCount} complete · {projection.DecisionCount} recorded decision candidate")
+            .AppendLine(
+                $"Decision candidates: {projection.ApproveCount} approve · {projection.RejectCount} reject · " +
+                $"{projection.RequestChangeCount} request change · {projection.AbstainCount} abstain")
+            .AppendLine(
+                $"Candidate gaps: {projection.ExpiredDecisionCount} expired · {projection.RevokedDecisionCount} revoked · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleSourceReferenceCount} stale Source references · " +
+                $"{projection.UnresolvedQuestionCount} unresolved questions")
+            .AppendLine(
+                $"Authority: approver {projection.ApproverAuthorityState} · separation of duties " +
+                projection.SeparationOfDutiesEnforcementState);
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Candidate record: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine($"Prerequisite catalog: {candidate.PrerequisiteCatalogDigest}")
+                .AppendLine(
+                    $"Exact finalized snapshot: {candidate.Subject.RecordId:D}@{candidate.Subject.Revision} · " +
+                    $"{candidate.Subject.ItemCount} items · catalog {candidate.Subject.ItemCatalogDigest}")
+                .AppendLine(
+                    $"External identity/version digests: {candidate.Subject.ExternalFileIdentityDigest} · " +
+                    candidate.Subject.ReturnedExternalVersionDigest)
+                .AppendLine(
+                    $"Decision evidence: definition {candidate.DecisionDefinitionDigest} · receipt {candidate.DecisionReceiptDigest} · " +
+                    $"scope {candidate.ScopeDigest}")
+                .AppendLine(
+                    $"Recorded candidate: {candidate.DecisionKind ?? "not recorded"} · " +
+                    $"{candidate.DecisionLifecycleState ?? "not recorded"} · {candidate.DecisionDigest ?? "not recorded"}");
+        }
+        else output.AppendLine("Candidate record: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, exact finalized-snapshot subject, prerequisite, scope, decision " +
+                "receipt digests, counts, and recorded results only; this view does not verify approver authority, enforce " +
+                "separation of duties, establish design approval, baseline, readiness, or phase entry, call Figma, request " +
+                "credentials, grant permissions, execute imports or writes, or grant implementation or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,
