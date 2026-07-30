@@ -49,6 +49,7 @@ private val acceptanceCriteriaId = UUID.fromString("94949494-9494-4494-8494-9494
 private val definitionOfReadyId = UUID.fromString("95959595-9595-4595-8595-959595959595")
 private val definitionOfDoneId = UUID.fromString("96969696-9696-4696-8696-969696969696")
 private val implementationUnitModelId = UUID.fromString("97979797-9797-4797-8797-979797979797")
+private val dependencyMappingId = UUID.fromString("98989898-9898-4898-8898-989898989898")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -309,6 +310,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.implementationUnits.snapshot" -> handleImplementationUnitModel(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.dependencyMapping.snapshot" -> handleDependencyMapping(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3875,6 +3881,112 @@ private fun handleImplementationUnitModel(id: Long, params: JsonObject, workspac
             value.getAsJsonObject("candidate").addProperty("unitCount", 4)
         }
         workspacePath.endsWith("bad-implementation-unit-model-snapshot-private") -> {
+            value.addProperty("rationale", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDependencyMapping(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DEPENDENCY MAPPING PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-dependency-mapping-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T15:30:00.000Z"
+    val candidateDigest = "sha256:${"9".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "dependency-mapping-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "dependency-mapping-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", dependencyMappingId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            add("hierarchy", JsonObject().apply {
+                addProperty("recordId", backlogHierarchyId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-dependency-mapping-hierarchy-binding")) "sha256:${"7".repeat(64)}" else "sha256:${"8".repeat(64)}")
+            })
+            add("mvpSliceDefinition", JsonObject().apply {
+                addProperty("recordId", mvpSliceDefinitionId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-dependency-mapping-mvp-binding")) "sha256:${"9".repeat(64)}" else "sha256:${"a".repeat(64)}")
+            })
+            add("implementationUnitModel", JsonObject().apply {
+                addProperty("recordId", implementationUnitModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-dependency-mapping-unit-model-binding")) "sha256:${"4".repeat(64)}" else "sha256:${"5".repeat(64)}")
+            })
+            addProperty("nodeCount", 3)
+            addProperty("edgeCount", 2)
+            addProperty("requiredEdgeCount", 1)
+            addProperty("conditionalEdgeCount", 1)
+            addProperty("advisoryEdgeCount", 0)
+            addProperty("rootNodeCount", 1)
+            addProperty("leafNodeCount", 1)
+            addProperty("criticalPathUnitCount", 2)
+            addProperty("criticalPathCandidateEffortPoints", 13)
+            addProperty("missingNodeCount", 1)
+            addProperty("missingDeclaredEdgeCount", 1)
+            addProperty("extraEdgeCount", 0)
+            addProperty("invalidNodeCount", 1)
+            addProperty("invalidEdgeCount", 1)
+            addProperty("cycleCount", 0)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleHierarchyCount", 0)
+            addProperty("staleMvpSliceDefinitionCount", 0)
+            addProperty("staleImplementationUnitModelCount", 0)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more dependency-map candidates require human review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("authorityBoundary", "dependency-mapping-status-is-observational-and-does-not-establish-dependency-truth-or-completeness-critical-path-authority-sequencing-commitment-ownership-appointment-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority")
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", dependencyMappingId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("state", "candidate")
+            addProperty("graphDigest", "sha256:${"a".repeat(64)}")
+            addProperty("criticalPathDigest", "sha256:${"b".repeat(64)}")
+            addProperty("assessmentReceiptDigest", "sha256:${"c".repeat(64)}")
+            addProperty("nodeCount", 3)
+            addProperty("edgeCount", 2)
+            addProperty("criticalPathUnitCount", 2)
+            addProperty("criticalPathCandidateEffortPoints", 13)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T15:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-graph-critical-path-assessment-snapshot-digests-only-not-unit-node-edge-evidence-rationale-estimate-owner-repository-module-requirement-architecture-risk-test-or-personal-data-secrets-credentials-or-machine-paths")
+        addProperty("authorityBoundary", "dependency-mapping-projection-is-read-only-and-does-not-establish-dependency-truth-or-completeness-critical-path-authority-sequencing-commitment-ownership-appointment-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-dependency-mapping-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("nodeCount", 4)
+        }
+        workspacePath.endsWith("bad-dependency-mapping-snapshot-private") -> {
             value.addProperty("rationale", "$privateRoot/$privateCredential")
         }
     }

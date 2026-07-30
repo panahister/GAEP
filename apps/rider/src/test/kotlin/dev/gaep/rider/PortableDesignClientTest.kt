@@ -1903,6 +1903,64 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Dependency Mapping projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("dependency-mapping-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDependencyMapping(entryId)
+            assertEquals("attention-required", projection.state)
+            assertEquals("held", projection.reviewState)
+            assertEquals(3, projection.nodeCount)
+            assertEquals(2, projection.edgeCount)
+            assertEquals(1, projection.requiredEdgeCount)
+            assertEquals(1, projection.conditionalEdgeCount)
+            assertEquals(2, projection.criticalPathUnitCount)
+            assertEquals(13, projection.criticalPathCandidateEffortPoints)
+            assertEquals(0, projection.staleImplementationUnitModelCount)
+
+            val rendered = RiderProductController(client).readDependencyMapping(entryId)
+            assertTrue(rendered.contains("GAEP governed Dependency Mapping candidate"))
+            assertTrue(rendered.contains("3 nodes · 2 edges · 1 required · 1 conditional · 0 advisory"))
+            assertTrue(rendered.contains("2 units · 13 candidate effort points · 1 roots · 1 leaves"))
+            assertTrue(rendered.contains("no unit, node, edge, evidence, rationale, estimate, owner, repository, module"))
+            assertTrue(rendered.contains("does not establish dependency truth or completeness, critical-path authority"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("candidateEffortPoints"))
+            assertFalse(rendered.contains("modulePath"))
+            assertFalse(rendered.contains("predecessorUnitId"))
+        }
+
+        listOf(
+            "bad-dependency-mapping-snapshot-digest",
+            "bad-dependency-mapping-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDependencyMapping(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf(
+            "bad-dependency-mapping-snapshot-binding",
+            "bad-dependency-mapping-hierarchy-binding",
+            "bad-dependency-mapping-mvp-binding",
+            "bad-dependency-mapping-unit-model-binding",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDependencyMapping(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

@@ -658,6 +658,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += implementationUnitModelButton
         actions.add(implementationUnitModelButton)
 
+        val dependencyMappingButton = JButton("Inspect Dependency Mapping…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Unit, node, edge, evidence, rationale, estimate, owner, repository, module, Requirement, architecture, risk, test, personal data, local paths, secrets, credentials, dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, and action authority are withheld.",
+                    "GAEP Dependency Mapping",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Dependency Mapping", status, output, buttons) {
+                    controller.readDependencyMapping(initiativeId)
+                }
+            }
+        }
+        buttons += dependencyMappingButton
+        actions.add(dependencyMappingButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

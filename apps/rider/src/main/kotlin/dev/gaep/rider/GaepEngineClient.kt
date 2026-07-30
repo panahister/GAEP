@@ -411,6 +411,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readDependencyMapping(initiativeId: UUID): DependencyMappingProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("planning.dependencyMapping.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseDependencyMappingEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }

@@ -1997,6 +1997,88 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readDependencyMapping(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val hierarchy = client.readBacklogHierarchy(initiativeId)
+        val mvp = client.readMvpSliceDefinition(initiativeId)
+        val units = client.readImplementationUnitModel(initiativeId)
+        val projection = client.readDependencyMapping(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Dependency Mapping was read. Refresh the exact records." }
+        projection.candidate?.let {
+            val currentHierarchy = requireNotNull(hierarchy.candidate) { "The current Backlog Hierarchy candidate is unavailable. Refresh the exact records." }
+            val currentMvp = requireNotNull(mvp.candidate) { "The current MVP and Vertical Slice candidate is unavailable. Refresh the exact records." }
+            val currentUnits = requireNotNull(units.candidate) { "The current Implementation Unit Model candidate is unavailable. Refresh the exact records." }
+            require(
+                projection.hierarchyRecordId == currentHierarchy.id && projection.hierarchyRevision == currentHierarchy.revision &&
+                    projection.hierarchyDigest == currentHierarchy.digest
+            ) { "The Backlog Hierarchy changed while Dependency Mapping was read. Refresh the exact records." }
+            require(
+                projection.mvpSliceDefinitionRecordId == currentMvp.id && projection.mvpSliceDefinitionRevision == currentMvp.revision &&
+                    projection.mvpSliceDefinitionDigest == currentMvp.digest
+            ) { "The MVP and Vertical Slice Definition changed while Dependency Mapping was read. Refresh the exact records." }
+            require(
+                projection.implementationUnitModelRecordId == currentUnits.id &&
+                    projection.implementationUnitModelRevision == currentUnits.revision &&
+                    projection.implementationUnitModelDigest == currentUnits.digest
+            ) { "The Implementation Unit Model changed while Dependency Mapping was read. Refresh the exact records." }
+        }
+        return renderDependencyMapping(projection)
+    }
+
+    fun renderDependencyMapping(projection: DependencyMappingProjection): String = buildString {
+        appendLine("GAEP governed Dependency Mapping candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine(
+            "Graph coverage: ${projection.nodeCount} nodes · ${projection.edgeCount} edges · " +
+                "${projection.requiredEdgeCount} required · ${projection.conditionalEdgeCount} conditional · " +
+                "${projection.advisoryEdgeCount} advisory",
+        )
+        appendLine(
+            "Candidate critical path: ${projection.criticalPathUnitCount} units · " +
+                "${projection.criticalPathCandidateEffortPoints} candidate effort points · " +
+                "${projection.rootNodeCount} roots · ${projection.leafNodeCount} leaves",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedQuestionCount} questions · ${projection.missingNodeCount} missing nodes · " +
+                "${projection.missingDeclaredEdgeCount} missing declared edges · ${projection.extraEdgeCount} extra edges · " +
+                "${projection.invalidNodeCount} invalid nodes · ${projection.invalidEdgeCount} invalid edges · " +
+                "${projection.cycleCount} cycles · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleHierarchyCount} stale hierarchies · ${projection.staleMvpSliceDefinitionCount} stale MVP definitions · " +
+                "${projection.staleImplementationUnitModelCount} stale Implementation Unit Models",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Dependency Mapping candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Graph digest: ${record.graphDigest}")
+            appendLine("Critical-path digest: ${record.criticalPathDigest}")
+            appendLine("Assessment receipt digest: ${record.assessmentReceiptDigest}")
+            appendLine(
+                "Candidate coverage: ${record.nodeCount} nodes · ${record.edgeCount} edges · " +
+                    "${record.criticalPathUnitCount} critical-path units · " +
+                    "${record.criticalPathCandidateEffortPoints} candidate effort points · ${record.reviewState}",
+            )
+        } ?: appendLine("Dependency Mapping candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and graph, critical-path, assessment-receipt, and " +
+                "snapshot digests only; no unit, node, edge, evidence, rationale, estimate, owner, repository, module, " +
+                "Requirement, architecture, risk, test, or personal data. Candidate completeness does not establish " +
+                "dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, " +
+                "implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, " +
+                "deployment, or action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)

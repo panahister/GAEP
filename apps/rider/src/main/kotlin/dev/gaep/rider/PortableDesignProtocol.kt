@@ -2483,6 +2483,64 @@ data class ImplementationUnitModelProjection(
     val snapshotDigest: String,
 )
 
+data class DependencyMappingRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val graphDigest: String,
+    val criticalPathDigest: String,
+    val assessmentReceiptDigest: String,
+    val nodeCount: Int,
+    val edgeCount: Int,
+    val criticalPathUnitCount: Int,
+    val criticalPathCandidateEffortPoints: Int,
+    val reviewState: String,
+)
+
+data class DependencyMappingProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val state: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val hierarchyRecordId: UUID?,
+    val hierarchyRevision: Long?,
+    val hierarchyDigest: String?,
+    val mvpSliceDefinitionRecordId: UUID?,
+    val mvpSliceDefinitionRevision: Long?,
+    val mvpSliceDefinitionDigest: String?,
+    val implementationUnitModelRecordId: UUID?,
+    val implementationUnitModelRevision: Long?,
+    val implementationUnitModelDigest: String?,
+    val nodeCount: Int,
+    val edgeCount: Int,
+    val requiredEdgeCount: Int,
+    val conditionalEdgeCount: Int,
+    val advisoryEdgeCount: Int,
+    val rootNodeCount: Int,
+    val leafNodeCount: Int,
+    val criticalPathUnitCount: Int,
+    val criticalPathCandidateEffortPoints: Int,
+    val missingNodeCount: Int,
+    val missingDeclaredEdgeCount: Int,
+    val extraEdgeCount: Int,
+    val invalidNodeCount: Int,
+    val invalidEdgeCount: Int,
+    val cycleCount: Int,
+    val staleBindingCount: Int,
+    val staleHierarchyCount: Int,
+    val staleMvpSliceDefinitionCount: Int,
+    val staleImplementationUnitModelCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: DependencyMappingRecordView?,
+    val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -3668,6 +3726,12 @@ internal object PortableDesignProtocol {
         "implementation-unit-model-projection-is-read-only-and-does-not-establish-repository-truth-ownership-appointment-dependency-or-impact-completeness-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority"
     private const val IMPLEMENTATION_UNIT_MODEL_STATUS_AUTHORITY_BOUNDARY =
         "implementation-unit-model-status-is-observational-and-does-not-establish-repository-truth-ownership-appointment-dependency-or-impact-completeness-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority"
+    private const val DEPENDENCY_MAPPING_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-graph-critical-path-assessment-snapshot-digests-only-not-unit-node-edge-evidence-rationale-estimate-owner-repository-module-requirement-architecture-risk-test-or-personal-data-secrets-credentials-or-machine-paths"
+    private const val DEPENDENCY_MAPPING_PROJECTION_AUTHORITY_BOUNDARY =
+        "dependency-mapping-projection-is-read-only-and-does-not-establish-dependency-truth-or-completeness-critical-path-authority-sequencing-commitment-ownership-appointment-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority"
+    private const val DEPENDENCY_MAPPING_STATUS_AUTHORITY_BOUNDARY =
+        "dependency-mapping-status-is-observational-and-does-not-establish-dependency-truth-or-completeness-critical-path-authority-sequencing-commitment-ownership-appointment-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -9515,6 +9579,152 @@ internal object PortableDesignProtocol {
             missingSubjectCount, invalidUnitCount, staleBindingCount, staleHierarchyCount,
             staleMvpSliceDefinitionCount, staleAcceptanceCriteriaCount, staleDefinitionOfReadyCount,
             staleDefinitionOfDoneCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseDependencyMappingEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): DependencyMappingProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "dependency-mapping-projection" ||
+            projection.requireString("privacyBoundary") != DEPENDENCY_MAPPING_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != DEPENDENCY_MAPPING_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "nodeCount", "edgeCount", "requiredEdgeCount", "conditionalEdgeCount", "advisoryEdgeCount",
+                "rootNodeCount", "leafNodeCount", "criticalPathUnitCount", "criticalPathCandidateEffortPoints",
+                "missingNodeCount", "missingDeclaredEdgeCount", "extraEdgeCount", "invalidNodeCount",
+                "invalidEdgeCount", "cycleCount", "staleBindingCount", "staleHierarchyCount",
+                "staleMvpSliceDefinitionCount", "staleImplementationUnitModelCount", "unresolvedQuestionCount",
+                "reviewState", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("candidate", "hierarchy", "mvpSliceDefinition", "implementationUnitModel"),
+        )
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "dependency-mapping-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != DEPENDENCY_MAPPING_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        fun reference(name: String): Reference? = status.get(name)?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val candidateReference = reference("candidate")
+        val hierarchyReference = reference("hierarchy")
+        val mvpReference = reference("mvpSliceDefinition")
+        val implementationUnitModelReference = reference("implementationUnitModel")
+        val nodeCount = status.requireBoundedNonNegativeInt("nodeCount", 10_000)
+        val edgeCount = status.requireBoundedNonNegativeInt("edgeCount", 1_000_000)
+        val requiredEdgeCount = status.requireBoundedNonNegativeInt("requiredEdgeCount", 1_000_000)
+        val conditionalEdgeCount = status.requireBoundedNonNegativeInt("conditionalEdgeCount", 1_000_000)
+        val advisoryEdgeCount = status.requireBoundedNonNegativeInt("advisoryEdgeCount", 1_000_000)
+        if (requiredEdgeCount + conditionalEdgeCount + advisoryEdgeCount != edgeCount) throw invalidResponse()
+        val rootNodeCount = status.requireBoundedNonNegativeInt("rootNodeCount", 10_000)
+        val leafNodeCount = status.requireBoundedNonNegativeInt("leafNodeCount", 10_000)
+        val criticalPathUnitCount = status.requireBoundedNonNegativeInt("criticalPathUnitCount", 10_000)
+        val criticalPathCandidateEffortPoints = status.requireBoundedNonNegativeInt("criticalPathCandidateEffortPoints", 1_000_000_000)
+        val missingNodeCount = status.requireBoundedNonNegativeInt("missingNodeCount", 10_000)
+        val missingDeclaredEdgeCount = status.requireBoundedNonNegativeInt("missingDeclaredEdgeCount", 1_000_000)
+        val extraEdgeCount = status.requireBoundedNonNegativeInt("extraEdgeCount", 1_000_000)
+        val invalidNodeCount = status.requireBoundedNonNegativeInt("invalidNodeCount", 10_000)
+        val invalidEdgeCount = status.requireBoundedNonNegativeInt("invalidEdgeCount", 1_000_000)
+        val cycleCount = status.requireBoundedNonNegativeInt("cycleCount", 1)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 1)
+        val staleHierarchyCount = status.requireBoundedNonNegativeInt("staleHierarchyCount", 1)
+        val staleMvpSliceDefinitionCount = status.requireBoundedNonNegativeInt("staleMvpSliceDefinitionCount", 1)
+        val staleImplementationUnitModelCount = status.requireBoundedNonNegativeInt("staleImplementationUnitModelCount", 1)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val state = status.requireOneOf("state", setOf("attention-required", "candidate-complete"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gaps = missingNodeCount + missingDeclaredEdgeCount + extraEdgeCount + invalidNodeCount + invalidEdgeCount +
+            cycleCount + staleBindingCount + staleHierarchyCount + staleMvpSliceDefinitionCount +
+            staleImplementationUnitModelCount + unresolvedQuestionCount
+        val allReferencesPresent = hierarchyReference != null && mvpReference != null && implementationUnitModelReference != null
+        if ((state == "candidate-complete" &&
+                (gaps > 0 || reviewState != "ready-for-human-review" || reasons.isNotEmpty() ||
+                    candidateReference == null || !allReferencesPresent || criticalPathUnitCount < 1)) ||
+            (state == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "graphDigest", "criticalPathDigest",
+                "assessmentReceiptDigest", "nodeCount", "edgeCount", "criticalPathUnitCount",
+                "criticalPathCandidateEffortPoints", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = DependencyMappingRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("graphDigest"),
+                value.requireDigest("criticalPathDigest"), value.requireDigest("assessmentReceiptDigest"),
+                value.requireBoundedNonNegativeInt("nodeCount", 10_000),
+                value.requireBoundedNonNegativeInt("edgeCount", 1_000_000),
+                value.requireBoundedNonNegativeInt("criticalPathUnitCount", 10_000),
+                value.requireBoundedNonNegativeInt("criticalPathCandidateEffortPoints", 1_000_000_000),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                candidateReference == null || candidateReference.id != id || candidateReference.revision != revision ||
+                candidateReference.digest != record.digest || record.nodeCount != nodeCount || record.edgeCount != edgeCount ||
+                record.criticalPathUnitCount != criticalPathUnitCount ||
+                record.criticalPathCandidateEffortPoints != criticalPathCandidateEffortPoints || record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((candidateReference == null) != (candidate == null) || (candidate == null) != !allReferencesPresent ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return DependencyMappingProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, state, reviewState, reasons,
+            hierarchyReference?.id, hierarchyReference?.revision, hierarchyReference?.digest,
+            mvpReference?.id, mvpReference?.revision, mvpReference?.digest,
+            implementationUnitModelReference?.id, implementationUnitModelReference?.revision, implementationUnitModelReference?.digest,
+            nodeCount, edgeCount, requiredEdgeCount, conditionalEdgeCount, advisoryEdgeCount,
+            rootNodeCount, leafNodeCount, criticalPathUnitCount, criticalPathCandidateEffortPoints,
+            missingNodeCount, missingDeclaredEdgeCount, extraEdgeCount, invalidNodeCount, invalidEdgeCount,
+            cycleCount, staleBindingCount, staleHierarchyCount, staleMvpSliceDefinitionCount,
+            staleImplementationUnitModelCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 
