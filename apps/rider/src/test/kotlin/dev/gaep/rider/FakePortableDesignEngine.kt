@@ -44,6 +44,7 @@ private val screenStateInventoryId = UUID.fromString("67676767-6767-4767-8767-67
 private val designRequirementsId = UUID.fromString("68686868-6868-4868-8868-686868686868")
 private val backlogHierarchyId = UUID.fromString("91919191-9191-4191-8191-919191919191")
 private val mvpSliceDefinitionId = UUID.fromString("92929292-9292-4292-8292-929292929292")
+private val prioritizationModelId = UUID.fromString("93939393-9393-4393-8393-939393939393")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -279,6 +280,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.mvpSlices.snapshot" -> handleMvpSliceDefinition(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.prioritization.snapshot" -> handlePrioritizationModel(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3272,6 +3278,105 @@ private fun handleMvpSliceDefinition(id: Long, params: JsonObject, workspacePath
         }
         workspacePath.endsWith("bad-mvp-slice-snapshot-private") -> {
             value.addProperty("sliceRationale", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handlePrioritizationModel(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PRIORITIZATION PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-prioritization-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T11:20:00.000Z"
+    val candidateDigest = "sha256:${"c".repeat(64)}"
+    val mvpDigest = if (workspacePath.endsWith("bad-prioritization-mvp-binding")) {
+        "sha256:${"9".repeat(64)}"
+    } else {
+        "sha256:${"a".repeat(64)}"
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "prioritization-model-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "prioritization-model-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", prioritizationModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            add("mvpSliceDefinition", JsonObject().apply {
+                addProperty("recordId", mvpSliceDefinitionId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", mvpDigest)
+            })
+            addProperty("subjectCount", 4)
+            addProperty("scoredSubjectCount", 3)
+            addProperty("unassessedSubjectCount", 1)
+            addProperty("evidenceReferenceCount", 12)
+            addProperty("tieCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleMvpSliceDefinitionCount", 0)
+            addProperty("invalidSubjectCount", 1)
+            addProperty("invalidScoreCount", 0)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Prioritization subjects require review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "prioritization-model-status-is-observational-and-does-not-establish-evidence-validity-priority-commitment-scope-decision-approval-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", prioritizationModelId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"d".repeat(64)}")
+            addProperty("methodDigest", "sha256:${"e".repeat(64)}")
+            addProperty("rankingDigest", "sha256:${"f".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("subjectCount", 4)
+            addProperty("scoredSubjectCount", 3)
+            addProperty("evidenceReferenceCount", 12)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T11:19:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-method-membership-ranking-and-snapshot-digests-only-not-dimension-estimates-evidence-identities-uncertainty-slice-content-personal-data-secrets-credentials-or-machine-paths",
+        )
+        addProperty(
+            "authorityBoundary",
+            "prioritization-model-projection-is-read-only-and-does-not-establish-evidence-validity-priority-commitment-scope-decision-approval-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-prioritization-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("scoredSubjectCount", 4)
+        }
+        workspacePath.endsWith("bad-prioritization-snapshot-private") -> {
+            value.addProperty("dimensionEstimate", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

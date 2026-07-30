@@ -1589,6 +1589,60 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readPrioritizationModel(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val mvp = client.readMvpSliceDefinition(initiativeId)
+        val projection = client.readPrioritizationModel(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Prioritization Model was read. Refresh the exact records." }
+        projection.candidate?.let {
+            val currentMvp = requireNotNull(mvp.candidate) {
+                "The current MVP and Vertical Slice candidate is unavailable. Refresh the exact records."
+            }
+            require(
+                projection.mvpSliceDefinitionRecordId == currentMvp.id &&
+                    projection.mvpSliceDefinitionRevision == currentMvp.revision &&
+                    projection.mvpSliceDefinitionDigest == currentMvp.digest
+            ) { "The MVP and Vertical Slice Definition changed while Prioritization Model was read. Refresh the exact records." }
+        }
+        return renderPrioritizationModel(projection)
+    }
+
+    fun renderPrioritizationModel(projection: PrioritizationModelProjection): String = buildString {
+        appendLine("GAEP governed Prioritization Model candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine("Coverage: ${projection.subjectCount} slices · ${projection.scoredSubjectCount} scored · ${projection.unassessedSubjectCount} unassessed · ${projection.evidenceReferenceCount} evidence references · ${projection.tieCount} score ties")
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleMvpSliceDefinitionCount} stale MVP definitions · ${projection.invalidSubjectCount} invalid subjects · " +
+                "${projection.invalidScoreCount} invalid scores",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Prioritization Model candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine("Method digest: ${record.methodDigest}")
+            appendLine("Candidate ranking digest: ${record.rankingDigest}")
+            appendLine("Candidate coverage: ${record.subjectCount} slices · ${record.scoredSubjectCount} scored · ${record.evidenceReferenceCount} evidence references · ${record.reviewState}")
+        } ?: appendLine("Prioritization Model candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, method, membership, ranking, and snapshot digests only; " +
+                "no dimension estimates, evidence identities, uncertainty, slice content, personal data, evidence validity, priority, " +
+                "commitment, scope decisions, approval, acceptance-criteria validity, ready or done, implementation readiness, " +
+                "assignment, execution, implementation authority, or action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)

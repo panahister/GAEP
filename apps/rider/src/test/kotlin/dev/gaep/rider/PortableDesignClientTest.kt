@@ -1623,6 +1623,56 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Prioritization Model projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("prioritization-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readPrioritizationModel(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals(4, projection.subjectCount)
+            assertEquals(3, projection.scoredSubjectCount)
+            assertEquals(1, projection.unassessedSubjectCount)
+            assertEquals(12, projection.evidenceReferenceCount)
+            assertEquals(1, projection.tieCount)
+
+            val rendered = RiderProductController(client).readPrioritizationModel(entryId)
+            assertTrue(rendered.contains("GAEP governed Prioritization Model candidate"))
+            assertTrue(rendered.contains("4 slices · 3 scored · 1 unassessed · 12 evidence references"))
+            assertTrue(rendered.contains("no dimension estimates"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("dimensionEstimate"))
+        }
+
+        listOf(
+            "bad-prioritization-snapshot-digest",
+            "bad-prioritization-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readPrioritizationModel(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf(
+            "bad-prioritization-snapshot-binding",
+            "bad-prioritization-mvp-binding",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readPrioritizationModel(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

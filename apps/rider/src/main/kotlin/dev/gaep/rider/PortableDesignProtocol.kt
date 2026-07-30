@@ -2197,6 +2197,47 @@ data class MvpSliceDefinitionProjection(
     val snapshotDigest: String,
 )
 
+data class PrioritizationModelRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val methodDigest: String,
+    val rankingDigest: String,
+    val subjectCount: Int,
+    val scoredSubjectCount: Int,
+    val evidenceReferenceCount: Int,
+    val reviewState: String,
+)
+
+data class PrioritizationModelProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val mvpSliceDefinitionRecordId: UUID?,
+    val mvpSliceDefinitionRevision: Long?,
+    val mvpSliceDefinitionDigest: String?,
+    val subjectCount: Int,
+    val scoredSubjectCount: Int,
+    val unassessedSubjectCount: Int,
+    val evidenceReferenceCount: Int,
+    val tieCount: Int,
+    val staleBindingCount: Int,
+    val staleMvpSliceDefinitionCount: Int,
+    val invalidSubjectCount: Int,
+    val invalidScoreCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: PrioritizationModelRecordView?,
+    val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -3348,6 +3389,12 @@ internal object PortableDesignProtocol {
         "mvp-slice-definition-projection-is-read-only-and-does-not-prioritize-commit-approve-scope-admit-assign-execute-or-authorize-implementation-or-action"
     private const val MVP_SLICE_DEFINITION_STATUS_AUTHORITY_BOUNDARY =
         "mvp-slice-definition-status-is-observational-and-does-not-establish-priority-commitment-scope-approval-acceptance-criteria-validity-ready-done-implementation-readiness-assignment-execution-or-action-authority"
+    private const val PRIORITIZATION_MODEL_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-method-membership-ranking-and-snapshot-digests-only-not-dimension-estimates-evidence-identities-uncertainty-slice-content-personal-data-secrets-credentials-or-machine-paths"
+    private const val PRIORITIZATION_MODEL_PROJECTION_AUTHORITY_BOUNDARY =
+        "prioritization-model-projection-is-read-only-and-does-not-establish-evidence-validity-priority-commitment-scope-decision-approval-ready-done-implementation-readiness-assignment-execution-or-action-authority"
+    private const val PRIORITIZATION_MODEL_STATUS_AUTHORITY_BOUNDARY =
+        "prioritization-model-status-is-observational-and-does-not-establish-evidence-validity-priority-commitment-scope-decision-approval-ready-done-implementation-readiness-assignment-execution-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -8457,6 +8504,129 @@ internal object PortableDesignProtocol {
             scopeNodeCount, mvpNodeCount, laterNodeCount, excludedNodeCount, sliceCount, storyCount, taskCount,
             dependencyCount, unassignedMvpStoryTaskCount, staleBindingCount, staleHierarchyCount,
             invalidScopeCount, invalidSliceCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parsePrioritizationModelEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): PrioritizationModelProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "prioritization-model-projection" ||
+            projection.requireString("privacyBoundary") != PRIORITIZATION_MODEL_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != PRIORITIZATION_MODEL_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "subjectCount", "scoredSubjectCount", "unassessedSubjectCount", "evidenceReferenceCount", "tieCount",
+                "staleBindingCount", "staleMvpSliceDefinitionCount", "invalidSubjectCount", "invalidScoreCount",
+                "unresolvedQuestionCount", "reviewState", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("candidate", "mvpSliceDefinition"),
+        )
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "prioritization-model-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != PRIORITIZATION_MODEL_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        fun reference(name: String): Reference? = status.get(name)?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val candidateReference = reference("candidate")
+        val mvpReference = reference("mvpSliceDefinition")
+        val subjectCount = status.requireBoundedNonNegativeInt("subjectCount", 10_000)
+        val scoredSubjectCount = status.requireBoundedNonNegativeInt("scoredSubjectCount", 10_000)
+        val unassessedSubjectCount = status.requireBoundedNonNegativeInt("unassessedSubjectCount", 10_000)
+        val evidenceReferenceCount = status.requireBoundedNonNegativeInt("evidenceReferenceCount", 10_000_000)
+        val tieCount = status.requireBoundedNonNegativeInt("tieCount", 10_000)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleMvpSliceDefinitionCount = status.requireBoundedNonNegativeInt("staleMvpSliceDefinitionCount", 1)
+        val invalidSubjectCount = status.requireBoundedNonNegativeInt("invalidSubjectCount", 10_000)
+        val invalidScoreCount = status.requireBoundedNonNegativeInt("invalidScoreCount", 10_000)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        if (subjectCount != scoredSubjectCount + unassessedSubjectCount) throw invalidResponse()
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gaps = unassessedSubjectCount + staleBindingCount + staleMvpSliceDefinitionCount + invalidSubjectCount +
+            invalidScoreCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-review" &&
+                (gaps > 0 || reviewState != "ready-for-human-review" || reasons.isNotEmpty() ||
+                    candidateReference == null || mvpReference == null)) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "methodDigest", "rankingDigest", "state",
+                "subjectCount", "scoredSubjectCount", "evidenceReferenceCount", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = PrioritizationModelRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("membershipDigest"),
+                value.requireDigest("methodDigest"), value.requireDigest("rankingDigest"),
+                value.requireBoundedNonNegativeInt("subjectCount", 10_000),
+                value.requireBoundedNonNegativeInt("scoredSubjectCount", 10_000),
+                value.requireBoundedNonNegativeInt("evidenceReferenceCount", 10_000_000),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                candidateReference == null || candidateReference.id != id || candidateReference.revision != revision ||
+                candidateReference.digest != record.digest || record.subjectCount != subjectCount ||
+                record.scoredSubjectCount != scoredSubjectCount || record.evidenceReferenceCount != evidenceReferenceCount ||
+                record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((candidateReference == null) != (candidate == null) || (candidate == null) != (mvpReference == null) ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return PrioritizationModelProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reviewState, reasons,
+            mvpReference?.id, mvpReference?.revision, mvpReference?.digest,
+            subjectCount, scoredSubjectCount, unassessedSubjectCount, evidenceReferenceCount, tieCount,
+            staleBindingCount, staleMvpSliceDefinitionCount, invalidSubjectCount, invalidScoreCount,
+            unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 

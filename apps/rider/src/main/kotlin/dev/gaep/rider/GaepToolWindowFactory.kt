@@ -578,6 +578,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += mvpSliceDefinitionButton
         actions.add(mvpSliceDefinitionButton)
 
+        val prioritizationModelButton = JButton("Inspect Prioritization Model…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Dimension estimates, evidence identities, uncertainty, slice content, personal data, local paths, secrets, credentials, priority, commitment, approval, readiness, assignment, execution, and authority are withheld.",
+                    "GAEP Prioritization Model",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Prioritization Model", status, output, buttons) {
+                    controller.readPrioritizationModel(initiativeId)
+                }
+            }
+        }
+        buttons += prioritizationModelButton
+        actions.add(prioritizationModelButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(
