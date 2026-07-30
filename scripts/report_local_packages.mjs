@@ -30,7 +30,7 @@ const definitions = [
     path: "apps/kiro/dist/gaep-kiro.vsix",
     maximumBytes: 8 * 1024 * 1024,
     requiredHere: true,
-    verification: "exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-digest-bound-package-local-provider-model-dashboard-and-empty-evidence-workflows-with-private-safe-output-and-immutable-store",
+    verification: "exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-digest-bound-package-local-provider-model-phase-1-and-23-source-phase-2-ux-figma-dashboard-and-empty-evidence-workflows-with-private-safe-output-and-immutable-store",
   },
   {
     host: "rider",
@@ -46,7 +46,7 @@ const definitions = [
     path: "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
     maximumBytes: 128 * 1024 * 1024,
     requiredHere: process.platform === "win32",
-    verification: "cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-577-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending",
+    verification: "cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-586-protocol-controller-checks-with-packaged-engine-empty-evidence-workflow-windows-container-install-pending",
   },
 ]
 

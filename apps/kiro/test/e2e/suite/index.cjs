@@ -166,6 +166,30 @@ async function run() {
   assertPrivateSafe(phase1AgentModelText, workspace, fixtureProductName)
   await phase1AgentModelRequest
 
+  const phase2UxFigmaRequest = vscode.commands.executeCommand(
+    "gaepKiro.dashboard.phase2UxFigma",
+    { initiativeId: fixtureInitiativeId },
+  )
+  const phase2UxFigmaDocument = await waitFor(
+    () => vscode.workspace.textDocuments.find((document) =>
+      document.getText().startsWith("GAEP exact Phase 2 UX and Figma dashboard\n")),
+    "The installed package-local engine did not return the Phase 2 UX and Figma dashboard",
+    60_000,
+  )
+  const phase2UxFigmaText = phase2UxFigmaDocument.getText()
+  const phase2SourceSummary = phase2UxFigmaText.split("\n").find((line) => line.startsWith("Sources: ")) ?? "missing"
+  for (const marker of [
+    `Initiative: ${fixtureInitiativeId} · revision 1 · proposed`,
+    "Phase state: attention-required",
+    "Sources: 0 current · 23 attention-required · 0 unavailable · 23 expected",
+    "connection not-established · write not-performed · import not-performed",
+    "Product Owner acceptance: not established · approval: not established · Baseline Set designation: not established · readiness and phase-entry authority: not established",
+    "Boundary: this derived read-only view is not a second source of truth and grants no completeness, validity, approval, baseline, readiness, phase-entry, Figma, remediation, implementation, release, or action authority.",
+  ]) assert.ok(phase2UxFigmaText.includes(marker),
+    `Phase 2 UX and Figma dashboard must include ${marker}; received ${phase2SourceSummary}`)
+  assertPrivateSafe(phase2UxFigmaText, workspace, fixtureProductName)
+  await phase2UxFigmaRequest
+
   const evidenceRequest = vscode.commands.executeCommand("gaepKiro.runs.evidence")
   const evidenceDocument = await waitFor(
     () => vscode.workspace.textDocuments.find((document) => document.getText().startsWith("GAEP bounded Managed Run evidence\n")),
@@ -180,8 +204,8 @@ async function run() {
   await evidenceRequest
   const finalStoreManifest = await inspectPortableStore(path.join(workspace, ".gaep"))
   assert.deepEqual(finalStoreManifest, fixtureStoreManifest)
-  process.stdout.write("PASS installed compatible-host provider/model/Phase 1 dashboard smoke: two bounded capability rows, exact Initiative scope, unselected model state, unavailable usage/cost, private-safe output, and immutable fixture store\n")
-  process.stdout.write(`PASS activation: sixty-five bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, provider/model dashboards, empty audit-gated evidence workflow, and no workspace mutation\n`)
+  process.stdout.write("PASS installed compatible-host provider/model/Phase 1 and Phase 2 dashboard smoke: two bounded capability rows, exact Initiative scope, 23-of-23 UX/Figma attention state, explicit no-authority boundaries, private-safe output, and immutable fixture store\n")
+  process.stdout.write(`PASS activation: sixty-six bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, provider/model/UX/Figma dashboards, empty audit-gated evidence workflow, and no workspace mutation\n`)
 }
 
 function assertPrivateSafe(content, workspace, fixtureProductName) {

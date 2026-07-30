@@ -46,9 +46,9 @@ try {
     profile: "internal-tool",
   }, "gaep.kiro-e2e-owner")
   const fixtureInitiative = await fixtureEngine.createInitiative({
-    title: "Installed Kiro Phase 1 dashboard smoke",
-    outcome: "Exercise the exact Initiative-scoped Agent and Model execution-truth projection without granting authority.",
-    scope: ["Packaged engine metadata projection"],
+    title: "Installed Kiro Phase 1 and Phase 2 dashboard smoke",
+    outcome: "Exercise exact Initiative-scoped Agent/Model and UX/Figma projections without granting authority.",
+    scope: ["Packaged engine metadata projections"],
     exclusions: ["Live providers", "Run launch", "Effects", "Approval", "Release"],
   }, "gaep.kiro-e2e-owner")
   await writeFile(join(workspace, "README.md"), "# Isolated GAEP for Kiro extension-host fixture\n", "utf8")
