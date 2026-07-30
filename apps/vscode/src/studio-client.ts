@@ -613,6 +613,7 @@ class StudioShell {
       ...(page.technologyProfiles ? [page.technologyProfiles] : []),
       ...(page.boilerplateRegistries ? [page.boilerplateRegistries] : []),
       ...(page.boilerplateSelectionBindings ? [page.boilerplateSelectionBindings] : []),
+      ...(page.boilerplateCompatibilityValidations ? [page.boilerplateCompatibilityValidations] : []),
     ]) container.append(this.renderTable(table))
     if (page.transitionPreview) {
       const preview = element("section", "section grouped-section")
