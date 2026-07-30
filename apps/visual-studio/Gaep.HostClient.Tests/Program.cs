@@ -77,6 +77,7 @@ internal static class Program
     private static readonly Guid AcceptanceCriteriaId = Guid.Parse("94949494-9494-4494-8494-949494949494");
     private static readonly Guid DefinitionOfReadyId = Guid.Parse("95959595-9595-4595-8595-959595959595");
     private static readonly Guid DefinitionOfDoneId = Guid.Parse("96969696-9696-4696-8696-969696969696");
+    private static readonly Guid ImplementationUnitModelId = Guid.Parse("97979797-9797-4797-8797-979797979797");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -268,6 +269,14 @@ internal static class Program
         var badDefinitionOfDonePrioritizationBindingRoot = Path.Combine(temporaryRoot, "bad-definition-of-done-prioritization-binding");
         var badDefinitionOfDoneCriteriaBindingRoot = Path.Combine(temporaryRoot, "bad-definition-of-done-criteria-binding");
         var badDefinitionOfDoneReadyBindingRoot = Path.Combine(temporaryRoot, "bad-definition-of-done-ready-binding");
+        var badImplementationUnitModelSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-implementation-unit-model-snapshot-binding");
+        var badImplementationUnitModelSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-implementation-unit-model-snapshot-digest");
+        var badImplementationUnitModelSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-implementation-unit-model-snapshot-private");
+        var badImplementationUnitModelHierarchyBindingRoot = Path.Combine(temporaryRoot, "bad-implementation-unit-model-hierarchy-binding");
+        var badImplementationUnitModelMvpBindingRoot = Path.Combine(temporaryRoot, "bad-implementation-unit-model-mvp-binding");
+        var badImplementationUnitModelCriteriaBindingRoot = Path.Combine(temporaryRoot, "bad-implementation-unit-model-criteria-binding");
+        var badImplementationUnitModelReadyBindingRoot = Path.Combine(temporaryRoot, "bad-implementation-unit-model-ready-binding");
+        var badImplementationUnitModelDoneBindingRoot = Path.Combine(temporaryRoot, "bad-implementation-unit-model-done-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -1236,6 +1245,61 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadDefinitionOfDoneAsync(InitiativeId),
                 "Definition of Done workflow rejects substituted Product or current planning dependency bindings");
+        }
+        var implementationUnitModelProjection = await client.ReadImplementationUnitModelAsync(InitiativeId);
+        Check(implementationUnitModelProjection.ProductId == product.Id &&
+              implementationUnitModelProjection.ProductRevision == product.Revision &&
+              implementationUnitModelProjection.ProductDigest == product.Digest &&
+              implementationUnitModelProjection.InitiativeId == resolved.Id &&
+              implementationUnitModelProjection.InitiativeRevision == resolved.Revision &&
+              implementationUnitModelProjection.InitiativeDigest == resolved.Digest &&
+              implementationUnitModelProjection.State == "attention-required" &&
+              implementationUnitModelProjection.ReviewState == "held" &&
+              implementationUnitModelProjection.UnitCount == 3 &&
+              implementationUnitModelProjection.SubjectCount == 4 &&
+              implementationUnitModelProjection.RequirementReferenceCount == 5 &&
+              implementationUnitModelProjection.RepositoryCandidateCount == 3 &&
+              implementationUnitModelProjection.OwnerCandidateCount == 3 &&
+              implementationUnitModelProjection.DependencyEdgeCount == 2 &&
+              implementationUnitModelProjection.CandidateAssessedBlastRadiusCount == 2 &&
+              implementationUnitModelProjection.NotAssessedBlastRadiusCount == 1 &&
+              implementationUnitModelProjection.StaleDefinitionOfDoneCount == 0,
+            "Typed Implementation Unit Model projection preserves exact Product, Initiative, dependency, membership, placement, impact, and privacy-safe metadata");
+        var implementationUnitModelOutput = await initiativeController.ReadImplementationUnitModelAsync(InitiativeId);
+        Check(implementationUnitModelOutput.Contains("GAEP governed Implementation Unit Model candidate", StringComparison.Ordinal) &&
+              implementationUnitModelOutput.Contains("3 units · 4 Story/Task subjects · 5 Requirement references", StringComparison.Ordinal) &&
+              implementationUnitModelOutput.Contains("2 dependency edges · 2 blast radii candidate-assessed · 1 not assessed", StringComparison.Ordinal) &&
+              implementationUnitModelOutput.Contains("no unit titles, boundaries, Story, Task, or Requirement identities", StringComparison.Ordinal) &&
+              implementationUnitModelOutput.Contains("does not establish repository truth, owner appointment", StringComparison.Ordinal) &&
+              !implementationUnitModelOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !implementationUnitModelOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !implementationUnitModelOutput.Contains("modulePath", StringComparison.Ordinal) &&
+              !implementationUnitModelOutput.Contains("ownerCandidate", StringComparison.Ordinal) &&
+              !implementationUnitModelOutput.Contains("subjectNodeIds", StringComparison.Ordinal),
+            "Implementation Unit Model workflow renders privacy-safe metadata with explicit repository, ownership, dependency, impact, implementation, and action boundaries");
+        foreach (var hostileRoot in new[] { badImplementationUnitModelSnapshotDigestRoot, badImplementationUnitModelSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadImplementationUnitModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Implementation Unit Model projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[]
+                 {
+                     badImplementationUnitModelSnapshotBindingRoot,
+                     badImplementationUnitModelHierarchyBindingRoot,
+                     badImplementationUnitModelMvpBindingRoot,
+                     badImplementationUnitModelCriteriaBindingRoot,
+                     badImplementationUnitModelReadyBindingRoot,
+                     badImplementationUnitModelDoneBindingRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadImplementationUnitModelAsync(InitiativeId),
+                "Implementation Unit Model workflow rejects substituted Product or current planning dependency bindings");
         }
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
@@ -4500,6 +4564,22 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-definition-of-done-criteria-binding";
         var badDefinitionOfDoneReadyBinding =
             Path.GetFileName(workspace) == "bad-definition-of-done-ready-binding";
+        var badImplementationUnitModelSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-implementation-unit-model-snapshot-binding";
+        var badImplementationUnitModelSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-implementation-unit-model-snapshot-digest";
+        var badImplementationUnitModelSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-implementation-unit-model-snapshot-private";
+        var badImplementationUnitModelHierarchyBinding =
+            Path.GetFileName(workspace) == "bad-implementation-unit-model-hierarchy-binding";
+        var badImplementationUnitModelMvpBinding =
+            Path.GetFileName(workspace) == "bad-implementation-unit-model-mvp-binding";
+        var badImplementationUnitModelCriteriaBinding =
+            Path.GetFileName(workspace) == "bad-implementation-unit-model-criteria-binding";
+        var badImplementationUnitModelReadyBinding =
+            Path.GetFileName(workspace) == "bad-implementation-unit-model-ready-binding";
+        var badImplementationUnitModelDoneBinding =
+            Path.GetFileName(workspace) == "bad-implementation-unit-model-done-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -5081,6 +5161,22 @@ internal static class Program
                         badDefinitionOfDonePrioritizationBinding,
                         badDefinitionOfDoneCriteriaBinding,
                         badDefinitionOfDoneReadyBinding);
+                    break;
+                case "planning.implementationUnits.snapshot":
+                    await HandleImplementationUnitModelAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badImplementationUnitModelSnapshotBinding,
+                        badImplementationUnitModelSnapshotDigest,
+                        badImplementationUnitModelSnapshotPrivate,
+                        badImplementationUnitModelHierarchyBinding,
+                        badImplementationUnitModelMvpBinding,
+                        badImplementationUnitModelCriteriaBinding,
+                        badImplementationUnitModelReadyBinding,
+                        badImplementationUnitModelDoneBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -9001,6 +9097,137 @@ internal static class Program
         };
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["evaluationCount"] = 22;
+        if (includePrivateField) result["rationale"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleImplementationUnitModelAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeHierarchyBinding,
+        bool forgeMvpBinding,
+        bool forgeAcceptanceCriteriaBinding,
+        bool forgeDefinitionOfReadyBinding,
+        bool forgeDefinitionOfDoneBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID IMPLEMENTATION UNIT MODEL");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T15:00:00.000Z";
+        var candidateDigest = $"sha256:{new string('5', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = ImplementationUnitModelId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["state"] = "candidate",
+            ["membershipDigest"] = $"sha256:{new string('6', 64)}",
+            ["placementDigest"] = $"sha256:{new string('7', 64)}",
+            ["assessmentReceiptDigest"] = $"sha256:{new string('8', 64)}",
+            ["unitCount"] = 3,
+            ["subjectCount"] = 4,
+            ["requirementReferenceCount"] = 5,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T14:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "implementation-unit-model-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "implementation-unit-model-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = ImplementationUnitModelId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                },
+                ["hierarchy"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BacklogHierarchyId.ToString("D"), ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeHierarchyBinding ? '7' : '8', 64)}",
+                },
+                ["mvpSliceDefinition"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = MvpSliceDefinitionId.ToString("D"), ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeMvpBinding ? '9' : 'a', 64)}",
+                },
+                ["acceptanceCriteria"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = AcceptanceCriteriaId.ToString("D"), ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeAcceptanceCriteriaBinding ? '0' : '1', 64)}",
+                },
+                ["definitionOfReady"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DefinitionOfReadyId.ToString("D"), ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeDefinitionOfReadyBinding ? '5' : '6', 64)}",
+                },
+                ["definitionOfDone"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DefinitionOfDoneId.ToString("D"), ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeDefinitionOfDoneBinding ? 'd' : 'e', 64)}",
+                },
+                ["unitCount"] = 3,
+                ["subjectCount"] = 4,
+                ["requirementReferenceCount"] = 5,
+                ["repositoryCandidateCount"] = 3,
+                ["ownerCandidateCount"] = 3,
+                ["dependencyEdgeCount"] = 2,
+                ["candidateAssessedBlastRadiusCount"] = 2,
+                ["notAssessedBlastRadiusCount"] = 1,
+                ["missingSubjectCount"] = 1,
+                ["invalidUnitCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleHierarchyCount"] = 0,
+                ["staleMvpSliceDefinitionCount"] = 0,
+                ["staleAcceptanceCriteriaCount"] = 0,
+                ["staleDefinitionOfReadyCount"] = 0,
+                ["staleDefinitionOfDoneCount"] = 0,
+                ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more implementation-unit candidate boundaries require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "implementation-unit-model-status-is-observational-and-does-not-establish-repository-truth-ownership-appointment-dependency-or-impact-completeness-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-membership-placement-assessment-snapshot-digests-only-not-unit-titles-boundaries-subject-or-requirement-identities-repository-keys-module-paths-owner-identities-evidence-rationales-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "implementation-unit-model-projection-is-read-only-and-does-not-establish-repository-truth-ownership-appointment-dependency-or-impact-completeness-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["unitCount"] = 4;
         if (includePrivateField) result["rationale"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }

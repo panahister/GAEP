@@ -2189,6 +2189,107 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadImplementationUnitModelAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var hierarchy = await client.ReadBacklogHierarchyAsync(initiativeId, cancellationToken);
+        var mvp = await client.ReadMvpSliceDefinitionAsync(initiativeId, cancellationToken);
+        var criteria = await client.ReadAcceptanceCriteriaAsync(initiativeId, cancellationToken);
+        var ready = await client.ReadDefinitionOfReadyAsync(initiativeId, cancellationToken);
+        var done = await client.ReadDefinitionOfDoneAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadImplementationUnitModelAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Implementation Unit Model was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (hierarchy.Candidate is not { } currentHierarchy || projection.HierarchyRecordId != currentHierarchy.Id ||
+                projection.HierarchyRevision != currentHierarchy.Revision || projection.HierarchyDigest != currentHierarchy.Digest))
+        {
+            throw new ArgumentException("The Backlog Hierarchy changed while Implementation Unit Model was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (mvp.Candidate is not { } currentMvp || projection.MvpSliceDefinitionRecordId != currentMvp.Id ||
+                projection.MvpSliceDefinitionRevision != currentMvp.Revision || projection.MvpSliceDefinitionDigest != currentMvp.Digest))
+        {
+            throw new ArgumentException("The MVP and Vertical Slice Definition changed while Implementation Unit Model was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (criteria.Candidate is not { } currentCriteria || projection.AcceptanceCriteriaRecordId != currentCriteria.Id ||
+                projection.AcceptanceCriteriaRevision != currentCriteria.Revision || projection.AcceptanceCriteriaDigest != currentCriteria.Digest))
+        {
+            throw new ArgumentException("Acceptance Criteria changed while Implementation Unit Model was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (ready.Candidate is not { } currentReady || projection.DefinitionOfReadyRecordId != currentReady.Id ||
+                projection.DefinitionOfReadyRevision != currentReady.Revision || projection.DefinitionOfReadyDigest != currentReady.Digest))
+        {
+            throw new ArgumentException("Definition of Ready changed while Implementation Unit Model was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (done.Candidate is not { } currentDone || projection.DefinitionOfDoneRecordId != currentDone.Id ||
+                projection.DefinitionOfDoneRevision != currentDone.Revision || projection.DefinitionOfDoneDigest != currentDone.Digest))
+        {
+            throw new ArgumentException("Definition of Done changed while Implementation Unit Model was read. Refresh the exact records.");
+        }
+        return RenderImplementationUnitModel(projection);
+    }
+
+    public static string RenderImplementationUnitModel(ImplementationUnitModelProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Implementation Unit Model candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Coverage: {projection.UnitCount} units · {projection.SubjectCount} Story/Task subjects · " +
+                $"{projection.RequirementReferenceCount} Requirement references · {projection.RepositoryCandidateCount} repository candidates · " +
+                $"{projection.OwnerCandidateCount} owner candidates")
+            .AppendLine(
+                $"Dependencies and impact: {projection.DependencyEdgeCount} dependency edges · " +
+                $"{projection.CandidateAssessedBlastRadiusCount} blast radii candidate-assessed · " +
+                $"{projection.NotAssessedBlastRadiusCount} not assessed")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedQuestionCount} questions · {projection.MissingSubjectCount} missing subjects · " +
+                $"{projection.InvalidUnitCount} invalid units · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleHierarchyCount} stale hierarchies · {projection.StaleMvpSliceDefinitionCount} stale MVP definitions · " +
+                $"{projection.StaleAcceptanceCriteriaCount} stale Acceptance Criteria · " +
+                $"{projection.StaleDefinitionOfReadyCount} stale Definitions of Ready · " +
+                $"{projection.StaleDefinitionOfDoneCount} stale Definitions of Done");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Implementation Unit Model candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine($"Placement digest: {candidate.PlacementDigest}")
+                .AppendLine($"Assessment receipt digest: {candidate.AssessmentReceiptDigest}")
+                .AppendLine(
+                    $"Candidate coverage: {candidate.UnitCount} units · {candidate.SubjectCount} subjects · " +
+                    $"{candidate.RequirementReferenceCount} Requirement references · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Implementation Unit Model candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and membership, placement, assessment-receipt, and " +
+                "snapshot digests only; no unit titles, boundaries, Story, Task, or Requirement identities, repository keys, " +
+                "module paths, owner identities, evidence, rationales, or personal data. Candidate completeness does not " +
+                "establish repository truth, owner appointment, dependency or impact completeness, implementation readiness " +
+                "or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
