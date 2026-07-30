@@ -86,6 +86,7 @@ internal static class Program
     private static readonly Guid FigmaToBoilerplateMappingId = Guid.Parse("abababab-abab-4bab-8bab-abababababab");
     private static readonly Guid DesignToCodeBindingRegistryId = Guid.Parse("bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc");
     private static readonly Guid RouteScreenComponentMappingId = Guid.Parse("cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd");
+    private static readonly Guid TestMethodologyId = Guid.Parse("dededede-dede-4ede-8ede-dededededede");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -328,6 +329,10 @@ internal static class Program
         var badRouteScreenComponentMappingSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-route-screen-component-mapping-snapshot-digest");
         var badRouteScreenComponentMappingSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-route-screen-component-mapping-snapshot-private");
         var badRouteScreenComponentMappingDependencyBindingRoot = Path.Combine(temporaryRoot, "bad-route-screen-component-mapping-dependency-binding");
+        var badTestMethodologySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-test-methodology-snapshot-binding");
+        var badTestMethodologySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-test-methodology-snapshot-digest");
+        var badTestMethodologySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-test-methodology-snapshot-private");
+        var badTestMethodologyDependencyBindingRoot = Path.Combine(temporaryRoot, "bad-test-methodology-dependency-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -1806,6 +1811,69 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadRouteScreenComponentMappingAsync(InitiativeId),
                 "Route, Screen, and Component Mapping workflow rejects substituted Product or exact current dependency bindings");
+        }
+        var testMethodologyProjection = await client.ReadTestMethodologyAsync(InitiativeId);
+        Check(testMethodologyProjection.ProductId == product.Id &&
+              testMethodologyProjection.ProductRevision == product.Revision &&
+              testMethodologyProjection.ProductDigest == product.Digest &&
+              testMethodologyProjection.InitiativeId == resolved.Id &&
+              testMethodologyProjection.InitiativeRevision == resolved.Revision &&
+              testMethodologyProjection.InitiativeDigest == resolved.Digest &&
+              testMethodologyProjection.State == "attention-required" &&
+              testMethodologyProjection.ReviewState == "held" &&
+              testMethodologyProjection.SourceUnitCount == 4 &&
+              testMethodologyProjection.SourceRequirementCount == 7 &&
+              testMethodologyProjection.SourceCriterionCount == 12 &&
+              testMethodologyProjection.SourceMappingSubjectCount == 14 &&
+              testMethodologyProjection.ScopeCount == 4 &&
+              testMethodologyProjection.DecisionCount == 6 &&
+              testMethodologyProjection.SelectedDecisionCount == 4 &&
+              testMethodologyProjection.ConflictDecisionCount == 1 &&
+              testMethodologyProjection.EnvironmentGapCount == 1 &&
+              testMethodologyProjection.DataPolicyGapCount == 1 &&
+              testMethodologyProjection.CriterionGapCount == 1 &&
+              testMethodologyProjection.Dependencies.Count == 7 &&
+              testMethodologyProjection.Candidate?.ScopeCatalogDigest == $"sha256:{new string('1', 64)}" &&
+              testMethodologyProjection.Candidate?.MethodologyReceiptDigest == $"sha256:{new string('2', 64)}",
+            "Typed Test Methodology projection preserves exact Product, Initiative, seven-dependency, scope, decision, environment, data, criteria, and privacy-safe metadata");
+        var testMethodologyOutput = await initiativeController.ReadTestMethodologyAsync(InitiativeId);
+        Check(testMethodologyOutput.Contains("GAEP governed Test Methodology candidate", StringComparison.Ordinal) &&
+              testMethodologyOutput.Contains("4 units · 7 Requirements · 12 Acceptance Criteria · 14 mapping subjects", StringComparison.Ordinal) &&
+              testMethodologyOutput.Contains("4 selected · 1 conflicts · 0 not applicable · 1 deferred · 0 not assessed", StringComparison.Ordinal) &&
+              testMethodologyOutput.Contains("1 environment gaps · 1 data-policy gaps · 1 ownership gaps", StringComparison.Ordinal) &&
+              testMethodologyOutput.Contains("no Requirement, criterion, method rationale, environment address", StringComparison.Ordinal) &&
+              testMethodologyOutput.Contains("does not establish methodology validity or completeness", StringComparison.Ordinal) &&
+              testMethodologyOutput.Contains("test execution or results", StringComparison.Ordinal) &&
+              !testMethodologyOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !testMethodologyOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !testMethodologyOutput.Contains("methodKind", StringComparison.Ordinal) &&
+              !testMethodologyOutput.Contains("testData", StringComparison.Ordinal) &&
+              !testMethodologyOutput.Contains("ownerCandidateIds", StringComparison.Ordinal) &&
+              !testMethodologyOutput.Contains("evidenceReferences", StringComparison.Ordinal),
+            "Test Methodology workflow renders privacy-safe metadata with explicit methodology, environment, data, security, execution, evidence, acceptance, release, deployment, and action boundaries");
+        foreach (var hostileRoot in new[]
+                 {
+                     badTestMethodologySnapshotDigestRoot,
+                     badTestMethodologySnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadTestMethodologyAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Test Methodology projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[]
+                 {
+                     badTestMethodologySnapshotBindingRoot,
+                     badTestMethodologyDependencyBindingRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadTestMethodologyAsync(InitiativeId),
+                "Test Methodology workflow rejects substituted Product or exact current dependency bindings");
         }
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
@@ -5172,6 +5240,14 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-route-screen-component-mapping-snapshot-private";
         var badRouteScreenComponentMappingDependencyBinding =
             Path.GetFileName(workspace) == "bad-route-screen-component-mapping-dependency-binding";
+        var badTestMethodologySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-test-methodology-snapshot-binding";
+        var badTestMethodologySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-test-methodology-snapshot-digest";
+        var badTestMethodologySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-test-methodology-snapshot-private";
+        var badTestMethodologyDependencyBinding =
+            Path.GetFileName(workspace) == "bad-test-methodology-dependency-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -5876,6 +5952,18 @@ internal static class Program
                         badRouteScreenComponentMappingSnapshotDigest,
                         badRouteScreenComponentMappingSnapshotPrivate,
                         badRouteScreenComponentMappingDependencyBinding);
+                    break;
+                case "planning.testMethodology.snapshot":
+                    await HandleTestMethodologyAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badTestMethodologySnapshotBinding,
+                        badTestMethodologySnapshotDigest,
+                        badTestMethodologySnapshotPrivate,
+                        badTestMethodologyDependencyBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -10929,6 +11017,105 @@ internal static class Program
         if (includePrivateField) result["routePattern"] = $"{PrivateRoot}/{PrivateCredential}";
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["subjectCount"] = 15;
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleTestMethodologyAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeDependencyBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID TEST METHODOLOGY");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-31T01:00:00.000Z";
+        var candidateDigest = $"sha256:{new string('8', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        Dictionary<string, object?> Reference(Guid recordId, char digestCharacter) => new()
+        {
+            ["recordId"] = recordId.ToString("D"), ["revision"] = 2,
+            ["digest"] = $"sha256:{new string(digestCharacter, 64)}",
+        };
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = TestMethodologyId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+            ["state"] = "candidate", ["scopeCatalogDigest"] = $"sha256:{new string('1', 64)}",
+            ["methodologyReceiptDigest"] = $"sha256:{new string('2', 64)}",
+            ["environmentReceiptDigest"] = $"sha256:{new string('3', 64)}",
+            ["dataPolicyReceiptDigest"] = $"sha256:{new string('4', 64)}",
+            ["ownershipReceiptDigest"] = $"sha256:{new string('5', 64)}",
+            ["traceReceiptDigest"] = $"sha256:{new string('6', 64)}",
+            ["assessmentReceiptDigest"] = $"sha256:{new string('7', 64)}",
+            ["scopeCount"] = 4, ["decisionCount"] = 6, ["selectedDecisionCount"] = 4,
+            ["conflictDecisionCount"] = 1, ["environmentCount"] = 3, ["dataPolicyCount"] = 2,
+            ["evidenceExpectationCount"] = 5, ["entryCriterionCount"] = 4, ["exitCriterionCount"] = 4,
+            ["reviewState"] = "held", ["updatedAt"] = "2026-07-31T00:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1, ["kind"] = "test-methodology-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"), ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"), ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)), ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1, ["kind"] = "test-methodology-status",
+                ["productId"] = ProductId.ToString("D"), ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"), ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = TestMethodologyId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                },
+                ["acceptanceCriteria"] = Reference(AcceptanceCriteriaId, '1'),
+                ["definitionOfReady"] = Reference(DefinitionOfReadyId, '6'),
+                ["definitionOfDone"] = Reference(DefinitionOfDoneId, 'e'),
+                ["implementationUnitModel"] = Reference(ImplementationUnitModelId, '5'),
+                ["dependencyMapping"] = Reference(DependencyMappingId, '9'),
+                ["securityPrivacyAssessment"] = Reference(SecurityPrivacyAssessmentId, '5'),
+                ["routeScreenComponentMapping"] = Reference(RouteScreenComponentMappingId, forgeDependencyBinding ? '0' : '2'),
+                ["sourceUnitCount"] = 4, ["sourceRequirementCount"] = 7,
+                ["sourceCriterionCount"] = 12, ["sourceMappingSubjectCount"] = 14,
+                ["scopeCount"] = 4, ["decisionCount"] = 6, ["selectedDecisionCount"] = 4,
+                ["conflictDecisionCount"] = 1, ["notApplicableDecisionCount"] = 0,
+                ["deferredDecisionCount"] = 1, ["notAssessedDecisionCount"] = 0,
+                ["environmentCount"] = 3, ["dataPolicyCount"] = 2, ["evidenceExpectationCount"] = 5,
+                ["entryCriterionCount"] = 4, ["exitCriterionCount"] = 4,
+                ["missingScopeCount"] = 0, ["extraScopeCount"] = 0, ["invalidDecisionCount"] = 1,
+                ["environmentGapCount"] = 1, ["dataPolicyGapCount"] = 1, ["ownershipGapCount"] = 1,
+                ["traceGapCount"] = 2, ["evidenceGapCount"] = 1, ["criterionGapCount"] = 1,
+                ["staleBindingCount"] = 0, ["staleDependencyCount"] = 0, ["invalidCandidateCount"] = 1,
+                ["unresolvedQuestionCount"] = 2, ["reviewState"] = "held", ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Test Methodology decisions require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "test-methodology-status-is-observational-and-does-not-establish-requirement-or-acceptance-criteria-truth-methodology-validity-or-completeness-environment-availability-test-data-fitness-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority",
+            },
+            ["candidate"] = candidate, ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-methodology-scope-environment-data-ownership-trace-assessment-snapshot-digests-only-not-requirement-criterion-method-rationale-environment-address-test-data-owner-evidence-result-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "test-methodology-projection-is-read-only-and-does-not-establish-requirement-or-acceptance-criteria-truth-methodology-validity-or-completeness-environment-availability-test-data-fitness-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority",
+        };
+        if (includePrivateField) result["testData"] = $"{PrivateRoot}/{PrivateCredential}";
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["scopeCount"] = 5;
         await WriteResultAsync(id, result);
     }
 

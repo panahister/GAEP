@@ -3116,6 +3116,116 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadTestMethodologyAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var acceptance = await client.ReadAcceptanceCriteriaAsync(initiativeId, cancellationToken);
+        var ready = await client.ReadDefinitionOfReadyAsync(initiativeId, cancellationToken);
+        var done = await client.ReadDefinitionOfDoneAsync(initiativeId, cancellationToken);
+        var units = await client.ReadImplementationUnitModelAsync(initiativeId, cancellationToken);
+        var dependencies = await client.ReadDependencyMappingAsync(initiativeId, cancellationToken);
+        var securityPrivacy = await client.ReadSecurityPrivacyAssessmentAsync(initiativeId, cancellationToken);
+        var routeMapping = await client.ReadRouteScreenComponentMappingAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadTestMethodologyAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Test Methodology was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null)
+        {
+            void RequireDependency(string name, Guid id, long revision, string digest)
+            {
+                if (!projection.Dependencies.TryGetValue(name, out var reference) || reference.RecordId != id ||
+                    reference.Revision != revision || reference.Digest != digest)
+                {
+                    throw new ArgumentException($"The {name} candidate changed while Test Methodology was read. Refresh the exact records.");
+                }
+            }
+            if (acceptance.Candidate is not { } acceptanceCandidate || ready.Candidate is not { } readyCandidate ||
+                done.Candidate is not { } doneCandidate || units.Candidate is not { } unitsCandidate ||
+                dependencies.Candidate is not { } dependenciesCandidate || securityPrivacy.Assessment is not { } securityCandidate ||
+                routeMapping.Candidate is not { } routeCandidate)
+            {
+                throw new ArgumentException("One or more exact current dependency candidates are unavailable. Refresh the exact records.");
+            }
+            RequireDependency("acceptanceCriteria", acceptanceCandidate.Id, acceptanceCandidate.Revision, acceptanceCandidate.Digest);
+            RequireDependency("definitionOfReady", readyCandidate.Id, readyCandidate.Revision, readyCandidate.Digest);
+            RequireDependency("definitionOfDone", doneCandidate.Id, doneCandidate.Revision, doneCandidate.Digest);
+            RequireDependency("implementationUnitModel", unitsCandidate.Id, unitsCandidate.Revision, unitsCandidate.Digest);
+            RequireDependency("dependencyMapping", dependenciesCandidate.Id, dependenciesCandidate.Revision, dependenciesCandidate.Digest);
+            RequireDependency("securityPrivacyAssessment", securityCandidate.Id, securityCandidate.Revision, securityCandidate.Digest);
+            RequireDependency("routeScreenComponentMapping", routeCandidate.Id, routeCandidate.Revision, routeCandidate.Digest);
+        }
+        return RenderTestMethodology(projection);
+    }
+
+    public static string RenderTestMethodology(TestMethodologyProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Test Methodology candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Source coverage: {projection.SourceUnitCount} units · {projection.SourceRequirementCount} Requirements · " +
+                $"{projection.SourceCriterionCount} Acceptance Criteria · {projection.SourceMappingSubjectCount} mapping subjects")
+            .AppendLine(
+                $"Candidate coverage: {projection.ScopeCount} scopes · {projection.DecisionCount} decisions · " +
+                $"{projection.EnvironmentCount} environments · {projection.DataPolicyCount} data policies · " +
+                $"{projection.EvidenceExpectationCount} evidence expectations")
+            .AppendLine(
+                $"Candidate outcomes: {projection.SelectedDecisionCount} selected · {projection.ConflictDecisionCount} conflicts · " +
+                $"{projection.NotApplicableDecisionCount} not applicable · {projection.DeferredDecisionCount} deferred · " +
+                $"{projection.NotAssessedDecisionCount} not assessed")
+            .AppendLine($"Candidate criteria: {projection.EntryCriterionCount} entry · {projection.ExitCriterionCount} exit")
+            .AppendLine(
+                $"Candidate methodology gaps: {projection.MissingScopeCount} missing scopes · {projection.ExtraScopeCount} extra scopes · " +
+                $"{projection.InvalidDecisionCount} invalid decisions · {projection.EnvironmentGapCount} environment gaps · " +
+                $"{projection.DataPolicyGapCount} data-policy gaps · {projection.OwnershipGapCount} ownership gaps · " +
+                $"{projection.TraceGapCount} trace gaps · {projection.EvidenceGapCount} evidence gaps · " +
+                $"{projection.CriterionGapCount} criterion gaps")
+            .AppendLine(
+                $"Candidate freshness gaps: {projection.StaleBindingCount} stale bindings · {projection.StaleDependencyCount} stale dependencies · " +
+                $"{projection.InvalidCandidateCount} invalid candidates · {projection.UnresolvedQuestionCount} questions");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Test Methodology candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Scope catalog digest: {candidate.ScopeCatalogDigest}")
+                .AppendLine($"Methodology receipt digest: {candidate.MethodologyReceiptDigest}")
+                .AppendLine($"Environment receipt digest: {candidate.EnvironmentReceiptDigest}")
+                .AppendLine($"Data-policy receipt digest: {candidate.DataPolicyReceiptDigest}")
+                .AppendLine($"Ownership receipt digest: {candidate.OwnershipReceiptDigest}")
+                .AppendLine($"Trace receipt digest: {candidate.TraceReceiptDigest}")
+                .AppendLine($"Assessment receipt digest: {candidate.AssessmentReceiptDigest}")
+                .AppendLine(
+                    $"Candidate coverage: {candidate.ScopeCount} scopes · {candidate.DecisionCount} decisions · " +
+                    $"{candidate.SelectedDecisionCount} selected · {candidate.ConflictDecisionCount} conflicts · " +
+                    $"{candidate.EnvironmentCount} environments · {candidate.DataPolicyCount} data policies · " +
+                    $"{candidate.EntryCriterionCount} entry criteria · {candidate.ExitCriterionCount} exit criteria · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Test Methodology candidate: not recorded");
+        return output.AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and methodology scope, environment, data, ownership, " +
+                "trace, assessment, and snapshot digests only; no Requirement, criterion, method rationale, environment address, " +
+                "test data, owner, evidence, result, personal data, secret, credential, or machine path. This inspection does not " +
+                "establish methodology validity or completeness, environment availability, data fitness, privacy or security approval, " +
+                "owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, " +
+                "acceptance, release, deployment, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
