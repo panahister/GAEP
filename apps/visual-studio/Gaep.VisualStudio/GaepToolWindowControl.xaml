@@ -146,6 +146,10 @@
                 Command="{Binding LoadBacklogHierarchyCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, hierarchy counts, statuses, gaps, and digests only; it withholds backlog objectives, criteria, scope, owners, Requirement content, personal data, local paths, secrets, and credentials, and does not establish priority, commitment, ready or done, implementation readiness, assignment, execution, implementation authority, or action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadMvpSliceDefinitionButton" Content="Inspect governed MVP and Vertical Slices"
+                Command="{Binding LoadMvpSliceDefinitionCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate identities, scope and slice counts, statuses, gaps, and exact digests only; it withholds slice titles, rationales, objectives, criteria, scope content, Requirement content, personal data, local paths, secrets, and credentials, and does not establish priority, commitment, scope approval, acceptance-criteria validity, ready or done, implementation readiness, assignment, execution, implementation authority, or action authority."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
         <Button x:Name="LoadDesignSystemTokenContractButton" Content="Inspect governed Design System and Token Contract"
                 Command="{Binding LoadDesignSystemTokenContractCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds token values, component content, requirements, Source, design, and personal content, and does not establish system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."

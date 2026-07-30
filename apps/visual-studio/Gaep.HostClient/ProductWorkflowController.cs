@@ -1780,6 +1780,69 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadMvpSliceDefinitionAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var hierarchy = await client.ReadBacklogHierarchyAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadMvpSliceDefinitionAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while MVP and Vertical Slice Definition was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is { } candidate &&
+            (hierarchy.Candidate is not { } currentHierarchy || projection.HierarchyRecordId != currentHierarchy.Id ||
+                projection.HierarchyRevision != currentHierarchy.Revision || projection.HierarchyDigest != currentHierarchy.Digest ||
+                candidate.HierarchyDigest != currentHierarchy.Digest))
+        {
+            throw new ArgumentException("The Backlog Hierarchy changed while MVP and Vertical Slice Definition was read. Refresh the exact records.");
+        }
+        return RenderMvpSliceDefinition(projection);
+    }
+
+    public static string RenderMvpSliceDefinition(MvpSliceDefinitionProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed MVP and Vertical Slice candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState} · scope: {projection.ScopeCompletenessState}")
+            .AppendLine($"Scope: {projection.ScopeNodeCount} nodes · {projection.MvpNodeCount} MVP · {projection.LaterNodeCount} later · {projection.ExcludedNodeCount} excluded")
+            .AppendLine($"Vertical Slices: {projection.SliceCount} slices · {projection.StoryCount} Stories · {projection.TaskCount} Tasks · {projection.DependencyCount} dependencies")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnassignedMvpStoryTaskCount} unassigned MVP Stories or Tasks · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleHierarchyCount} stale hierarchies · {projection.InvalidScopeCount} invalid scope entries · " +
+                $"{projection.InvalidSliceCount} invalid slices");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"MVP and Vertical Slice candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine($"Exact Backlog Hierarchy digest: {candidate.HierarchyDigest}")
+                .AppendLine($"Candidate scope: {candidate.ScopeNodeCount} nodes · {candidate.MvpNodeCount} MVP · {candidate.LaterNodeCount} later · {candidate.ExcludedNodeCount} excluded")
+                .AppendLine($"Candidate slices: {candidate.SliceCount} slices · {candidate.StoryCount} Stories · {candidate.TaskCount} Tasks · {candidate.ReviewState}");
+        }
+        else output.AppendLine("MVP and Vertical Slice candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, scope and slice counts, statuses, and digests only; no slice " +
+                "titles, rationales, objectives, criteria, scope content, Requirement content, personal data, priority, " +
+                "commitment, scope approval, acceptance-criteria validity, ready or done, implementation readiness, " +
+                "assignment, execution, implementation authority, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

@@ -231,6 +231,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadScreenStateInventoryCommand = new AsyncCommand(LoadScreenStateInventoryAsync);
         LoadDesignRequirementsCommand = new AsyncCommand(LoadDesignRequirementsAsync);
         LoadBacklogHierarchyCommand = new AsyncCommand(LoadBacklogHierarchyAsync);
+        LoadMvpSliceDefinitionCommand = new AsyncCommand(LoadMvpSliceDefinitionAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -386,6 +387,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadBacklogHierarchyCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadMvpSliceDefinitionCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -986,6 +990,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Backlog Hierarchy candidate",
             (controller, _, token) => controller.ReadBacklogHierarchyAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadMvpSliceDefinitionAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed MVP and Vertical Slice candidate",
+            (controller, _, token) => controller.ReadMvpSliceDefinitionAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

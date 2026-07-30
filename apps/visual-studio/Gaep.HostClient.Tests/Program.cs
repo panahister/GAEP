@@ -72,6 +72,7 @@ internal static class Program
     private static readonly Guid ScreenStateInventoryId = Guid.Parse("67676767-6767-4767-8767-676767676767");
     private static readonly Guid DesignRequirementsId = Guid.Parse("68686868-6868-4868-8868-686868686868");
     private static readonly Guid BacklogHierarchyId = Guid.Parse("91919191-9191-4191-8191-919191919191");
+    private static readonly Guid MvpSliceDefinitionId = Guid.Parse("92929292-9292-4292-8292-929292929292");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -234,6 +235,10 @@ internal static class Program
         var badBacklogHierarchySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-backlog-hierarchy-snapshot-binding");
         var badBacklogHierarchySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-backlog-hierarchy-snapshot-digest");
         var badBacklogHierarchySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-backlog-hierarchy-snapshot-private");
+        var badMvpSliceSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-mvp-slice-snapshot-binding");
+        var badMvpSliceSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-mvp-slice-snapshot-digest");
+        var badMvpSliceSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-mvp-slice-snapshot-private");
+        var badMvpSliceHierarchyBindingRoot = Path.Combine(temporaryRoot, "bad-mvp-slice-hierarchy-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -436,6 +441,10 @@ internal static class Program
         Directory.CreateDirectory(badBacklogHierarchySnapshotBindingRoot);
         Directory.CreateDirectory(badBacklogHierarchySnapshotDigestRoot);
         Directory.CreateDirectory(badBacklogHierarchySnapshotPrivateRoot);
+        Directory.CreateDirectory(badMvpSliceSnapshotBindingRoot);
+        Directory.CreateDirectory(badMvpSliceSnapshotDigestRoot);
+        Directory.CreateDirectory(badMvpSliceSnapshotPrivateRoot);
+        Directory.CreateDirectory(badMvpSliceHierarchyBindingRoot);
         Directory.CreateDirectory(badDesignSystemTokenContractSnapshotBindingRoot);
         Directory.CreateDirectory(badDesignSystemTokenContractSnapshotDigestRoot);
         Directory.CreateDirectory(badDesignSystemTokenContractSnapshotPrivateRoot);
@@ -2012,6 +2021,51 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadBacklogHierarchyAsync(InitiativeId),
                 "Backlog Hierarchy rejects a projection rebound to a substituted Product revision");
+        }
+
+        var mvpSliceProjection = await client.ReadMvpSliceDefinitionAsync(InitiativeId);
+        Check(mvpSliceProjection.ProductId == product.Id &&
+              mvpSliceProjection.ProductRevision == product.Revision &&
+              mvpSliceProjection.ProductDigest == product.Digest &&
+              mvpSliceProjection.InitiativeId == resolved.Id &&
+              mvpSliceProjection.InitiativeRevision == resolved.Revision &&
+              mvpSliceProjection.InitiativeDigest == resolved.Digest &&
+              mvpSliceProjection.AssessmentState == "attention-required" &&
+              mvpSliceProjection.ReviewState == "held" &&
+              mvpSliceProjection.ScopeCompletenessState == "not-assessed" &&
+              mvpSliceProjection.ScopeNodeCount == 24 &&
+              mvpSliceProjection.MvpNodeCount == 16 &&
+              mvpSliceProjection.LaterNodeCount == 5 &&
+              mvpSliceProjection.ExcludedNodeCount == 3 &&
+              mvpSliceProjection.SliceCount == 4 &&
+              mvpSliceProjection.StoryCount == 7 &&
+              mvpSliceProjection.TaskCount == 9 &&
+              mvpSliceProjection.HierarchyDigest == mvpSliceProjection.Candidate?.HierarchyDigest,
+            "Typed MVP and Vertical Slice projection preserves exact Product, Initiative, hierarchy, assessment, scope, slice, and privacy-safe inventory metadata");
+        var mvpSliceOutput = await initiativeController.ReadMvpSliceDefinitionAsync(InitiativeId);
+        Check(mvpSliceOutput.Contains("GAEP governed MVP and Vertical Slice candidate", StringComparison.Ordinal) &&
+              mvpSliceOutput.Contains("24 nodes · 16 MVP · 5 later · 3 excluded", StringComparison.Ordinal) &&
+              mvpSliceOutput.Contains("4 slices · 7 Stories · 9 Tasks", StringComparison.Ordinal) &&
+              mvpSliceOutput.Contains("no slice titles", StringComparison.Ordinal) &&
+              !mvpSliceOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !mvpSliceOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !mvpSliceOutput.Contains("sliceRationale", StringComparison.Ordinal),
+            "MVP and Vertical Slice workflow renders privacy-safe metadata with explicit no-content and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badMvpSliceSnapshotDigestRoot, badMvpSliceSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadMvpSliceDefinitionAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "MVP and Vertical Slice projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[] { badMvpSliceSnapshotBindingRoot, badMvpSliceHierarchyBindingRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadMvpSliceDefinitionAsync(InitiativeId),
+                "MVP and Vertical Slice workflow rejects substituted Product or current Backlog Hierarchy bindings");
         }
 
         var designSystemTokenContractProjection = await client.ReadDesignSystemTokenContractAsync(InitiativeId);
@@ -4165,6 +4219,14 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-backlog-hierarchy-snapshot-digest";
         var badBacklogHierarchySnapshotPrivate =
             Path.GetFileName(workspace) == "bad-backlog-hierarchy-snapshot-private";
+        var badMvpSliceSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-mvp-slice-snapshot-binding";
+        var badMvpSliceSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-mvp-slice-snapshot-digest";
+        var badMvpSliceSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-mvp-slice-snapshot-private";
+        var badMvpSliceHierarchyBinding =
+            Path.GetFileName(workspace) == "bad-mvp-slice-hierarchy-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -4677,6 +4739,18 @@ internal static class Program
                         badBacklogHierarchySnapshotBinding,
                         badBacklogHierarchySnapshotDigest,
                         badBacklogHierarchySnapshotPrivate);
+                    break;
+                case "planning.mvpSlices.snapshot":
+                    await HandleMvpSliceDefinitionAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badMvpSliceSnapshotBinding,
+                        badMvpSliceSnapshotDigest,
+                        badMvpSliceSnapshotPrivate,
+                        badMvpSliceHierarchyBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -7989,6 +8063,118 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["taskCount"] = 10;
         if (includePrivateField) result["workItemObjective"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleMvpSliceDefinitionAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeHierarchyBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID MVP SLICE");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T10:20:00.000Z";
+        var candidateDigest = $"sha256:{new string('a', 64)}";
+        var hierarchyDigest = $"sha256:{new string(forgeHierarchyBinding ? 'c' : '8', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = MvpSliceDefinitionId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('b', 64)}",
+            ["hierarchyDigest"] = hierarchyDigest,
+            ["state"] = "candidate",
+            ["scopeNodeCount"] = 24,
+            ["mvpNodeCount"] = 16,
+            ["laterNodeCount"] = 5,
+            ["excludedNodeCount"] = 3,
+            ["sliceCount"] = 4,
+            ["storyCount"] = 7,
+            ["taskCount"] = 9,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T10:19:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "mvp-slice-definition-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "mvp-slice-definition-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = MvpSliceDefinitionId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["hierarchy"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BacklogHierarchyId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = hierarchyDigest,
+                },
+                ["scopeNodeCount"] = 24,
+                ["mvpNodeCount"] = 16,
+                ["laterNodeCount"] = 5,
+                ["excludedNodeCount"] = 3,
+                ["sliceCount"] = 4,
+                ["storyCount"] = 7,
+                ["taskCount"] = 9,
+                ["dependencyCount"] = 3,
+                ["unassignedMvpStoryTaskCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleHierarchyCount"] = 0,
+                ["invalidScopeCount"] = 0,
+                ["invalidSliceCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["scopeCompletenessState"] = "not-assessed",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more MVP scope or Vertical Slice candidates require review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "mvp-slice-definition-status-is-observational-and-does-not-establish-priority-commitment-scope-approval-acceptance-criteria-validity-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-scope-and-slice-counts-statuses-and-digests-only-not-slice-titles-rationales-objectives-criteria-scope-content-requirement-content-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "mvp-slice-definition-projection-is-read-only-and-does-not-prioritize-commit-approve-scope-admit-assign-execute-or-authorize-implementation-or-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["taskCount"] = 10;
+        if (includePrivateField) result["sliceRationale"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
