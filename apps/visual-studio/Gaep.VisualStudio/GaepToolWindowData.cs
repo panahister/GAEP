@@ -239,6 +239,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadImplementationUnitModelCommand = new AsyncCommand(LoadImplementationUnitModelAsync);
         LoadDependencyMappingCommand = new AsyncCommand(LoadDependencyMappingAsync);
         LoadTechnologyProfileCommand = new AsyncCommand(LoadTechnologyProfileAsync);
+        LoadBoilerplateRegistryCommand = new AsyncCommand(LoadBoilerplateRegistryAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -416,6 +417,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadTechnologyProfileCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadBoilerplateRegistryCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1064,6 +1068,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Technology Profile candidate",
             (controller, _, token) => controller.ReadTechnologyProfileAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadBoilerplateRegistryAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Boilerplate Registry candidate",
+            (controller, _, token) => controller.ReadBoilerplateRegistryAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

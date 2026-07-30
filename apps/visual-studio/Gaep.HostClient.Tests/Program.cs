@@ -80,6 +80,7 @@ internal static class Program
     private static readonly Guid ImplementationUnitModelId = Guid.Parse("97979797-9797-4797-8797-979797979797");
     private static readonly Guid DependencyMappingId = Guid.Parse("98989898-9898-4898-8898-989898989898");
     private static readonly Guid TechnologyProfileId = Guid.Parse("89898989-8989-4989-8989-898989898989");
+    private static readonly Guid BoilerplateRegistryId = Guid.Parse("90909090-9090-4090-8090-909090909090");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -290,6 +291,11 @@ internal static class Program
         var badTechnologyProfileSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-technology-profile-snapshot-private");
         var badTechnologyProfileUnitModelBindingRoot = Path.Combine(temporaryRoot, "bad-technology-profile-unit-model-binding");
         var badTechnologyProfileDependencyMappingBindingRoot = Path.Combine(temporaryRoot, "bad-technology-profile-dependency-mapping-binding");
+        var badBoilerplateRegistrySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-registry-snapshot-binding");
+        var badBoilerplateRegistrySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-boilerplate-registry-snapshot-digest");
+        var badBoilerplateRegistrySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-boilerplate-registry-snapshot-private");
+        var badBoilerplateRegistryUnitModelBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-registry-unit-model-binding");
+        var badBoilerplateRegistryTechnologyProfileBindingRoot = Path.Combine(temporaryRoot, "bad-boilerplate-registry-technology-profile-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -1419,6 +1425,60 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadTechnologyProfileAsync(InitiativeId),
                 "Technology Profile workflow rejects substituted Product or current planning dependency bindings");
+        }
+        var boilerplateRegistryProjection = await client.ReadBoilerplateRegistryAsync(InitiativeId);
+        Check(boilerplateRegistryProjection.ProductId == product.Id &&
+              boilerplateRegistryProjection.ProductRevision == product.Revision &&
+              boilerplateRegistryProjection.ProductDigest == product.Digest &&
+              boilerplateRegistryProjection.InitiativeId == resolved.Id &&
+              boilerplateRegistryProjection.InitiativeRevision == resolved.Revision &&
+              boilerplateRegistryProjection.InitiativeDigest == resolved.Digest &&
+              boilerplateRegistryProjection.State == "attention-required" &&
+              boilerplateRegistryProjection.ReviewState == "held" &&
+              boilerplateRegistryProjection.EntryCount == 4 &&
+              boilerplateRegistryProjection.ExactVersionCandidateCount == 2 &&
+              boilerplateRegistryProjection.RangeVersionCandidateCount == 1 &&
+              boilerplateRegistryProjection.UnresolvedVersionCount == 1 &&
+              boilerplateRegistryProjection.MandatoryCandidateCount == 2 &&
+              boilerplateRegistryProjection.IntegrityMismatchCount == 1 &&
+              boilerplateRegistryProjection.TechnologyConflictCount == 1 &&
+              boilerplateRegistryProjection.LicenseProhibitedCount == 0 &&
+              boilerplateRegistryProjection.SecurityNonconformantCount == 0 &&
+              boilerplateRegistryProjection.StaleImplementationUnitModelCount == 0 &&
+              boilerplateRegistryProjection.StaleTechnologyProfileCount == 0,
+            "Typed Boilerplate Registry projection preserves exact Product, Initiative, prerequisite, asset, compatibility, policy, and privacy-safe metadata");
+        var boilerplateRegistryOutput = await initiativeController.ReadBoilerplateRegistryAsync(InitiativeId);
+        Check(boilerplateRegistryOutput.Contains("GAEP governed Boilerplate Registry candidate", StringComparison.Ordinal) &&
+              boilerplateRegistryOutput.Contains("4 entries · 2 exact versions · 1 ranges · 1 unresolved versions · 2 mandatory candidates", StringComparison.Ordinal) &&
+              boilerplateRegistryOutput.Contains("1 unavailable · 1 integrity gaps · 1 provenance gaps · 1 missing evidence", StringComparison.Ordinal) &&
+              boilerplateRegistryOutput.Contains("no boilerplate names, locators, versions, capabilities, limitations, evidence, rationale", StringComparison.Ordinal) &&
+              boilerplateRegistryOutput.Contains("does not establish organizational designation, endorsement, approval", StringComparison.Ordinal) &&
+              !boilerplateRegistryOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !boilerplateRegistryOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !boilerplateRegistryOutput.Contains("sourceReference", StringComparison.Ordinal) &&
+              !boilerplateRegistryOutput.Contains("versionCandidate", StringComparison.Ordinal) &&
+              !boilerplateRegistryOutput.Contains("private capability", StringComparison.Ordinal),
+            "Boilerplate Registry workflow renders privacy-safe metadata with explicit asset, compatibility, policy, designation, selection, implementation, and action boundaries");
+        foreach (var hostileRoot in new[] { badBoilerplateRegistrySnapshotDigestRoot, badBoilerplateRegistrySnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadBoilerplateRegistryAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Boilerplate Registry projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[]
+                 {
+                     badBoilerplateRegistrySnapshotBindingRoot,
+                     badBoilerplateRegistryUnitModelBindingRoot,
+                     badBoilerplateRegistryTechnologyProfileBindingRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadBoilerplateRegistryAsync(InitiativeId),
+                "Boilerplate Registry workflow rejects substituted Product or current planning dependency bindings");
         }
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
@@ -4721,6 +4781,16 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-technology-profile-unit-model-binding";
         var badTechnologyProfileDependencyMappingBinding =
             Path.GetFileName(workspace) == "bad-technology-profile-dependency-mapping-binding";
+        var badBoilerplateRegistrySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-boilerplate-registry-snapshot-binding";
+        var badBoilerplateRegistrySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-boilerplate-registry-snapshot-digest";
+        var badBoilerplateRegistrySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-boilerplate-registry-snapshot-private";
+        var badBoilerplateRegistryUnitModelBinding =
+            Path.GetFileName(workspace) == "bad-boilerplate-registry-unit-model-binding";
+        var badBoilerplateRegistryTechnologyProfileBinding =
+            Path.GetFileName(workspace) == "bad-boilerplate-registry-technology-profile-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -5345,6 +5415,19 @@ internal static class Program
                         badTechnologyProfileSnapshotPrivate,
                         badTechnologyProfileUnitModelBinding,
                         badTechnologyProfileDependencyMappingBinding);
+                    break;
+                case "planning.boilerplateRegistry.snapshot":
+                    await HandleBoilerplateRegistryAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badBoilerplateRegistrySnapshotBinding,
+                        badBoilerplateRegistrySnapshotDigest,
+                        badBoilerplateRegistrySnapshotPrivate,
+                        badBoilerplateRegistryUnitModelBinding,
+                        badBoilerplateRegistryTechnologyProfileBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -9679,6 +9762,129 @@ internal static class Program
         };
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["unitProfileCount"] = 4;
+        if (includePrivateField) result["rationale"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleBoilerplateRegistryAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeImplementationUnitModelBinding,
+        bool forgeTechnologyProfileBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID BOILERPLATE REGISTRY");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T17:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('3', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = BoilerplateRegistryId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["state"] = "candidate",
+            ["entryCatalogDigest"] = $"sha256:{new string('4', 64)}",
+            ["sourceCatalogDigest"] = $"sha256:{new string('5', 64)}",
+            ["compatibilityAssessmentReceiptDigest"] = $"sha256:{new string('6', 64)}",
+            ["assessmentReceiptDigest"] = $"sha256:{new string('7', 64)}",
+            ["entryCount"] = 4,
+            ["mandatoryCandidateCount"] = 2,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T17:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "boilerplate-registry-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "boilerplate-registry-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BoilerplateRegistryId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["implementationUnitModel"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = ImplementationUnitModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeImplementationUnitModelBinding ? '4' : '5', 64)}",
+                },
+                ["technologyProfile"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = TechnologyProfileId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeTechnologyProfileBinding ? '7' : '6', 64)}",
+                },
+                ["entryCount"] = 4,
+                ["exactVersionCandidateCount"] = 2,
+                ["rangeVersionCandidateCount"] = 1,
+                ["unresolvedVersionCount"] = 1,
+                ["mandatoryCandidateCount"] = 2,
+                ["missingEvidenceCount"] = 1,
+                ["unavailableEntryCount"] = 1,
+                ["integrityMismatchCount"] = 1,
+                ["provenanceGapCount"] = 1,
+                ["unsupportedEntryCount"] = 1,
+                ["lifecycleRiskCount"] = 1,
+                ["technologyConflictCount"] = 1,
+                ["architectureConflictCount"] = 1,
+                ["licenseReviewRequiredCount"] = 1,
+                ["licenseProhibitedCount"] = 0,
+                ["securityReviewRequiredCount"] = 1,
+                ["securityNonconformantCount"] = 0,
+                ["exceptionCandidateCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleImplementationUnitModelCount"] = 0,
+                ["staleTechnologyProfileCount"] = 0,
+                ["invalidRegistryCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Boilerplate Registry candidates require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "boilerplate-registry-status-is-observational-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-selection-binding-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-entry-source-compatibility-assessment-snapshot-digests-only-not-boilerplate-names-locators-versions-capabilities-limitations-evidence-rationale-technology-unit-architecture-repository-template-license-security-policy-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "boilerplate-registry-projection-is-read-only-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-selection-binding-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["entryCount"] = 5;
         if (includePrivateField) result["rationale"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
