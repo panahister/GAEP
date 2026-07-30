@@ -36,6 +36,7 @@ import {
   type AcceptanceCriteriaProjection,
   type DefinitionOfReadyProjection,
   type DefinitionOfDoneProjection,
+  type ImplementationUnitModelProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -164,6 +165,7 @@ const commandIds = {
   acceptanceCriteria: "gaepKiro.acceptanceCriteria.inspect",
   definitionOfReady: "gaepKiro.definitionOfReady.inspect",
   definitionOfDone: "gaepKiro.definitionOfDone.inspect",
+  implementationUnitModel: "gaepKiro.implementationUnitModel.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -309,6 +311,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.acceptanceCriteria, (input?: unknown) => runUserCommand(() => showAcceptanceCriteria(pool, input))),
     vscode.commands.registerCommand(commandIds.definitionOfReady, (input?: unknown) => runUserCommand(() => showDefinitionOfReady(pool, input))),
     vscode.commands.registerCommand(commandIds.definitionOfDone, (input?: unknown) => runUserCommand(() => showDefinitionOfDone(pool, input))),
+    vscode.commands.registerCommand(commandIds.implementationUnitModel, (input?: unknown) => runUserCommand(() => showImplementationUnitModel(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2003,6 +2006,48 @@ async function showDefinitionOfDone(
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Gate boundary: ${projection.gateBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showImplementationUnitModel(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<ImplementationUnitModelProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Implementation Unit Model inspection", "Initiative ID")
+  const projection = await client.readImplementationUnitModel(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Implementation Unit Model candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Coverage: ${status.unitCount} units · ${status.subjectCount} subjects · ${status.requirementReferenceCount} Requirement references · ${status.repositoryCandidateCount} repository candidates · ${status.ownerCandidateCount} owner candidates`,
+    `Dependencies and impact: ${status.dependencyEdgeCount} dependency edges · ${status.candidateAssessedBlastRadiusCount} blast radii candidate-assessed · ${status.notAssessedBlastRadiusCount} not assessed`,
+    `Candidate gaps: ${status.unresolvedQuestionCount} questions · ${status.missingSubjectCount} missing subjects · ${status.invalidUnitCount} invalid units · ${status.staleBindingCount} stale bindings · ${status.staleHierarchyCount} stale hierarchies · ${status.staleMvpSliceDefinitionCount} stale MVP definitions · ${status.staleAcceptanceCriteriaCount} stale Acceptance Criteria · ${status.staleDefinitionOfReadyCount} stale Definition of Ready · ${status.staleDefinitionOfDoneCount} stale Definition of Done`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Placement digest: ${record.placementDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`,
+      `Candidate coverage: ${record.unitCount} units · ${record.subjectCount} subjects · ${record.requirementReferenceCount} Requirement references · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and membership, placement, assessment-receipt, and snapshot digests only; no unit titles, boundaries, Story, Task, or Requirement identities, repository keys, module paths, owner identities, evidence, rationales, or personal data. Candidate completeness does not establish repository truth, owner appointment, dependency or impact completeness, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })

@@ -62,6 +62,7 @@ const prioritizationModelId = "83838383-8383-4383-8383-838383838383"
 const acceptanceCriteriaId = "84848484-8484-4484-8484-848484848484"
 const definitionOfReadyId = "85858585-8585-4585-8585-858585858585"
 const definitionOfDoneId = "86868686-8686-4686-8686-868686868686"
+const implementationUnitModelId = "87878787-8787-4787-8787-878787878787"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -184,6 +185,8 @@ input.on("line", (line) => {
       return readDefinitionOfReady(id, request.params)
     case "planning.definitionOfDone.snapshot":
       return readDefinitionOfDone(id, request.params)
+    case "planning.implementationUnits.snapshot":
+      return readImplementationUnitModel(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -2578,6 +2581,80 @@ function readDefinitionOfDone(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-definition-of-done-snapshot-digest")) value.candidate.evaluationCount = 22
   if (workspacePath.endsWith("bad-definition-of-done-snapshot-private")) {
+    value.rationale = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readImplementationUnitModel(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE IMPLEMENTATION UNIT MODEL PARAMS")
+  }
+  const candidateDigest = `sha256:${"5".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "implementation-unit-model-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: implementationUnitModelId, revision: 2, digest: candidateDigest },
+    hierarchy: { recordId: backlogHierarchyId, revision: 2, digest: `sha256:${"8".repeat(64)}` },
+    mvpSliceDefinition: { recordId: mvpSliceDefinitionId, revision: 2, digest: `sha256:${"a".repeat(64)}` },
+    acceptanceCriteria: { recordId: acceptanceCriteriaId, revision: 2, digest: `sha256:${"4".repeat(64)}` },
+    definitionOfReady: { recordId: definitionOfReadyId, revision: 2, digest: `sha256:${"9".repeat(64)}` },
+    definitionOfDone: { recordId: definitionOfDoneId, revision: 2, digest: `sha256:${"e".repeat(64)}` },
+    unitCount: 3,
+    subjectCount: 4,
+    requirementReferenceCount: 5,
+    repositoryCandidateCount: 3,
+    ownerCandidateCount: 3,
+    dependencyEdgeCount: 2,
+    candidateAssessedBlastRadiusCount: 2,
+    notAssessedBlastRadiusCount: 1,
+    missingSubjectCount: 1,
+    invalidUnitCount: 1,
+    staleBindingCount: 0,
+    staleHierarchyCount: 0,
+    staleMvpSliceDefinitionCount: 0,
+    staleAcceptanceCriteriaCount: 0,
+    staleDefinitionOfReadyCount: 0,
+    staleDefinitionOfDoneCount: 0,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more implementation-unit candidate boundaries require human review"],
+    assessedAt: "2026-07-30T15:00:00.000Z",
+    authorityBoundary: "implementation-unit-model-status-is-observational-and-does-not-establish-repository-truth-ownership-appointment-dependency-or-impact-completeness-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "implementation-unit-model-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: implementationUnitModelId,
+      revision: 2,
+      digest: candidateDigest,
+      state: "candidate",
+      membershipDigest: `sha256:${"6".repeat(64)}`,
+      placementDigest: `sha256:${"7".repeat(64)}`,
+      assessmentReceiptDigest: `sha256:${"8".repeat(64)}`,
+      unitCount: 3,
+      subjectCount: 4,
+      requirementReferenceCount: 5,
+      reviewState: "held",
+      updatedAt: "2026-07-30T14:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-membership-placement-assessment-snapshot-digests-only-not-unit-titles-boundaries-subject-or-requirement-identities-repository-keys-module-paths-owner-identities-evidence-rationales-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "implementation-unit-model-projection-is-read-only-and-does-not-establish-repository-truth-ownership-appointment-dependency-or-impact-completeness-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-implementation-unit-model-snapshot-binding")) content.initiative.id = implementationUnitModelId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-implementation-unit-model-snapshot-digest")) value.candidate.unitCount = 4
+  if (workspacePath.endsWith("bad-implementation-unit-model-snapshot-private")) {
     value.rationale = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)

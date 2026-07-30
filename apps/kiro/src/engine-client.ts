@@ -35,6 +35,7 @@ import {
   acceptanceCriteriaProjectionSchema,
   definitionOfReadyProjectionSchema,
   definitionOfDoneProjectionSchema,
+  implementationUnitModelProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -96,6 +97,7 @@ import {
   type AcceptanceCriteriaProjection,
   type DefinitionOfReadyProjection,
   type DefinitionOfDoneProjection,
+  type ImplementationUnitModelProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -864,6 +866,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = definitionOfDoneProjectionSchema.safeParse(
         await this.request("planning.definitionOfDone.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readImplementationUnitModel(initiativeValue: string): Promise<ImplementationUnitModelProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = implementationUnitModelProjectionSchema.safeParse(
+        await this.request("planning.implementationUnits.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data
