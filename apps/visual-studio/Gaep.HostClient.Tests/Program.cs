@@ -84,6 +84,7 @@ internal static class Program
     private static readonly Guid DesignToRequirementBindingId = Guid.Parse("79797979-7979-4979-8979-797979797979");
     private static readonly Guid DesignerReadyGateId = Guid.Parse("80808080-8080-4080-8080-808080808080");
     private static readonly Guid DesignDeltaId = Guid.Parse("81818181-8181-4181-8181-818181818181");
+    private static readonly Guid DesignConflictResolutionId = Guid.Parse("82828282-8282-4282-8282-828282828282");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -265,6 +266,9 @@ internal static class Program
         var badDesignDeltaBindingRoot = Path.Combine(temporaryRoot, "bad-design-delta-binding");
         var badDesignDeltaDigestRoot = Path.Combine(temporaryRoot, "bad-design-delta-digest");
         var badDesignDeltaPrivateRoot = Path.Combine(temporaryRoot, "bad-design-delta-private");
+        var badDesignConflictResolutionBindingRoot = Path.Combine(temporaryRoot, "bad-design-conflict-resolution-binding");
+        var badDesignConflictResolutionDigestRoot = Path.Combine(temporaryRoot, "bad-design-conflict-resolution-digest");
+        var badDesignConflictResolutionPrivateRoot = Path.Combine(temporaryRoot, "bad-design-conflict-resolution-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -446,6 +450,9 @@ internal static class Program
         Directory.CreateDirectory(badDesignDeltaBindingRoot);
         Directory.CreateDirectory(badDesignDeltaDigestRoot);
         Directory.CreateDirectory(badDesignDeltaPrivateRoot);
+        Directory.CreateDirectory(badDesignConflictResolutionBindingRoot);
+        Directory.CreateDirectory(badDesignConflictResolutionDigestRoot);
+        Directory.CreateDirectory(badDesignConflictResolutionPrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2503,6 +2510,49 @@ internal static class Program
                 "Design Delta rejects a projection rebound to a substituted Product revision");
         }
 
+        var designConflictResolutionProjection = await client.ReadDesignConflictResolutionAsync(InitiativeId);
+        Check(designConflictResolutionProjection.ProductId == product.Id &&
+              designConflictResolutionProjection.ProductRevision == product.Revision &&
+              designConflictResolutionProjection.ProductDigest == product.Digest &&
+              designConflictResolutionProjection.InitiativeId == resolved.Id &&
+              designConflictResolutionProjection.InitiativeRevision == resolved.Revision &&
+              designConflictResolutionProjection.InitiativeDigest == resolved.Digest &&
+              designConflictResolutionProjection.AssessmentState == "attention-required" &&
+              designConflictResolutionProjection.CandidateResult == "escalation-plan-candidate" &&
+              designConflictResolutionProjection.ReviewState == "held" &&
+              designConflictResolutionProjection.ConflictCount == 5 &&
+              designConflictResolutionProjection.ResolutionCount == 4 &&
+              designConflictResolutionProjection.EscalateCount == 1 &&
+              designConflictResolutionProjection.HumanReviewedCount == 3 &&
+              designConflictResolutionProjection.Candidate?.ResolutionCount == 4,
+            "Typed Design Conflict Resolution preserves exact Product, Initiative, conflict, assessment, and privacy-safe candidate metadata");
+        var designConflictResolutionOutput = await initiativeController.ReadDesignConflictResolutionAsync(InitiativeId);
+        Check(designConflictResolutionOutput.Contains("GAEP Design Conflict Resolution candidate", StringComparison.Ordinal) &&
+              designConflictResolutionOutput.Contains("5 conflicts · 4 resolution candidates", StringComparison.Ordinal) &&
+              designConflictResolutionOutput.Contains("1 accept source · 1 accept target · 1 merge", StringComparison.Ordinal) &&
+              designConflictResolutionOutput.Contains("separation of duties not enforced", StringComparison.Ordinal) &&
+              designConflictResolutionOutput.Contains("does not enforce separation of duties", StringComparison.Ordinal) &&
+              designConflictResolutionOutput.Contains("implementation or action authority", StringComparison.Ordinal) &&
+              !designConflictResolutionOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !designConflictResolutionOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !designConflictResolutionOutput.Contains("resolutionContent=", StringComparison.Ordinal),
+            "Design Conflict Resolution workflow renders privacy-safe exact metadata with explicit no-separation and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badDesignConflictResolutionDigestRoot, badDesignConflictResolutionPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDesignConflictResolutionAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Design Conflict Resolution rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badDesignConflictResolutionBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDesignConflictResolutionAsync(InitiativeId),
+                "Design Conflict Resolution rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3865,6 +3915,9 @@ internal static class Program
         var badDesignDeltaBinding = Path.GetFileName(workspace) == "bad-design-delta-binding";
         var badDesignDeltaDigest = Path.GetFileName(workspace) == "bad-design-delta-digest";
         var badDesignDeltaPrivate = Path.GetFileName(workspace) == "bad-design-delta-private";
+        var badDesignConflictResolutionBinding = Path.GetFileName(workspace) == "bad-design-conflict-resolution-binding";
+        var badDesignConflictResolutionDigest = Path.GetFileName(workspace) == "bad-design-conflict-resolution-digest";
+        var badDesignConflictResolutionPrivate = Path.GetFileName(workspace) == "bad-design-conflict-resolution-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -4437,6 +4490,17 @@ internal static class Program
                         badDesignDeltaBinding,
                         badDesignDeltaDigest,
                         badDesignDeltaPrivate);
+                    break;
+                case "design.designConflictResolution.snapshot":
+                    await HandleDesignConflictResolutionAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDesignConflictResolutionBinding,
+                        badDesignConflictResolutionDigest,
+                        badDesignConflictResolutionPrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -8865,6 +8929,124 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) ((Dictionary<string, object?>)result["status"]!)["deltaCount"] = 5;
         if (includePrivateField) result["deltaContent"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDesignConflictResolutionAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DESIGN CONFLICT RESOLUTION");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T00:10:00.000Z";
+        var candidateDigest = $"sha256:{new string('2', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DesignConflictResolutionId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('3', 64)}",
+            ["state"] = "candidate",
+            ["designDelta"] = new Dictionary<string, object?>
+            {
+                ["recordId"] = DesignDeltaId.ToString("D"),
+                ["revision"] = 2,
+                ["digest"] = $"sha256:{new string('8', 64)}",
+                ["membershipDigest"] = $"sha256:{new string('9', 64)}",
+                ["deltaCatalogDigest"] = $"sha256:{new string('1', 64)}",
+                ["comparisonReceiptDigest"] = $"sha256:{new string('0', 64)}",
+                ["conflictingCount"] = 5,
+                ["candidateResult"] = "conflict-candidate",
+                ["reviewState"] = "ready-for-human-review",
+            },
+            ["resolutionDefinitionDigest"] = $"sha256:{new string('4', 64)}",
+            ["resolutionReceiptDigest"] = $"sha256:{new string('5', 64)}",
+            ["resolutionCatalogDigest"] = $"sha256:{new string('6', 64)}",
+            ["conflictCount"] = 5,
+            ["resolutionCount"] = 4,
+            ["coverageState"] = "partial",
+            ["provenanceState"] = "partial",
+            ["candidateResult"] = "escalation-plan-candidate",
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T00:09:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "design-conflict-resolution-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "design-conflict-resolution-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DesignConflictResolutionId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["conflictCount"] = 5,
+                ["resolutionCount"] = 4,
+                ["acceptSourceCount"] = 1,
+                ["acceptTargetCount"] = 1,
+                ["mergeCount"] = 1,
+                ["rejectChangeCount"] = 0,
+                ["escalateCount"] = 1,
+                ["humanReviewedCount"] = 3,
+                ["distinctActorDeclaredCount"] = 2,
+                ["expiredCandidateCount"] = 1,
+                ["unresolvedConflictCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["staleBindingCount"] = 1,
+                ["staleSourceReferenceCount"] = 2,
+                ["coverageState"] = "partial",
+                ["provenanceState"] = "partial",
+                ["candidateResult"] = "escalation-plan-candidate",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "The candidate records unresolved design conflicts" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "design-conflict-resolution-status-is-observational-and-does-not-enforce-separation-of-duties-resolve-conflicts-synchronize-design-establish-validity-approval-baseline-readiness-or-grant-implementation-write-import-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-delta-content-resolution-content-evidence-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+            ["authorityBoundary"] =
+                "design-conflict-resolution-projection-is-read-only-and-does-not-enforce-separation-of-duties-resolve-conflicts-synchronize-design-establish-validity-approval-baseline-readiness-or-grant-implementation-write-import-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) ((Dictionary<string, object?>)result["status"]!)["resolutionCount"] = 3;
+        if (includePrivateField) result["resolutionContent"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

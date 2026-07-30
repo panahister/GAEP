@@ -2565,6 +2565,71 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDesignConflictResolutionAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDesignConflictResolutionAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Design Conflict Resolution was read. Refresh the exact records.");
+        }
+        return RenderDesignConflictResolution(projection);
+    }
+
+    public static string RenderDesignConflictResolution(DesignConflictResolutionProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP Design Conflict Resolution candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate result: {projection.CandidateResult} · {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine($"Conflict inventory: {projection.ConflictCount} conflicts · {projection.ResolutionCount} resolution candidates")
+            .AppendLine(
+                $"Candidate actions: {projection.AcceptSourceCount} accept source · {projection.AcceptTargetCount} accept target · " +
+                $"{projection.MergeCount} merge · {projection.RejectChangeCount} reject change · {projection.EscalateCount} escalate")
+            .AppendLine(
+                $"Recorded review: {projection.HumanReviewedCount}/{projection.ResolutionCount} human-reviewed · " +
+                $"{projection.DistinctActorDeclaredCount} distinct-actor declarations · {projection.ExpiredCandidateCount} expired")
+            .AppendLine(
+                $"Candidate governance: coverage {projection.CoverageState} · provenance {projection.ProvenanceState} · " +
+                "separation of duties not enforced")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedConflictCount} unresolved conflicts · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Candidate record: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Design Delta: {candidate.DesignDelta.RecordId:D}@{candidate.DesignDelta.Revision} · " +
+                    $"{candidate.DesignDelta.ConflictingCount} conflicts · catalog {candidate.DesignDelta.DeltaCatalogDigest}")
+                .AppendLine(
+                    $"Resolution evidence: definition {candidate.ResolutionDefinitionDigest} · " +
+                    $"receipt {candidate.ResolutionReceiptDigest} · catalog {candidate.ResolutionCatalogDigest}");
+        }
+        else output.AppendLine("Candidate record: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, exact Design Delta binding, receipts, catalog digests, counts, " +
+                "results, and recorded review states only; this view does not enforce separation of duties, resolve or " +
+                "apply conflicts, synchronize design, establish validity, approval, baseline, or readiness, call Figma, " +
+                "request credentials, grant permissions, execute imports or writes, or grant implementation or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,

@@ -188,6 +188,10 @@
                 Command="{Binding LoadDesignDeltaCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, exact dependency, snapshot, comparison, receipt, and catalog digests, counts, and results only; it withholds design and delta content, external identities, evidence, Source content, human attribution, personal, secret, credential, and permission content, and establishes no completeness, design validity, approval, baseline, readiness, conflict-resolution or synchronization authority, Figma access, import or write execution, implementation, or action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadDesignConflictResolutionButton" Content="Inspect Design Conflict Resolution"
+                Command="{Binding LoadDesignConflictResolutionCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate identities, exact Design Delta binding, receipt and catalog digests, counts, results, and recorded review states only; it withholds design, delta, resolution, evidence, Source, human-attribution, personal, secret, credential, and permission content. It does not enforce separation of duties, resolve or apply conflicts, synchronize design, establish validity, approval, baseline, or readiness, access Figma, execute imports or writes, or grant implementation or action authority."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
 
         <TextBlock Text="Initiative classification" FontWeight="SemiBold" />
         <TextBlock Text="Primary type" />

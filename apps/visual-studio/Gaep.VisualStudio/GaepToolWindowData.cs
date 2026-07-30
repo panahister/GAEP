@@ -243,6 +243,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadDesignToRequirementBindingCommand = new AsyncCommand(LoadDesignToRequirementBindingAsync);
         LoadDesignerReadyGateCommand = new AsyncCommand(LoadDesignerReadyGateAsync);
         LoadDesignDeltaCommand = new AsyncCommand(LoadDesignDeltaAsync);
+        LoadDesignConflictResolutionCommand = new AsyncCommand(LoadDesignConflictResolutionAsync);
         ClassifyInitiativeCommand = new AsyncCommand(ClassifyInitiativeAsync);
         AddInitiativeDecisionCommand = new AsyncCommand(AddInitiativeDecisionAsync);
         AddInitiativeUnresolvedCommand = new AsyncCommand(AddInitiativeUnresolvedAsync);
@@ -413,6 +414,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadDesignDeltaCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadDesignConflictResolutionCommand { get; }
 
     [DataMember]
     public IAsyncCommand ClassifyInitiativeCommand { get; }
@@ -1030,6 +1034,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact Design Delta candidate",
             (controller, _, token) => controller.ReadDesignDeltaAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadDesignConflictResolutionAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact Design Conflict Resolution candidate",
+            (controller, _, token) => controller.ReadDesignConflictResolutionAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ClassifyInitiativeAsync(object? commandParameter, CancellationToken cancellationToken)
