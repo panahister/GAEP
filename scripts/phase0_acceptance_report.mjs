@@ -22,8 +22,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260730T151300Z-phase-3a-technology-profile-packages.json",
-  conformance: "evidence/ide-conformance/20260730T151300Z-phase-3a-technology-profile.json",
+  packages: "evidence/local-packages/20260730T160200Z-phase-3a-boilerplate-registry-packages.json",
+  conformance: "evidence/ide-conformance/20260730T160200Z-phase-3a-boilerplate-registry.json",
   example: "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
 }
 const gateDefinitions = [
@@ -203,7 +203,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -230,7 +230,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    technologyProfile
+    boilerplateRegistry
+      ? {
+          id: "phase-3a-boilerplate-registry-closure",
+          state: "not-established",
+          basis: "the exact versioned Boilerplate Registry candidate lifecycle, bounded candidate organizational boilerplate entries, source and version candidates, applicability, availability, integrity, provenance, support, lifecycle, Technology Profile and architecture compatibility, licensing, security-policy and exception evidence states, deterministic entry, source, compatibility and assessment receipts, exact current Implementation Unit Model and Technology Profile bindings, immutable revisions, privacy-safe Product Studio table and four host projections are implemented locally; candidates do not establish organizational designation, endorsement, approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, selection or binding, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, native-host interaction or Product Owner acceptance",
+        }
+      : technologyProfile
       ? {
           id: "phase-3a-technology-profile-closure",
           state: "not-established",
@@ -521,6 +527,9 @@ export async function buildPhase0AcceptanceReport({
   const technologyProfile = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "technology-profile" && capability.state === "implemented"))
+  const boilerplateRegistry = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "boilerplate-registry" && capability.state === "implemented"))
   const designSystemTokenContract = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-system-token-contract" && capability.state === "implemented"))
@@ -595,6 +604,7 @@ export async function buildPhase0AcceptanceReport({
     implementationUnitModel,
     dependencyMapping,
     technologyProfile,
+    boilerplateRegistry,
     designSystemTokenContract,
     accessibilityDesignRules,
     responsiveMultiPlatformTargets,
@@ -632,8 +642,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: technologyProfile
+    phase: boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: boilerplateRegistry
+      ? "phase-3a-boilerplate-registry-local"
+      : technologyProfile
       ? "phase-3a-technology-profile-local"
       : dependencyMapping
       ? "phase-3a-dependency-mapping-local"
@@ -745,7 +757,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: technologyProfile
+    claimBoundary: boilerplateRegistry
+      ? "This report binds the exact governed Boilerplate Registry candidate lifecycle, immutable revision history, bounded candidate organizational boilerplate entries, source and version candidates, applicability, availability, integrity, provenance, support, lifecycle, Technology Profile and architecture compatibility, licensing, security-policy and exception evidence states, deterministic entry, source, compatibility and assessment receipts, exact current Product, Initiative, Implementation Unit Model and Technology Profile bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Boilerplate entries remain governed candidates only. This report does not establish organizational designation, endorsement, approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, selection or binding, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : technologyProfile
       ? "This report binds the exact governed Technology Profile candidate lifecycle, immutable revision history, complete current Implementation Unit profile coverage, bounded technology, runtime, framework, library, toolchain, platform, version and constraint selections, compatibility, provenance, support, licensing, security-policy and lifecycle evidence states, deterministic profile, selection, compatibility and assessment receipts, exact current Product, Initiative, Implementation Unit Model and Dependency Mapping bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Technology Profiles remain governed candidates only. This report does not establish technology approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : dependencyMapping
       ? "This report binds the exact governed Dependency Mapping candidate lifecycle, immutable revision history, complete current Implementation Unit node catalog, typed directed acyclic dependency edges, required, conditional and advisory strengths, evidence states, deterministic longest candidate-effort critical path with canonical tie handling, graph, critical-path and assessment receipts, exact current Product, Initiative, Backlog Hierarchy, MVP and Vertical Slice, and Implementation Unit Model bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Dependency maps and critical paths remain governed candidates only. This report does not establish dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
