@@ -71,6 +71,7 @@ internal static class Program
     private static readonly Guid InformationArchitectureId = Guid.Parse("66666666-6666-4666-8666-666666666666");
     private static readonly Guid ScreenStateInventoryId = Guid.Parse("67676767-6767-4767-8767-676767676767");
     private static readonly Guid DesignRequirementsId = Guid.Parse("68686868-6868-4868-8868-686868686868");
+    private static readonly Guid BacklogHierarchyId = Guid.Parse("91919191-9191-4191-8191-919191919191");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -230,6 +231,9 @@ internal static class Program
         var badDesignRequirementsSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-requirements-snapshot-binding");
         var badDesignRequirementsSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-requirements-snapshot-digest");
         var badDesignRequirementsSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-requirements-snapshot-private");
+        var badBacklogHierarchySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-backlog-hierarchy-snapshot-binding");
+        var badBacklogHierarchySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-backlog-hierarchy-snapshot-digest");
+        var badBacklogHierarchySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-backlog-hierarchy-snapshot-private");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -429,6 +433,9 @@ internal static class Program
         Directory.CreateDirectory(badDesignRequirementsSnapshotBindingRoot);
         Directory.CreateDirectory(badDesignRequirementsSnapshotDigestRoot);
         Directory.CreateDirectory(badDesignRequirementsSnapshotPrivateRoot);
+        Directory.CreateDirectory(badBacklogHierarchySnapshotBindingRoot);
+        Directory.CreateDirectory(badBacklogHierarchySnapshotDigestRoot);
+        Directory.CreateDirectory(badBacklogHierarchySnapshotPrivateRoot);
         Directory.CreateDirectory(badDesignSystemTokenContractSnapshotBindingRoot);
         Directory.CreateDirectory(badDesignSystemTokenContractSnapshotDigestRoot);
         Directory.CreateDirectory(badDesignSystemTokenContractSnapshotPrivateRoot);
@@ -1961,6 +1968,50 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadDesignRequirementsAsync(InitiativeId),
                 "Design Requirements rejects a projection rebound to a substituted Product revision");
+        }
+
+        var backlogHierarchyProjection = await client.ReadBacklogHierarchyAsync(InitiativeId);
+        Check(backlogHierarchyProjection.ProductId == product.Id &&
+              backlogHierarchyProjection.ProductRevision == product.Revision &&
+              backlogHierarchyProjection.ProductDigest == product.Digest &&
+              backlogHierarchyProjection.InitiativeId == resolved.Id &&
+              backlogHierarchyProjection.InitiativeRevision == resolved.Revision &&
+              backlogHierarchyProjection.InitiativeDigest == resolved.Digest &&
+              backlogHierarchyProjection.AssessmentState == "attention-required" &&
+              backlogHierarchyProjection.ReviewState == "held" &&
+              backlogHierarchyProjection.HierarchyCompletenessState == "not-assessed" &&
+              backlogHierarchyProjection.NodeCount == 24 &&
+              backlogHierarchyProjection.EpicCount == 2 &&
+              backlogHierarchyProjection.FeatureCount == 5 &&
+              backlogHierarchyProjection.StoryCount == 8 &&
+              backlogHierarchyProjection.TaskCount == 9 &&
+              backlogHierarchyProjection.Candidate?.RequirementTraceCount == 17,
+            "Typed Backlog Hierarchy preserves exact Product, Initiative, assessment, topology, trace, and privacy-safe inventory metadata");
+        var backlogHierarchyOutput = await initiativeController.ReadBacklogHierarchyAsync(InitiativeId);
+        Check(backlogHierarchyOutput.Contains("GAEP governed Backlog Hierarchy candidate", StringComparison.Ordinal) &&
+              backlogHierarchyOutput.Contains("2 Epics · 5 Features · 8 Stories · 9 Tasks", StringComparison.Ordinal) &&
+              backlogHierarchyOutput.Contains("1 untraced delivery nodes", StringComparison.Ordinal) &&
+              backlogHierarchyOutput.Contains("no backlog objectives", StringComparison.Ordinal) &&
+              !backlogHierarchyOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !backlogHierarchyOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !backlogHierarchyOutput.Contains("workItemObjective", StringComparison.Ordinal),
+            "Backlog Hierarchy workflow renders privacy-safe metadata with explicit no-content and no-authority boundaries");
+        foreach (var hostileRoot in new[] {
+                     badBacklogHierarchySnapshotDigestRoot, badBacklogHierarchySnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadBacklogHierarchyAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Backlog Hierarchy rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badBacklogHierarchySnapshotBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadBacklogHierarchyAsync(InitiativeId),
+                "Backlog Hierarchy rejects a projection rebound to a substituted Product revision");
         }
 
         var designSystemTokenContractProjection = await client.ReadDesignSystemTokenContractAsync(InitiativeId);
@@ -4108,6 +4159,12 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-design-requirements-snapshot-digest";
         var badDesignRequirementsSnapshotPrivate =
             Path.GetFileName(workspace) == "bad-design-requirements-snapshot-private";
+        var badBacklogHierarchySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-backlog-hierarchy-snapshot-binding";
+        var badBacklogHierarchySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-backlog-hierarchy-snapshot-digest";
+        var badBacklogHierarchySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-backlog-hierarchy-snapshot-private";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -4609,6 +4666,17 @@ internal static class Program
                         badDesignRequirementsSnapshotBinding,
                         badDesignRequirementsSnapshotDigest,
                         badDesignRequirementsSnapshotPrivate);
+                    break;
+                case "backlog.hierarchy.snapshot":
+                    await HandleBacklogHierarchyAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badBacklogHierarchySnapshotBinding,
+                        badBacklogHierarchySnapshotDigest,
+                        badBacklogHierarchySnapshotPrivate);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -7819,6 +7887,108 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["requirementCount"] = 13;
         if (includePrivateField) result["requirementStatement"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleBacklogHierarchyAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID BACKLOG HIERARCHY");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T09:20:00.000Z";
+        var candidateDigest = $"sha256:{new string('8', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = BacklogHierarchyId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('9', 64)}",
+            ["state"] = "candidate",
+            ["nodeCount"] = 24,
+            ["epicCount"] = 2,
+            ["featureCount"] = 5,
+            ["storyCount"] = 8,
+            ["taskCount"] = 9,
+            ["requirementTraceCount"] = 17,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T09:19:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "backlog-hierarchy-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "backlog-hierarchy-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BacklogHierarchyId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["nodeCount"] = 24,
+                ["epicCount"] = 2,
+                ["featureCount"] = 5,
+                ["storyCount"] = 8,
+                ["taskCount"] = 9,
+                ["rootCount"] = 2,
+                ["leafCount"] = 12,
+                ["requirementTraceCount"] = 17,
+                ["untracedStoryTaskCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleWorkItemCount"] = 1,
+                ["staleChangeCount"] = 0,
+                ["staleRequirementCount"] = 2,
+                ["unresolvedQuestionCount"] = 3,
+                ["hierarchyCompletenessState"] = "not-assessed",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more backlog hierarchy gaps remain unresolved" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "backlog-hierarchy-status-is-observational-and-does-not-establish-priority-commitment-ownership-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-level-counts-statuses-and-digests-only-not-backlog-objectives-criteria-scope-owner-requirement-content-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "backlog-hierarchy-projection-is-read-only-and-does-not-prioritize-commit-assign-admit-execute-or-authorize-implementation-or-action",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["taskCount"] = 10;
+        if (includePrivateField) result["workItemObjective"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

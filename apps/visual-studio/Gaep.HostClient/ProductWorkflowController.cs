@@ -1719,6 +1719,67 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadBacklogHierarchyAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadBacklogHierarchyAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Backlog Hierarchy was read. Refresh the exact records.");
+        }
+        return RenderBacklogHierarchy(projection);
+    }
+
+    public static string RenderBacklogHierarchy(BacklogHierarchyProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Backlog Hierarchy candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine(
+                $"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState} · " +
+                $"hierarchy: {projection.HierarchyCompletenessState}")
+            .AppendLine(
+                $"Hierarchy: {projection.EpicCount} Epics · {projection.FeatureCount} Features · " +
+                $"{projection.StoryCount} Stories · {projection.TaskCount} Tasks")
+            .AppendLine(
+                $"Topology and trace: {projection.RootCount} roots · {projection.LeafCount} leaves · " +
+                $"{projection.RequirementTraceCount} Requirement traces")
+            .AppendLine(
+                $"Candidate gaps: {projection.UntracedStoryTaskCount} untraced delivery nodes · " +
+                $"{projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleWorkItemCount} stale Work Items · {projection.StaleChangeCount} stale Changes · " +
+                $"{projection.StaleRequirementCount} stale Requirements");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Backlog Hierarchy candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Candidate hierarchy: {candidate.EpicCount} Epics · {candidate.FeatureCount} Features · " +
+                    $"{candidate.StoryCount} Stories · {candidate.TaskCount} Tasks · " +
+                    $"{candidate.RequirementTraceCount} Requirement traces · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Backlog Hierarchy candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, level counts, statuses, and digests only; no backlog " +
+                "objectives, criteria, scope, owners, Requirement content, personal data, priority, commitment, " +
+                "ready or done, implementation readiness, assignment, execution, implementation authority, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

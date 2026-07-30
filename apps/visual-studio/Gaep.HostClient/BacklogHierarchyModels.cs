@@ -1,0 +1,43 @@
+namespace Gaep.HostClient;
+
+public sealed record BacklogHierarchyRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    int NodeCount,
+    int EpicCount,
+    int FeatureCount,
+    int StoryCount,
+    int TaskCount,
+    int RequirementTraceCount,
+    string ReviewState);
+
+public sealed record BacklogHierarchyProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    string ReviewState,
+    string HierarchyCompletenessState,
+    IReadOnlyList<string> Reasons,
+    int NodeCount,
+    int EpicCount,
+    int FeatureCount,
+    int StoryCount,
+    int TaskCount,
+    int RootCount,
+    int LeafCount,
+    int RequirementTraceCount,
+    int UntracedStoryTaskCount,
+    int StaleBindingCount,
+    int StaleWorkItemCount,
+    int StaleChangeCount,
+    int StaleRequirementCount,
+    int UnresolvedQuestionCount,
+    BacklogHierarchyRecordView? Candidate,
+    string SnapshotDigest);

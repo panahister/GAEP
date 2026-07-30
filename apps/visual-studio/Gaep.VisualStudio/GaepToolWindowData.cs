@@ -230,6 +230,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadInformationArchitectureCommand = new AsyncCommand(LoadInformationArchitectureAsync);
         LoadScreenStateInventoryCommand = new AsyncCommand(LoadScreenStateInventoryAsync);
         LoadDesignRequirementsCommand = new AsyncCommand(LoadDesignRequirementsAsync);
+        LoadBacklogHierarchyCommand = new AsyncCommand(LoadBacklogHierarchyAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -382,6 +383,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadDesignRequirementsCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadBacklogHierarchyCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -976,6 +980,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Design Requirements candidate",
             (controller, _, token) => controller.ReadDesignRequirementsAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadBacklogHierarchyAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Backlog Hierarchy candidate",
+            (controller, _, token) => controller.ReadBacklogHierarchyAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>
