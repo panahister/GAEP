@@ -1478,6 +1478,61 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readBacklogHierarchy(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readBacklogHierarchy(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Backlog Hierarchy was read. Refresh the exact records." }
+        return renderBacklogHierarchy(projection)
+    }
+
+    fun renderBacklogHierarchy(projection: BacklogHierarchyProjection): String = buildString {
+        appendLine("GAEP governed Backlog Hierarchy candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine(
+            "Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState} · " +
+                "hierarchy: ${projection.hierarchyCompletenessState}",
+        )
+        appendLine(
+            "Hierarchy: ${projection.epicCount} Epics · ${projection.featureCount} Features · " +
+                "${projection.storyCount} Stories · ${projection.taskCount} Tasks",
+        )
+        appendLine(
+            "Topology and trace: ${projection.rootCount} roots · ${projection.leafCount} leaves · " +
+                "${projection.requirementTraceCount} Requirement traces",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.untracedStoryTaskCount} untraced delivery nodes · " +
+                "${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleWorkItemCount} stale Work Items · ${projection.staleChangeCount} stale Changes · " +
+                "${projection.staleRequirementCount} stale Requirements",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Backlog Hierarchy candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Candidate hierarchy: ${record.epicCount} Epics · ${record.featureCount} Features · " +
+                    "${record.storyCount} Stories · ${record.taskCount} Tasks · " +
+                    "${record.requirementTraceCount} Requirement traces · ${record.reviewState}",
+            )
+        } ?: appendLine("Backlog Hierarchy candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, level counts, statuses, and digests only; no backlog " +
+                "objectives, criteria, scope, owners, Requirement content, personal data, priority, commitment, " +
+                "ready or done, implementation readiness, assignment, execution, implementation authority, or action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)

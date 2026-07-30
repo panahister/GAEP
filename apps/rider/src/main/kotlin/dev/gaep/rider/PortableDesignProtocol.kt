@@ -2104,6 +2104,50 @@ data class DesignRequirementsProjection(
     val snapshotDigest: String,
 )
 
+data class BacklogHierarchyRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val nodeCount: Int,
+    val epicCount: Int,
+    val featureCount: Int,
+    val storyCount: Int,
+    val taskCount: Int,
+    val requirementTraceCount: Int,
+    val reviewState: String,
+)
+
+data class BacklogHierarchyProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val assessmentState: String,
+    val reviewState: String,
+    val hierarchyCompletenessState: String,
+    val reasons: List<String>,
+    val nodeCount: Int,
+    val epicCount: Int,
+    val featureCount: Int,
+    val storyCount: Int,
+    val taskCount: Int,
+    val rootCount: Int,
+    val leafCount: Int,
+    val requirementTraceCount: Int,
+    val untracedStoryTaskCount: Int,
+    val staleBindingCount: Int,
+    val staleWorkItemCount: Int,
+    val staleChangeCount: Int,
+    val staleRequirementCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: BacklogHierarchyRecordView?,
+    val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -3243,6 +3287,12 @@ internal object PortableDesignProtocol {
         "design-requirements-projection-is-read-only-and-does-not-establish-requirement-validity-completeness-priority-approval-satisfaction-backlog-commitment-design-approval-readiness-implementation-or-write-or-action-authority"
     private const val DESIGN_REQUIREMENTS_STATUS_AUTHORITY_BOUNDARY =
         "design-requirements-status-is-observational-and-does-not-establish-requirement-validity-completeness-priority-approval-satisfaction-backlog-commitment-design-approval-readiness-implementation-or-action-authority"
+    private const val BACKLOG_HIERARCHY_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-level-counts-statuses-and-digests-only-not-backlog-objectives-criteria-scope-owner-requirement-content-personal-data-secrets-credentials-or-machine-paths"
+    private const val BACKLOG_HIERARCHY_PROJECTION_AUTHORITY_BOUNDARY =
+        "backlog-hierarchy-projection-is-read-only-and-does-not-prioritize-commit-assign-admit-execute-or-authorize-implementation-or-action"
+    private const val BACKLOG_HIERARCHY_STATUS_AUTHORITY_BOUNDARY =
+        "backlog-hierarchy-status-is-observational-and-does-not-establish-priority-commitment-ownership-ready-done-implementation-readiness-assignment-execution-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -8088,6 +8138,137 @@ internal object PortableDesignProtocol {
             notPlannedRequirementCount, unresolvedBacklogRequirementCount, workItemCount, weakEvidenceRequirementCount,
             staleBindingCount, staleDomainReferenceCount, staleSourceReferenceCount, unresolvedQuestionCount,
             candidate, snapshotDigest,
+        )
+    }
+
+    fun parseBacklogHierarchyEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): BacklogHierarchyProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "backlog-hierarchy-projection" ||
+            projection.requireString("privacyBoundary") != BACKLOG_HIERARCHY_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != BACKLOG_HIERARCHY_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "nodeCount", "epicCount", "featureCount", "storyCount", "taskCount", "rootCount", "leafCount",
+                "requirementTraceCount", "untracedStoryTaskCount", "staleBindingCount", "staleWorkItemCount",
+                "staleChangeCount", "staleRequirementCount", "unresolvedQuestionCount",
+                "hierarchyCompletenessState", "reviewState", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "backlog-hierarchy-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != BACKLOG_HIERARCHY_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val nodeCount = status.requireBoundedNonNegativeInt("nodeCount", 10_000)
+        val epicCount = status.requireBoundedNonNegativeInt("epicCount", 10_000)
+        val featureCount = status.requireBoundedNonNegativeInt("featureCount", 10_000)
+        val storyCount = status.requireBoundedNonNegativeInt("storyCount", 10_000)
+        val taskCount = status.requireBoundedNonNegativeInt("taskCount", 10_000)
+        val rootCount = status.requireBoundedNonNegativeInt("rootCount", 10_000)
+        val leafCount = status.requireBoundedNonNegativeInt("leafCount", 10_000)
+        val requirementTraceCount = status.requireBoundedNonNegativeInt("requirementTraceCount", 1_000_000)
+        val untracedStoryTaskCount = status.requireBoundedNonNegativeInt("untracedStoryTaskCount", 10_000)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleWorkItemCount = status.requireBoundedNonNegativeInt("staleWorkItemCount", 10_000)
+        val staleChangeCount = status.requireBoundedNonNegativeInt("staleChangeCount", 10_000)
+        val staleRequirementCount = status.requireBoundedNonNegativeInt("staleRequirementCount", 1_000_000)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        if (nodeCount != epicCount + featureCount + storyCount + taskCount || rootCount > epicCount ||
+            leafCount > nodeCount || untracedStoryTaskCount > storyCount + taskCount
+        ) throw invalidResponse()
+        val hierarchyCompletenessState = status.requireOneOf("hierarchyCompletenessState", setOf("candidate-complete", "not-assessed"))
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = untracedStoryTaskCount + staleBindingCount + staleWorkItemCount + staleChangeCount +
+            staleRequirementCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-review" &&
+                (gapCount > 0 || hierarchyCompletenessState != "candidate-complete" ||
+                    reviewState != "ready-for-human-review" || reasons.isNotEmpty() || reference == null)) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "nodeCount", "epicCount",
+                "featureCount", "storyCount", "taskCount", "requirementTraceCount", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = BacklogHierarchyRecordView(
+                id,
+                revision,
+                value.requireDigest("digest"),
+                value.requireDigest("membershipDigest"),
+                value.requireBoundedNonNegativeInt("nodeCount", 10_000),
+                value.requireBoundedNonNegativeInt("epicCount", 10_000),
+                value.requireBoundedNonNegativeInt("featureCount", 10_000),
+                value.requireBoundedNonNegativeInt("storyCount", 10_000),
+                value.requireBoundedNonNegativeInt("taskCount", 10_000),
+                value.requireBoundedNonNegativeInt("requirementTraceCount", 1_000_000),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest ||
+                record.nodeCount != nodeCount || record.epicCount != epicCount || record.featureCount != featureCount ||
+                record.storyCount != storyCount || record.taskCount != taskCount ||
+                record.requirementTraceCount != requirementTraceCount || record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return BacklogHierarchyProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, assessmentState, reviewState, hierarchyCompletenessState, reasons, nodeCount,
+            epicCount, featureCount, storyCount, taskCount, rootCount, leafCount, requirementTraceCount,
+            untracedStoryTaskCount, staleBindingCount, staleWorkItemCount, staleChangeCount,
+            staleRequirementCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 

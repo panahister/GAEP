@@ -1519,6 +1519,55 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Backlog Hierarchy projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("backlog-hierarchy-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readBacklogHierarchy(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("not-assessed", projection.hierarchyCompletenessState)
+            assertEquals(24, projection.nodeCount)
+            assertEquals(2, projection.epicCount)
+            assertEquals(5, projection.featureCount)
+            assertEquals(8, projection.storyCount)
+            assertEquals(9, projection.taskCount)
+            assertEquals(17, projection.candidate?.requirementTraceCount)
+
+            val rendered = RiderProductController(client).readBacklogHierarchy(entryId)
+            assertTrue(rendered.contains("GAEP governed Backlog Hierarchy candidate"))
+            assertTrue(rendered.contains("2 Epics · 5 Features · 8 Stories · 9 Tasks"))
+            assertTrue(rendered.contains("1 untraced delivery nodes"))
+            assertTrue(rendered.contains("no backlog objectives"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("workItemObjective"))
+        }
+
+        listOf(
+            "bad-backlog-hierarchy-snapshot-digest",
+            "bad-backlog-hierarchy-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readBacklogHierarchy(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-backlog-hierarchy-snapshot-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readBacklogHierarchy(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

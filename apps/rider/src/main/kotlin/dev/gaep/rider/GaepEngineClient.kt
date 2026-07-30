@@ -348,6 +348,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readBacklogHierarchy(initiativeId: UUID): BacklogHierarchyProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("backlog.hierarchy.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseBacklogHierarchyEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }

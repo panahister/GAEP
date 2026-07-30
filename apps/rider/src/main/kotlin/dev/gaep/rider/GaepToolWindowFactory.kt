@@ -546,6 +546,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += designRequirementsButton
         actions.add(designRequirementsButton)
 
+        val backlogHierarchyButton = JButton("Inspect Backlog Hierarchy…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Backlog objectives, criteria, scope, owners, Requirement content, personal data, local paths, secrets, credentials, priority, commitment, readiness, assignment, execution, and authority are withheld.",
+                    "GAEP Backlog Hierarchy",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Backlog Hierarchy", status, output, buttons) {
+                    controller.readBacklogHierarchy(initiativeId)
+                }
+            }
+        }
+        buttons += backlogHierarchyButton
+        actions.add(backlogHierarchyButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

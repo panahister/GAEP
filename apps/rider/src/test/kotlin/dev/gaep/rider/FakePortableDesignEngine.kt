@@ -42,6 +42,7 @@ private val userJourneyId = UUID.fromString("65656565-6565-4565-8565-65656565656
 private val informationArchitectureId = UUID.fromString("66666666-6666-4666-8666-666666666666")
 private val screenStateInventoryId = UUID.fromString("67676767-6767-4767-8767-676767676767")
 private val designRequirementsId = UUID.fromString("68686868-6868-4868-8868-686868686868")
+private val backlogHierarchyId = UUID.fromString("91919191-9191-4191-8191-919191919191")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -267,6 +268,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.requirements.snapshot" -> handleDesignRequirements(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "backlog.hierarchy.snapshot" -> handleBacklogHierarchy(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3058,6 +3064,101 @@ private fun handleDesignRequirements(id: Long, params: JsonObject, workspacePath
         }
         workspacePath.endsWith("bad-design-requirements-snapshot-private") -> {
             value.addProperty("requirementStatement", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleBacklogHierarchy(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BACKLOG HIERARCHY PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-backlog-hierarchy-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T09:20:00.000Z"
+    val candidateDigest = "sha256:${"8".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "backlog-hierarchy-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "backlog-hierarchy-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", backlogHierarchyId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("nodeCount", 24)
+            addProperty("epicCount", 2)
+            addProperty("featureCount", 5)
+            addProperty("storyCount", 8)
+            addProperty("taskCount", 9)
+            addProperty("rootCount", 2)
+            addProperty("leafCount", 12)
+            addProperty("requirementTraceCount", 17)
+            addProperty("untracedStoryTaskCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleWorkItemCount", 1)
+            addProperty("staleChangeCount", 0)
+            addProperty("staleRequirementCount", 2)
+            addProperty("unresolvedQuestionCount", 3)
+            addProperty("hierarchyCompletenessState", "not-assessed")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Backlog Hierarchy bindings require review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "backlog-hierarchy-status-is-observational-and-does-not-establish-priority-commitment-ownership-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", backlogHierarchyId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"9".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("nodeCount", 24)
+            addProperty("epicCount", 2)
+            addProperty("featureCount", 5)
+            addProperty("storyCount", 8)
+            addProperty("taskCount", 9)
+            addProperty("requirementTraceCount", 17)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T09:19:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-level-counts-statuses-and-digests-only-not-backlog-objectives-criteria-scope-owner-requirement-content-personal-data-secrets-credentials-or-machine-paths",
+        )
+        addProperty(
+            "authorityBoundary",
+            "backlog-hierarchy-projection-is-read-only-and-does-not-prioritize-commit-assign-admit-execute-or-authorize-implementation-or-action",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-backlog-hierarchy-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("taskCount", 10)
+        }
+        workspacePath.endsWith("bad-backlog-hierarchy-snapshot-private") -> {
+            value.addProperty("workItemObjective", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)
