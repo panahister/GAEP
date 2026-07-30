@@ -59,6 +59,7 @@ const designRequirementsId = "61616161-6161-4161-8161-616161616161"
 const backlogHierarchyId = "81818181-8181-4181-8181-818181818181"
 const mvpSliceDefinitionId = "82828282-8282-4282-8282-828282828282"
 const prioritizationModelId = "83838383-8383-4383-8383-838383838383"
+const acceptanceCriteriaId = "84848484-8484-4484-8484-848484848484"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -175,6 +176,8 @@ input.on("line", (line) => {
       return readMvpSliceDefinition(id, request.params)
     case "planning.prioritization.snapshot":
       return readPrioritizationModel(id, request.params)
+    case "planning.acceptanceCriteria.snapshot":
+      return readAcceptanceCriteria(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -2333,6 +2336,81 @@ function readPrioritizationModel(id, params) {
   if (workspacePath.endsWith("bad-prioritization-snapshot-digest")) value.candidate.scoredSubjectCount = 4
   if (workspacePath.endsWith("bad-prioritization-snapshot-private")) {
     value.dimensionEstimate = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readAcceptanceCriteria(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE ACCEPTANCE CRITERIA PARAMS")
+  }
+  const candidateDigest = `sha256:${"4".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "acceptance-criteria-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: acceptanceCriteriaId, revision: 2, digest: candidateDigest },
+    hierarchy: { recordId: backlogHierarchyId, revision: 2, digest: `sha256:${"8".repeat(64)}` },
+    mvpSliceDefinition: { recordId: mvpSliceDefinitionId, revision: 2, digest: `sha256:${"a".repeat(64)}` },
+    prioritizationModel: { recordId: prioritizationModelId, revision: 2, digest: `sha256:${"c".repeat(64)}` },
+    subjectCount: 4,
+    coveredSubjectCount: 3,
+    uncoveredSubjectCount: 1,
+    criterionCount: 6,
+    testableCriterionCount: 5,
+    unassessedCriterionCount: 1,
+    requirementTraceCount: 8,
+    uncoveredRequirementCount: 2,
+    verificationMethodCount: 2,
+    staleBindingCount: 0,
+    staleHierarchyCount: 0,
+    staleMvpSliceDefinitionCount: 0,
+    stalePrioritizationModelCount: 0,
+    invalidCriterionCount: 1,
+    unresolvedQuestionCount: 2,
+    criterionSetCompletenessState: "not-assessed",
+    requirementCoverageState: "not-assessed",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Acceptance Criteria subjects require review"],
+    assessedAt: "2026-07-30T12:20:00.000Z",
+    authorityBoundary: "acceptance-criteria-status-is-observational-and-does-not-establish-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-implementation-readiness-assignment-execution-acceptance-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "acceptance-criteria-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: acceptanceCriteriaId,
+      revision: 2,
+      digest: candidateDigest,
+      state: "candidate",
+      subjectCatalogDigest: `sha256:${"5".repeat(64)}`,
+      criterionCatalogDigest: `sha256:${"6".repeat(64)}`,
+      verificationMethodCatalogDigest: `sha256:${"7".repeat(64)}`,
+      coverageDigest: `sha256:${"9".repeat(64)}`,
+      subjectCount: 4,
+      criterionCount: 6,
+      testableCriterionCount: 5,
+      requirementTraceCount: 8,
+      verificationMethodCount: 2,
+      reviewState: "held",
+      updatedAt: "2026-07-30T12:19:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-subject-criterion-method-coverage-snapshot-digests-only-not-criterion-text-requirement-identities-verification-evidence-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "acceptance-criteria-projection-is-read-only-and-does-not-establish-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-implementation-readiness-assignment-execution-acceptance-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-acceptance-criteria-snapshot-binding")) content.initiative.id = acceptanceCriteriaId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-acceptance-criteria-snapshot-digest")) value.candidate.testableCriterionCount = 6
+  if (workspacePath.endsWith("bad-acceptance-criteria-snapshot-private")) {
+    value.criterionText = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

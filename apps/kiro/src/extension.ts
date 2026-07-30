@@ -33,6 +33,7 @@ import {
   type BacklogHierarchyProjection,
   type MvpSliceDefinitionProjection,
   type PrioritizationModelProjection,
+  type AcceptanceCriteriaProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -158,6 +159,7 @@ const commandIds = {
   backlogHierarchy: "gaepKiro.backlogHierarchy.inspect",
   mvpSliceDefinition: "gaepKiro.mvpSliceDefinition.inspect",
   prioritizationModel: "gaepKiro.prioritizationModel.inspect",
+  acceptanceCriteria: "gaepKiro.acceptanceCriteria.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -300,6 +302,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.backlogHierarchy, (input?: unknown) => runUserCommand(() => showBacklogHierarchy(pool, input))),
     vscode.commands.registerCommand(commandIds.mvpSliceDefinition, (input?: unknown) => runUserCommand(() => showMvpSliceDefinition(pool, input))),
     vscode.commands.registerCommand(commandIds.prioritizationModel, (input?: unknown) => runUserCommand(() => showPrioritizationModel(pool, input))),
+    vscode.commands.registerCommand(commandIds.acceptanceCriteria, (input?: unknown) => runUserCommand(() => showAcceptanceCriteria(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -1859,6 +1862,49 @@ async function showPrioritizationModel(
     ] : []),
     "",
     "Candidate identities, counts, statuses, method, membership, ranking, and snapshot digests only; no dimension estimates, evidence identities, uncertainty, slice content, or personal data; this does not establish evidence validity, priority, commitment, scope decisions, approval, acceptance-criteria validity, Definition of Ready or Done, implementation readiness, assignment, execution, implementation authority, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showAcceptanceCriteria(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<AcceptanceCriteriaProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Acceptance Criteria inspection", "Initiative ID")
+  const projection = await client.readAcceptanceCriteria(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Acceptance Criteria candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Coverage: ${status.subjectCount} subjects · ${status.coveredSubjectCount} covered · ${status.uncoveredSubjectCount} uncovered · ${status.requirementTraceCount} Requirement traces · ${status.uncoveredRequirementCount} uncovered Requirements`,
+    `Criteria: ${status.criterionCount} total · ${status.testableCriterionCount} candidate-testable · ${status.unassessedCriterionCount} unassessed · ${status.verificationMethodCount} verification methods`,
+    `Candidate gaps: ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleHierarchyCount} stale hierarchies · ${status.staleMvpSliceDefinitionCount} stale MVP definitions · ${status.stalePrioritizationModelCount} stale prioritization models · ${status.invalidCriterionCount} invalid criteria`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Subject catalog digest: ${record.subjectCatalogDigest}`,
+      `Criterion catalog digest: ${record.criterionCatalogDigest}`,
+      `Verification-method catalog digest: ${record.verificationMethodCatalogDigest}`,
+      `Coverage digest: ${record.coverageDigest}`,
+      `Candidate coverage: ${record.subjectCount} subjects · ${record.criterionCount} criteria · ${record.testableCriterionCount} candidate-testable · ${record.requirementTraceCount} Requirement traces · ${record.verificationMethodCount} methods · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and subject, criterion, verification-method, coverage, and snapshot digests only; no criterion text, Requirement identities, verification evidence, or personal data; this does not establish criterion validity or completeness, Requirement satisfaction, priority, commitment, approval, Definition of Ready or Done, implementation readiness, assignment, execution, acceptance, implementation authority, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

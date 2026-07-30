@@ -145,7 +145,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
     fail("package identity, host engine, entry point, or extension kind differs")
   }
   const commands = packagedManifest.contributes?.commands
-  if (!Array.isArray(commands) || commands.length !== 70 ||
+  if (!Array.isArray(commands) || commands.length !== 71 ||
       new Set(commands.map((command) => command.command)).size !== commands.length ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase2UxFigma") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase2ChangeImpactAgentModel") ||
@@ -161,6 +161,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.backlogHierarchy.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.mvpSliceDefinition.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.prioritizationModel.inspect") ||
+      !commands.some((command) => command.command === "gaepKiro.acceptanceCriteria.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designSystemTokenContract.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.accessibilityDesignRules.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.responsiveMultiPlatformTargets.inspect") ||

@@ -85,6 +85,7 @@
     "onCommand:gaepKiro.backlogHierarchy.inspect",
     "onCommand:gaepKiro.mvpSliceDefinition.inspect",
     "onCommand:gaepKiro.prioritizationModel.inspect",
+    "onCommand:gaepKiro.acceptanceCriteria.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -319,6 +320,10 @@
       {
         "command": "gaepKiro.prioritizationModel.inspect",
         "title": "GAEP for Kiro: Inspect Governed Prioritization Model Candidate"
+      },
+      {
+        "command": "gaepKiro.acceptanceCriteria.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Acceptance Criteria Candidate"
       },
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",
