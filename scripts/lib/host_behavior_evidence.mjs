@@ -57,7 +57,7 @@ const definitions = {
       requiredMarkers: [
         "PASS exact bounded Kiro VSIX payload and built-byte parity",
         "PASS isolated compatible-host VSIX previous-version install/upgrade/reinstall/rollback/uninstall/absence/final install",
-        "PASS installed compatible-host provider/model/Phase 1 and Phase 2 dashboard smoke: two bounded capability rows, exact Initiative scope, 23-of-23 UX/Figma attention state, explicit no-authority boundaries, private-safe output, and immutable fixture store",
+        "PASS installed compatible-host provider/model/Phase 1 and Phase 2 dashboard smoke: two bounded capability rows, exact Initiative scope, 23-of-23 UX/Figma attention state, integrated change/impact/execution truth, explicit no-authority boundaries, private-safe output, and immutable fixture store",
         "GAEP for Kiro exact installed VSIX activation smoke: PASS",
       ],
     }],
@@ -165,6 +165,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/DesignDriftDetectionProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/Phase2UxFigmaDashboardModels.cs",
       "apps/visual-studio/Gaep.HostClient/Phase2UxFigmaDashboardProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/Phase2ChangeImpactAgentModelDashboardModels.cs",
+      "apps/visual-studio/Gaep.HostClient/Phase2ChangeImpactAgentModelDashboardProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/EngineClient.cs",
       "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs",
       "apps/visual-studio/Gaep.HostClient.Tests/Gaep.HostClient.Tests.csproj",
@@ -181,7 +183,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (586)",
+        "GAEP Visual Studio host-client tests: PASS (595)",
       ],
     }],
   },

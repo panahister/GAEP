@@ -21,8 +21,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260730T040035Z-phase-2-ux-figma-dashboard-packages.json",
-  conformance: "evidence/ide-conformance/20260730T040035Z-phase-2-ux-figma-dashboard.json",
+  packages: "evidence/local-packages/20260730T045105Z-phase-2-change-impact-agent-model-dashboard-packages.json",
+  conformance: "evidence/ide-conformance/20260730T045105Z-phase-2-change-impact-agent-model-dashboard.json",
   example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
 }
 const gateDefinitions = [
@@ -200,7 +200,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +227,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    phase2UxFigmaDashboard
+    phase2ChangeImpactAgentModelDashboard
+      ? {
+          id: "phase-2-change-impact-agent-model-dashboard-closure",
+          state: "not-established",
+          basis: "the exact derived Phase 2 synchronization-change, bounded-impact and Initiative-scoped Agent/Model execution-truth views are implemented locally across Product Studio and four host projections; real Product and design evidence, returned current Figma content, live Figma connection or execution, complete impact coverage, external design validity, live-provider and semantic output quality, accountable human review, approval or Baseline Set designation, readiness, selection, Run launch, remediation or implementation effects, native-host interaction and Product Owner acceptance remain incomplete",
+        }
+      : phase2UxFigmaDashboard
       ? {
           id: "phase-2-ux-figma-dashboard-closure",
           state: "not-established",
@@ -479,6 +485,9 @@ export async function buildPhase0AcceptanceReport({
   const phase2UxFigmaDashboard = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "phase2-ux-figma-dashboard" && capability.state === "implemented"))
+  const phase2ChangeImpactAgentModelDashboard = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "phase2-change-impact-agent-model-dashboard" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -504,6 +513,7 @@ export async function buildPhase0AcceptanceReport({
     designBaseline,
     designDriftDetection,
     phase2UxFigmaDashboard,
+    phase2ChangeImpactAgentModelDashboard,
   })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
@@ -521,8 +531,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: phase2UxFigmaDashboard
+    phase: phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: phase2ChangeImpactAgentModelDashboard
+      ? "phase-2-change-impact-agent-model-dashboard-local"
+      : phase2UxFigmaDashboard
       ? "phase-2-ux-figma-dashboard-local"
       : designDriftDetection
       ? "phase-2-design-drift-detection-local"
@@ -612,7 +624,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: phase2UxFigmaDashboard
+    claimBoundary: phase2ChangeImpactAgentModelDashboard
+      ? "This report binds the exact derived Phase 2 synchronization-change, bounded-impact and Initiative-scoped Agent/Model execution-truth views to the exact Phase 2 UX/Figma and Agent/Model source snapshot digests, exact Product and Initiative identity and revision digests, bounded source availability, trace, drift, freshness, capability, selection, Run, Managed Run and handoff counts, unavailable provider usage and cost, not-assessed live-provider and semantic output quality, explicit no-authority governance states, accessible Product Studio and four-host projections, and current package, test, host and conformance evidence. This report does not create a second source of truth, establish impact completeness, design or external completeness or validity, provider readiness or quality, provider preference, selection, Run launch, handoff acknowledgement, approval, a Baseline Set designation, readiness, phase entry, remediation, Figma, implementation or effect authority, connect to or call Figma, request credentials, grant permissions, authorize or perform imports or writes, prove real Product research or returned current Figma content, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : phase2UxFigmaDashboard
       ? "This report binds the exact derived Phase 2 UX/Figma dashboard, canonical ordered P2-01 through P2-23 source catalog, exact Product and Initiative identity and revision digests, explicit current, attention-required and unavailable source states, bounded experience, design-system, Figma, trace, drift and freshness aggregates, stable source-catalog and snapshot digests, explicit no-authority governance states, accessible Product Studio and four-host projections, and current package, test, host and conformance evidence. This report does not create a second source of truth, establish design or external completeness or validity, connect to or call Figma, request credentials, grant permissions, authorize or perform imports or writes, establish Human Design Approval or a Baseline Set designation, grant readiness or phase entry, apply remediation, change implementation, grant action authority, prove real Product research or returned current Figma content, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : designDriftDetection
       ? "This report binds the exact Design Drift Detection candidate lifecycle, exact Product and Initiative identity, exact current Design Baseline candidate, returned Figma snapshot candidate, Design Requirements candidate, Design-to-Requirement trace candidate and declared versioned implementation-target catalog, bounded requirement-to-design and design-to-implementation observations, comparison and membership digests, classifications, severities, attributable human-review state, remediation candidates with no applied effect, expiration, stale-binding, stale-source and unresolved-gap metadata, immutable history, portable transport and four-host privacy-safe projections to current package, test, host and conformance evidence. This report does not establish an actual Baseline Set, comparison or external completeness, drift completeness, design or implementation validity, approval, readiness, remediation effect, connect to or call Figma, request credentials, grant permissions, authorize or perform writes or imports, change implementation, grant implementation or action authority, prove real Product research or returned current Figma content, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
