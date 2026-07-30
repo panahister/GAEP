@@ -65,6 +65,7 @@
     { "id": "backlog-hierarchy", "label": "Exact governed Backlog Hierarchy candidate projection with strict Epic, Feature, Story and Task topology plus exact Work Item, Change and Requirement bindings, without duplicated work authority, priority, commitment, ownership, ready or done state, implementation readiness, assignment, execution, implementation, write, or action authority" },
     { "id": "mvp-slice-definition", "label": "Exact governed MVP and Vertical Slice candidate projection with complete Backlog node scope partition, ordered independently testable slices and exact current Backlog Hierarchy binding, without priority, commitment, scope approval, acceptance-criteria validity, ready or done state, implementation readiness, assignment, execution, implementation, write, or action authority" },
     { "id": "prioritization-model", "label": "Exact governed explainable Prioritization Model candidate projection over the current MVP and Vertical Slice definition with deterministic value, risk-reduction, dependency-enablement and inverse-cost scoring, evidence and uncertainty inputs, stable tie handling and no elevation of candidate scores into evidence validity, priority, commitment, scope decision, approval, ready or done state, implementation readiness, assignment, execution, implementation, write, or action authority" },
+    { "id": "acceptance-criteria", "label": "Exact governed Acceptance Criteria candidate projection over current MVP Story and Task subjects with structured precondition, stimulus and expected-result criteria, exact Requirement traces, declared verification methods and exact current Backlog Hierarchy, MVP and Vertical Slice, and Prioritization Model bindings, without elevating candidate testability or coverage into criterion validity, completeness, Requirement satisfaction, priority, commitment, approval, ready or done state, implementation readiness, assignment, execution, acceptance, implementation, write, or action authority" },
     { "id": "design-system-token-contract", "label": "Exact governed Design System and Token Contract candidate projection with bounded system, token, variable, component and requirement-coverage metadata, without system, token, variable or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "accessibility-design-rules", "label": "Exact governed Accessibility Design Rules candidate projection with bounded target, rule, check, evidence-state and requirement-coverage metadata, without accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "responsive-multi-platform-targets", "label": "Exact governed Responsive and Multi-Platform Targets candidate projection with bounded platform-target, breakpoint, behavior, check, evidence-state and requirement-coverage metadata, without responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
@@ -92,7 +93,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T084500Z-phase-3a-prioritization-model-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T093000Z-phase-3a-acceptance-criteria-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -294,6 +295,9 @@
         { "capabilityId": "prioritization-model", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["prioritizationModel?: {", "engine.prioritizationModel!.project(initiative.id)", "id: \"prioritization-models\"", "Candidate identities, counts, statuses, method, membership, ranking, and snapshot digests only; no dimension estimates, evidence identities, uncertainty, slice content, personal data, evidence validity, priority decision, commitment, scope decision, approval, ready or done, implementation readiness, assignment, execution, implementation authority, or action authority."] }
         ] },
+        { "capabilityId": "acceptance-criteria", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["acceptanceCriteria?: {", "engine.acceptanceCriteria!.project(initiative.id)", "id: \"acceptance-criteria\"", "Candidate identities, counts, statuses, and subject, criterion, verification-method, coverage, and snapshot digests only; no criterion text, Requirement identities, verification evidence, personal data, criterion validity or completeness, Requirement satisfaction, priority, commitment, approval, ready or done, implementation readiness, assignment, execution, acceptance, implementation authority, or action authority."] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designSystemTokenContract?: {", "engine.designSystemTokenContract!.project(initiative.id)", "id: \"design-system-token-contract\"", "no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."] }
         ] },
@@ -355,7 +359,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T084500Z-phase-3a-prioritization-model-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T093000Z-phase-3a-acceptance-criteria-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -582,6 +586,10 @@
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readPrioritizationModel(", "this.request(\"planning.prioritization.snapshot\"", "prioritizationModelProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showPrioritizationModel", "GAEP governed Prioritization Model candidate", "no dimension estimates", "does not establish evidence validity, priority, commitment"] }
         ] },
+        { "capabilityId": "acceptance-criteria", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readAcceptanceCriteria(", "this.request(\"planning.acceptanceCriteria.snapshot\"", "acceptanceCriteriaProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showAcceptanceCriteria", "GAEP governed Acceptance Criteria candidate", "no criterion text", "does not establish criterion validity or completeness"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignSystemTokenContract(", "this.request(\"design.systemTokenContract.snapshot\"", "designSystemTokenContractProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignSystemTokenContract", "GAEP governed Design System and Token Contract candidate", "does not establish system, token, variable, or component validity"] }
@@ -660,7 +668,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T084500Z-phase-3a-prioritization-model-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T093000Z-phase-3a-acceptance-criteria-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -932,6 +940,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Prioritization Model candidate", "The MVP and Vertical Slice Definition changed", "no dimension estimates"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["PrioritizationModelProjection", "PRIORITIZATION_MODEL_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] },
+        { "capabilityId": "acceptance-criteria", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readAcceptanceCriteria(", "portableRequest(\"planning.acceptanceCriteria.snapshot\"", "parseAcceptanceCriteriaEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Acceptance Criteria candidate", "The Prioritization Model changed", "no criterion text"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["AcceptanceCriteriaProjection", "ACCEPTANCE_CRITERIA_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignSystemTokenContract(", "portableRequest(\"design.systemTokenContract.snapshot\"", "parseDesignSystemTokenContractEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design System and Token Contract candidate", "no system, token, variable", "ownership authority"] },
@@ -1027,7 +1040,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T084500Z-phase-3a-prioritization-model-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T093000Z-phase-3a-acceptance-criteria-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1310,6 +1323,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadPrioritizationModelAsync(", "\"planning.prioritization.snapshot\"", "ParsePrioritizationModelResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Prioritization Model candidate", "The MVP and Vertical Slice Definition changed", "no dimension estimates"] },
           { "path": "apps/visual-studio/Gaep.HostClient/PrioritizationModelProtocol.cs", "contains": ["PrioritizationModelProjection", "PrioritizationModelProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "acceptance-criteria", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadAcceptanceCriteriaAsync(", "\"planning.acceptanceCriteria.snapshot\"", "ParseAcceptanceCriteriaResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Acceptance Criteria candidate", "The Prioritization Model changed", "no criterion text"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/AcceptanceCriteriaProtocol.cs", "contains": ["AcceptanceCriteriaProjection", "AcceptanceCriteriaProjectionAuthorityBoundary"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignSystemTokenContractAsync(", "\"design.systemTokenContract.snapshot\"", "ParseDesignSystemTokenContractResponse"] },
