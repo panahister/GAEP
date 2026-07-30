@@ -941,14 +941,110 @@ describe("Backlog Hierarchy host protocol", () => {
     })
     expect(JSON.stringify(technologySnapshot)).not.toContain(technologyProfileInput.title)
     expect(JSON.stringify(technologySnapshot)).not.toContain("Node.js")
-    await expect(host.dispatch({
+    const technologyRevised = await host.dispatch({
       jsonrpc: "2.0", id: "technology-revise", protocolVersion: 2,
       method: "planning.technologyProfile.revise",
       params: {
         actorId: "host-test", recordId: technologyCreated.id, expectedRevision: technologyCreated.revision,
         record: { ...technologyProfileInput, title: "Host reviewed Technology Profile candidate" },
       },
-    })).resolves.toMatchObject({ id: technologyCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+    }) as { id: string; revision: number; predecessorDigest: string }
+    expect(technologyRevised).toMatchObject({ id: technologyCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+
+    const boilerplateRegistryInput = {
+      initiativeId: initiative.id,
+      context: input.context,
+      informationClassification: "internal" as const,
+      title: "Host Boilerplate Registry candidate",
+      implementationUnitModel: {
+        recordId: unitsRevised.id, revision: unitsRevised.revision, digest: canonicalDigest(unitsRevised),
+      },
+      technologyProfile: {
+        recordId: technologyRevised.id, revision: technologyRevised.revision, digest: canonicalDigest(technologyRevised),
+      },
+      architectureEvidenceReferences: [architectureEvidence],
+      entries: technologyProfileInput.profiles.map((profile, index) => ({
+        id: randomUUID(), ordinal: index + 1,
+        canonicalName: `Host candidate ${profile.profileKind} foundation ${index + 1}`,
+        kind: profile.profileKind === "service" ? "service-template" as const : "client-template" as const,
+        sourceKind: "local-repository" as const, sourceReference: `templates/${profile.profileKind}-${index + 1}`,
+        versionCandidate: `host-candidate-commit-${index + 1}`, versionState: "exact-candidate" as const,
+        applicabilityState: "candidate-preferred" as const, availabilityState: "candidate-available" as const,
+        integrityState: "candidate-verified" as const, provenanceState: "candidate-traceable" as const,
+        supportState: "candidate-supported" as const, lifecycleState: "active" as const,
+        technologyCompatibilityState: "candidate-compatible" as const,
+        architectureCompatibilityState: "candidate-compatible" as const,
+        licenseState: "candidate-allowed" as const, securityPolicyState: "candidate-conformant" as const,
+        exceptionState: "not-required-candidate" as const, applicableTechnologyProfileIds: [profile.id],
+        applicableImplementationUnitIds: [profile.implementationUnitId],
+        capabilities: ["Provides a bounded host candidate foundation"],
+        knownLimitations: ["Registry evidence does not designate, approve, select, or bind this candidate"],
+        rationale: "The exact local host fixture observation identifies an inspectable candidate without organizational authority",
+        evidenceReferences: [{
+          kind: "repository-observation" as const, sourceId: `host-foundation-${index + 1}`, revision: 1,
+          digest: canonicalDigest({ profileId: profile.id, implementationUnitId: profile.implementationUnitId }),
+          observationState: "observed-not-validated" as const,
+        }],
+        assessedBy: { kind: "human" as const, id: "host-boilerplate-reviewer" },
+        assessedAt: "2026-07-30T00:00:00.000Z",
+      })),
+      unresolvedQuestions: [],
+      limitations: ["Candidate entries require accountable organizational review"],
+      reviewState: "ready-for-human-review" as const,
+      organizationalDesignationState: "not-established" as const, endorsementApprovalState: "not-established" as const,
+      supportCommitmentState: "not-established" as const, compatibilityTruthState: "not-established" as const,
+      compatibilityCompletenessState: "not-established" as const, licensingApprovalState: "not-established" as const,
+      securityApprovalState: "not-established" as const, exceptionWaiverState: "not-established" as const,
+      selectionBindingState: "not-established" as const, architectureBaselineDesignationState: "not-established" as const,
+      implementationReadinessState: "not-established" as const, implementationCompletenessState: "not-established" as const,
+      assignmentExecutionState: "not-established" as const, acceptanceDecisionState: "not-established" as const,
+      mergeReadinessState: "not-established" as const, releaseReadinessState: "not-established" as const,
+      deploymentReadinessState: "not-established" as const, actionAuthorityState: "not-granted" as const,
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-v1-rejected", protocolVersion: 1,
+      method: "planning.boilerplateRegistry.snapshot", params: { initiativeId: initiative.id },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-read-empty", protocolVersion: 2,
+      method: "planning.boilerplateRegistry.read", params: { initiativeId: initiative.id },
+    })).resolves.toBeNull()
+    const boilerplateCreated = await host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-create", protocolVersion: 2,
+      method: "planning.boilerplateRegistry.create", params: { actorId: "host-test", record: boilerplateRegistryInput },
+    }) as { id: string; revision: number; entryCatalogDigest: string; sourceCatalogDigest: string }
+    expect(boilerplateCreated).toMatchObject({
+      revision: 1, entryCatalogDigest: expect.stringMatching(/^sha256:/u), sourceCatalogDigest: expect.stringMatching(/^sha256:/u),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-assess", protocolVersion: 2,
+      method: "planning.boilerplateRegistry.assess", params: { initiativeId: initiative.id },
+    })).resolves.toMatchObject({
+      state: "candidate-complete", entryCount: 2, exactVersionCandidateCount: 2,
+      unavailableEntryCount: 0, integrityMismatchCount: 0, staleTechnologyProfileCount: 0,
+    })
+    const boilerplateSnapshot = await host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-snapshot", protocolVersion: 2,
+      method: "planning.boilerplateRegistry.snapshot", params: { initiativeId: initiative.id },
+    }) as Record<string, unknown> & { snapshotDigest: string }
+    const { snapshotDigest: boilerplateSnapshotDigest, ...boilerplateSnapshotBody } = boilerplateSnapshot
+    expect(boilerplateSnapshotDigest).toBe(canonicalDigest(boilerplateSnapshotBody))
+    expect(boilerplateSnapshot).toMatchObject({
+      candidate: { id: boilerplateCreated.id, entryCount: 2, mandatoryCandidateCount: 0 },
+      privacyBoundary: expect.stringContaining("not-boilerplate-names-locators-versions-capabilities"),
+      authorityBoundary: expect.stringContaining("does-not-establish-organizational-designation-endorsement-approval"),
+    })
+    expect(JSON.stringify(boilerplateSnapshot)).not.toContain(boilerplateRegistryInput.title)
+    expect(JSON.stringify(boilerplateSnapshot)).not.toContain(boilerplateRegistryInput.entries[0]!.canonicalName)
+    expect(JSON.stringify(boilerplateSnapshot)).not.toContain(boilerplateRegistryInput.entries[0]!.sourceReference)
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "boilerplate-revise", protocolVersion: 2,
+      method: "planning.boilerplateRegistry.revise",
+      params: {
+        actorId: "host-test", recordId: boilerplateCreated.id, expectedRevision: boilerplateCreated.revision,
+        record: { ...boilerplateRegistryInput, title: "Host reviewed Boilerplate Registry candidate" },
+      },
+    })).resolves.toMatchObject({ id: boilerplateCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
 
     const revised = await host.dispatch({
       jsonrpc: "2.0",

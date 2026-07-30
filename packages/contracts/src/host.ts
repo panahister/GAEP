@@ -11,6 +11,7 @@ import { definitionOfDoneInputSchema } from "./definition-of-done.js"
 import { implementationUnitModelInputSchema } from "./implementation-unit-model.js"
 import { dependencyMappingInputSchema } from "./dependency-mapping.js"
 import { technologyProfileInputSchema } from "./technology-profile.js"
+import { boilerplateRegistryInputSchema } from "./boilerplate-registry.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -714,6 +715,18 @@ export const hostTechnologyProfileReviseParamsSchema = z.object({
   record: technologyProfileInputSchema,
 }).strict()
 
+export const hostBoilerplateRegistryCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: boilerplateRegistryInputSchema,
+}).strict()
+
+export const hostBoilerplateRegistryReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: boilerplateRegistryInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1013,6 +1026,11 @@ export const hostMethodSchema = z.enum([
   "planning.technologyProfile.revise",
   "planning.technologyProfile.assess",
   "planning.technologyProfile.snapshot",
+  "planning.boilerplateRegistry.read",
+  "planning.boilerplateRegistry.create",
+  "planning.boilerplateRegistry.revise",
+  "planning.boilerplateRegistry.assess",
+  "planning.boilerplateRegistry.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1351,6 +1369,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.technologyProfile.revise", hostTechnologyProfileReviseParamsSchema),
   requestVariant("planning.technologyProfile.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.technologyProfile.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.boilerplateRegistry.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.boilerplateRegistry.create", hostBoilerplateRegistryCreateParamsSchema),
+  requestVariant("planning.boilerplateRegistry.revise", hostBoilerplateRegistryReviseParamsSchema),
+  requestVariant("planning.boilerplateRegistry.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.boilerplateRegistry.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),
