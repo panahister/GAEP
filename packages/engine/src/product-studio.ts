@@ -33,6 +33,7 @@ import {
   designConflictResolutionSchema,
   humanDesignApprovalSchema,
   designBaselineSchema,
+  designDriftDetectionSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -122,6 +123,7 @@ import {
   type DesignConflictResolution,
   type HumanDesignApproval,
   type DesignBaseline,
+  type DesignDriftDetection,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -187,6 +189,14 @@ import {
   humanDesignApprovalSubjectReference,
 } from "./human-design-approval.js"
 import { designBaselineDesignationReceiptDigest } from "./design-baseline.js"
+import {
+  designDriftBaselineReference,
+  designDriftComparisonDigest,
+  designDriftImplementationTargetCatalogDigest,
+  designDriftRequirementsReference,
+  designDriftSnapshotReference,
+  designDriftTraceReference,
+} from "./design-drift-detection.js"
 import {
   canonicalDigest as portableDesignDigest,
   importPortableDesignBundle,
@@ -2425,6 +2435,16 @@ export class ProductStudioService {
       /^design-baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       designBaselineSchema,
     )
+    const designDriftDetections = await this.listRecords(
+      "design-drift-detections",
+      /^[0-9a-f-]+\.json$/i,
+      designDriftDetectionSchema,
+    )
+    const designDriftDetectionHistory = await this.listRecords(
+      "design-drift-detection-history",
+      /^design-drift-detection-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      designDriftDetectionSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2937,6 +2957,13 @@ export class ProductStudioService {
       "design-baseline-candidate",
       designBaselineHistory,
       (record) => `design-baseline-history/design-baseline-${record.id}-r${record.revision}.json`,
+    )
+    append("design-drift-detections", "design-drift-detection-candidate", designDriftDetections)
+    append(
+      "design-drift-detection-history",
+      "design-drift-detection-candidate",
+      designDriftDetectionHistory,
+      (record) => `design-drift-detection-history/design-drift-detection-${record.id}-r${record.revision}.json`,
     )
     append(
       "candidates",
@@ -3490,6 +3517,14 @@ export class ProductStudioService {
           `design-baseline-history/design-baseline-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Design Baseline history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("design-drift-detection-history/")) {
+        const record = validated as DesignDriftDetection
+        const expectedHistoryPath =
+          `design-drift-detection-history/design-drift-detection-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Design Drift Detection history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4624,7 +4659,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution | HumanDesignApproval | DesignBaseline,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution | HumanDesignApproval | DesignBaseline | DesignDriftDetection,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4656,7 +4691,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution | HumanDesignApproval | DesignBaseline,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution | HumanDesignApproval | DesignBaseline | DesignDriftDetection,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -9107,6 +9142,120 @@ export class ProductStudioService {
       }
     }
 
+    const designDriftDetections = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-drift-detections/"))
+      .map(([, record]) => designDriftDetectionSchema.parse(record))
+    const designDriftDetectionHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-drift-detection-history/"))
+      .map(([, record]) => designDriftDetectionSchema.parse(record))
+    validateVersionedBusinessRecords(
+      designDriftDetections,
+      designDriftDetectionHistory,
+      "Design Drift Detection",
+    )
+    const designTraceByExact = new Map(
+      [...designToRequirementBindings, ...designToRequirementBindingHistory].map((record) => [
+        `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+        record,
+      ]),
+    )
+    for (const candidate of [...designDriftDetections, ...designDriftDetectionHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        objectiveDigest: candidate.objectiveDigest,
+        designBaseline: candidate.designBaseline,
+        returnedFigmaSnapshot: candidate.returnedFigmaSnapshot,
+        designRequirements: candidate.designRequirements,
+        designTrace: candidate.designTrace,
+        implementationTargetCatalogRevision: candidate.implementationTargetCatalogRevision,
+        implementationTargets: candidate.implementationTargets,
+        implementationTargetCatalogDigest: candidate.implementationTargetCatalogDigest,
+        comparisonPolicyDigest: candidate.comparisonPolicyDigest,
+        observations: candidate.observations,
+        comparisonDigest: candidate.comparisonDigest,
+        remediationCandidates: candidate.remediationCandidates,
+        candidateResult: candidate.candidateResult,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        comparisonCompletenessState: candidate.comparisonCompletenessState,
+        externalCompletenessState: candidate.externalCompletenessState,
+        designValidityState: candidate.designValidityState,
+        implementationValidityState: candidate.implementationValidityState,
+        approvalState: candidate.approvalState,
+        baselineDesignationState: candidate.baselineDesignationState,
+        readinessState: candidate.readinessState,
+        remediationAuthorityState: candidate.remediationAuthorityState,
+        figmaConnectionAuthorityState: candidate.figmaConnectionAuthorityState,
+        credentialAuthorityState: candidate.credentialAuthorityState,
+        permissionGrantState: candidate.permissionGrantState,
+        importExecutionState: candidate.importExecutionState,
+        writeExecutionState: candidate.writeExecutionState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Design Drift Detection ${candidate.id} membership digest is invalid`)
+      }
+      if (candidate.implementationTargetCatalogDigest !== designDriftImplementationTargetCatalogDigest(candidate)) {
+        throw new Error(`Import Design Drift Detection ${candidate.id} target catalog digest is invalid`)
+      }
+      if (candidate.comparisonDigest !== designDriftComparisonDigest(candidate)) {
+        throw new Error(`Import Design Drift Detection ${candidate.id} comparison receipt is invalid`)
+      }
+      const baseline = exactDesignBaselines.get(
+        `${candidate.designBaseline.recordId}:${candidate.designBaseline.revision}:${candidate.designBaseline.digest}`,
+      )
+      const snapshot = finalizedSnapshotByExact.get(
+        `${candidate.returnedFigmaSnapshot.recordId}:${candidate.returnedFigmaSnapshot.revision}:${candidate.returnedFigmaSnapshot.digest}`,
+      )
+      const requirements = designRequirementsByExact.get(
+        `${candidate.designRequirements.recordId}:${candidate.designRequirements.revision}:${candidate.designRequirements.digest}`,
+      )
+      const trace = designTraceByExact.get(
+        `${candidate.designTrace.recordId}:${candidate.designTrace.revision}:${candidate.designTrace.digest}`,
+      )
+      if (!baseline || baseline.productId !== candidate.productId || baseline.initiativeId !== candidate.initiativeId ||
+          canonicalDigest(candidate.designBaseline) !== canonicalDigest(designDriftBaselineReference(baseline))) {
+        throw new Error(`Import Design Drift Detection ${candidate.id} has an unresolved exact Design Baseline candidate binding`)
+      }
+      if (!snapshot || snapshot.productId !== candidate.productId || snapshot.initiativeId !== candidate.initiativeId ||
+          canonicalDigest(candidate.returnedFigmaSnapshot) !== canonicalDigest(designDriftSnapshotReference(snapshot))) {
+        throw new Error(`Import Design Drift Detection ${candidate.id} has an unresolved exact returned Figma snapshot binding`)
+      }
+      if (!requirements || requirements.productId !== candidate.productId || requirements.initiativeId !== candidate.initiativeId ||
+          canonicalDigest(candidate.designRequirements) !== canonicalDigest(designDriftRequirementsReference(requirements))) {
+        throw new Error(`Import Design Drift Detection ${candidate.id} has an unresolved exact Design Requirements binding`)
+      }
+      if (!trace || trace.productId !== candidate.productId || trace.initiativeId !== candidate.initiativeId ||
+          canonicalDigest(candidate.designTrace) !== canonicalDigest(designDriftTraceReference(trace))) {
+        throw new Error(`Import Design Drift Detection ${candidate.id} has an unresolved exact design trace binding`)
+      }
+      if (baseline.subject.recordId !== snapshot.id || baseline.subject.revision !== snapshot.revision ||
+          baseline.subject.digest !== canonicalDigest(snapshot) || baseline.subject.itemCatalogDigest !== canonicalDigest(snapshot.items) ||
+          canonicalDigest(trace.finalizedSnapshot) !== canonicalDigest({
+            recordId: snapshot.id, revision: snapshot.revision, digest: canonicalDigest(snapshot),
+            membershipDigest: snapshot.membershipDigest, itemCatalogDigest: canonicalDigest(snapshot.items),
+          }) || canonicalDigest(trace.designRequirements) !== canonicalDigest({
+            recordId: requirements.id, revision: requirements.revision, digest: canonicalDigest(requirements),
+            membershipDigest: requirements.membershipDigest, requirementCatalogDigest: canonicalDigest(requirements.requirements),
+          })) {
+        throw new Error(`Import Design Drift Detection ${candidate.id} dependency chain is inconsistent`)
+      }
+      const designItemKeys = new Set(snapshot.items.map((entry) => entry.key))
+      const requirementKeys = new Set(requirements.requirements.map((entry) => entry.key))
+      if (candidate.implementationTargets.some((target) =>
+        target.designItemKeys.some((key) => !designItemKeys.has(key)) ||
+        target.requirementKeys.some((key) => !requirementKeys.has(key))) ||
+        candidate.observations.some((observation) =>
+          !designItemKeys.has(observation.designItemKey) ||
+          observation.requirementKeys.some((key) => !requirementKeys.has(key)))) {
+        throw new Error(`Import Design Drift Detection ${candidate.id} has unresolved design-item or Requirement catalog references`)
+      }
+    }
+
     const plans = [...recordsByPath.entries()].filter(([path]) => path.startsWith("workflow-plans/"))
       .map(([, record]) => workflowPlanSchema.parse(record))
     for (const plan of plans) this.validateWorkflowInImport(plan, resolveExact)
@@ -9735,6 +9884,10 @@ export class ProductStudioService {
         /^design-baseline-history\/design-baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "design-baseline-candidate"
     }
+    if (/^design-drift-detections\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-drift-detection-history\/design-drift-detection-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "design-drift-detection-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -9952,6 +10105,10 @@ export class ProductStudioService {
     if (/^design-baselines\/[0-9a-f-]+\.json$/i.test(path) ||
         /^design-baseline-history\/design-baseline-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return designBaselineSchema
+    }
+    if (/^design-drift-detections\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-drift-detection-history\/design-drift-detection-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return designDriftDetectionSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
