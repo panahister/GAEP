@@ -2826,8 +2826,8 @@ public sealed class ProductWorkflowController(EngineClient client)
             .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
             .Append(
                 "Authority boundary: exact candidate identities, version axes, catalog and comparison digests, counts, " +
-                "classifications, severities, review state, and non-effect status only; this view does not establish " +
-                "an actual Baseline Set, drift completeness, external completeness, design or implementation validity, " +
+                "classifications, severities, review state, and non-effect status only; this view " +
+                "does not establish an actual Baseline Set, drift completeness, external completeness, design or implementation validity, " +
                 "approval, readiness, remediation effect, call Figma, import or write content, change implementation, " +
                 "or grant action authority.")
             .ToString();
