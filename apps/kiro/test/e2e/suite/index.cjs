@@ -56,6 +56,7 @@ const commands = [
   "gaepKiro.screenStateInventory.inspect",
   "gaepKiro.designRequirements.inspect",
   "gaepKiro.backlogHierarchy.inspect",
+  "gaepKiro.mvpSliceDefinition.inspect",
   "gaepKiro.designSystemTokenContract.inspect",
   "gaepKiro.accessibilityDesignRules.inspect",
   "gaepKiro.responsiveMultiPlatformTargets.inspect",

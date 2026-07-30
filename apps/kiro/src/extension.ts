@@ -31,6 +31,7 @@ import {
   type ScreenStateInventoryProjection,
   type DesignRequirementsProjection,
   type BacklogHierarchyProjection,
+  type MvpSliceDefinitionProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -154,6 +155,7 @@ const commandIds = {
   screenStateInventory: "gaepKiro.screenStateInventory.inspect",
   designRequirements: "gaepKiro.designRequirements.inspect",
   backlogHierarchy: "gaepKiro.backlogHierarchy.inspect",
+  mvpSliceDefinition: "gaepKiro.mvpSliceDefinition.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -294,6 +296,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.screenStateInventory, (input?: unknown) => runUserCommand(() => showScreenStateInventory(pool, input))),
     vscode.commands.registerCommand(commandIds.designRequirements, (input?: unknown) => runUserCommand(() => showDesignRequirements(pool, input))),
     vscode.commands.registerCommand(commandIds.backlogHierarchy, (input?: unknown) => runUserCommand(() => showBacklogHierarchy(pool, input))),
+    vscode.commands.registerCommand(commandIds.mvpSliceDefinition, (input?: unknown) => runUserCommand(() => showMvpSliceDefinition(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -1770,6 +1773,48 @@ async function showBacklogHierarchy(
     ] : []),
     "",
     "Candidate identities, level counts, statuses, and digests only; this does not establish priority, commitment, ownership authority, Definition of Ready or Done, implementation readiness, assignment, execution, implementation authority, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showMvpSliceDefinition(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<MvpSliceDefinitionProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for MVP and Vertical Slice Definition", "Initiative ID")
+  const projection = await client.readMvpSliceDefinition(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed MVP and Vertical Slice candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState} · scope: ${status.scopeCompletenessState}`,
+    `Scope: ${status.scopeNodeCount} nodes · ${status.mvpNodeCount} MVP · ${status.laterNodeCount} later · ${status.excludedNodeCount} excluded`,
+    `Vertical Slices: ${status.sliceCount} slices · ${status.storyCount} Stories · ${status.taskCount} Tasks · ${status.dependencyCount} dependencies`,
+    `Candidate gaps: ${status.unassignedMvpStoryTaskCount} unassigned MVP Stories or Tasks · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleHierarchyCount} stale hierarchies · ${status.invalidScopeCount} invalid scope entries · ${status.invalidSliceCount} invalid slices`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Exact Backlog Hierarchy digest: ${record.hierarchyDigest}`,
+      `Candidate scope: ${record.scopeNodeCount} nodes · ${record.mvpNodeCount} MVP · ${record.laterNodeCount} later · ${record.excludedNodeCount} excluded`,
+      `Candidate slices: ${record.sliceCount} slices · ${record.storyCount} Stories · ${record.taskCount} Tasks · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, scope and slice counts, statuses, and digests only; this does not establish priority, commitment, scope approval, acceptance-criteria validity, Definition of Ready or Done, implementation readiness, assignment, execution, implementation authority, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

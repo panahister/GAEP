@@ -57,6 +57,7 @@ const informationArchitectureId = "59595959-5959-4959-8959-595959595959"
 const screenStateInventoryId = "60606060-6060-4060-8060-606060606060"
 const designRequirementsId = "61616161-6161-4161-8161-616161616161"
 const backlogHierarchyId = "81818181-8181-4181-8181-818181818181"
+const mvpSliceDefinitionId = "82828282-8282-4282-8282-828282828282"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -169,6 +170,8 @@ input.on("line", (line) => {
       return readDesignRequirements(id, request.params)
     case "backlog.hierarchy.snapshot":
       return readBacklogHierarchy(id, request.params)
+    case "planning.mvpSlices.snapshot":
+      return readMvpSliceDefinition(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -2191,6 +2194,78 @@ function readBacklogHierarchy(id, params) {
   if (workspacePath.endsWith("bad-backlog-hierarchy-snapshot-digest")) value.candidate.taskCount = 10
   if (workspacePath.endsWith("bad-backlog-hierarchy-snapshot-private")) {
     value.workItemObjective = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readMvpSliceDefinition(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE MVP SLICE PARAMS")
+  }
+  const candidateDigest = `sha256:${"a".repeat(64)}`
+  const hierarchyDigest = `sha256:${"8".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "mvp-slice-definition-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: mvpSliceDefinitionId, revision: 2, digest: candidateDigest },
+    hierarchy: { recordId: backlogHierarchyId, revision: 2, digest: hierarchyDigest },
+    scopeNodeCount: 24,
+    mvpNodeCount: 16,
+    laterNodeCount: 5,
+    excludedNodeCount: 3,
+    sliceCount: 4,
+    storyCount: 7,
+    taskCount: 9,
+    dependencyCount: 3,
+    unassignedMvpStoryTaskCount: 1,
+    staleBindingCount: 0,
+    staleHierarchyCount: 0,
+    invalidScopeCount: 0,
+    invalidSliceCount: 1,
+    unresolvedQuestionCount: 2,
+    scopeCompletenessState: "not-assessed",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more MVP scope or Vertical Slice candidates require review"],
+    assessedAt: "2026-07-30T10:20:00.000Z",
+    authorityBoundary: "mvp-slice-definition-status-is-observational-and-does-not-establish-priority-commitment-scope-approval-acceptance-criteria-validity-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "mvp-slice-definition-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: mvpSliceDefinitionId,
+      revision: 2,
+      digest: candidateDigest,
+      state: "candidate",
+      membershipDigest: `sha256:${"b".repeat(64)}`,
+      hierarchyDigest,
+      scopeNodeCount: 24,
+      mvpNodeCount: 16,
+      laterNodeCount: 5,
+      excludedNodeCount: 3,
+      sliceCount: 4,
+      storyCount: 7,
+      taskCount: 9,
+      reviewState: "held",
+      updatedAt: "2026-07-30T10:19:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-scope-and-slice-counts-statuses-and-digests-only-not-slice-titles-rationales-objectives-criteria-scope-content-requirement-content-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "mvp-slice-definition-projection-is-read-only-and-does-not-prioritize-commit-approve-scope-admit-assign-execute-or-authorize-implementation-or-action",
+  }
+  if (workspacePath.endsWith("bad-mvp-slice-snapshot-binding")) content.initiative.id = mvpSliceDefinitionId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-mvp-slice-snapshot-digest")) value.candidate.taskCount = 10
+  if (workspacePath.endsWith("bad-mvp-slice-snapshot-private")) {
+    value.sliceRationale = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }
