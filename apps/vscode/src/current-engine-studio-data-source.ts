@@ -17,6 +17,7 @@ import type {
   ImplementationUnitModelProjection,
   DependencyMappingProjection,
   TechnologyProfileProjection,
+  BoilerplateRegistryProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -215,6 +216,9 @@ export interface CurrentStudioEngineReader {
   technologyProfile?: {
     project(initiativeId: string): Promise<TechnologyProfileProjection>
   }
+  boilerplateRegistry?: {
+    project(initiativeId: string): Promise<BoilerplateRegistryProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -393,6 +397,7 @@ interface ObservedStudioState {
   implementationUnitModelProjections: Map<string, ImplementationUnitModelProjection>
   dependencyMappingProjections: Map<string, DependencyMappingProjection>
   technologyProfileProjections: Map<string, TechnologyProfileProjection>
+  boilerplateRegistryProjections: Map<string, BoilerplateRegistryProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3818,6 +3823,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     implementationUnits: implementationUnitModelTable(state),
     dependencyMappings: dependencyMappingTable(state),
     technologyProfiles: technologyProfileTable(state),
+    boilerplateRegistries: boilerplateRegistryTable(state),
   }
 }
 
@@ -4368,6 +4374,63 @@ function technologyProfileTable(state: ObservedStudioState): StudioTableSnapshot
       emptyState: emptySurface(
         "No governed Technology Profile candidate",
         "Create the candidate through the governed engine workflow after exact Implementation Unit Model and Dependency Mapping candidates exist. This view does not infer technology approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function boilerplateRegistryTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.boilerplateRegistryProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        entries: record.entryCatalogDigest,
+        sources: record.sourceCatalogDigest,
+        compatibilityReceipt: record.compatibilityAssessmentReceiptDigest,
+        assessmentReceipt: record.assessmentReceiptDigest,
+        coverage: `${status.entryCount} entries · ${status.exactVersionCandidateCount} exact versions · ${status.rangeVersionCandidateCount} ranges · ${status.unresolvedVersionCount} unresolved versions · ${status.mandatoryCandidateCount} mandatory candidates`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        assetGaps: `${status.unavailableEntryCount} unavailable · ${status.integrityMismatchCount} integrity gaps · ${status.provenanceGapCount} provenance gaps · ${status.missingEvidenceCount} missing evidence`,
+        policyGaps: `${status.unsupportedEntryCount} unsupported · ${status.lifecycleRiskCount} lifecycle risks · ${status.technologyConflictCount} technology conflicts · ${status.architectureConflictCount} architecture conflicts · ${status.licenseReviewRequiredCount} license reviews · ${status.licenseProhibitedCount} license-prohibited · ${status.securityReviewRequiredCount} security reviews · ${status.securityNonconformantCount} security-nonconformant · ${status.exceptionCandidateCount} exception candidates`,
+        gaps: `${status.unresolvedQuestionCount} questions · ${status.invalidRegistryCount} invalid registries · ${status.staleBindingCount} stale bindings · ${status.staleImplementationUnitModelCount} stale Implementation Unit Models · ${status.staleTechnologyProfileCount} stale Technology Profiles`,
+        boundary: "Candidate identities, counts, statuses, and entry, source, compatibility, assessment, and snapshot digests only; no boilerplate names, locators, versions, capabilities, limitations, evidence, rationale, technology, unit, architecture, repository, template, license, security-policy, or personal data, organizational designation, endorsement, approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver, selection or binding, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "boilerplate-registry",
+    title: "Governed Boilerplate Registry Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "entries", label: "Entry catalog digest" },
+      { key: "sources", label: "Source catalog digest" },
+      { key: "compatibilityReceipt", label: "Compatibility receipt" },
+      { key: "assessmentReceipt", label: "Assessment receipt" },
+      { key: "coverage", label: "Privacy-safe registry coverage" },
+      { key: "assessment", label: "Candidate assessment" },
+      { key: "assetGaps", label: "Candidate asset gaps" },
+      { key: "policyGaps", label: "Candidate policy gaps" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Boilerplate Registry candidate",
+        "Create the candidate through the governed engine workflow after exact Implementation Unit Model and Technology Profile candidates exist. This view does not infer organizational designation, endorsement, approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver, selection or binding, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
       ),
     } : {}),
   }
@@ -6216,6 +6279,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       implementationUnitModelProjections: new Map(),
       dependencyMappingProjections: new Map(),
       technologyProfileProjections: new Map(),
+      boilerplateRegistryProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -6899,6 +6963,59 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "technology-profile-unavailable",
           "Technology Profile metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.boilerplateRegistry) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.boilerplateRegistry!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            const units = empty.implementationUnitModelProjections.get(initiative.id)?.candidate
+            const technologyProfile = empty.technologyProfileProjections.get(initiative.id)?.candidate
+            const candidate = projection.value.candidate
+            const exactDependencies = !candidate || (
+              units !== undefined && projection.value.status.implementationUnitModel?.recordId === units.id &&
+              projection.value.status.implementationUnitModel.revision === units.revision &&
+              projection.value.status.implementationUnitModel.digest === units.digest &&
+              technologyProfile !== undefined && projection.value.status.technologyProfile?.recordId === technologyProfile.id &&
+              projection.value.status.technologyProfile.revision === technologyProfile.revision &&
+              projection.value.status.technologyProfile.digest === technologyProfile.digest
+            )
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              exactDependencies && snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.boilerplateRegistryProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Boilerplate Registry projection was unavailable or did not bind exact Product, Initiative, Implementation Unit Model, and Technology Profile revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `boilerplate-registry-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Boilerplate Registry metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "boilerplate-registry-unavailable",
+          "Boilerplate Registry metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

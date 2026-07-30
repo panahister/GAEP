@@ -56,6 +56,7 @@ import {
   type ImplementationUnitModelProjection,
   type DependencyMappingProjection,
   type TechnologyProfileProjection,
+  type BoilerplateRegistryProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -2564,6 +2565,80 @@ function technologyProfileProjection(
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function boilerplateRegistryProjection(
+  units = implementationUnitModelProjection(),
+  technologyProfile = technologyProfileProjection(units),
+): BoilerplateRegistryProjection {
+  const exactUnits = units.candidate!
+  const exactTechnologyProfile = technologyProfile.candidate!
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "boilerplate-registry-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "aeaeaeae-aeae-4eae-8eae-aeaeaeaeaeae", revision: 2, digest: `sha256:${"3".repeat(64)}` as const },
+    implementationUnitModel: { recordId: exactUnits.id, revision: exactUnits.revision, digest: exactUnits.digest },
+    technologyProfile: {
+      recordId: exactTechnologyProfile.id, revision: exactTechnologyProfile.revision, digest: exactTechnologyProfile.digest,
+    },
+    entryCount: 4,
+    exactVersionCandidateCount: 2,
+    rangeVersionCandidateCount: 1,
+    unresolvedVersionCount: 1,
+    mandatoryCandidateCount: 2,
+    missingEvidenceCount: 1,
+    unavailableEntryCount: 1,
+    integrityMismatchCount: 1,
+    provenanceGapCount: 1,
+    unsupportedEntryCount: 1,
+    lifecycleRiskCount: 1,
+    technologyConflictCount: 1,
+    architectureConflictCount: 1,
+    licenseReviewRequiredCount: 1,
+    licenseProhibitedCount: 0,
+    securityReviewRequiredCount: 1,
+    securityNonconformantCount: 0,
+    exceptionCandidateCount: 1,
+    staleBindingCount: 0,
+    staleImplementationUnitModelCount: 0,
+    staleTechnologyProfileCount: 0,
+    invalidRegistryCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more Boilerplate Registry candidates require human review"],
+    assessedAt: "2026-07-30T17:00:00.000Z",
+    authorityBoundary: "boilerplate-registry-status-is-observational-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-selection-binding-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "boilerplate-registry-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      state: "candidate" as const,
+      entryCatalogDigest: `sha256:${"4".repeat(64)}` as const,
+      sourceCatalogDigest: `sha256:${"5".repeat(64)}` as const,
+      compatibilityAssessmentReceiptDigest: `sha256:${"6".repeat(64)}` as const,
+      assessmentReceiptDigest: `sha256:${"7".repeat(64)}` as const,
+      entryCount: 4,
+      mandatoryCandidateCount: 2,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-30T16:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-entry-source-compatibility-assessment-snapshot-digests-only-not-boilerplate-names-locators-versions-capabilities-limitations-evidence-rationale-technology-unit-architecture-repository-template-license-security-policy-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "boilerplate-registry-projection-is-read-only-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-selection-binding-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -4360,6 +4435,7 @@ interface HarnessOptions {
   implementationUnitModelProjection?: ImplementationUnitModelProjection
   dependencyMappingProjection?: DependencyMappingProjection
   technologyProfileProjection?: TechnologyProfileProjection
+  boilerplateRegistryProjection?: BoilerplateRegistryProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -4555,6 +4631,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.technologyProfileProjection ? {
       technologyProfile: {
         project: async () => options.technologyProfileProjection!,
+      },
+    } : {}),
+    ...(options.boilerplateRegistryProjection ? {
+      boilerplateRegistry: {
+        project: async () => options.boilerplateRegistryProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -5408,6 +5489,57 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private technology|private version|private constraint|private license|private security policy|private manifest|private toolchain|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects exact privacy-safe Boilerplate Registry metadata without designating, approving, selecting, or binding an asset", async () => {
+    const hierarchy = backlogHierarchyProjection()
+    const mvp = mvpSliceDefinitionProjection(hierarchy)
+    const priority = prioritizationModelProjection(mvp)
+    const criteria = acceptanceCriteriaProjection(hierarchy, mvp, priority)
+    const ready = definitionOfReadyProjection(hierarchy, mvp, priority, criteria)
+    const done = definitionOfDoneProjection(hierarchy, mvp, priority, criteria, ready)
+    const units = implementationUnitModelProjection(hierarchy, mvp, priority, criteria, ready, done)
+    const dependencyMapping = dependencyMappingProjection(hierarchy, mvp, priority, criteria, ready, done, units)
+    const technologyProfile = technologyProfileProjection(units, dependencyMapping)
+    const projection = boilerplateRegistryProjection(units, technologyProfile)
+    const { source } = harness({
+      backlogHierarchyProjection: hierarchy,
+      mvpSliceDefinitionProjection: mvp,
+      prioritizationModelProjection: priority,
+      acceptanceCriteriaProjection: criteria,
+      definitionOfReadyProjection: ready,
+      definitionOfDoneProjection: done,
+      implementationUnitModelProjection: units,
+      dependencyMappingProjection: dependencyMapping,
+      technologyProfileProjection: technologyProfile,
+      boilerplateRegistryProjection: projection,
+    })
+    const snapshot = await source.readSnapshot("delivery")
+
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.kind === "delivery" && snapshot.page.boilerplateRegistries).toMatchObject({
+      id: "boilerplate-registry",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          entries: projection.candidate?.entryCatalogDigest,
+          sources: projection.candidate?.sourceCatalogDigest,
+          compatibilityReceipt: projection.candidate?.compatibilityAssessmentReceiptDigest,
+          assessmentReceipt: projection.candidate?.assessmentReceiptDigest,
+          coverage: "4 entries · 2 exact versions · 1 ranges · 1 unresolved versions · 2 mandatory candidates",
+          assessment: "attention-required · held",
+          assetGaps: "1 unavailable · 1 integrity gaps · 1 provenance gaps · 1 missing evidence",
+          policyGaps: "1 unsupported · 1 lifecycle risks · 1 technology conflicts · 1 architecture conflicts · 1 license reviews · 0 license-prohibited · 1 security reviews · 0 security-nonconformant · 1 exception candidates",
+          gaps: "2 questions · 1 invalid registries · 0 stale bindings · 0 stale Implementation Unit Models · 0 stale Technology Profiles",
+          boundary: expect.stringContaining("no boilerplate names, locators, versions, capabilities, limitations, evidence, rationale"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private boilerplate|private locator|private version|private capability|private limitation|private license|private security policy|customer@example\.com|api_key/iu,
     )
   })
 
