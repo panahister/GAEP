@@ -46,6 +46,7 @@ import {
   type DesignConflictResolutionProjection,
   type HumanDesignApprovalProjection,
   type DesignBaselineProjection,
+  type DesignDriftDetectionProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -163,6 +164,7 @@ const commandIds = {
   designConflictResolution: "gaepKiro.designConflictResolution.inspect",
   humanDesignApproval: "gaepKiro.humanDesignApproval.inspect",
   designBaseline: "gaepKiro.designBaseline.inspect",
+  designDriftDetection: "gaepKiro.designDriftDetection.inspect",
   import: "gaepKiro.portableDesign.import",
   list: "gaepKiro.portableDesign.list",
   read: "gaepKiro.portableDesign.read",
@@ -299,6 +301,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.designConflictResolution, (input?: unknown) => runUserCommand(() => showDesignConflictResolution(pool, input))),
     vscode.commands.registerCommand(commandIds.humanDesignApproval, (input?: unknown) => runUserCommand(() => showHumanDesignApproval(pool, input))),
     vscode.commands.registerCommand(commandIds.designBaseline, (input?: unknown) => runUserCommand(() => showDesignBaseline(pool, input))),
+    vscode.commands.registerCommand(commandIds.designDriftDetection, (input?: unknown) => runUserCommand(() => showDesignDriftDetection(pool, input))),
     vscode.commands.registerCommand(commandIds.import, () => runUserCommand(() => importPortableDesign(pool))),
     vscode.commands.registerCommand(commandIds.list, (input?: unknown) => runUserCommand(() => listPortableDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.read, (input?: unknown) => runUserCommand(() => readPortableDesign(pool, input))),
@@ -2410,6 +2413,54 @@ async function showDesignBaseline(
     ] : []),
     "",
     "Candidate identities, exact Human Design Approval and finalized-snapshot bindings, version axes, lineage, scope and receipt digests, designation kind, predecessor, counts, and recorded states only; this view does not convert an approval candidate into approval, verify approver authority, enforce separation of duties, establish a Baseline Set designation, readiness, or phase entry, call Figma, request credentials, grant permissions, execute imports or writes, or grant implementation or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDesignDriftDetection(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DesignDriftDetectionProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Design Drift Detection", "Initiative ID")
+  const projection = await client.readDesignDriftDetection(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP Design Drift Detection candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate result: ${status.candidateResult} · ${status.state} · review state: ${status.reviewState}`,
+    `Implementation targets: ${status.humanReviewedImplementationTargetCount}/${status.implementationTargetCount} human-reviewed`,
+    `Comparison paths: ${status.requirementToDesignCount} requirement-to-design · ${status.designToImplementationCount} design-to-implementation`,
+    `Classifications: ${status.conformantCount} conformant · ${status.driftCount} drift · ${status.unassessedCount} unassessed`,
+    `Severity: ${status.blockerCount} blocker · ${status.highSeverityCount} high`,
+    `Remediation candidates: ${status.remediationCandidateCount} recorded · ${status.expiredRemediationCandidateCount} expired · effects not applied`,
+    `Candidate gaps: ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Baseline candidate: ${record.designBaseline.recordId}@${record.designBaseline.revision} · ${record.designBaseline.semanticVersion} · designation ${record.designBaseline.baselineDesignationState}`,
+      `Returned design: ${record.returnedFigmaSnapshot.recordId}@${record.returnedFigmaSnapshot.revision} · returned version ${record.returnedFigmaSnapshot.returnedExternalVersionDigest}`,
+      `Design Requirements: ${record.designRequirements.recordId}@${record.designRequirements.revision} · ${record.designRequirements.requirementCatalogDigest}`,
+      `Design trace: ${record.designTrace.recordId}@${record.designTrace.revision} · ${record.designTrace.reconciliationDigest}`,
+      `Implementation target catalog: revision ${record.implementationTargetCatalogRevision} · ${record.implementationTargetCatalogDigest}`,
+      `Comparison: policy ${record.comparisonPolicyDigest} · receipt ${record.comparisonDigest}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Exact candidate identities, version axes, catalog and comparison digests, counts, classifications, severities, review state, and non-effect status only; this view does not establish an actual Baseline Set, drift completeness, external completeness, design or implementation validity, approval, readiness, remediation effect, call Figma, import or write content, change implementation, or grant action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

@@ -45,6 +45,7 @@ import {
   designConflictResolutionProjectionSchema,
   humanDesignApprovalProjectionSchema,
   designBaselineProjectionSchema,
+  designDriftDetectionProjectionSchema,
   phase1SummaryDashboardSchema,
   phase1ChangeImpactDashboardSchema,
   phase1AgentModelDashboardSchema,
@@ -97,6 +98,7 @@ import {
   type DesignConflictResolutionProjection,
   type HumanDesignApprovalProjection,
   type DesignBaselineProjection,
+  type DesignDriftDetectionProjection,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -1008,6 +1010,21 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = designBaselineProjectionSchema.safeParse(
         await this.request("design.designBaseline.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId ||
+          snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readDesignDriftDetection(initiativeValue: string): Promise<DesignDriftDetectionProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = designDriftDetectionProjectionSchema.safeParse(
+        await this.request("design.designDriftDetection.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

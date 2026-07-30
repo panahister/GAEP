@@ -72,6 +72,7 @@ const designDeltaId = "74747474-7474-4474-8474-747474747474"
 const designConflictResolutionId = "75757575-7575-4575-8575-757575757575"
 const humanDesignApprovalId = "76767676-7676-4676-8676-767676767676"
 const designBaselineId = "77777777-7777-4777-8777-777777777777"
+const designDriftDetectionId = "80808080-8080-4080-8080-808080808080"
 const completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 const completenessPolicyDigest = `sha256:${"e".repeat(64)}`
 const subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
@@ -197,6 +198,8 @@ input.on("line", (line) => {
       return readHumanDesignApproval(id, request.params)
     case "design.designBaseline.snapshot":
       return readDesignBaseline(id, request.params)
+    case "design.designDriftDetection.snapshot":
+      return readDesignDriftDetection(id, request.params)
     case "dashboard.framework":
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase1Summary":
@@ -3340,6 +3343,111 @@ function readDesignBaseline(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-design-baseline-digest")) value.status.candidateSetCount = 0
   if (workspacePath.endsWith("bad-design-baseline-private")) value.designRationale = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readDesignDriftDetection(id, params) {
+  if (!exactKeys(params, ["initiativeId"])) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PARAMS")
+  const initiativeId = String(params?.initiativeId ?? "").toLowerCase()
+  if (initiativeId !== initiativeState.id) return writeError(id, -32602, "Unknown Initiative")
+  const candidateDigest = `sha256:${"4".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "design-drift-detection-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: designDriftDetectionId, revision: 2, digest: candidateDigest },
+    implementationTargetCount: 5,
+    humanReviewedImplementationTargetCount: 4,
+    observationCount: 9,
+    humanReviewedObservationCount: 8,
+    requirementToDesignCount: 4,
+    designToImplementationCount: 5,
+    conformantCount: 3,
+    driftCount: 5,
+    unassessedCount: 1,
+    blockerCount: 1,
+    highSeverityCount: 2,
+    remediationCandidateCount: 4,
+    expiredRemediationCandidateCount: 1,
+    staleBindingCount: 2,
+    staleSourceReferenceCount: 3,
+    unresolvedQuestionCount: 1,
+    candidateResult: "incomplete",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more exact comparison subjects remain not assessed"],
+    assessedAt: "2026-07-30T03:30:00.000Z",
+    authorityBoundary: "design-drift-detection-status-is-observational-and-does-not-establish-an-actual-baseline-comparison-completeness-external-completeness-design-or-implementation-validity-approval-readiness-remediation-effect-or-figma-import-write-implementation-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "design-drift-detection-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: designDriftDetectionId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"5".repeat(64)}`,
+      state: "candidate",
+      designBaseline: {
+        recordId: designBaselineId,
+        revision: 3,
+        digest: `sha256:${"e".repeat(64)}`,
+        membershipDigest: `sha256:${"f".repeat(64)}`,
+        baselineLineageId: "78787878-7878-4878-8878-787878787878",
+        candidateSetId: "79797979-7979-4979-8979-797979797979",
+        candidateSetRevision: 3,
+        semanticVersion: "2.0.0",
+        designationReceiptDigest: `sha256:${"4".repeat(64)}`,
+        baselineDesignationState: "not-established",
+      },
+      returnedFigmaSnapshot: {
+        recordId: finalizedFigmaSnapshotImportId,
+        revision: 2,
+        digest: `sha256:${"5".repeat(64)}`,
+        membershipDigest: `sha256:${"6".repeat(64)}`,
+        externalFileIdentityDigest: `sha256:${"7".repeat(64)}`,
+        returnedExternalVersionDigest: `sha256:${"8".repeat(64)}`,
+        itemCatalogDigest: `sha256:${"9".repeat(64)}`,
+      },
+      designRequirements: {
+        recordId: "40404040-4040-4040-8040-404040404040",
+        revision: 3,
+        digest: `sha256:${"a".repeat(64)}`,
+        membershipDigest: `sha256:${"b".repeat(64)}`,
+        requirementCatalogDigest: `sha256:${"c".repeat(64)}`,
+      },
+      designTrace: {
+        recordId: designToRequirementBindingId,
+        revision: 2,
+        digest: `sha256:${"d".repeat(64)}`,
+        membershipDigest: `sha256:${"e".repeat(64)}`,
+        reconciliationDigest: `sha256:${"f".repeat(64)}`,
+      },
+      implementationTargetCatalogRevision: 2,
+      implementationTargetCatalogDigest: `sha256:${"0".repeat(64)}`,
+      comparisonPolicyDigest: `sha256:${"1".repeat(64)}`,
+      comparisonDigest: `sha256:${"2".repeat(64)}`,
+      implementationTargetCount: 5,
+      observationCount: 9,
+      remediationCandidateCount: 4,
+      candidateResult: "incomplete",
+      reviewState: "held",
+      updatedAt: "2026-07-30T03:29:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-version-axes-counts-classifications-severities-statuses-and-digests-only-not-design-requirement-or-implementation-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+    authorityBoundary: "design-drift-detection-projection-is-read-only-and-does-not-establish-an-actual-baseline-comparison-completeness-external-completeness-design-or-implementation-validity-approval-readiness-remediation-effect-or-figma-import-write-implementation-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-design-drift-binding")) content.initiative.id = designDriftDetectionId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-design-drift-digest")) value.status.observationCount = 8
+  if (workspacePath.endsWith("bad-design-drift-private")) value.implementationContent = `${privateRoot}/${privateCredential}`
   return writeResult(id, value)
 }
 

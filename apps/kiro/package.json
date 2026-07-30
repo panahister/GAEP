@@ -96,6 +96,7 @@
     "onCommand:gaepKiro.designConflictResolution.inspect",
     "onCommand:gaepKiro.humanDesignApproval.inspect",
     "onCommand:gaepKiro.designBaseline.inspect",
+    "onCommand:gaepKiro.designDriftDetection.inspect",
     "onCommand:gaepKiro.portableDesign.import",
     "onCommand:gaepKiro.portableDesign.list",
     "onCommand:gaepKiro.portableDesign.read",
@@ -357,6 +358,10 @@
       {
         "command": "gaepKiro.designBaseline.inspect",
         "title": "GAEP for Kiro: Inspect Design Baseline Version Candidate"
+      },
+      {
+        "command": "gaepKiro.designDriftDetection.inspect",
+        "title": "GAEP for Kiro: Inspect Design Drift Detection Candidate"
       },
       {
         "command": "gaepKiro.portableDesign.import",
