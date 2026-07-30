@@ -2160,6 +2160,88 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readBoilerplateRegistry(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val units = client.readImplementationUnitModel(initiativeId)
+        val technologyProfile = client.readTechnologyProfile(initiativeId)
+        val projection = client.readBoilerplateRegistry(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Boilerplate Registry was read. Refresh the exact records." }
+        projection.candidate?.let {
+            val currentUnits = requireNotNull(units.candidate) {
+                "The current Implementation Unit Model candidate is unavailable. Refresh the exact records."
+            }
+            val currentTechnologyProfile = requireNotNull(technologyProfile.candidate) {
+                "The current Technology Profile candidate is unavailable. Refresh the exact records."
+            }
+            require(
+                projection.implementationUnitModelRecordId == currentUnits.id &&
+                    projection.implementationUnitModelRevision == currentUnits.revision &&
+                    projection.implementationUnitModelDigest == currentUnits.digest
+            ) { "The Implementation Unit Model changed while Boilerplate Registry was read. Refresh the exact records." }
+            require(
+                projection.technologyProfileRecordId == currentTechnologyProfile.id &&
+                    projection.technologyProfileRevision == currentTechnologyProfile.revision &&
+                    projection.technologyProfileDigest == currentTechnologyProfile.digest
+            ) { "The Technology Profile changed while Boilerplate Registry was read. Refresh the exact records." }
+        }
+        return renderBoilerplateRegistry(projection)
+    }
+
+    fun renderBoilerplateRegistry(projection: BoilerplateRegistryProjection): String = buildString {
+        appendLine("GAEP governed Boilerplate Registry candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine(
+            "Candidate coverage: ${projection.entryCount} entries · ${projection.exactVersionCandidateCount} exact versions · " +
+                "${projection.rangeVersionCandidateCount} ranges · ${projection.unresolvedVersionCount} unresolved versions · " +
+                "${projection.mandatoryCandidateCount} mandatory candidates",
+        )
+        appendLine(
+            "Candidate asset gaps: ${projection.unavailableEntryCount} unavailable · ${projection.integrityMismatchCount} integrity gaps · " +
+                "${projection.provenanceGapCount} provenance gaps · ${projection.missingEvidenceCount} missing evidence",
+        )
+        appendLine(
+            "Candidate policy gaps: ${projection.unsupportedEntryCount} unsupported · ${projection.lifecycleRiskCount} lifecycle risks · " +
+                "${projection.technologyConflictCount} technology conflicts · ${projection.architectureConflictCount} architecture conflicts · " +
+                "${projection.licenseReviewRequiredCount} license reviews · ${projection.licenseProhibitedCount} license-prohibited · " +
+                "${projection.securityReviewRequiredCount} security reviews · ${projection.securityNonconformantCount} security-nonconformant · " +
+                "${projection.exceptionCandidateCount} exception candidates",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedQuestionCount} questions · ${projection.invalidRegistryCount} invalid registries · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleImplementationUnitModelCount} stale Implementation Unit Models · " +
+                "${projection.staleTechnologyProfileCount} stale Technology Profiles",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Boilerplate Registry candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Entry catalog digest: ${record.entryCatalogDigest}")
+            appendLine("Source catalog digest: ${record.sourceCatalogDigest}")
+            appendLine("Compatibility assessment receipt digest: ${record.compatibilityAssessmentReceiptDigest}")
+            appendLine("Assessment receipt digest: ${record.assessmentReceiptDigest}")
+            appendLine("Candidate coverage: ${record.entryCount} entries · ${record.mandatoryCandidateCount} mandatory candidates · ${record.reviewState}")
+        }
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and entry, source, compatibility, assessment, and " +
+                "snapshot digests only; no boilerplate names, locators, versions, capabilities, limitations, evidence, rationale, " +
+                "technology, unit, architecture, repository, template, license, security-policy, or personal data. Candidate " +
+                "completeness does not establish organizational designation, endorsement, approval, support commitment, " +
+                "compatibility truth or completeness, licensing or security approval, exception or waiver, selection or binding, " +
+                "architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, " +
+                "release, deployment, or action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)

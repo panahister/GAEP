@@ -2598,6 +2598,63 @@ data class TechnologyProfileProjection(
     val snapshotDigest: String,
 )
 
+data class BoilerplateRegistryRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val entryCatalogDigest: String,
+    val sourceCatalogDigest: String,
+    val compatibilityAssessmentReceiptDigest: String,
+    val assessmentReceiptDigest: String,
+    val entryCount: Int,
+    val mandatoryCandidateCount: Int,
+    val reviewState: String,
+)
+
+data class BoilerplateRegistryProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val state: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val implementationUnitModelRecordId: UUID?,
+    val implementationUnitModelRevision: Long?,
+    val implementationUnitModelDigest: String?,
+    val technologyProfileRecordId: UUID?,
+    val technologyProfileRevision: Long?,
+    val technologyProfileDigest: String?,
+    val entryCount: Int,
+    val exactVersionCandidateCount: Int,
+    val rangeVersionCandidateCount: Int,
+    val unresolvedVersionCount: Int,
+    val mandatoryCandidateCount: Int,
+    val missingEvidenceCount: Int,
+    val unavailableEntryCount: Int,
+    val integrityMismatchCount: Int,
+    val provenanceGapCount: Int,
+    val unsupportedEntryCount: Int,
+    val lifecycleRiskCount: Int,
+    val technologyConflictCount: Int,
+    val architectureConflictCount: Int,
+    val licenseReviewRequiredCount: Int,
+    val licenseProhibitedCount: Int,
+    val securityReviewRequiredCount: Int,
+    val securityNonconformantCount: Int,
+    val exceptionCandidateCount: Int,
+    val staleBindingCount: Int,
+    val staleImplementationUnitModelCount: Int,
+    val staleTechnologyProfileCount: Int,
+    val invalidRegistryCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: BoilerplateRegistryRecordView?,
+    val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -3795,6 +3852,12 @@ internal object PortableDesignProtocol {
         "technology-profile-projection-is-read-only-and-does-not-establish-technology-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-authority-architecture-baseline-designation-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority"
     private const val TECHNOLOGY_PROFILE_STATUS_AUTHORITY_BOUNDARY =
         "technology-profile-status-is-observational-and-does-not-establish-technology-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-authority-architecture-baseline-designation-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority"
+    private const val BOILERPLATE_REGISTRY_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-entry-source-compatibility-assessment-snapshot-digests-only-not-boilerplate-names-locators-versions-capabilities-limitations-evidence-rationale-technology-unit-architecture-repository-template-license-security-policy-personal-data-secrets-credentials-or-machine-paths"
+    private const val BOILERPLATE_REGISTRY_PROJECTION_AUTHORITY_BOUNDARY =
+        "boilerplate-registry-projection-is-read-only-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-selection-binding-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
+    private const val BOILERPLATE_REGISTRY_STATUS_AUTHORITY_BOUNDARY =
+        "boilerplate-registry-status-is-observational-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-selection-binding-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -9939,6 +10002,158 @@ internal object PortableDesignProtocol {
             unsupportedChoiceCount, lifecycleRiskCount, compatibilityConflictCount, licenseReviewRequiredCount,
             licenseProhibitedCount, securityReviewRequiredCount, securityNonconformantCount, exceptionCandidateCount,
             constraintConflictCount, staleBindingCount, staleImplementationUnitModelCount, staleDependencyMappingCount,
+            unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseBoilerplateRegistryEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): BoilerplateRegistryProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "boilerplate-registry-projection" ||
+            projection.requireString("privacyBoundary") != BOILERPLATE_REGISTRY_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != BOILERPLATE_REGISTRY_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "entryCount", "exactVersionCandidateCount", "rangeVersionCandidateCount", "unresolvedVersionCount",
+                "mandatoryCandidateCount", "missingEvidenceCount", "unavailableEntryCount", "integrityMismatchCount",
+                "provenanceGapCount", "unsupportedEntryCount", "lifecycleRiskCount", "technologyConflictCount",
+                "architectureConflictCount", "licenseReviewRequiredCount", "licenseProhibitedCount",
+                "securityReviewRequiredCount", "securityNonconformantCount", "exceptionCandidateCount",
+                "staleBindingCount", "staleImplementationUnitModelCount", "staleTechnologyProfileCount",
+                "invalidRegistryCount", "unresolvedQuestionCount", "reviewState", "state", "reasons", "assessedAt",
+                "authorityBoundary",
+            ),
+            setOf("candidate", "implementationUnitModel", "technologyProfile"),
+        )
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "boilerplate-registry-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != BOILERPLATE_REGISTRY_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        fun reference(name: String): Reference? = status.get(name)?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val candidateReference = reference("candidate")
+        val implementationUnitModelReference = reference("implementationUnitModel")
+        val technologyProfileReference = reference("technologyProfile")
+        val entryCount = status.requireBoundedNonNegativeInt("entryCount", 10_000)
+        val exactVersionCandidateCount = status.requireBoundedNonNegativeInt("exactVersionCandidateCount", 10_000)
+        val rangeVersionCandidateCount = status.requireBoundedNonNegativeInt("rangeVersionCandidateCount", 10_000)
+        val unresolvedVersionCount = status.requireBoundedNonNegativeInt("unresolvedVersionCount", 10_000)
+        if (exactVersionCandidateCount + rangeVersionCandidateCount + unresolvedVersionCount != entryCount) throw invalidResponse()
+        val mandatoryCandidateCount = status.requireBoundedNonNegativeInt("mandatoryCandidateCount", 10_000)
+        if (mandatoryCandidateCount > entryCount) throw invalidResponse()
+        val missingEvidenceCount = status.requireBoundedNonNegativeInt("missingEvidenceCount", 10_000)
+        val unavailableEntryCount = status.requireBoundedNonNegativeInt("unavailableEntryCount", 10_000)
+        val integrityMismatchCount = status.requireBoundedNonNegativeInt("integrityMismatchCount", 10_000)
+        val provenanceGapCount = status.requireBoundedNonNegativeInt("provenanceGapCount", 10_000)
+        val unsupportedEntryCount = status.requireBoundedNonNegativeInt("unsupportedEntryCount", 10_000)
+        val lifecycleRiskCount = status.requireBoundedNonNegativeInt("lifecycleRiskCount", 10_000)
+        val technologyConflictCount = status.requireBoundedNonNegativeInt("technologyConflictCount", 10_000)
+        val architectureConflictCount = status.requireBoundedNonNegativeInt("architectureConflictCount", 10_000)
+        val licenseReviewRequiredCount = status.requireBoundedNonNegativeInt("licenseReviewRequiredCount", 10_000)
+        val licenseProhibitedCount = status.requireBoundedNonNegativeInt("licenseProhibitedCount", 10_000)
+        val securityReviewRequiredCount = status.requireBoundedNonNegativeInt("securityReviewRequiredCount", 10_000)
+        val securityNonconformantCount = status.requireBoundedNonNegativeInt("securityNonconformantCount", 10_000)
+        val exceptionCandidateCount = status.requireBoundedNonNegativeInt("exceptionCandidateCount", 10_000)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 1)
+        val staleImplementationUnitModelCount = status.requireBoundedNonNegativeInt("staleImplementationUnitModelCount", 1)
+        val staleTechnologyProfileCount = status.requireBoundedNonNegativeInt("staleTechnologyProfileCount", 1)
+        val invalidRegistryCount = status.requireBoundedNonNegativeInt("invalidRegistryCount", 1)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val state = status.requireOneOf("state", setOf("attention-required", "candidate-complete"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gaps = rangeVersionCandidateCount + unresolvedVersionCount + missingEvidenceCount + unavailableEntryCount +
+            integrityMismatchCount + provenanceGapCount + unsupportedEntryCount + lifecycleRiskCount +
+            technologyConflictCount + architectureConflictCount + licenseReviewRequiredCount + licenseProhibitedCount +
+            securityReviewRequiredCount + securityNonconformantCount + exceptionCandidateCount + staleBindingCount +
+            staleImplementationUnitModelCount + staleTechnologyProfileCount + invalidRegistryCount + unresolvedQuestionCount
+        val allReferencesPresent = implementationUnitModelReference != null && technologyProfileReference != null
+        if ((state == "candidate-complete" &&
+                (gaps > 0 || reviewState != "ready-for-human-review" || reasons.isNotEmpty() ||
+                    candidateReference == null || !allReferencesPresent || entryCount < 1)) ||
+            (state == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "entryCatalogDigest", "sourceCatalogDigest",
+                "compatibilityAssessmentReceiptDigest", "assessmentReceiptDigest", "entryCount",
+                "mandatoryCandidateCount", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = BoilerplateRegistryRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("entryCatalogDigest"),
+                value.requireDigest("sourceCatalogDigest"), value.requireDigest("compatibilityAssessmentReceiptDigest"),
+                value.requireDigest("assessmentReceiptDigest"), value.requireBoundedNonNegativeInt("entryCount", 10_000),
+                value.requireBoundedNonNegativeInt("mandatoryCandidateCount", 10_000),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                candidateReference == null || candidateReference.id != id || candidateReference.revision != revision ||
+                candidateReference.digest != record.digest || record.entryCount != entryCount ||
+                record.mandatoryCandidateCount != mandatoryCandidateCount || record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((candidateReference == null) != (candidate == null) || (candidate == null) != !allReferencesPresent ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return BoilerplateRegistryProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, state, reviewState, reasons,
+            implementationUnitModelReference?.id, implementationUnitModelReference?.revision,
+            implementationUnitModelReference?.digest, technologyProfileReference?.id,
+            technologyProfileReference?.revision, technologyProfileReference?.digest,
+            entryCount, exactVersionCandidateCount, rangeVersionCandidateCount, unresolvedVersionCount,
+            mandatoryCandidateCount, missingEvidenceCount, unavailableEntryCount, integrityMismatchCount,
+            provenanceGapCount, unsupportedEntryCount, lifecycleRiskCount, technologyConflictCount,
+            architectureConflictCount, licenseReviewRequiredCount, licenseProhibitedCount,
+            securityReviewRequiredCount, securityNonconformantCount, exceptionCandidateCount, staleBindingCount,
+            staleImplementationUnitModelCount, staleTechnologyProfileCount, invalidRegistryCount,
             unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }

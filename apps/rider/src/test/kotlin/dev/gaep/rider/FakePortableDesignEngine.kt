@@ -51,6 +51,7 @@ private val definitionOfDoneId = UUID.fromString("96969696-9696-4696-8696-969696
 private val implementationUnitModelId = UUID.fromString("97979797-9797-4797-8797-979797979797")
 private val dependencyMappingId = UUID.fromString("98989898-9898-4898-8898-989898989898")
 private val technologyProfileId = UUID.fromString("89898989-8989-4989-8989-898989898989")
+private val boilerplateRegistryId = UUID.fromString("90909090-9090-4090-8090-909090909090")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -321,6 +322,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.technologyProfile.snapshot" -> handleTechnologyProfile(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.boilerplateRegistry.snapshot" -> handleBoilerplateRegistry(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4112,6 +4118,105 @@ private fun handleTechnologyProfile(id: Long, params: JsonObject, workspacePath:
         workspacePath.endsWith("bad-technology-profile-snapshot-private") -> {
             value.addProperty("rationale", "$privateRoot/$privateCredential")
         }
+    }
+    writeResult(id, value)
+}
+
+private fun handleBoilerplateRegistry(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BOILERPLATE REGISTRY PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-boilerplate-registry-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T17:30:00.000Z"
+    val candidateDigest = "sha256:${"3".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "boilerplate-registry-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "boilerplate-registry-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", boilerplateRegistryId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            add("implementationUnitModel", JsonObject().apply {
+                addProperty("recordId", implementationUnitModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-boilerplate-registry-unit-model-binding")) "sha256:${"4".repeat(64)}" else "sha256:${"5".repeat(64)}")
+            })
+            add("technologyProfile", JsonObject().apply {
+                addProperty("recordId", technologyProfileId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", if (workspacePath.endsWith("bad-boilerplate-registry-technology-profile-binding")) "sha256:${"7".repeat(64)}" else "sha256:${"6".repeat(64)}")
+            })
+            addProperty("entryCount", 4)
+            addProperty("exactVersionCandidateCount", 2)
+            addProperty("rangeVersionCandidateCount", 1)
+            addProperty("unresolvedVersionCount", 1)
+            addProperty("mandatoryCandidateCount", 2)
+            addProperty("missingEvidenceCount", 1)
+            addProperty("unavailableEntryCount", 1)
+            addProperty("integrityMismatchCount", 1)
+            addProperty("provenanceGapCount", 1)
+            addProperty("unsupportedEntryCount", 1)
+            addProperty("lifecycleRiskCount", 1)
+            addProperty("technologyConflictCount", 1)
+            addProperty("architectureConflictCount", 1)
+            addProperty("licenseReviewRequiredCount", 1)
+            addProperty("licenseProhibitedCount", 0)
+            addProperty("securityReviewRequiredCount", 1)
+            addProperty("securityNonconformantCount", 0)
+            addProperty("exceptionCandidateCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleImplementationUnitModelCount", 0)
+            addProperty("staleTechnologyProfileCount", 0)
+            addProperty("invalidRegistryCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Boilerplate Registry candidates require human review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("authorityBoundary", "boilerplate-registry-status-is-observational-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-selection-binding-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority")
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", boilerplateRegistryId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("state", "candidate")
+            addProperty("entryCatalogDigest", "sha256:${"4".repeat(64)}")
+            addProperty("sourceCatalogDigest", "sha256:${"5".repeat(64)}")
+            addProperty("compatibilityAssessmentReceiptDigest", "sha256:${"6".repeat(64)}")
+            addProperty("assessmentReceiptDigest", "sha256:${"7".repeat(64)}")
+            addProperty("entryCount", 4)
+            addProperty("mandatoryCandidateCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T17:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-entry-source-compatibility-assessment-snapshot-digests-only-not-boilerplate-names-locators-versions-capabilities-limitations-evidence-rationale-technology-unit-architecture-repository-template-license-security-policy-personal-data-secrets-credentials-or-machine-paths")
+        addProperty("authorityBoundary", "boilerplate-registry-projection-is-read-only-and-does-not-establish-organizational-designation-endorsement-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-selection-binding-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-boilerplate-registry-snapshot-digest") -> value.getAsJsonObject("candidate").addProperty("entryCount", 5)
+        workspacePath.endsWith("bad-boilerplate-registry-snapshot-private") -> value.addProperty("rationale", "$privateRoot/$privateCredential")
     }
     writeResult(id, value)
 }

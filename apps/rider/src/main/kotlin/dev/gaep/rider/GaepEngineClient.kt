@@ -429,6 +429,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readBoilerplateRegistry(initiativeId: UUID): BoilerplateRegistryProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("planning.boilerplateRegistry.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseBoilerplateRegistryEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }

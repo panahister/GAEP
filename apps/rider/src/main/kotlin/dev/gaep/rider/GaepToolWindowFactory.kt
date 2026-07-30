@@ -690,6 +690,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += technologyProfileButton
         actions.add(technologyProfileButton)
 
+        val boilerplateRegistryButton = JButton("Inspect Boilerplate Registry…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Boilerplate names, locators, versions, capabilities, limitations, evidence, rationale, technology, unit, architecture, repository, template, license and security-policy content, personal data, local paths, secrets, credentials, organizational designation, endorsement, approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver, selection or binding, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, and action authority are withheld.",
+                    "GAEP Boilerplate Registry",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Boilerplate Registry", status, output, buttons) {
+                    controller.readBoilerplateRegistry(initiativeId)
+                }
+            }
+        }
+        buttons += boilerplateRegistryButton
+        actions.add(boilerplateRegistryButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(
