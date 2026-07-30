@@ -63,6 +63,7 @@ import {
   type DesignToCodeBindingRegistryProjection,
   type RouteScreenComponentMappingProjection,
   type TestMethodologyProjection,
+  type TestInventoryProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -3067,6 +3068,59 @@ function testMethodologyProjection(
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function testInventoryProjection(
+  acceptanceCriteria: AcceptanceCriteriaProjection,
+  riskRegister: RiskRegisterProjection,
+  units: ImplementationUnitModelProjection,
+  routeMapping: RouteScreenComponentMappingProjection,
+  methodology: TestMethodologyProjection,
+): TestInventoryProjection {
+  const exact = (candidate: { id: string; revision: number; digest: string }) => ({
+    recordId: candidate.id, revision: candidate.revision, digest: candidate.digest,
+  })
+  const status = {
+    schemaVersion: 1 as const, kind: "test-inventory-status" as const,
+    productId: product.id, productRevision: product.revision ?? 1,
+    initiativeId: initiative.id, initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "b6b6b6b6-b6b6-46b6-86b6-b6b6b6b6b6b6", revision: 2, digest: `sha256:${"1".repeat(64)}` as const },
+    acceptanceCriteria: exact(acceptanceCriteria.candidate!), riskRegister: exact(riskRegister.register!),
+    implementationUnitModel: exact(units.candidate!), routeScreenComponentMapping: exact(routeMapping.candidate!),
+    testMethodology: exact(methodology.candidate!), sourceCriterionCount: 12, sourceRiskCount: 9,
+    sourceUnitCount: 4, sourceMappingSubjectCount: 14, sourceMethodologyScopeCount: 4,
+    assetCount: 18, catalogedAssetCount: 14, conflictAssetCount: 1, missingAssetCount: 1,
+    deferredAssetCount: 1, notAssessedAssetCount: 1, observedAssetCount: 11, plannedAssetCount: 5,
+    automatedAssetCount: 10, manualAssetCount: 4, duplicateIdentityCount: 1, orphanAssetCount: 1,
+    uncoveredCriterionCount: 2, uncoveredRiskCount: 1, uncoveredUnitCount: 1,
+    uncoveredMappingSubjectCount: 2, uncoveredMethodologyScopeCount: 1, ownershipGapCount: 1,
+    traceGapCount: 2, evidenceGapCount: 1, staleBindingCount: 0, staleDependencyCount: 0,
+    invalidCandidateCount: 1, unresolvedQuestionCount: 2, reviewState: "held" as const,
+    state: "attention-required" as const, reasons: ["One or more Test Inventory candidates require human review"],
+    assessedAt: "2026-07-31T02:00:00.000Z",
+    authorityBoundary: "test-inventory-status-is-observational-and-does-not-establish-requirement-acceptance-criteria-or-risk-truth-inventory-validity-or-completeness-test-asset-existence-environment-availability-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const, kind: "test-inventory-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId, revision: status.candidate.revision, digest: status.candidate.digest,
+      state: "candidate" as const, catalogReceiptDigest: `sha256:${"2".repeat(64)}` as const,
+      coverageReceiptDigest: `sha256:${"3".repeat(64)}` as const,
+      traceReceiptDigest: `sha256:${"4".repeat(64)}` as const,
+      ownershipReceiptDigest: `sha256:${"5".repeat(64)}` as const,
+      assessmentReceiptDigest: `sha256:${"6".repeat(64)}` as const,
+      assetCount: 18, catalogedAssetCount: 14, conflictAssetCount: 1,
+      observedAssetCount: 11, plannedAssetCount: 5, reviewState: "held" as const,
+      updatedAt: "2026-07-31T01:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-test-catalog-coverage-trace-ownership-assessment-snapshot-digests-only-not-test-titles-paths-code-steps-data-owner-evidence-results-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "test-inventory-projection-is-read-only-and-does-not-establish-requirement-acceptance-criteria-or-risk-truth-inventory-validity-or-completeness-test-asset-existence-environment-availability-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -4870,6 +4924,7 @@ interface HarnessOptions {
   designToCodeBindingRegistryProjection?: DesignToCodeBindingRegistryProjection
   routeScreenComponentMappingProjection?: RouteScreenComponentMappingProjection
   testMethodologyProjection?: TestMethodologyProjection
+  testInventoryProjection?: TestInventoryProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -5100,6 +5155,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.testMethodologyProjection ? {
       testMethodology: {
         project: async () => options.testMethodologyProjection!,
+      },
+    } : {}),
+    ...(options.testInventoryProjection ? {
+      testInventory: {
+        project: async () => options.testInventoryProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -6288,6 +6348,7 @@ describe("current-engine Product Studio data source", () => {
     const units = implementationUnitModelProjection()
     const dependencyMapping = dependencyMappingProjection(undefined, undefined, undefined, undefined, undefined, undefined, units)
     const securityPrivacy = securityPrivacyAssessmentProjection()
+    const riskRegister = riskRegisterProjection()
     const technologyProfile = technologyProfileProjection(units, dependencyMapping)
     const boilerplateRegistry = boilerplateRegistryProjection(units, technologyProfile)
     const selectionBinding = boilerplateSelectionBindingProjection(units, dependencyMapping, technologyProfile, boilerplateRegistry)
@@ -6309,6 +6370,7 @@ describe("current-engine Product Studio data source", () => {
     const methodology = testMethodologyProjection(
       acceptance, ready, done, units, dependencyMapping, securityPrivacy, projection,
     )
+    const inventory = testInventoryProjection(acceptance, riskRegister, units, projection, methodology)
     const options = {
       informationArchitectureProjection: informationArchitecture,
       screenStateInventoryProjection: screenInventory,
@@ -6328,6 +6390,7 @@ describe("current-engine Product Studio data source", () => {
       implementationUnitModelProjection: units,
       dependencyMappingProjection: dependencyMapping,
       securityPrivacyAssessmentProjection: securityPrivacy,
+      riskRegisterProjection: riskRegister,
       technologyProfileProjection: technologyProfile,
       boilerplateRegistryProjection: boilerplateRegistry,
       boilerplateSelectionBindingProjection: selectionBinding,
@@ -6336,6 +6399,7 @@ describe("current-engine Product Studio data source", () => {
       designToCodeBindingRegistryProjection: designCodeBinding,
       routeScreenComponentMappingProjection: projection,
       testMethodologyProjection: methodology,
+      testInventoryProjection: inventory,
     }
     const snapshot = await harness(options).source.readSnapshot("delivery")
     expect(isStudioSnapshot(snapshot)).toBe(true)
@@ -6387,6 +6451,31 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot.page.kind === "delivery" ? snapshot.page.testMethodologies : undefined)).not.toMatch(
       /risk-based|quality-lead|private environment|private test data|customer@example\.com|api_key/iu,
+    )
+    expect(snapshot.page.kind === "delivery" && snapshot.page.testInventories).toMatchObject({
+      id: "test-inventory",
+      rows: [{
+        id: inventory.candidate?.id,
+        cells: {
+          initiative: initiative.id, revision: "2",
+          catalogReceipt: inventory.candidate?.catalogReceiptDigest,
+          coverageReceipt: inventory.candidate?.coverageReceiptDigest,
+          traceReceipt: inventory.candidate?.traceReceiptDigest,
+          ownershipReceipt: inventory.candidate?.ownershipReceiptDigest,
+          assessmentReceipt: inventory.candidate?.assessmentReceiptDigest,
+          sources: "12 criteria · 9 risks · 4 units · 14 mapping subjects · 4 methodology scopes",
+          inventory: "18 tests · 14 cataloged · 1 conflicts · 1 missing · 1 deferred · 1 not assessed",
+          candidates: "11 observed · 5 planned · 10 automated · 4 manual",
+          assessment: "attention-required · held",
+          coverageGaps: "2 criteria · 1 risks · 1 units · 2 mapping subjects · 1 methodology scopes",
+          integrityGaps: "1 duplicates · 1 orphans · 1 ownership · 2 trace · 1 evidence",
+          staleGaps: "0 stale bindings · 0 stale dependencies · 1 invalid candidates · 2 questions",
+          boundary: expect.stringContaining("no test titles, paths, code, steps, data, owners, evidence, results"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot.page.kind === "delivery" ? snapshot.page.testInventories : undefined)).not.toMatch(
+      /checkout\.contract|quality-lead|private test path|private test data|customer@example\.com|api_key/iu,
     )
 
     const hostileBody = { ...projection, status: {

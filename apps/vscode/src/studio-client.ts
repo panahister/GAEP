@@ -618,6 +618,7 @@ class StudioShell {
       ...(page.designToCodeBindingRegistries ? [page.designToCodeBindingRegistries] : []),
       ...(page.routeScreenComponentMappings ? [page.routeScreenComponentMappings] : []),
       ...(page.testMethodologies ? [page.testMethodologies] : []),
+      ...(page.testInventories ? [page.testInventories] : []),
     ]) container.append(this.renderTable(table))
     if (page.transitionPreview) {
       const preview = element("section", "section grouped-section")

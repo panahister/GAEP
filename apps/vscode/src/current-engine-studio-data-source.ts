@@ -24,6 +24,7 @@ import type {
   DesignToCodeBindingRegistryProjection,
   RouteScreenComponentMappingProjection,
   TestMethodologyProjection,
+  TestInventoryProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -243,6 +244,9 @@ export interface CurrentStudioEngineReader {
   testMethodology?: {
     project(initiativeId: string): Promise<TestMethodologyProjection>
   }
+  testInventory?: {
+    project(initiativeId: string): Promise<TestInventoryProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -428,6 +432,7 @@ interface ObservedStudioState {
   designToCodeBindingRegistryProjections: Map<string, DesignToCodeBindingRegistryProjection>
   routeScreenComponentMappingProjections: Map<string, RouteScreenComponentMappingProjection>
   testMethodologyProjections: Map<string, TestMethodologyProjection>
+  testInventoryProjections: Map<string, TestInventoryProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3860,6 +3865,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     designToCodeBindingRegistries: designToCodeBindingRegistryTable(state),
     routeScreenComponentMappings: routeScreenComponentMappingTable(state),
     testMethodologies: testMethodologyTable(state),
+    testInventories: testInventoryTable(state),
   }
 }
 
@@ -4827,6 +4833,69 @@ function testMethodologyTable(state: ObservedStudioState): StudioTableSnapshot {
       emptyState: emptySurface(
         "No governed Test Methodology candidate",
         "Create the candidate through the governed engine workflow after all seven exact acceptance, ready, done, implementation-unit, dependency, security/privacy, and route/screen/component mapping candidates exist. This view does not execute tests, access environments or providers, create test data, establish results or evidence truth, approve security/privacy, appoint owners, accept, release, deploy, or grant action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function testInventoryTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.testInventoryProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        catalogReceipt: record.catalogReceiptDigest,
+        coverageReceipt: record.coverageReceiptDigest,
+        traceReceipt: record.traceReceiptDigest,
+        ownershipReceipt: record.ownershipReceiptDigest,
+        assessmentReceipt: record.assessmentReceiptDigest,
+        sources: `${status.sourceCriterionCount} criteria · ${status.sourceRiskCount} risks · ${status.sourceUnitCount} units · ${status.sourceMappingSubjectCount} mapping subjects · ${status.sourceMethodologyScopeCount} methodology scopes`,
+        inventory: `${status.assetCount} tests · ${status.catalogedAssetCount} cataloged · ${status.conflictAssetCount} conflicts · ${status.missingAssetCount} missing · ${status.deferredAssetCount} deferred · ${status.notAssessedAssetCount} not assessed`,
+        candidates: `${status.observedAssetCount} observed · ${status.plannedAssetCount} planned · ${status.automatedAssetCount} automated · ${status.manualAssetCount} manual`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        coverageGaps: `${status.uncoveredCriterionCount} criteria · ${status.uncoveredRiskCount} risks · ${status.uncoveredUnitCount} units · ${status.uncoveredMappingSubjectCount} mapping subjects · ${status.uncoveredMethodologyScopeCount} methodology scopes`,
+        integrityGaps: `${status.duplicateIdentityCount} duplicates · ${status.orphanAssetCount} orphans · ${status.ownershipGapCount} ownership · ${status.traceGapCount} trace · ${status.evidenceGapCount} evidence`,
+        staleGaps: `${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+        boundary: "Candidate identities, counts, statuses, and test catalog, coverage, trace, ownership, assessment, and snapshot digests only; no test titles, paths, code, steps, data, owners, evidence, results, personal data, secrets, credentials, or machine paths. This view does not establish test existence, inventory validity or completeness, execution or results, evidence or coverage truth, quality, security or privacy approval, owner appointment, implementation readiness, acceptance, release, deployment, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "test-inventory",
+    title: "Governed Test Inventory Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "catalogReceipt", label: "Catalog receipt" },
+      { key: "coverageReceipt", label: "Coverage receipt" },
+      { key: "traceReceipt", label: "Trace receipt" },
+      { key: "ownershipReceipt", label: "Ownership receipt" },
+      { key: "assessmentReceipt", label: "Assessment receipt" },
+      { key: "sources", label: "Privacy-safe source counts" },
+      { key: "inventory", label: "Candidate inventory" },
+      { key: "candidates", label: "Candidate asset states" },
+      { key: "assessment", label: "Candidate assessment" },
+      { key: "coverageGaps", label: "Candidate coverage gaps" },
+      { key: "integrityGaps", label: "Candidate integrity gaps" },
+      { key: "staleGaps", label: "Candidate freshness gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Test Inventory candidate",
+        "Create the candidate through the governed engine workflow after the exact acceptance criteria, risk register, implementation unit, route/screen/component mapping, and test methodology candidates exist. This view does not create or execute tests, access environments or providers, establish test existence, results, evidence or coverage truth, approve security/privacy, appoint owners, accept, release, deploy, or grant action authority.",
       ),
     } : {}),
   }
@@ -6682,6 +6751,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       designToCodeBindingRegistryProjections: new Map(),
       routeScreenComponentMappingProjections: new Map(),
       testMethodologyProjections: new Map(),
+      testInventoryProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -7823,6 +7893,62 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
           "Test Methodology metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
+      }
+    }
+    if (route === "delivery" && engine.testInventory) {
+      if (auditSemanticsVerified) {
+        const dependencyReaders = [engine.acceptanceCriteria, engine.riskRegister, engine.implementationUnitModel,
+          engine.routeScreenComponentMapping, engine.testMethodology]
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const inventory = await engine.testInventory!.project(initiative.id)
+          const dependencies = dependencyReaders.every((reader) => reader !== undefined)
+            ? await Promise.all(dependencyReaders.map((reader) => reader!.project(initiative.id)))
+            : undefined
+          return { inventory, dependencies }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.inventory
+            const { snapshotDigest, ...projectionBody } = value
+            const references = [value.status.acceptanceCriteria, value.status.riskRegister,
+              value.status.implementationUnitModel, value.status.routeScreenComponentMapping,
+              value.status.testMethodology]
+            const exactDependencies = !value.candidate || (
+              projection.value.dependencies !== undefined &&
+              references.every((reference, dependencyIndex) => {
+                const dependencyProjection = projection.value.dependencies?.[dependencyIndex]
+                const dependency = (dependencyProjection && "candidate" in dependencyProjection
+                  ? dependencyProjection.candidate
+                  : dependencyProjection && "register" in dependencyProjection
+                    ? dependencyProjection.register
+                    : dependencyProjection && "assessment" in dependencyProjection
+                      ? dependencyProjection.assessment
+                      : undefined) as { id: string; revision: number; digest: string } | undefined
+                return reference !== undefined && dependency !== undefined &&
+                  reference.recordId === dependency.id && reference.revision === dependency.revision &&
+                  reference.digest === dependency.digest
+              })
+            )
+            if (value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactDependencies && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.testInventoryProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Test Inventory projection was unavailable or did not bind all 5 exact current governed dependencies",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(`test-inventory-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Test Inventory metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("test-inventory-unavailable",
+          "Test Inventory metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (
