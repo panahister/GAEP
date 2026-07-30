@@ -52,6 +52,7 @@ import {
   type PrioritizationModelProjection,
   type AcceptanceCriteriaProjection,
   type DefinitionOfReadyProjection,
+  type DefinitionOfDoneProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -2250,6 +2251,89 @@ function definitionOfReadyProjection(
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function definitionOfDoneProjection(
+  hierarchy = backlogHierarchyProjection(),
+  mvp = mvpSliceDefinitionProjection(hierarchy),
+  priority = prioritizationModelProjection(mvp),
+  criteria = acceptanceCriteriaProjection(hierarchy, mvp, priority),
+  ready = definitionOfReadyProjection(hierarchy, mvp, priority, criteria),
+): DefinitionOfDoneProjection {
+  const exactHierarchy = hierarchy.candidate!
+  const exactMvp = mvp.candidate!
+  const exactPriority = priority.candidate!
+  const exactCriteria = criteria.candidate!
+  const exactReady = ready.candidate!
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "definition-of-done-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "fafafafa-fafa-4afa-8afa-fafafafafafa", revision: 2, digest: `sha256:${"e".repeat(64)}` as const },
+    hierarchy: { recordId: exactHierarchy.id, revision: exactHierarchy.revision, digest: exactHierarchy.digest },
+    mvpSliceDefinition: { recordId: exactMvp.id, revision: exactMvp.revision, digest: exactMvp.digest },
+    prioritizationModel: { recordId: exactPriority.id, revision: exactPriority.revision, digest: exactPriority.digest },
+    acceptanceCriteria: { recordId: exactCriteria.id, revision: exactCriteria.revision, digest: exactCriteria.digest },
+    definitionOfReady: { recordId: exactReady.id, revision: exactReady.revision, digest: exactReady.digest },
+    subjectCount: 4,
+    policyEntryCount: 6,
+    expectedEvaluationCount: 24,
+    evaluationCount: 21,
+    candidateSatisfiedCount: 14,
+    notSatisfiedCount: 2,
+    notApplicableCount: 3,
+    exceptionCandidateCount: 1,
+    notAssessedCount: 1,
+    staleEvaluationCount: 1,
+    invalidEvaluationCount: 2,
+    missingEvaluationCount: 3,
+    staleBindingCount: 0,
+    staleHierarchyCount: 0,
+    staleMvpSliceDefinitionCount: 0,
+    stalePrioritizationModelCount: 0,
+    staleAcceptanceCriteriaCount: 0,
+    staleDefinitionOfReadyCount: 0,
+    expiredCount: 0,
+    unresolvedQuestionCount: 2,
+    reviewState: "held" as const,
+    result: "attention-required" as const,
+    reasons: ["One or more completion prerequisites require review"],
+    assessedAt: "2026-07-30T14:20:00.000Z",
+    gateBoundary: "a-passing-definition-of-done-candidate-is-an-evaluation-result-not-completion-acceptance-approval-merge-release-deployment-or-action-permission" as const,
+    authorityBoundary: "definition-of-done-status-is-observational-and-does-not-establish-evidence-truth-test-success-quality-requirement-satisfaction-acceptance-criteria-satisfaction-approval-ready-done-exception-waiver-authority-implementation-completeness-merge-readiness-release-readiness-deployment-readiness-assignment-execution-acceptance-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "definition-of-done-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      state: "candidate" as const,
+      policyVersion: 4,
+      validUntil: "2026-08-30T14:19:00.000Z",
+      subjectCatalogDigest: `sha256:${"1".repeat(64)}` as const,
+      policyDigest: `sha256:${"2".repeat(64)}` as const,
+      evaluationDigest: `sha256:${"3".repeat(64)}` as const,
+      receiptDigest: `sha256:${"4".repeat(64)}` as const,
+      subjectCount: 4,
+      policyEntryCount: 6,
+      evaluationCount: 21,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-30T14:19:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-policy-evaluation-receipt-snapshot-digests-only-not-rules-rationales-evidence-identities-assessor-identities-personal-data-secrets-credentials-or-machine-paths" as const,
+    gateBoundary: "a-passing-definition-of-done-candidate-is-an-evaluation-result-not-completion-acceptance-approval-merge-release-deployment-or-action-permission" as const,
+    authorityBoundary: "definition-of-done-projection-is-read-only-and-does-not-establish-evidence-truth-test-success-quality-requirement-satisfaction-acceptance-criteria-satisfaction-approval-ready-done-exception-waiver-authority-implementation-completeness-merge-readiness-release-readiness-deployment-readiness-assignment-execution-acceptance-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -4042,6 +4126,7 @@ interface HarnessOptions {
   prioritizationModelProjection?: PrioritizationModelProjection
   acceptanceCriteriaProjection?: AcceptanceCriteriaProjection
   definitionOfReadyProjection?: DefinitionOfReadyProjection
+  definitionOfDoneProjection?: DefinitionOfDoneProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -4217,6 +4302,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.definitionOfReadyProjection ? {
       definitionOfReady: {
         project: async () => options.definitionOfReadyProjection!,
+      },
+    } : {}),
+    ...(options.definitionOfDoneProjection ? {
+      definitionOfDone: {
+        project: async () => options.definitionOfDoneProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -4892,6 +4982,48 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private ready rule|private rationale|private evidence identity|private assessor|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects exact privacy-safe Definition of Done metadata on Delivery without turning a candidate into completion", async () => {
+    const hierarchy = backlogHierarchyProjection()
+    const mvp = mvpSliceDefinitionProjection(hierarchy)
+    const priority = prioritizationModelProjection(mvp)
+    const criteria = acceptanceCriteriaProjection(hierarchy, mvp, priority)
+    const ready = definitionOfReadyProjection(hierarchy, mvp, priority, criteria)
+    const projection = definitionOfDoneProjection(hierarchy, mvp, priority, criteria, ready)
+    const { source } = harness({
+      backlogHierarchyProjection: hierarchy,
+      mvpSliceDefinitionProjection: mvp,
+      prioritizationModelProjection: priority,
+      acceptanceCriteriaProjection: criteria,
+      definitionOfReadyProjection: ready,
+      definitionOfDoneProjection: projection,
+    })
+    const snapshot = await source.readSnapshot("delivery")
+
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.kind === "delivery" && snapshot.page.definitionOfDone).toMatchObject({
+      id: "definition-of-done",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          policyVersion: "4",
+          subjects: projection.candidate?.subjectCatalogDigest,
+          policy: projection.candidate?.policyDigest,
+          evaluations: projection.candidate?.evaluationDigest,
+          receipt: projection.candidate?.receiptDigest,
+          coverage: "4 subjects · 6 prerequisites · 21/24 evaluations · 3 missing",
+          assessment: "attention-required · held · 14 candidate-satisfied · 3 not-applicable candidates · 2 not satisfied · 1 exception candidates",
+          gaps: "2 questions · 1 unassessed · 1 stale evaluations · 2 invalid evaluations · 0 expired · 0 stale bindings · 0 stale hierarchies · 0 stale MVP definitions · 0 stale prioritization models · 0 stale Acceptance Criteria · 0 stale Definition of Ready",
+          boundary: expect.stringContaining("A candidate pass is not completion, approval, merge, release, deployment, or action permission"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private done rule|private completion rationale|private test evidence|private assessor|customer@example\.com|api_key/iu,
     )
   })
 

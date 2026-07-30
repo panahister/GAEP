@@ -300,6 +300,7 @@ export interface DeliveryPageSnapshot extends StudioPageBase {
   prioritizationModels?: StudioTableSnapshot
   acceptanceCriteria?: StudioTableSnapshot
   definitionOfReady?: StudioTableSnapshot
+  definitionOfDone?: StudioTableSnapshot
   transitionPreview?: {
     recordType: "initiative" | "change" | "work-item"
     recordId: string
@@ -1360,7 +1361,7 @@ function isRecordFormPage(page: Record<string, unknown>, route: RecordFormRoute)
 function isDeliveryPage(page: Record<string, unknown>): boolean {
   if (!hasOnlyKeys(page, [
     "kind", "route", "title", "purpose", "source", "actions", "design", "initiatives", "sources",
-    "sourceBaselines", "sourceProvenance", "changes", "workItems", "backlogHierarchy", "mvpSliceDefinitions", "prioritizationModels", "acceptanceCriteria", "definitionOfReady", "transitionPreview",
+    "sourceBaselines", "sourceProvenance", "changes", "workItems", "backlogHierarchy", "mvpSliceDefinitions", "prioritizationModels", "acceptanceCriteria", "definitionOfReady", "definitionOfDone", "transitionPreview",
   ]) || !isPageBase(page, "delivery") || page.kind !== "delivery" || !isTableSnapshot(page.initiatives) ||
     !isTableSnapshot(page.sources) || !isTableSnapshot(page.sourceBaselines) ||
     !isTableSnapshot(page.sourceProvenance) || !isTableSnapshot(page.changes) ||
@@ -1369,7 +1370,8 @@ function isDeliveryPage(page: Record<string, unknown>): boolean {
     (page.mvpSliceDefinitions !== undefined && !isTableSnapshot(page.mvpSliceDefinitions)) ||
     (page.prioritizationModels !== undefined && !isTableSnapshot(page.prioritizationModels)) ||
     (page.acceptanceCriteria !== undefined && !isTableSnapshot(page.acceptanceCriteria)) ||
-    (page.definitionOfReady !== undefined && !isTableSnapshot(page.definitionOfReady))) return false
+    (page.definitionOfReady !== undefined && !isTableSnapshot(page.definitionOfReady)) ||
+    (page.definitionOfDone !== undefined && !isTableSnapshot(page.definitionOfDone))) return false
   if (page.transitionPreview === undefined) return true
   return isRecord(page.transitionPreview) && hasOnlyKeys(page.transitionPreview, [
     "recordType", "recordId", "currentState", "allowedNextStates",
