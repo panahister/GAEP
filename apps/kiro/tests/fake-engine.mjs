@@ -3761,9 +3761,10 @@ function readPhase2UxFigmaDashboard(id, params) {
     ["design-baseline", "Design baseline", "governance-assurance", "design-baseline-projection"],
     ["design-drift-detection", "Design drift detection", "governance-assurance", "design-drift-detection-projection"],
   ]
-  const sourceCatalogDigest = canonicalDigest(definitions.map(([sourceId, title, group, projectionKind]) => ({
-    id: sourceId, title, group, projectionKind,
-  })))
+  const sources = definitions.map(([sourceId, title, group, projectionKind]) => ({
+    id: sourceId, title, group, projectionKind, availability: "unavailable",
+  }))
+  const sourceCatalogDigest = canonicalDigest(sources)
   const emptyExperience = {
     personaCount: 0, designRoleCount: 0, journeyCount: 0, touchpointCount: 0,
     informationArchitectureNodeCount: 0, routeCount: 0, screenCount: 0, stateCount: 0, variantCount: 0,
@@ -3782,9 +3783,7 @@ function readPhase2UxFigmaDashboard(id, params) {
       recordType: "initiative", recordId: initiativeId, revision: initiativeState.revision,
       digest: initiativeDigest, state: initiativeState.state,
     },
-    sources: definitions.map(([sourceId, title, group, projectionKind]) => ({
-      id: sourceId, title, group, projectionKind, availability: "unavailable",
-    })),
+    sources,
     experience: emptyExperience,
     designSystem: emptyDesignSystem,
     figma: {
