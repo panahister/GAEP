@@ -474,6 +474,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readHumanDesignApproval(initiativeId: UUID): HumanDesignApprovalProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("design.humanDesignApproval.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseHumanDesignApprovalEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,

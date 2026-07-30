@@ -770,6 +770,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += designConflictResolutionButton
         actions.add(designConflictResolutionButton)
 
+        val humanDesignApprovalButton = JButton("Inspect Human Design Approval…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Design, decision rationale, conditions, evidence, Source, human-attribution, personal, local-path, secret, credential, permission, and authority content is withheld.",
+                    "GAEP Human Design Approval",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Human Design Approval", status, output, buttons) {
+                    controller.readHumanDesignApproval(initiativeId)
+                }
+            }
+        }
+        buttons += humanDesignApprovalButton
+        actions.add(humanDesignApprovalButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

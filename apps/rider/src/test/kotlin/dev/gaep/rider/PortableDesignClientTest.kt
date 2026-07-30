@@ -2221,6 +2221,53 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Human Design Approval projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("human-design-approval-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readHumanDesignApproval(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("approved-candidate", projection.candidateResult)
+            assertEquals("recorded-human-decision", projection.reviewState)
+            assertEquals(5, projection.prerequisiteCount)
+            assertEquals(4, projection.completePrerequisiteCount)
+            assertEquals(1, projection.approveCount)
+            assertEquals("not-established", projection.approverAuthorityState)
+            assertEquals(18, projection.candidate?.subject?.itemCount)
+
+            val rendered = RiderProductController(client).readHumanDesignApproval(entryId)
+            assertTrue(rendered.contains("GAEP Human Design Approval decision candidate"))
+            assertTrue(rendered.contains("4/5 complete"))
+            assertTrue(rendered.contains("1 approve · 0 reject"))
+            assertTrue(rendered.contains("approver not-established · separation of duties not-established"))
+            assertTrue(rendered.contains("does not verify approver authority"))
+            assertTrue(rendered.contains("implementation or action authority"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("decisionRationale="))
+        }
+
+        listOf("bad-human-design-approval-digest", "bad-human-design-approval-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readHumanDesignApproval(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-human-design-approval-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readHumanDesignApproval(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

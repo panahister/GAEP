@@ -56,6 +56,7 @@ private val designToRequirementBindingId = UUID.fromString("79797979-7979-4979-8
 private val designerReadyGateId = UUID.fromString("80808080-8080-4080-8080-808080808080")
 private val designDeltaId = UUID.fromString("81818181-8181-4181-8181-818181818181")
 private val designConflictResolutionId = UUID.fromString("82828282-8282-4282-8282-828282828282")
+private val humanDesignApprovalId = UUID.fromString("83838383-8383-4383-8383-838383838383")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -334,6 +335,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.designConflictResolution.snapshot" -> handleDesignConflictResolution(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.humanDesignApproval.snapshot" -> handleHumanDesignApproval(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4469,6 +4475,114 @@ private fun handleDesignConflictResolution(id: Long, params: JsonObject, workspa
         }
         workspacePath.endsWith("bad-design-conflict-resolution-private") -> {
             value.addProperty("resolutionContent", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleHumanDesignApproval(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE HUMAN DESIGN APPROVAL PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-human-design-approval-binding")) 8 else 7
+    val assessedAt = "2026-07-30T00:55:00.000Z"
+    val candidateDigest = "sha256:${"2".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "human-design-approval-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "human-design-approval-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", humanDesignApprovalId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("prerequisiteCount", 5)
+            addProperty("completePrerequisiteCount", 4)
+            addProperty("decisionCount", 1)
+            addProperty("approveCount", 1)
+            addProperty("rejectCount", 0)
+            addProperty("requestChangeCount", 0)
+            addProperty("abstainCount", 0)
+            addProperty("expiredDecisionCount", 1)
+            addProperty("revokedDecisionCount", 0)
+            addProperty("staleBindingCount", 1)
+            addProperty("staleSourceReferenceCount", 2)
+            addProperty("unresolvedQuestionCount", 3)
+            addProperty("candidateResult", "approved-candidate")
+            addProperty("reviewState", "recorded-human-decision")
+            addProperty("approverAuthorityState", "not-established")
+            addProperty("separationOfDutiesEnforcementState", "not-established")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("The recorded human design decision candidate is expired") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "human-design-approval-status-is-observational-and-does-not-verify-approver-authority-enforce-separation-of-duties-establish-design-approval-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", humanDesignApprovalId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"3".repeat(64)}")
+            addProperty("state", "candidate")
+            addProperty("prerequisiteCatalogDigest", "sha256:${"4".repeat(64)}")
+            add("subject", JsonObject().apply {
+                addProperty("kind", "finalized-figma-snapshot-import-candidate")
+                addProperty("recordId", finalizedFigmaSnapshotImportId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", "sha256:${"5".repeat(64)}")
+                addProperty("membershipDigest", "sha256:${"6".repeat(64)}")
+                addProperty("externalFileIdentityDigest", "sha256:${"7".repeat(64)}")
+                addProperty("returnedExternalVersionDigest", "sha256:${"8".repeat(64)}")
+                addProperty("itemCatalogDigest", "sha256:${"9".repeat(64)}")
+                addProperty("itemCount", 18)
+            })
+            addProperty("scopeDigest", "sha256:${"a".repeat(64)}")
+            addProperty("decisionDefinitionDigest", "sha256:${"b".repeat(64)}")
+            addProperty("decisionReceiptDigest", "sha256:${"c".repeat(64)}")
+            addProperty("decisionKind", "approve-candidate")
+            addProperty("decisionDigest", "sha256:${"d".repeat(64)}")
+            addProperty("decisionLifecycleState", "active-candidate")
+            addProperty("candidateResult", "approved-candidate")
+            addProperty("reviewState", "recorded-human-decision")
+            addProperty("updatedAt", "2026-07-30T00:54:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-decision-rationale-condition-evidence-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+        )
+        addProperty(
+            "authorityBoundary",
+            "human-design-approval-projection-is-read-only-and-does-not-verify-approver-authority-enforce-separation-of-duties-establish-design-approval-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-human-design-approval-digest") -> {
+            value.getAsJsonObject("status").addProperty("completePrerequisiteCount", 5)
+        }
+        workspacePath.endsWith("bad-human-design-approval-private") -> {
+            value.addProperty("decisionRationale", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)
