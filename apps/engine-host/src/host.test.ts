@@ -2231,6 +2231,52 @@ describe("engine host protocol", () => {
     })
     await expect(host.dispatch({
       jsonrpc: "2.0",
+      id: "human-design-approval-read-empty",
+      protocolVersion: 2,
+      method: "design.humanDesignApproval.read",
+      params: { initiativeId },
+    })).resolves.toBeNull()
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "human-design-approval-assess-empty",
+      protocolVersion: 2,
+      method: "design.humanDesignApproval.assess",
+      params: { initiativeId },
+    })).resolves.toMatchObject({
+      prerequisiteCount: 0,
+      completePrerequisiteCount: 0,
+      decisionCount: 0,
+      approveCount: 0,
+      rejectCount: 0,
+      requestChangeCount: 0,
+      abstainCount: 0,
+      expiredDecisionCount: 0,
+      revokedDecisionCount: 0,
+      staleBindingCount: 0,
+      staleSourceReferenceCount: 0,
+      unresolvedQuestionCount: 0,
+      candidateResult: "not-assessed",
+      reviewState: "draft",
+      approverAuthorityState: "not-established",
+      separationOfDutiesEnforcementState: "not-established",
+      state: "attention-required",
+      authorityBoundary: expect.stringContaining("does-not-verify-approver-authority"),
+    })
+    const humanApprovalProjection = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "human-design-approval-snapshot-empty",
+      protocolVersion: 2,
+      method: "design.humanDesignApproval.snapshot",
+      params: { initiativeId },
+    }) as { snapshotDigest: string; privacyBoundary: string; authorityBoundary: string }
+    const { snapshotDigest: humanApprovalDigest, ...humanApprovalProjectionBody } = humanApprovalProjection
+    expect(humanApprovalDigest).toBe(canonicalDigest(humanApprovalProjectionBody))
+    expect(humanApprovalProjection).toMatchObject({
+      privacyBoundary: expect.stringContaining("not-design-content-decision-rationale-condition-evidence"),
+      authorityBoundary: expect.stringContaining("does-not-verify-approver-authority"),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
       id: "business-v1-block",
       method: "business.snapshot",
       params: { initiativeId },
@@ -2383,6 +2429,12 @@ describe("engine host protocol", () => {
       jsonrpc: "2.0",
       id: "design-conflict-resolution-v1-block",
       method: "design.designConflictResolution.snapshot",
+      params: { initiativeId },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "human-design-approval-v1-block",
+      method: "design.humanDesignApproval.snapshot",
       params: { initiativeId },
     })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
     await expect(host.dispatch({

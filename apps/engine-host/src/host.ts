@@ -309,6 +309,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "design.designConflictResolution.revise",
   "design.designConflictResolution.assess",
   "design.designConflictResolution.snapshot",
+  "design.humanDesignApproval.read",
+  "design.humanDesignApproval.create",
+  "design.humanDesignApproval.revise",
+  "design.humanDesignApproval.assess",
+  "design.humanDesignApproval.snapshot",
   ...portableDesignHostMethods,
 ])
 
@@ -1842,6 +1847,21 @@ export class EngineHost {
         return this.engine.designConflictResolution.assess(request.params.initiativeId)
       case "design.designConflictResolution.snapshot":
         return this.engine.designConflictResolution.project(request.params.initiativeId)
+      case "design.humanDesignApproval.read":
+        return await this.engine.humanDesignApproval.readCurrent(request.params.initiativeId) ?? null
+      case "design.humanDesignApproval.create":
+        return this.engine.humanDesignApproval.create(request.params.record, actorId(request.params.actorId))
+      case "design.humanDesignApproval.revise":
+        return this.engine.humanDesignApproval.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "design.humanDesignApproval.assess":
+        return this.engine.humanDesignApproval.assess(request.params.initiativeId)
+      case "design.humanDesignApproval.snapshot":
+        return this.engine.humanDesignApproval.project(request.params.initiativeId)
       case "productStudio.portableDesign.import": {
         let product: Awaited<ReturnType<GaepEngine["readProduct"]>>
         try {
