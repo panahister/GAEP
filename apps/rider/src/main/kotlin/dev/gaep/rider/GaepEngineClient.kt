@@ -375,6 +375,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readAcceptanceCriteria(initiativeId: UUID): AcceptanceCriteriaProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("planning.acceptanceCriteria.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseAcceptanceCriteriaEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }

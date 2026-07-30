@@ -1643,6 +1643,94 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readAcceptanceCriteria(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val hierarchy = client.readBacklogHierarchy(initiativeId)
+        val mvp = client.readMvpSliceDefinition(initiativeId)
+        val prioritization = client.readPrioritizationModel(initiativeId)
+        val projection = client.readAcceptanceCriteria(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Acceptance Criteria was read. Refresh the exact records." }
+        projection.candidate?.let {
+            val currentHierarchy = requireNotNull(hierarchy.candidate) {
+                "The current Backlog Hierarchy candidate is unavailable. Refresh the exact records."
+            }
+            val currentMvp = requireNotNull(mvp.candidate) {
+                "The current MVP and Vertical Slice candidate is unavailable. Refresh the exact records."
+            }
+            val currentPrioritization = requireNotNull(prioritization.candidate) {
+                "The current Prioritization Model candidate is unavailable. Refresh the exact records."
+            }
+            require(
+                projection.hierarchyRecordId == currentHierarchy.id &&
+                    projection.hierarchyRevision == currentHierarchy.revision &&
+                    projection.hierarchyDigest == currentHierarchy.digest
+            ) { "The Backlog Hierarchy changed while Acceptance Criteria was read. Refresh the exact records." }
+            require(
+                projection.mvpSliceDefinitionRecordId == currentMvp.id &&
+                    projection.mvpSliceDefinitionRevision == currentMvp.revision &&
+                    projection.mvpSliceDefinitionDigest == currentMvp.digest
+            ) { "The MVP and Vertical Slice Definition changed while Acceptance Criteria was read. Refresh the exact records." }
+            require(
+                projection.prioritizationModelRecordId == currentPrioritization.id &&
+                    projection.prioritizationModelRevision == currentPrioritization.revision &&
+                    projection.prioritizationModelDigest == currentPrioritization.digest
+            ) { "The Prioritization Model changed while Acceptance Criteria was read. Refresh the exact records." }
+        }
+        return renderAcceptanceCriteria(projection)
+    }
+
+    fun renderAcceptanceCriteria(projection: AcceptanceCriteriaProjection): String = buildString {
+        appendLine("GAEP governed Acceptance Criteria candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine(
+            "Candidate assessment: ${projection.assessmentState} · review state: ${projection.reviewState} · " +
+                "criterion set: ${projection.criterionSetCompletenessState} · Requirement coverage: ${projection.requirementCoverageState}",
+        )
+        appendLine(
+            "Coverage: ${projection.subjectCount} Story/Task subjects · ${projection.coveredSubjectCount} covered · " +
+                "${projection.uncoveredSubjectCount} uncovered · ${projection.criterionCount} criteria · " +
+                "${projection.testableCriterionCount} testable · ${projection.unassessedCriterionCount} unassessed",
+        )
+        appendLine(
+            "Traces and methods: ${projection.requirementTraceCount} Requirement traces · " +
+                "${projection.uncoveredRequirementCount} uncovered Requirements · ${projection.verificationMethodCount} methods",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedQuestionCount} questions · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleHierarchyCount} stale hierarchies · ${projection.staleMvpSliceDefinitionCount} stale MVP definitions · " +
+                "${projection.stalePrioritizationModelCount} stale prioritization models · ${projection.invalidCriterionCount} invalid criteria",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Acceptance Criteria candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Subject catalog digest: ${record.subjectCatalogDigest}")
+            appendLine("Criterion catalog digest: ${record.criterionCatalogDigest}")
+            appendLine("Verification-method catalog digest: ${record.verificationMethodCatalogDigest}")
+            appendLine("Coverage digest: ${record.coverageDigest}")
+            appendLine(
+                "Candidate coverage: ${record.subjectCount} subjects · ${record.criterionCount} criteria · " +
+                    "${record.testableCriterionCount} testable · ${record.requirementTraceCount} Requirement traces · " +
+                    "${record.verificationMethodCount} methods · ${record.reviewState}",
+            )
+        } ?: appendLine("Acceptance Criteria candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and subject, criterion, method, coverage, and " +
+                "snapshot digests only; no criterion text, Requirement identities, verification evidence, personal data, " +
+                "criterion validity, completeness, Requirement satisfaction, priority, commitment, approval, ready or done, " +
+                "implementation readiness, assignment, execution, acceptance, implementation authority, or action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)

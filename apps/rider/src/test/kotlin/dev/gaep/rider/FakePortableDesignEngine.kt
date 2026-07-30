@@ -45,6 +45,7 @@ private val designRequirementsId = UUID.fromString("68686868-6868-4868-8868-6868
 private val backlogHierarchyId = UUID.fromString("91919191-9191-4191-8191-919191919191")
 private val mvpSliceDefinitionId = UUID.fromString("92929292-9292-4292-8292-929292929292")
 private val prioritizationModelId = UUID.fromString("93939393-9393-4393-8393-939393939393")
+private val acceptanceCriteriaId = UUID.fromString("94949494-9494-4494-8494-949494949494")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -285,6 +286,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.prioritization.snapshot" -> handlePrioritizationModel(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.acceptanceCriteria.snapshot" -> handleAcceptanceCriteria(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -3377,6 +3383,135 @@ private fun handlePrioritizationModel(id: Long, params: JsonObject, workspacePat
         }
         workspacePath.endsWith("bad-prioritization-snapshot-private") -> {
             value.addProperty("dimensionEstimate", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleAcceptanceCriteria(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE ACCEPTANCE CRITERIA PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-acceptance-criteria-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T12:20:00.000Z"
+    val candidateDigest = "sha256:${"1".repeat(64)}"
+    val hierarchyDigest = if (workspacePath.endsWith("bad-acceptance-criteria-hierarchy-binding")) {
+        "sha256:${"7".repeat(64)}"
+    } else {
+        "sha256:${"8".repeat(64)}"
+    }
+    val mvpDigest = if (workspacePath.endsWith("bad-acceptance-criteria-mvp-binding")) {
+        "sha256:${"9".repeat(64)}"
+    } else {
+        "sha256:${"a".repeat(64)}"
+    }
+    val prioritizationDigest = if (workspacePath.endsWith("bad-acceptance-criteria-prioritization-binding")) {
+        "sha256:${"b".repeat(64)}"
+    } else {
+        "sha256:${"c".repeat(64)}"
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "acceptance-criteria-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "acceptance-criteria-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", acceptanceCriteriaId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            add("hierarchy", JsonObject().apply {
+                addProperty("recordId", backlogHierarchyId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", hierarchyDigest)
+            })
+            add("mvpSliceDefinition", JsonObject().apply {
+                addProperty("recordId", mvpSliceDefinitionId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", mvpDigest)
+            })
+            add("prioritizationModel", JsonObject().apply {
+                addProperty("recordId", prioritizationModelId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", prioritizationDigest)
+            })
+            addProperty("subjectCount", 16)
+            addProperty("coveredSubjectCount", 15)
+            addProperty("uncoveredSubjectCount", 1)
+            addProperty("criterionCount", 28)
+            addProperty("testableCriterionCount", 26)
+            addProperty("unassessedCriterionCount", 2)
+            addProperty("requirementTraceCount", 34)
+            addProperty("uncoveredRequirementCount", 1)
+            addProperty("verificationMethodCount", 5)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleHierarchyCount", 0)
+            addProperty("staleMvpSliceDefinitionCount", 0)
+            addProperty("stalePrioritizationModelCount", 0)
+            addProperty("invalidCriterionCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("criterionSetCompletenessState", "not-assessed")
+            addProperty("requirementCoverageState", "not-assessed")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Acceptance Criteria candidates require review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "acceptance-criteria-status-is-observational-and-does-not-establish-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-implementation-readiness-assignment-execution-acceptance-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", acceptanceCriteriaId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("state", "candidate")
+            addProperty("subjectCatalogDigest", "sha256:${"2".repeat(64)}")
+            addProperty("criterionCatalogDigest", "sha256:${"3".repeat(64)}")
+            addProperty("verificationMethodCatalogDigest", "sha256:${"4".repeat(64)}")
+            addProperty("coverageDigest", "sha256:${"5".repeat(64)}")
+            addProperty("subjectCount", 16)
+            addProperty("criterionCount", 28)
+            addProperty("testableCriterionCount", 26)
+            addProperty("requirementTraceCount", 34)
+            addProperty("verificationMethodCount", 5)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T12:19:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-subject-criterion-method-coverage-snapshot-digests-only-not-criterion-text-requirement-identities-verification-evidence-personal-data-secrets-credentials-or-machine-paths",
+        )
+        addProperty(
+            "authorityBoundary",
+            "acceptance-criteria-projection-is-read-only-and-does-not-establish-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-implementation-readiness-assignment-execution-acceptance-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-acceptance-criteria-snapshot-digest") -> {
+            value.getAsJsonObject("candidate").addProperty("criterionCount", 29)
+        }
+        workspacePath.endsWith("bad-acceptance-criteria-snapshot-private") -> {
+            value.addProperty("criterionText", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

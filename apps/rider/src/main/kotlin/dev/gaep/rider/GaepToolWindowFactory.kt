@@ -594,6 +594,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += prioritizationModelButton
         actions.add(prioritizationModelButton)
 
+        val acceptanceCriteriaButton = JButton("Inspect Acceptance Criteria…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Criterion text, Requirement identities, verification evidence, personal data, local paths, secrets, credentials, criterion validity, completeness, Requirement satisfaction, priority, commitment, approval, readiness, assignment, execution, acceptance, and authority are withheld.",
+                    "GAEP Acceptance Criteria",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Acceptance Criteria", status, output, buttons) {
+                    controller.readAcceptanceCriteria(initiativeId)
+                }
+            }
+        }
+        buttons += acceptanceCriteriaButton
+        actions.add(acceptanceCriteriaButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

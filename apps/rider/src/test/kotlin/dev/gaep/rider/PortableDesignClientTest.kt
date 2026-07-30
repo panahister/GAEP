@@ -1673,6 +1673,61 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Acceptance Criteria projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("acceptance-criteria-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readAcceptanceCriteria(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("held", projection.reviewState)
+            assertEquals("not-assessed", projection.criterionSetCompletenessState)
+            assertEquals("not-assessed", projection.requirementCoverageState)
+            assertEquals(16, projection.subjectCount)
+            assertEquals(15, projection.coveredSubjectCount)
+            assertEquals(28, projection.criterionCount)
+            assertEquals(26, projection.testableCriterionCount)
+            assertEquals(34, projection.requirementTraceCount)
+            assertEquals(5, projection.verificationMethodCount)
+
+            val rendered = RiderProductController(client).readAcceptanceCriteria(entryId)
+            assertTrue(rendered.contains("GAEP governed Acceptance Criteria candidate"))
+            assertTrue(rendered.contains("16 Story/Task subjects · 15 covered · 1 uncovered · 28 criteria · 26 testable"))
+            assertTrue(rendered.contains("no criterion text"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("criterionText"))
+        }
+
+        listOf(
+            "bad-acceptance-criteria-snapshot-digest",
+            "bad-acceptance-criteria-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readAcceptanceCriteria(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf(
+            "bad-acceptance-criteria-snapshot-binding",
+            "bad-acceptance-criteria-hierarchy-binding",
+            "bad-acceptance-criteria-mvp-binding",
+            "bad-acceptance-criteria-prioritization-binding",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readAcceptanceCriteria(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
