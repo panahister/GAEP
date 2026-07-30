@@ -2398,6 +2398,66 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Test Methodology projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("test-methodology-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readTestMethodology(entryId)
+            assertEquals("attention-required", projection.state)
+            assertEquals("held", projection.reviewState)
+            assertEquals(4, projection.sourceUnitCount)
+            assertEquals(7, projection.sourceRequirementCount)
+            assertEquals(12, projection.sourceCriterionCount)
+            assertEquals(14, projection.sourceMappingSubjectCount)
+            assertEquals(4, projection.scopeCount)
+            assertEquals(6, projection.decisionCount)
+            assertEquals(4, projection.selectedDecisionCount)
+            assertEquals(1, projection.conflictDecisionCount)
+            assertEquals(1, projection.environmentGapCount)
+            assertEquals(1, projection.dataPolicyGapCount)
+            assertEquals(1, projection.criterionGapCount)
+            assertEquals(7, projection.dependencies.size)
+            assertEquals("sha256:${"1".repeat(64)}", projection.candidate?.scopeCatalogDigest)
+            assertEquals("sha256:${"2".repeat(64)}", projection.candidate?.methodologyReceiptDigest)
+
+            val rendered = RiderProductController(client).readTestMethodology(entryId)
+            assertTrue(rendered.contains("GAEP governed Test Methodology candidate"))
+            assertTrue(rendered.contains("4 units · 7 Requirements · 12 Acceptance Criteria · 14 mapping subjects"))
+            assertTrue(rendered.contains("4 selected · 1 conflicts · 0 not applicable · 1 deferred · 0 not assessed"))
+            assertTrue(rendered.contains("1 environment gaps · 1 data-policy gaps · 1 ownership gaps"))
+            assertTrue(rendered.contains("no Requirement, criterion, method rationale, environment address"))
+            assertTrue(rendered.contains("does not establish methodology validity or completeness"))
+            assertTrue(rendered.contains("test execution or results"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("methodKind"))
+            assertFalse(rendered.contains("testData"))
+            assertFalse(rendered.contains("ownerCandidateIds"))
+            assertFalse(rendered.contains("evidenceReferences"))
+        }
+
+        listOf("bad-test-methodology-snapshot-digest", "bad-test-methodology-snapshot-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readTestMethodology(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf("bad-test-methodology-snapshot-binding", "bad-test-methodology-dependency-binding").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readTestMethodology(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

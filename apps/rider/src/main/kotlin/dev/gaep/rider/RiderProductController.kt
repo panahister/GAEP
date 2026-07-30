@@ -2747,6 +2747,105 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readTestMethodology(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val acceptance = client.readAcceptanceCriteria(initiativeId)
+        val ready = client.readDefinitionOfReady(initiativeId)
+        val done = client.readDefinitionOfDone(initiativeId)
+        val units = client.readImplementationUnitModel(initiativeId)
+        val dependencies = client.readDependencyMapping(initiativeId)
+        val securityPrivacy = client.readSecurityPrivacyAssessment(initiativeId)
+        val routeMapping = client.readRouteScreenComponentMapping(initiativeId)
+        val projection = client.readTestMethodology(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Test Methodology was read. Refresh the exact records." }
+        projection.candidate?.let {
+            fun requireDependency(name: String, id: UUID, revision: Long, digest: String) {
+                val reference = requireNotNull(projection.dependencies[name]) {
+                    "The current $name candidate reference is unavailable. Refresh the exact records."
+                }
+                require(reference.recordId == id && reference.revision == revision && reference.digest == digest) {
+                    "The $name candidate changed while Test Methodology was read. Refresh the exact records."
+                }
+            }
+            acceptance.candidate!!.let { requireDependency("acceptanceCriteria", it.id, it.revision, it.digest) }
+            ready.candidate!!.let { requireDependency("definitionOfReady", it.id, it.revision, it.digest) }
+            done.candidate!!.let { requireDependency("definitionOfDone", it.id, it.revision, it.digest) }
+            units.candidate!!.let { requireDependency("implementationUnitModel", it.id, it.revision, it.digest) }
+            dependencies.candidate!!.let { requireDependency("dependencyMapping", it.id, it.revision, it.digest) }
+            securityPrivacy.assessment!!.let { requireDependency("securityPrivacyAssessment", it.id, it.revision, it.digest) }
+            routeMapping.candidate!!.let { requireDependency("routeScreenComponentMapping", it.id, it.revision, it.digest) }
+        }
+        return renderTestMethodology(projection)
+    }
+
+    fun renderTestMethodology(projection: TestMethodologyProjection): String = buildString {
+        appendLine("GAEP governed Test Methodology candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine(
+            "Source coverage: ${projection.sourceUnitCount} units · ${projection.sourceRequirementCount} Requirements · " +
+                "${projection.sourceCriterionCount} Acceptance Criteria · ${projection.sourceMappingSubjectCount} mapping subjects",
+        )
+        appendLine(
+            "Candidate coverage: ${projection.scopeCount} scopes · ${projection.decisionCount} decisions · " +
+                "${projection.environmentCount} environments · ${projection.dataPolicyCount} data policies · " +
+                "${projection.evidenceExpectationCount} evidence expectations",
+        )
+        appendLine(
+            "Candidate outcomes: ${projection.selectedDecisionCount} selected · ${projection.conflictDecisionCount} conflicts · " +
+                "${projection.notApplicableDecisionCount} not applicable · ${projection.deferredDecisionCount} deferred · " +
+                "${projection.notAssessedDecisionCount} not assessed",
+        )
+        appendLine("Candidate criteria: ${projection.entryCriterionCount} entry · ${projection.exitCriterionCount} exit")
+        appendLine(
+            "Candidate methodology gaps: ${projection.missingScopeCount} missing scopes · ${projection.extraScopeCount} extra scopes · " +
+                "${projection.invalidDecisionCount} invalid decisions · ${projection.environmentGapCount} environment gaps · " +
+                "${projection.dataPolicyGapCount} data-policy gaps · ${projection.ownershipGapCount} ownership gaps · " +
+                "${projection.traceGapCount} trace gaps · ${projection.evidenceGapCount} evidence gaps · " +
+                "${projection.criterionGapCount} criterion gaps",
+        )
+        appendLine(
+            "Candidate freshness gaps: ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleDependencyCount} stale dependencies · ${projection.invalidCandidateCount} invalid candidates · " +
+                "${projection.unresolvedQuestionCount} questions",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Test Methodology candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Scope catalog digest: ${record.scopeCatalogDigest}")
+            appendLine("Methodology receipt digest: ${record.methodologyReceiptDigest}")
+            appendLine("Environment receipt digest: ${record.environmentReceiptDigest}")
+            appendLine("Data-policy receipt digest: ${record.dataPolicyReceiptDigest}")
+            appendLine("Ownership receipt digest: ${record.ownershipReceiptDigest}")
+            appendLine("Trace receipt digest: ${record.traceReceiptDigest}")
+            appendLine("Assessment receipt digest: ${record.assessmentReceiptDigest}")
+            appendLine(
+                "Candidate coverage: ${record.scopeCount} scopes · ${record.decisionCount} decisions · " +
+                    "${record.selectedDecisionCount} selected · ${record.conflictDecisionCount} conflicts · " +
+                    "${record.environmentCount} environments · ${record.dataPolicyCount} data policies · " +
+                    "${record.entryCriterionCount} entry criteria · ${record.exitCriterionCount} exit criteria · ${record.reviewState}",
+            )
+        }
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and methodology scope, environment, data, ownership, " +
+                "trace, assessment, and snapshot digests only; no Requirement, criterion, method rationale, environment address, " +
+                "test data, owner, evidence, result, personal data, secret, credential, or machine path. This inspection does not " +
+                "establish methodology validity or completeness, environment availability, data fitness, privacy or security approval, " +
+                "owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, " +
+                "acceptance, release, deployment, or action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)

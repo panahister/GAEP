@@ -786,6 +786,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += routeScreenComponentMappingButton
         actions.add(routeScreenComponentMappingButton)
 
+        val testMethodologyButton = JButton("Inspect Test Methodology…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Requirement, criterion, method rationale, environment address, test data, owner, evidence, result, personal data, local paths, secrets, credentials, methodology validity or completeness, environment availability, data fitness, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, and action authority are withheld.",
+                    "GAEP Test Methodology",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Test Methodology", status, output, buttons) {
+                    controller.readTestMethodology(initiativeId)
+                }
+            }
+        }
+        buttons += testMethodologyButton
+        actions.add(testMethodologyButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

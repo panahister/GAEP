@@ -2961,6 +2961,76 @@ data class RouteScreenComponentMappingProjection(
     val snapshotDigest: String,
 )
 
+data class TestMethodologyReference(val recordId: UUID, val revision: Long, val digest: String)
+
+data class TestMethodologyRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val scopeCatalogDigest: String,
+    val methodologyReceiptDigest: String,
+    val environmentReceiptDigest: String,
+    val dataPolicyReceiptDigest: String,
+    val ownershipReceiptDigest: String,
+    val traceReceiptDigest: String,
+    val assessmentReceiptDigest: String,
+    val scopeCount: Int,
+    val decisionCount: Int,
+    val selectedDecisionCount: Int,
+    val conflictDecisionCount: Int,
+    val environmentCount: Int,
+    val dataPolicyCount: Int,
+    val evidenceExpectationCount: Int,
+    val entryCriterionCount: Int,
+    val exitCriterionCount: Int,
+    val reviewState: String,
+)
+
+data class TestMethodologyProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val state: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val dependencies: Map<String, TestMethodologyReference>,
+    val sourceUnitCount: Int,
+    val sourceRequirementCount: Int,
+    val sourceCriterionCount: Int,
+    val sourceMappingSubjectCount: Int,
+    val scopeCount: Int,
+    val decisionCount: Int,
+    val selectedDecisionCount: Int,
+    val conflictDecisionCount: Int,
+    val notApplicableDecisionCount: Int,
+    val deferredDecisionCount: Int,
+    val notAssessedDecisionCount: Int,
+    val environmentCount: Int,
+    val dataPolicyCount: Int,
+    val evidenceExpectationCount: Int,
+    val entryCriterionCount: Int,
+    val exitCriterionCount: Int,
+    val missingScopeCount: Int,
+    val extraScopeCount: Int,
+    val invalidDecisionCount: Int,
+    val environmentGapCount: Int,
+    val dataPolicyGapCount: Int,
+    val ownershipGapCount: Int,
+    val traceGapCount: Int,
+    val evidenceGapCount: Int,
+    val criterionGapCount: Int,
+    val staleBindingCount: Int,
+    val staleDependencyCount: Int,
+    val invalidCandidateCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: TestMethodologyRecordView?,
+    val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -4194,6 +4264,12 @@ internal object PortableDesignProtocol {
         "route-screen-component-mapping-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-navigation-route-screen-state-component-responsive-platform-requirement-acceptance-criteria-test-coverage-repository-path-symbol-or-mapping-truth-or-completeness-create-or-change-code-or-design-targets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
     private const val ROUTE_SCREEN_COMPONENT_MAPPING_STATUS_AUTHORITY_BOUNDARY =
         "route-screen-component-mapping-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-navigation-route-screen-state-component-responsive-platform-requirement-acceptance-criteria-test-coverage-repository-path-symbol-or-mapping-truth-or-completeness-create-or-change-code-or-design-targets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
+    private const val TEST_METHODOLOGY_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-methodology-scope-environment-data-ownership-trace-assessment-snapshot-digests-only-not-requirement-criterion-method-rationale-environment-address-test-data-owner-evidence-result-personal-data-secrets-credentials-or-machine-paths"
+    private const val TEST_METHODOLOGY_PROJECTION_AUTHORITY_BOUNDARY =
+        "test-methodology-projection-is-read-only-and-does-not-establish-requirement-or-acceptance-criteria-truth-methodology-validity-or-completeness-environment-availability-test-data-fitness-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority"
+    private const val TEST_METHODOLOGY_STATUS_AUTHORITY_BOUNDARY =
+        "test-methodology-status-is-observational-and-does-not-establish-requirement-or-acceptance-criteria-truth-methodology-validity-or-completeness-environment-availability-test-data-fitness-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -11307,6 +11383,179 @@ internal object PortableDesignProtocol {
             conflictRelationshipCount, notAssessedRelationshipCount, missingSubjectCount, extraSubjectCount,
             invalidSubjectCount, missingRelationshipCount, invalidRelationshipCount, traceGapCount,
             evidenceGapCount, componentPlacementGapCount, testHookGapCount, staleBindingCount,
+            staleDependencyCount, invalidCandidateCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseTestMethodologyEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): TestMethodologyProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "test-methodology-projection" ||
+            projection.requireString("privacyBoundary") != TEST_METHODOLOGY_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != TEST_METHODOLOGY_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        val dependencyNames = listOf(
+            "acceptanceCriteria", "definitionOfReady", "definitionOfDone", "implementationUnitModel",
+            "dependencyMapping", "securityPrivacyAssessment", "routeScreenComponentMapping",
+        )
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "sourceUnitCount", "sourceRequirementCount", "sourceCriterionCount", "sourceMappingSubjectCount",
+                "scopeCount", "decisionCount", "selectedDecisionCount", "conflictDecisionCount",
+                "notApplicableDecisionCount", "deferredDecisionCount", "notAssessedDecisionCount",
+                "environmentCount", "dataPolicyCount", "evidenceExpectationCount", "entryCriterionCount",
+                "exitCriterionCount", "missingScopeCount", "extraScopeCount", "invalidDecisionCount",
+                "environmentGapCount", "dataPolicyGapCount", "ownershipGapCount", "traceGapCount",
+                "evidenceGapCount", "criterionGapCount", "staleBindingCount", "staleDependencyCount",
+                "invalidCandidateCount", "unresolvedQuestionCount", "reviewState", "state", "reasons",
+                "assessedAt", "authorityBoundary",
+            ),
+            (dependencyNames + "candidate").toSet(),
+        )
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "test-methodology-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != TEST_METHODOLOGY_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        fun reference(name: String): TestMethodologyReference? = status.get(name)?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            TestMethodologyReference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val candidateReference = reference("candidate")
+        val dependencies = dependencyNames.mapNotNull { name -> reference(name)?.let { name to it } }.toMap()
+        fun count(name: String, maximum: Int = 65_536) = status.requireBoundedNonNegativeInt(name, maximum)
+        val sourceUnitCount = count("sourceUnitCount")
+        val sourceRequirementCount = count("sourceRequirementCount")
+        val sourceCriterionCount = count("sourceCriterionCount")
+        val sourceMappingSubjectCount = count("sourceMappingSubjectCount")
+        val scopeCount = count("scopeCount")
+        val decisionCount = count("decisionCount")
+        val selectedDecisionCount = count("selectedDecisionCount")
+        val conflictDecisionCount = count("conflictDecisionCount")
+        val notApplicableDecisionCount = count("notApplicableDecisionCount")
+        val deferredDecisionCount = count("deferredDecisionCount")
+        val notAssessedDecisionCount = count("notAssessedDecisionCount")
+        if (selectedDecisionCount + conflictDecisionCount + notApplicableDecisionCount + deferredDecisionCount +
+            notAssessedDecisionCount != decisionCount
+        ) throw invalidResponse()
+        val environmentCount = count("environmentCount", 4_096)
+        val dataPolicyCount = count("dataPolicyCount", 4_096)
+        val evidenceExpectationCount = count("evidenceExpectationCount", 8_192)
+        val entryCriterionCount = count("entryCriterionCount", 8_192)
+        val exitCriterionCount = count("exitCriterionCount", 8_192)
+        val missingScopeCount = count("missingScopeCount")
+        val extraScopeCount = count("extraScopeCount")
+        val invalidDecisionCount = count("invalidDecisionCount")
+        val environmentGapCount = count("environmentGapCount", 4_096)
+        val dataPolicyGapCount = count("dataPolicyGapCount", 4_096)
+        val ownershipGapCount = count("ownershipGapCount")
+        val traceGapCount = count("traceGapCount")
+        val evidenceGapCount = count("evidenceGapCount")
+        val criterionGapCount = count("criterionGapCount", 8_192)
+        val staleBindingCount = count("staleBindingCount", 1)
+        val staleDependencyCount = count("staleDependencyCount", 7)
+        val invalidCandidateCount = count("invalidCandidateCount", 1)
+        val unresolvedQuestionCount = count("unresolvedQuestionCount", 512)
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val state = status.requireOneOf("state", setOf("attention-required", "candidate-complete"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gaps = conflictDecisionCount + deferredDecisionCount + notAssessedDecisionCount + missingScopeCount +
+            extraScopeCount + invalidDecisionCount + environmentGapCount + dataPolicyGapCount + ownershipGapCount +
+            traceGapCount + evidenceGapCount + criterionGapCount + staleBindingCount + staleDependencyCount +
+            invalidCandidateCount + unresolvedQuestionCount
+        if ((state == "candidate-complete" &&
+                (gaps > 0 || candidateReference == null || dependencies.size != dependencyNames.size ||
+                    scopeCount != sourceUnitCount || selectedDecisionCount != decisionCount ||
+                    reviewState != "ready-for-human-review" || entryCriterionCount == 0 || exitCriterionCount == 0 ||
+                    reasons.isNotEmpty())) || (state == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "scopeCatalogDigest", "methodologyReceiptDigest",
+                "environmentReceiptDigest", "dataPolicyReceiptDigest", "ownershipReceiptDigest", "traceReceiptDigest",
+                "assessmentReceiptDigest", "scopeCount", "decisionCount", "selectedDecisionCount",
+                "conflictDecisionCount", "environmentCount", "dataPolicyCount", "evidenceExpectationCount",
+                "entryCriterionCount", "exitCriterionCount", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = TestMethodologyRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("scopeCatalogDigest"),
+                value.requireDigest("methodologyReceiptDigest"), value.requireDigest("environmentReceiptDigest"),
+                value.requireDigest("dataPolicyReceiptDigest"), value.requireDigest("ownershipReceiptDigest"),
+                value.requireDigest("traceReceiptDigest"), value.requireDigest("assessmentReceiptDigest"),
+                value.requireBoundedNonNegativeInt("scopeCount", 65_536),
+                value.requireBoundedNonNegativeInt("decisionCount", 65_536),
+                value.requireBoundedNonNegativeInt("selectedDecisionCount", 65_536),
+                value.requireBoundedNonNegativeInt("conflictDecisionCount", 65_536),
+                value.requireBoundedNonNegativeInt("environmentCount", 4_096),
+                value.requireBoundedNonNegativeInt("dataPolicyCount", 4_096),
+                value.requireBoundedNonNegativeInt("evidenceExpectationCount", 8_192),
+                value.requireBoundedNonNegativeInt("entryCriterionCount", 8_192),
+                value.requireBoundedNonNegativeInt("exitCriterionCount", 8_192),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                candidateReference == null || candidateReference.recordId != id || candidateReference.revision != revision ||
+                candidateReference.digest != record.digest || record.scopeCount != scopeCount ||
+                record.decisionCount != decisionCount || record.selectedDecisionCount != selectedDecisionCount ||
+                record.conflictDecisionCount != conflictDecisionCount || record.environmentCount != environmentCount ||
+                record.dataPolicyCount != dataPolicyCount || record.evidenceExpectationCount != evidenceExpectationCount ||
+                record.entryCriterionCount != entryCriterionCount || record.exitCriterionCount != exitCriterionCount ||
+                record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((candidateReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) {
+            throw invalidResponse()
+        }
+        return TestMethodologyProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, state, reviewState, reasons, dependencies, sourceUnitCount, sourceRequirementCount,
+            sourceCriterionCount, sourceMappingSubjectCount, scopeCount, decisionCount, selectedDecisionCount,
+            conflictDecisionCount, notApplicableDecisionCount, deferredDecisionCount, notAssessedDecisionCount,
+            environmentCount, dataPolicyCount, evidenceExpectationCount, entryCriterionCount, exitCriterionCount,
+            missingScopeCount, extraScopeCount, invalidDecisionCount, environmentGapCount, dataPolicyGapCount,
+            ownershipGapCount, traceGapCount, evidenceGapCount, criterionGapCount, staleBindingCount,
             staleDependencyCount, invalidCandidateCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }

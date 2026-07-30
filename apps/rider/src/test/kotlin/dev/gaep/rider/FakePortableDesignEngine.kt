@@ -57,6 +57,7 @@ private val boilerplateCompatibilityValidationId = UUID.fromString("aaaaaaaa-aaa
 private val figmaToBoilerplateMappingId = UUID.fromString("abababab-abab-4bab-8bab-abababababab")
 private val designToCodeBindingRegistryId = UUID.fromString("bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc")
 private val routeScreenComponentMappingId = UUID.fromString("cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd")
+private val testMethodologyId = UUID.fromString("dededede-dede-4ede-8ede-dededededede")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -357,6 +358,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.routeScreenComponentMapping.snapshot" -> handleRouteScreenComponentMapping(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.testMethodology.snapshot" -> handleTestMethodology(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4835,6 +4841,139 @@ private fun handleRouteScreenComponentMapping(id: Long, params: JsonObject, work
             value.getAsJsonObject("candidate").addProperty("subjectCount", 15)
         workspacePath.endsWith("bad-route-screen-component-mapping-snapshot-private") -> {
             value.addProperty("routePattern", "$privateRoot/$privateCredential")
+            val digestBody = value.deepCopy().also { it.remove("snapshotDigest") }
+            value.addProperty("snapshotDigest", canonicalDigest(digestBody))
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleTestMethodology(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE TEST METHODOLOGY PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-test-methodology-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-31T01:00:00.000Z"
+    val candidateDigest = "sha256:${"8".repeat(64)}"
+    fun reference(recordId: UUID, digest: String) = JsonObject().apply {
+        addProperty("recordId", recordId.toString())
+        addProperty("revision", 2)
+        addProperty("digest", digest)
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "test-methodology-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "test-methodology-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", reference(testMethodologyId, candidateDigest))
+            add("acceptanceCriteria", reference(acceptanceCriteriaId, "sha256:${"1".repeat(64)}"))
+            add("definitionOfReady", reference(definitionOfReadyId, "sha256:${"6".repeat(64)}"))
+            add("definitionOfDone", reference(definitionOfDoneId, "sha256:${"e".repeat(64)}"))
+            add("implementationUnitModel", reference(implementationUnitModelId, "sha256:${"5".repeat(64)}"))
+            add("dependencyMapping", reference(dependencyMappingId, "sha256:${"9".repeat(64)}"))
+            add("securityPrivacyAssessment", reference(securityPrivacyAssessmentId, "sha256:${"5".repeat(64)}"))
+            add(
+                "routeScreenComponentMapping",
+                reference(
+                    routeScreenComponentMappingId,
+                    "sha256:${if (workspacePath.endsWith("bad-test-methodology-dependency-binding")) "0".repeat(64) else "2".repeat(64)}",
+                ),
+            )
+            addProperty("sourceUnitCount", 4)
+            addProperty("sourceRequirementCount", 7)
+            addProperty("sourceCriterionCount", 12)
+            addProperty("sourceMappingSubjectCount", 14)
+            addProperty("scopeCount", 4)
+            addProperty("decisionCount", 6)
+            addProperty("selectedDecisionCount", 4)
+            addProperty("conflictDecisionCount", 1)
+            addProperty("notApplicableDecisionCount", 0)
+            addProperty("deferredDecisionCount", 1)
+            addProperty("notAssessedDecisionCount", 0)
+            addProperty("environmentCount", 3)
+            addProperty("dataPolicyCount", 2)
+            addProperty("evidenceExpectationCount", 5)
+            addProperty("entryCriterionCount", 4)
+            addProperty("exitCriterionCount", 4)
+            addProperty("missingScopeCount", 0)
+            addProperty("extraScopeCount", 0)
+            addProperty("invalidDecisionCount", 1)
+            addProperty("environmentGapCount", 1)
+            addProperty("dataPolicyGapCount", 1)
+            addProperty("ownershipGapCount", 1)
+            addProperty("traceGapCount", 2)
+            addProperty("evidenceGapCount", 1)
+            addProperty("criterionGapCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleDependencyCount", 0)
+            addProperty("invalidCandidateCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Test Methodology decisions require human review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "test-methodology-status-is-observational-and-does-not-establish-requirement-or-acceptance-criteria-truth-methodology-validity-or-completeness-environment-availability-test-data-fitness-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", testMethodologyId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("state", "candidate")
+            addProperty("scopeCatalogDigest", "sha256:${"1".repeat(64)}")
+            addProperty("methodologyReceiptDigest", "sha256:${"2".repeat(64)}")
+            addProperty("environmentReceiptDigest", "sha256:${"3".repeat(64)}")
+            addProperty("dataPolicyReceiptDigest", "sha256:${"4".repeat(64)}")
+            addProperty("ownershipReceiptDigest", "sha256:${"5".repeat(64)}")
+            addProperty("traceReceiptDigest", "sha256:${"6".repeat(64)}")
+            addProperty("assessmentReceiptDigest", "sha256:${"7".repeat(64)}")
+            addProperty("scopeCount", 4)
+            addProperty("decisionCount", 6)
+            addProperty("selectedDecisionCount", 4)
+            addProperty("conflictDecisionCount", 1)
+            addProperty("environmentCount", 3)
+            addProperty("dataPolicyCount", 2)
+            addProperty("evidenceExpectationCount", 5)
+            addProperty("entryCriterionCount", 4)
+            addProperty("exitCriterionCount", 4)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-31T00:59:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-methodology-scope-environment-data-ownership-trace-assessment-snapshot-digests-only-not-requirement-criterion-method-rationale-environment-address-test-data-owner-evidence-result-personal-data-secrets-credentials-or-machine-paths",
+        )
+        addProperty(
+            "authorityBoundary",
+            "test-methodology-projection-is-read-only-and-does-not-establish-requirement-or-acceptance-criteria-truth-methodology-validity-or-completeness-environment-availability-test-data-fitness-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-test-methodology-snapshot-digest") ->
+            value.getAsJsonObject("candidate").addProperty("scopeCount", 5)
+        workspacePath.endsWith("bad-test-methodology-snapshot-private") -> {
+            value.addProperty("testData", "$privateRoot/$privateCredential")
             val digestBody = value.deepCopy().also { it.remove("snapshotDigest") }
             value.addProperty("snapshotDigest", canonicalDigest(digestBody))
         }

@@ -483,6 +483,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readTestMethodology(initiativeId: UUID): TestMethodologyProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("planning.testMethodology.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseTestMethodologyEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
