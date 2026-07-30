@@ -85,6 +85,7 @@ for (const binding of [
   "ClearInitiativeDraftCommand",
   "ResolveInitiativeApplicabilityCommand",
   "ShowPhaseDashboardCommand",
+  "ShowPhase2UxFigmaDashboardCommand",
   "LoadChangeImpactCommand",
   "ShowChangeImpactCommand",
   "ShowAgentModelCommand",

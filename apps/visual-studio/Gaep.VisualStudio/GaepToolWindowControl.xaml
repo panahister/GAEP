@@ -33,6 +33,9 @@
         <TextBox Text="{Binding InitiativeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                  MinHeight="26" Margin="0,4,0,6"
                  Style="{StaticResource {x:Static styles:VsResourceKeys.TextBoxStyleKey}}" />
+        <Button x:Name="ShowPhase2UxFigmaDashboardButton" Content="Show Phase 2 UX and Figma dashboard"
+                Command="{Binding ShowPhase2UxFigmaDashboardCommand}" MinHeight="28" Margin="0,0,0,6"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
         <Button x:Name="ShowPhase1SummaryButton" Content="Show Phase 1 summary and readiness"
                 Command="{Binding ShowPhase1SummaryCommand}" MinHeight="28" Margin="0,0,0,6"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
@@ -642,6 +645,7 @@
     <DataTrigger Binding="{Binding Busy}" Value="True">
       <Setter TargetName="RefreshProductButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhaseDashboardButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ShowPhase2UxFigmaDashboardButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhase1SummaryButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhase1ChangeImpactButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="LoadInitiativeEntryButton" Property="IsEnabled" Value="False" />

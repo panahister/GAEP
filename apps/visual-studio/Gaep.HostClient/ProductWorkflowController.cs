@@ -2987,6 +2987,20 @@ public sealed class ProductWorkflowController(EngineClient client)
             cancellationToken));
     }
 
+    public async Task<string> ReadPhase2UxFigmaDashboardAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        if (initiative.ProductId != product.Id)
+        {
+            throw new ArgumentException("The Initiative does not target the exact current Product. Reload the Product and Initiative.");
+        }
+        return RenderPhase2UxFigmaDashboard(await client.ReadPhase2UxFigmaDashboardAsync(product, initiative, cancellationToken));
+    }
+
     public async Task<string> ReadPhase1SummaryAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
@@ -3034,6 +3048,21 @@ public sealed class ProductWorkflowController(EngineClient client)
             product,
             DeliveryPhaseId.Phase0Foundation,
             cancellationToken));
+    }
+
+    public async Task<IReadOnlyList<AccessibleMetadataTable>> ReadPhase2UxFigmaDashboardTablesAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        if (initiative.ProductId != product.Id)
+        {
+            throw new ArgumentException("The Initiative does not target the exact current Product. Reload the Product and Initiative.");
+        }
+        return AccessibleDashboardTables.Phase2UxFigma(
+            await client.ReadPhase2UxFigmaDashboardAsync(product, initiative, cancellationToken));
     }
 
     public async Task<ChangeImpactContext> ReadChangeImpactContextAsync(
@@ -3611,6 +3640,51 @@ public sealed class ProductWorkflowController(EngineClient client)
                 "phase-entry, approval, readiness, acceptance, release, Run, Tool, or effect authority.")
             .Append(
                 "Product text, source bytes, local paths, provider output, prompts, executable state, and credentials are withheld.")
+            .ToString();
+    }
+
+    private static string RenderPhase2UxFigmaDashboard(Phase2UxFigmaDashboard dashboard)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP exact Phase 2 UX and Figma dashboard")
+            .AppendLine()
+            .AppendLine($"Initiative: {dashboard.InitiativeId:D} · revision {dashboard.InitiativeRevision} · {dashboard.InitiativeState}")
+            .AppendLine($"Phase state: {dashboard.PhaseState}")
+            .AppendLine(
+                $"Sources: {dashboard.CurrentSourceCount} current · {dashboard.AttentionRequiredSourceCount} attention-required · " +
+                $"{dashboard.UnavailableSourceCount} unavailable · 23 expected")
+            .AppendLine(
+                $"Experience: {dashboard.PersonaCount} personas · {dashboard.DesignRoleCount} design roles · " +
+                $"{dashboard.JourneyCount} journeys · {dashboard.ScreenCount} screens · {dashboard.StateCount} states")
+            .AppendLine(
+                $"Design system: {dashboard.RequirementCount} requirements · {dashboard.TokenCount} tokens · " +
+                $"{dashboard.ComponentCount} components · {dashboard.AccessibilityRuleCount} accessibility rules")
+            .AppendLine(
+                $"Figma and trace: {dashboard.FigmaFileCount} files · {dashboard.DesignBindingCount} bindings · " +
+                $"connection {dashboard.FigmaConnectionState} · write {dashboard.FigmaWriteExecutionState} · " +
+                $"import {dashboard.FigmaImportExecutionState}")
+            .AppendLine(
+                $"Drift: {dashboard.DriftObservationCount} observations · {dashboard.DriftCount} drift · " +
+                $"{dashboard.UnassessedDriftCount} unassessed · {dashboard.RemediationCandidateCount} remediation candidates")
+            .AppendLine(
+                $"Freshness: {dashboard.FreshnessState} · {dashboard.StaleBindingCount} stale bindings · " +
+                $"{dashboard.StaleSourceReferenceCount} stale sources · {dashboard.UnresolvedQuestionCount} questions")
+            .AppendLine(
+                "Product Owner acceptance: not established · approval: not established · Baseline Set designation: " +
+                "not established · readiness and phase-entry authority: not established")
+            .AppendLine($"Snapshot digest: {dashboard.SnapshotDigest}")
+            .AppendLine();
+        foreach (var source in dashboard.Sources)
+        {
+            output.AppendLine($"{source.Title} · {source.Group} · {source.Availability} · {source.AssessmentState ?? "no state inferred"}");
+        }
+        output.AppendLine();
+        foreach (var limitation in dashboard.Limitations) output.AppendLine($"Limit: {limitation}");
+        return output
+            .AppendLine()
+            .Append(
+                "Boundary: this derived read-only view is not a second source of truth and grants no completeness, " +
+                "validity, approval, baseline, readiness, phase-entry, Figma, remediation, implementation, release, or action authority.")
             .ToString();
     }
 

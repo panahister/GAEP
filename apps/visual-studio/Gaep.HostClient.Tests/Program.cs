@@ -289,6 +289,8 @@ internal static class Program
         var badDashboardEvidenceCuesRoot = Path.Combine(temporaryRoot, "bad-dashboard-evidence-cues");
         var badDashboardDigestRoot = Path.Combine(temporaryRoot, "bad-dashboard-digest");
         var badDashboardPrivateRoot = Path.Combine(temporaryRoot, "bad-dashboard-private");
+        var badPhase2DashboardDigestRoot = Path.Combine(temporaryRoot, "bad-phase2-dashboard-digest");
+        var badPhase2DashboardPrivateRoot = Path.Combine(temporaryRoot, "bad-phase2-dashboard-private");
         var badChangeCatalogBindingRoot = Path.Combine(temporaryRoot, "bad-change-catalog-binding");
         var badChangeCatalogDigestRoot = Path.Combine(temporaryRoot, "bad-change-catalog-digest");
         var badChangeCatalogPrivateRoot = Path.Combine(temporaryRoot, "bad-change-catalog-private");
@@ -482,6 +484,8 @@ internal static class Program
         Directory.CreateDirectory(badDashboardEvidenceCuesRoot);
         Directory.CreateDirectory(badDashboardDigestRoot);
         Directory.CreateDirectory(badDashboardPrivateRoot);
+        Directory.CreateDirectory(badPhase2DashboardDigestRoot);
+        Directory.CreateDirectory(badPhase2DashboardPrivateRoot);
         Directory.CreateDirectory(badChangeCatalogBindingRoot);
         Directory.CreateDirectory(badChangeCatalogDigestRoot);
         Directory.CreateDirectory(badChangeCatalogPrivateRoot);
@@ -2735,7 +2739,42 @@ internal static class Program
               phaseTables.Single().Rows.Count == 3 &&
               phaseTables.Single().SnapshotDigest == dashboard.CompositionDigest,
             "Accessible Phase tables preserve the exact panel rows and composition digest");
-        var phase1Initiative = await client.ReadInitiativeAsync(InitiativeId);
+        var phase2Initiative = await client.ReadInitiativeAsync(InitiativeId);
+        var phase2Dashboard = await client.ReadPhase2UxFigmaDashboardAsync(product, phase2Initiative);
+        Check(phase2Dashboard.Sources.Count == 23 && phase2Dashboard.PhaseState == "attention-required" &&
+              phase2Dashboard.UnavailableSourceCount == 23 && phase2Dashboard.FigmaConnectionState == "not-established" &&
+              phase2Dashboard.FigmaWriteExecutionState == "not-performed" &&
+              phase2Dashboard.FigmaImportExecutionState == "not-performed",
+            "Typed Phase 2 UX/Figma dashboard preserves the canonical source catalog and explicit no-effect state");
+        var phase2Controller = new ProductWorkflowController(client);
+        var phase2Output = await phase2Controller.ReadPhase2UxFigmaDashboardAsync(InitiativeId);
+        Check(phase2Output.Contains("GAEP exact Phase 2 UX and Figma dashboard", StringComparison.Ordinal) &&
+              phase2Output.Contains("23 unavailable · 23 expected", StringComparison.Ordinal) &&
+              phase2Output.Contains("Product Owner acceptance: not established", StringComparison.Ordinal) &&
+              phase2Output.Contains("grants no completeness, validity, approval, baseline", StringComparison.Ordinal) &&
+              !phase2Output.Contains("Founder Product", StringComparison.Ordinal) &&
+              !phase2Output.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !phase2Output.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Phase 2 UX/Figma workflow renders only bounded metadata and explicit no-authority state");
+        var phase2Tables = await phase2Controller.ReadPhase2UxFigmaDashboardTablesAsync(InitiativeId);
+        Check(phase2Tables.Select(table => table.Id).SequenceEqual(["phase2-summary", "phase2-sources"]) &&
+              phase2Tables.Last().Rows.Count == 23 &&
+              phase2Tables.All(table => table.SnapshotDigest == phase2Dashboard.SnapshotDigest) &&
+              phase2Tables.All(table => table.AuthorityBoundary.Contains("not-a-second-source-of-truth", StringComparison.Ordinal)),
+            "Accessible Phase 2 tables preserve the exact source rows, digest, and authority boundary");
+        foreach (var hostileRoot in new[] { badPhase2DashboardDigestRoot, badPhase2DashboardPrivateRoot })
+        {
+            await using var hostileDashboardClient = new EngineClient(hostileRoot, executable);
+            var hostileProduct = await hostileDashboardClient.ReadProductBindingAsync();
+            var hostileInitiative = await hostileDashboardClient.ReadInitiativeAsync(InitiativeId);
+            var invalidDashboard = await CaptureHostErrorAsync(
+                () => hostileDashboardClient.ReadPhase2UxFigmaDashboardAsync(hostileProduct, hostileInitiative));
+            Check(invalidDashboard.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidDashboard.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidDashboard.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Phase 2 dashboard rejects hostile digest and private-field drift");
+        }
+        var phase1Initiative = phase2Initiative;
         var phase1Summary = await client.ReadPhase1SummaryAsync(product, phase1Initiative);
         Check(phase1Summary.InitiativeId == InitiativeId && phase1Summary.PhaseState == "attention-required" &&
               phase1Summary.AttentionSignalCount == 2 && phase1Summary.DeclaredGapCount == 0 &&
@@ -4091,6 +4130,8 @@ internal static class Program
         var badDashboardEvidenceCues = Path.GetFileName(workspace) == "bad-dashboard-evidence-cues";
         var badDashboardDigest = Path.GetFileName(workspace) == "bad-dashboard-digest";
         var badDashboardPrivate = Path.GetFileName(workspace) == "bad-dashboard-private";
+        var badPhase2DashboardDigest = Path.GetFileName(workspace) == "bad-phase2-dashboard-digest";
+        var badPhase2DashboardPrivate = Path.GetFileName(workspace) == "bad-phase2-dashboard-private";
         var badChangeCatalogBinding = Path.GetFileName(workspace) == "bad-change-catalog-binding";
         var badChangeCatalogDigest = Path.GetFileName(workspace) == "bad-change-catalog-digest";
         var badChangeCatalogPrivate = Path.GetFileName(workspace) == "bad-change-catalog-private";
@@ -4709,6 +4750,16 @@ internal static class Program
                         badDashboardEvidenceCues,
                         badDashboardDigest,
                         badDashboardPrivate);
+                    break;
+                case "dashboard.phase2UxFigma":
+                    await HandlePhase2UxFigmaDashboardAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badPhase2DashboardDigest,
+                        badPhase2DashboardPrivate);
                     break;
                 case "dashboard.phase1Summary":
                     await HandlePhase1SummaryAsync(
@@ -10847,6 +10898,147 @@ internal static class Program
             ((Dictionary<string, object?>[])dashboard["panels"]!)[0]["title"] = "Forged dashboard title";
         }
         if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, dashboard);
+    }
+
+    private static async Task HandlePhase2UxFigmaDashboardAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool invalidateDigest,
+        bool includePrivateField)
+    {
+        var productDigest = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var initiativeDigest = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord));
+        if (!HasOnlyProperties(
+                parameters,
+                "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+                "expectedInitiativeRevision", "expectedInitiativeDigest") ||
+            parameters.GetProperty("expectedProductId").GetString() != ProductId.ToString("D") ||
+            parameters.GetProperty("expectedProductRevision").GetInt64() != 7 ||
+            parameters.GetProperty("expectedProductDigest").GetString() != productDigest ||
+            parameters.GetProperty("expectedInitiativeId").GetString() != InitiativeId.ToString("D") ||
+            parameters.GetProperty("expectedInitiativeRevision").GetInt64() != initiativeRevision ||
+            parameters.GetProperty("expectedInitiativeDigest").GetString() != initiativeDigest)
+        {
+            await WriteErrorAsync(id, -32_602, "PHASE2_UX_FIGMA_PARAMS_INVALID", "PRIVATE PHASE 2 DASHBOARD PARAMS");
+            return;
+        }
+        var definitions = new[]
+        {
+            ("design-applicability", "Design applicability", "experience", "design-applicability-projection"),
+            ("design-personas-roles", "Design personas and roles", "experience", "design-persona-role-projection"),
+            ("user-journeys", "User journeys", "experience", "user-journey-model-projection"),
+            ("information-architecture", "Information architecture", "experience", "information-architecture-model-projection"),
+            ("screen-state-inventory", "Screen and state inventory", "experience", "screen-state-inventory-projection"),
+            ("design-requirements", "Design requirements", "design-system", "design-requirements-projection"),
+            ("design-system-token-contract", "Design system and token contract", "design-system", "design-system-token-contract-projection"),
+            ("accessibility-design-rules", "Accessibility design rules", "design-system", "accessibility-design-rules-projection"),
+            ("responsive-multi-platform-targets", "Responsive and multi-platform targets", "design-system", "responsive-multi-platform-targets-projection"),
+            ("manual-figma-execution-path", "Manual Figma execution path", "figma-exchange", "manual-figma-execution-path-projection"),
+            ("figma-mcp-capability-discovery", "Figma MCP capability discovery", "figma-exchange", "figma-mcp-capability-discovery-projection"),
+            ("figma-read-snapshot", "Figma read snapshot", "figma-exchange", "figma-read-snapshot-projection"),
+            ("figma-context-import", "Figma context import", "figma-exchange", "figma-context-import-projection"),
+            ("outbound-design-brief-package", "Outbound design brief package", "figma-exchange", "outbound-design-brief-package-projection"),
+            ("governed-figma-write", "Governed Figma write", "figma-exchange", "governed-figma-write-projection"),
+            ("finalized-figma-snapshot-import", "Finalized Figma snapshot import", "figma-exchange", "finalized-figma-snapshot-import-projection"),
+            ("design-to-requirement-binding", "Design-to-requirement binding", "governance-assurance", "design-to-requirement-binding-projection"),
+            ("designer-ready-gate", "Designer-ready gate", "governance-assurance", "designer-ready-gate-projection"),
+            ("design-delta", "Design delta", "governance-assurance", "design-delta-projection"),
+            ("design-conflict-resolution", "Design conflict resolution", "governance-assurance", "design-conflict-resolution-projection"),
+            ("human-design-approval", "Human design approval", "governance-assurance", "human-design-approval-projection"),
+            ("design-baseline", "Design baseline", "governance-assurance", "design-baseline-projection"),
+            ("design-drift-detection", "Design drift detection", "governance-assurance", "design-drift-detection-projection"),
+        };
+        var sources = definitions.Select(definition => new Dictionary<string, object?>
+        {
+            ["id"] = definition.Item1,
+            ["title"] = definition.Item2,
+            ["group"] = definition.Item3,
+            ["projectionKind"] = definition.Item4,
+            ["availability"] = "unavailable",
+        }).ToArray();
+        static Dictionary<string, object?> ZeroCounts(params string[] names) =>
+            names.ToDictionary(name => name, _ => (object?)0, StringComparer.Ordinal);
+        var dashboard = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "phase-2-ux-figma-dashboard",
+            ["viewDefinitionVersion"] = "gaep-phase-2-ux-figma-dashboard-v1",
+            ["phase"] = new Dictionary<string, object?>
+            {
+                ["id"] = "phase-2-design",
+                ["label"] = "Phase 2 — UX and Figma Loop",
+            },
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["recordType"] = "product", ["recordId"] = ProductId.ToString("D"), ["revision"] = 7,
+                ["digest"] = productDigest,
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["recordType"] = "initiative", ["recordId"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision, ["digest"] = initiativeDigest, ["state"] = initiativeRecord["state"],
+            },
+            ["sources"] = sources,
+            ["experience"] = ZeroCounts(
+                "personaCount", "designRoleCount", "journeyCount", "touchpointCount", "informationArchitectureNodeCount",
+                "routeCount", "screenCount", "stateCount", "variantCount"),
+            ["designSystem"] = ZeroCounts(
+                "requirementCount", "designSystemCount", "tokenCount", "componentCount", "accessibilityRuleCount",
+                "accessibilityCheckCount", "platformTargetCount", "breakpointCount"),
+            ["figma"] = ZeroCounts(
+                "fileCount", "componentCount", "variableCount", "designBindingCount", "humanReviewedBindingCount",
+                "unboundDesignItemCount").Concat(new Dictionary<string, object?>
+                {
+                    ["connectionState"] = "not-established",
+                    ["writeExecutionState"] = "not-performed",
+                    ["importExecutionState"] = "not-performed",
+                }).ToDictionary(value => value.Key, value => value.Value, StringComparer.Ordinal),
+            ["governance"] = new Dictionary<string, object?>
+            {
+                ["designerReadyCandidateResult"] = "not-assessed",
+                ["humanApprovalCandidateResult"] = "not-assessed",
+                ["baselineCandidateResult"] = "not-assessed",
+                ["baselineDesignationState"] = "not-established",
+                ["driftCandidateResult"] = "not-assessed",
+                ["approvalState"] = "not-established",
+                ["readinessState"] = "not-established",
+                ["remediationEffectState"] = "not-applied",
+            },
+            ["drift"] = ZeroCounts(
+                "observationCount", "requirementToDesignCount", "designToImplementationCount", "conformantCount",
+                "driftCount", "unassessedCount", "blockerCount", "highSeverityCount", "remediationCandidateCount"),
+            ["freshness"] = ZeroCounts("staleBindingCount", "staleSourceReferenceCount", "unresolvedQuestionCount")
+                .Concat(new Dictionary<string, object?> { ["state"] = "current" })
+                .ToDictionary(value => value.Key, value => value.Value, StringComparer.Ordinal),
+            ["phaseStatus"] = new Dictionary<string, object?>
+            {
+                ["state"] = "attention-required", ["expectedSourceCount"] = 23, ["currentSourceCount"] = 0,
+                ["attentionRequiredSourceCount"] = 0, ["unavailableSourceCount"] = 23,
+                ["sourceCatalogDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(sources)),
+                ["productOwnerAcceptance"] = "not-established", ["readinessAuthority"] = "not-established",
+                ["phaseEntryAuthority"] = "not-established",
+            },
+            ["evidenceCues"] = DashboardEvidenceCues("unknown"),
+            ["observedAt"] = "2026-07-30T03:10:00.000Z",
+            ["sourceBoundary"] = "current-governed-product-initiative-and-phase-2-projections-only",
+            ["privacyBoundary"] =
+                "dashboard-exposes-identities-counts-statuses-times-and-digests-not-design-requirement-figma-source-human-or-personal-content-secrets-credentials-or-permissions",
+            ["limitations"] = new[]
+            {
+                "Missing projections remain explicitly unavailable and do not establish completeness.",
+                "No approval, Baseline Set, readiness, Figma, remediation, implementation, release, or action authority is granted.",
+            },
+            ["authorityBoundary"] =
+                "phase-2-dashboard-is-a-derived-read-only-view-not-a-second-source-of-truth-or-completeness-validity-approval-baseline-readiness-remediation-figma-implementation-or-action-authority",
+        };
+        if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        RefreshCanonicalDigest(dashboard, "snapshotDigest");
+        if (invalidateDigest) ((Dictionary<string, object?>)dashboard["phaseStatus"]!)["unavailableSourceCount"] = 22;
         await WriteResultAsync(id, dashboard);
     }
 

@@ -220,6 +220,57 @@ public static partial class AccessibleDashboardTables
                 "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"),
         });
 
+    public static IReadOnlyList<AccessibleMetadataTable> Phase2UxFigma(Phase2UxFigmaDashboard dashboard)
+    {
+        const string source = "current-governed-product-initiative-and-phase-2-projections-only";
+        const string authority =
+            "phase-2-dashboard-is-a-derived-read-only-view-not-a-second-source-of-truth-or-completeness-validity-approval-baseline-readiness-remediation-figma-implementation-or-action-authority";
+        return Array.AsReadOnly(new[]
+        {
+            Table(
+                "phase2-summary",
+                "Phase 2 UX and Figma summary",
+                Columns(("area", "Area"), ("inventory", "Inventory"), ("boundary", "Authority boundary")),
+                new[]
+                {
+                    Row(
+                        "experience", ("area", "Experience"),
+                        ("inventory", $"{dashboard.PersonaCount} personas · {dashboard.DesignRoleCount} roles · " +
+                            $"{dashboard.JourneyCount} journeys · {dashboard.ScreenCount} screens · {dashboard.StateCount} states"),
+                        ("boundary", "Counts do not establish completeness or validity.")),
+                    Row(
+                        "figma", ("area", "Figma and trace"),
+                        ("inventory", $"{dashboard.FigmaFileCount} files · {dashboard.DesignBindingCount} bindings"),
+                        ("boundary", $"Connection {dashboard.FigmaConnectionState}; write {dashboard.FigmaWriteExecutionState}; " +
+                            $"import {dashboard.FigmaImportExecutionState}.")),
+                    Row(
+                        "governance", ("area", "Governance"),
+                        ("inventory", $"{dashboard.CurrentSourceCount} current · {dashboard.AttentionRequiredSourceCount} attention · " +
+                            $"{dashboard.UnavailableSourceCount} unavailable"),
+                        ("boundary", "Approval, Baseline Set, readiness, phase entry, and remediation effects are not established.")),
+                },
+                3,
+                0,
+                dashboard.SnapshotDigest,
+                source,
+                authority),
+            Table(
+                "phase2-sources",
+                "Phase 2 governed source projections",
+                Columns(
+                    ("source", "Source"), ("group", "Group"), ("projection-kind", "Projection kind"),
+                    ("availability", "Availability"), ("assessment", "Assessment")),
+                dashboard.Sources.Select(value => Row(
+                    value.Id, ("source", value.Title), ("group", value.Group), ("projection-kind", value.ProjectionKind),
+                    ("availability", value.Availability), ("assessment", value.AssessmentState ?? "no state inferred"))).ToArray(),
+                dashboard.Sources.Count,
+                0,
+                dashboard.SnapshotDigest,
+                source,
+                authority),
+        });
+    }
+
     public static IReadOnlyList<AccessibleMetadataTable> ChangeImpact(ChangeImpactDashboard dashboard)
     {
         const string source = "current-governed-records-and-bounded-trace-analysis";
