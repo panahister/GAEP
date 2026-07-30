@@ -40,6 +40,7 @@ import {
   technologyProfileProjectionSchema,
   boilerplateRegistryProjectionSchema,
   boilerplateSelectionBindingProjectionSchema,
+  boilerplateCompatibilityValidationProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -106,6 +107,7 @@ import {
   type TechnologyProfileProjection,
   type BoilerplateRegistryProjection,
   type BoilerplateSelectionBindingProjection,
+  type BoilerplateCompatibilityValidationProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -959,6 +961,25 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = boilerplateSelectionBindingProjectionSchema.safeParse(
         await this.request("planning.boilerplateSelectionBinding.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readBoilerplateCompatibilityValidation(
+    initiativeValue: string,
+  ): Promise<BoilerplateCompatibilityValidationProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = boilerplateCompatibilityValidationProjectionSchema.safeParse(
+        await this.request("planning.boilerplateCompatibilityValidation.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

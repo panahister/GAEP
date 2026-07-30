@@ -93,6 +93,7 @@
     "onCommand:gaepKiro.technologyProfile.inspect",
     "onCommand:gaepKiro.boilerplateRegistry.inspect",
     "onCommand:gaepKiro.boilerplateSelectionBinding.inspect",
+    "onCommand:gaepKiro.boilerplateCompatibilityValidation.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -359,6 +360,10 @@
       {
         "command": "gaepKiro.boilerplateSelectionBinding.inspect",
         "title": "GAEP for Kiro: Inspect Governed Boilerplate Selection and Binding Candidate"
+      },
+      {
+        "command": "gaepKiro.boilerplateCompatibilityValidation.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Boilerplate Compatibility Validation Candidate"
       },
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",

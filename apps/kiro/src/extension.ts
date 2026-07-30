@@ -41,6 +41,7 @@ import {
   type TechnologyProfileProjection,
   type BoilerplateRegistryProjection,
   type BoilerplateSelectionBindingProjection,
+  type BoilerplateCompatibilityValidationProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -174,6 +175,7 @@ const commandIds = {
   technologyProfile: "gaepKiro.technologyProfile.inspect",
   boilerplateRegistry: "gaepKiro.boilerplateRegistry.inspect",
   boilerplateSelectionBinding: "gaepKiro.boilerplateSelectionBinding.inspect",
+  boilerplateCompatibilityValidation: "gaepKiro.boilerplateCompatibilityValidation.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -324,6 +326,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.technologyProfile, (input?: unknown) => runUserCommand(() => showTechnologyProfile(pool, input))),
     vscode.commands.registerCommand(commandIds.boilerplateRegistry, (input?: unknown) => runUserCommand(() => showBoilerplateRegistry(pool, input))),
     vscode.commands.registerCommand(commandIds.boilerplateSelectionBinding, (input?: unknown) => runUserCommand(() => showBoilerplateSelectionBinding(pool, input))),
+    vscode.commands.registerCommand(commandIds.boilerplateCompatibilityValidation, (input?: unknown) => runUserCommand(() => showBoilerplateCompatibilityValidation(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2230,6 +2233,51 @@ async function showBoilerplateSelectionBinding(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and unit-decision, selection, binding, assessment, and snapshot digests only; no boilerplate names, locators, versions, unit or profile identities, rationale, conditions, alternatives, deviations, evidence, decision roles, or personal data. Candidate completeness does not establish organizational designation, endorsement, approval, support commitment, effective selection or binding, compatibility truth, completeness, or validation, licensing or security approval, exception or waiver, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showBoilerplateCompatibilityValidation(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<BoilerplateCompatibilityValidationProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Boilerplate Compatibility Validation inspection", "Initiative ID")
+  const projection = await client.readBoilerplateCompatibilityValidation(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Boilerplate Compatibility Validation candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Candidate coverage: ${status.selectedBindingCount} selected bindings · ${status.subjectCount} subjects · ${status.dimensionAssessmentCount} dimension assessments`,
+    `Candidate outcomes: ${status.compatibleCandidateCount} compatible · ${status.incompatibleCandidateCount} incompatible · ${status.exceptionCandidateCount} exception candidates · ${status.notAssessedCount} not assessed`,
+    `Candidate validation gaps: ${status.missingSubjectCount} missing subjects · ${status.invalidSubjectCount} invalid subjects · ${status.missingDimensionCount} missing dimensions · ${status.missingEvidenceCount} missing evidence · ${status.expiredAssessmentCount} expired assessments · ${status.conflictingOutcomeCount} conflicting outcomes · ${status.selectionBindingGapCount} selection-binding gaps`,
+    `Candidate freshness gaps: ${status.staleBindingCount} stale bindings · ${status.staleImplementationUnitModelCount} stale Implementation Unit Models · ${status.staleDependencyMappingCount} stale Dependency Mappings · ${status.staleTechnologyProfileCount} stale Technology Profiles · ${status.staleBoilerplateRegistryCount} stale Boilerplate Registries · ${status.staleSelectionBindingCount} stale Selection Bindings · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Validation subject catalog digest: ${record.validationSubjectCatalogDigest}`,
+      `Dimension catalog digest: ${record.dimensionCatalogDigest}`,
+      `Evidence receipt digest: ${record.evidenceReceiptDigest}`,
+      `Validation receipt digest: ${record.validationReceiptDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`,
+      `Candidate coverage: ${record.subjectCount} subjects · ${record.compatibleCandidateCount} compatible · ${record.incompatibleCandidateCount} incompatible · ${record.exceptionCandidateCount} exception candidates · ${record.notAssessedCount} not assessed · ${record.dimensionAssessmentCount} dimensions · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and subject, dimension, evidence, validation, assessment, and snapshot digests only; no boilerplate names, locators, versions, unit, profile, entry, or binding identities, claims, evidence, assessors, or personal data. Candidate completeness does not establish compatibility truth or completeness, a validation decision, actual asset behavior, test execution, design validity, security, privacy, or licensing approval, exception or waiver, effective selection or binding, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

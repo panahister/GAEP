@@ -67,6 +67,7 @@ const dependencyMappingId = "88888888-8888-4888-8888-888888888888"
 const technologyProfileId = "89898989-8989-4989-8989-898989898989"
 const boilerplateRegistryId = "90909090-9090-4090-8090-909090909090"
 const boilerplateSelectionBindingId = "91919191-9191-4191-8191-919191919191"
+const boilerplateCompatibilityValidationId = "92929292-9292-4292-8292-929292929292"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -199,6 +200,8 @@ input.on("line", (line) => {
       return readBoilerplateRegistry(id, request.params)
     case "planning.boilerplateSelectionBinding.snapshot":
       return readBoilerplateSelectionBinding(id, request.params)
+    case "planning.boilerplateCompatibilityValidation.snapshot":
+      return readBoilerplateCompatibilityValidation(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -2975,6 +2978,95 @@ function readBoilerplateSelectionBinding(id, params) {
   if (workspacePath.endsWith("bad-boilerplate-selection-binding-snapshot-digest")) value.candidate.decisionCount = 5
   if (workspacePath.endsWith("bad-boilerplate-selection-binding-snapshot-private")) {
     value.rationale = `${privateRoot}/${privateCredential}`
+    value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
+  }
+  return writeResult(id, value)
+}
+
+function readBoilerplateCompatibilityValidation(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BOILERPLATE COMPATIBILITY VALIDATION PARAMS")
+  }
+  const candidateDigest = `sha256:${"d".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "boilerplate-compatibility-validation-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: boilerplateCompatibilityValidationId, revision: 2, digest: candidateDigest },
+    implementationUnitModel: { recordId: implementationUnitModelId, revision: 2, digest: `sha256:${"5".repeat(64)}` },
+    dependencyMapping: { recordId: dependencyMappingId, revision: 2, digest: `sha256:${"9".repeat(64)}` },
+    technologyProfile: { recordId: technologyProfileId, revision: 2, digest: `sha256:${"d".repeat(64)}` },
+    boilerplateRegistry: { recordId: boilerplateRegistryId, revision: 2, digest: `sha256:${"3".repeat(64)}` },
+    boilerplateSelectionBinding: { recordId: boilerplateSelectionBindingId, revision: 2, digest: `sha256:${"8".repeat(64)}` },
+    selectedBindingCount: 2,
+    subjectCount: 2,
+    compatibleCandidateCount: 1,
+    incompatibleCandidateCount: 0,
+    exceptionCandidateCount: 1,
+    notAssessedCount: 0,
+    dimensionAssessmentCount: 28,
+    missingSubjectCount: 0,
+    invalidSubjectCount: 1,
+    missingDimensionCount: 0,
+    missingEvidenceCount: 1,
+    expiredAssessmentCount: 1,
+    conflictingOutcomeCount: 0,
+    selectionBindingGapCount: 1,
+    staleBindingCount: 0,
+    staleImplementationUnitModelCount: 0,
+    staleDependencyMappingCount: 0,
+    staleTechnologyProfileCount: 0,
+    staleBoilerplateRegistryCount: 0,
+    staleSelectionBindingCount: 0,
+    invalidCandidateCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Boilerplate Compatibility Validation subjects require human review"],
+    assessedAt: "2026-07-30T19:00:00.000Z",
+    authorityBoundary: "boilerplate-compatibility-validation-status-is-observational-and-does-not-establish-compatibility-truth-or-completeness-validation-decision-actual-asset-behavior-test-execution-design-validity-security-privacy-or-licensing-approval-exception-waiver-selection-binding-effectiveness-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "boilerplate-compatibility-validation-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: boilerplateCompatibilityValidationId,
+      revision: 2,
+      digest: candidateDigest,
+      state: "candidate",
+      validationSubjectCatalogDigest: `sha256:${"e".repeat(64)}`,
+      dimensionCatalogDigest: `sha256:${"f".repeat(64)}`,
+      evidenceReceiptDigest: `sha256:${"1".repeat(64)}`,
+      validationReceiptDigest: `sha256:${"2".repeat(64)}`,
+      assessmentReceiptDigest: `sha256:${"3".repeat(64)}`,
+      subjectCount: 2,
+      compatibleCandidateCount: 1,
+      incompatibleCandidateCount: 0,
+      exceptionCandidateCount: 1,
+      notAssessedCount: 0,
+      dimensionAssessmentCount: 28,
+      reviewState: "held",
+      updatedAt: "2026-07-30T18:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-subject-dimension-evidence-validation-assessment-snapshot-digests-only-not-boilerplate-names-locators-versions-unit-profile-entry-or-binding-identities-claims-evidence-assessors-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "boilerplate-compatibility-validation-projection-is-read-only-and-does-not-establish-compatibility-truth-or-completeness-validation-decision-actual-asset-behavior-test-execution-design-validity-security-privacy-or-licensing-approval-exception-waiver-selection-binding-effectiveness-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-boilerplate-compatibility-validation-snapshot-binding")) {
+    content.initiative.id = boilerplateCompatibilityValidationId
+  }
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-boilerplate-compatibility-validation-snapshot-digest")) {
+    value.candidate.subjectCount = 3
+  }
+  if (workspacePath.endsWith("bad-boilerplate-compatibility-validation-snapshot-private")) {
+    value.claim = `${privateRoot}/${privateCredential}`
     value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
   }
   return writeResult(id, value)
