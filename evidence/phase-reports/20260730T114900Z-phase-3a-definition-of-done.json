@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-3a-delivery-planning",
+  "evidenceScope": "phase-3a-definition-of-done-local",
+  "recordedAt": "2026-07-30T11:54:32Z",
+  "sourceCommit": "a195d8199e2b24c1dc865f4ada61c79c4f3e8822",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 82,
+    "hostAssessments": 328,
+    "hostAssessmentsImplemented": 328,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:c60c30fc4552eecd3cf737e73c69f23813ff5222e3a57d42cfd88b1a43687345",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 223663,
+      "digest": "sha256:7a12dd1e3e6bbcb77bcd252cabef0777d65bf3674c6c43a663fee562d8f9cd9b",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260730T114600Z-phase-3a-definition-of-done-packages.json",
+      "bytes": 3196,
+      "digest": "sha256:6d3a787fba6b9fd471b714312e1910be7f16bf9e29beebb059b5c566b668dda4",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260730T114500Z-phase-3a-definition-of-done-host-behavior.json",
+      "bytes": 3574,
+      "digest": "sha256:381889c56a1e495cef8089e9dcf3218b4caf8903eac34bf2558dffa7456400b2",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260730T114600Z-phase-3a-definition-of-done.json",
+      "bytes": 55462,
+      "digest": "sha256:fab48cebfae9c2ff28c7b82cfb3f0398b3f1907d9f4ab47c9c5df341ae426ed8",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
+      "bytes": 5234,
+      "digest": "sha256:f44e4a370357cf7738fbf691a49178cd3da20ff4d01e593e2af1565cfc1b71d7",
+      "kind": "gaep-phase2-realistic-figma-loop-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 110,
+        "testsPassed": 937,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:93cf5fbb636741d9abc1112080eb13f1e5a1600ef3cdc6514d83a2d36b3c361e"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:0fccbcb76a82c0b7de490f67889ec5624ab569c58c697d3ac2c8c2c673bffb47"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 26,
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:17bf048b5bf14f0251229609202d5624541605a8c4c419e96cb547c5291d8de3"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:09c5a6297b5eb401192e8d017f63baec1a4806a0af1698c536737f61b29bdf21"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:e915ec7985178a64c4b95bfe62ca0253a56174b6e9e2ea6e27169a7f907811d8"
+    }
+  ],
+  "testsDigest": "sha256:223f7fb88edfb48af91455d41833da27808953222be00c32d7084ada4602bc99",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-3a-definition-of-done-closure",
+      "state": "not-established",
+      "basis": "the exact versioned Definition of Done item-evaluation candidate lifecycle, complete current MVP Story and Task subject catalog, versioned completion policy, required or not-applicable candidate dispositions, exact evidence and assessor inputs, deterministic evaluation receipt, expiry and invalidation, exact current Backlog Hierarchy, MVP and Vertical Slice, Prioritization Model, Acceptance Criteria, and Definition of Ready bindings, immutable revisions, privacy-safe Product Studio table and four host projections are implemented locally; a candidate pass remains an evaluation result and does not establish evidence truth, test success, quality, Requirement or Acceptance Criteria satisfaction, approval, ready or done state, exception or waiver authority, implementation completeness, merge, release or deployment readiness, assignment, execution, acceptance, native-host interaction or Product Owner acceptance"
+    }
+  ],
+  "knownGapsDigest": "sha256:6711bc24b6fe623234ed59e20e1577fe248b544cc05d5729acf5d4e2b5414638",
+  "claimBoundary": "This report binds the exact governed Definition of Done item-evaluation candidate lifecycle, immutable revision history, complete current MVP Story and Task subject catalog, versioned completion policy, required or not-applicable candidate dispositions, exact evidence and assessor inputs, deterministic evaluation receipt, expiry and invalidation, exact current Product, Initiative, Backlog Hierarchy, MVP and Vertical Slice, Prioritization Model, Acceptance Criteria, and Definition of Ready bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. A candidate pass remains an evaluation result only. This report does not establish evidence truth, test success, quality, Requirement or Acceptance Criteria satisfaction, approval, ready or done state, exception or waiver authority, implementation completeness, merge, release or deployment readiness, assignment, execution, acceptance, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+}
