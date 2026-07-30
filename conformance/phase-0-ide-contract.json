@@ -63,6 +63,7 @@
     { "id": "screen-state-inventory", "label": "Exact governed Screen and State Inventory candidate projection with bounded platform, screen, state, variant, route and scope-coverage metadata, without UI completeness, platform parity, state reachability, interaction quality or accessibility proof, design approval, readiness, write, or action authority" },
     { "id": "design-requirements", "label": "Exact governed Design Requirements candidate projection with bounded requirement, outcome, design-target and Initiative-backlog metadata, without requirement validity, completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, write, or action authority" },
     { "id": "backlog-hierarchy", "label": "Exact governed Backlog Hierarchy candidate projection with strict Epic, Feature, Story and Task topology plus exact Work Item, Change and Requirement bindings, without duplicated work authority, priority, commitment, ownership, ready or done state, implementation readiness, assignment, execution, implementation, write, or action authority" },
+    { "id": "mvp-slice-definition", "label": "Exact governed MVP and Vertical Slice candidate projection with complete Backlog node scope partition, ordered independently testable slices and exact current Backlog Hierarchy binding, without priority, commitment, scope approval, acceptance-criteria validity, ready or done state, implementation readiness, assignment, execution, implementation, write, or action authority" },
     { "id": "design-system-token-contract", "label": "Exact governed Design System and Token Contract candidate projection with bounded system, token, variable, component and requirement-coverage metadata, without system, token, variable or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "accessibility-design-rules", "label": "Exact governed Accessibility Design Rules candidate projection with bounded target, rule, check, evidence-state and requirement-coverage metadata, without accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "responsive-multi-platform-targets", "label": "Exact governed Responsive and Multi-Platform Targets candidate projection with bounded platform-target, breakpoint, behavior, check, evidence-state and requirement-coverage metadata, without responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
@@ -90,7 +91,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T061251Z-phase-3a-backlog-hierarchy-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T070603Z-phase-3a-mvp-slice-definition-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -286,6 +287,9 @@
         { "capabilityId": "backlog-hierarchy", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["backlogHierarchy?: {", "engine.backlogHierarchy!.project(initiative.id)", "id: \"backlog-hierarchy\"", "Candidate identities, level counts, statuses, and digests only; no backlog objectives, criteria, scope, owners, Requirement content, personal data, priority, commitment, ready or done, implementation readiness, assignment, execution, or action authority."] }
         ] },
+        { "capabilityId": "mvp-slice-definition", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["mvpSliceDefinition?: {", "engine.mvpSliceDefinition!.project(initiative.id)", "id: \"mvp-slice-definitions\"", "Candidate identities, scope and slice counts, statuses, and digests only; no slice titles, rationales, objectives, criteria, scope content, Requirement content, personal data, priority, commitment, scope approval, ready or done, implementation readiness, assignment, execution, implementation authority, or action authority."] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designSystemTokenContract?: {", "engine.designSystemTokenContract!.project(initiative.id)", "id: \"design-system-token-contract\"", "no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."] }
         ] },
@@ -347,7 +351,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T061251Z-phase-3a-backlog-hierarchy-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T070603Z-phase-3a-mvp-slice-definition-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -566,6 +570,10 @@
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readBacklogHierarchy(", "this.request(\"backlog.hierarchy.snapshot\"", "backlogHierarchyProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showBacklogHierarchy", "GAEP governed Backlog Hierarchy candidate", "Candidate identities, level counts, statuses, and digests only", "implementation readiness"] }
         ] },
+        { "capabilityId": "mvp-slice-definition", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readMvpSliceDefinition(", "this.request(\"planning.mvpSlices.snapshot\"", "mvpSliceDefinitionProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showMvpSliceDefinition", "GAEP governed MVP and Vertical Slice candidate", "Candidate identities, scope and slice counts, statuses, and digests only", "scope approval"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignSystemTokenContract(", "this.request(\"design.systemTokenContract.snapshot\"", "designSystemTokenContractProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignSystemTokenContract", "GAEP governed Design System and Token Contract candidate", "does not establish system, token, variable, or component validity"] }
@@ -644,7 +652,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T061251Z-phase-3a-backlog-hierarchy-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T070603Z-phase-3a-mvp-slice-definition-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -906,6 +914,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Backlog Hierarchy candidate", "Authority boundary: candidate identities", "implementation readiness"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["BacklogHierarchyProjection", "BACKLOG_HIERARCHY_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] },
+        { "capabilityId": "mvp-slice-definition", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readMvpSliceDefinition(", "portableRequest(\"planning.mvpSlices.snapshot\"", "parseMvpSliceDefinitionEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed MVP and Vertical Slice candidate", "The Backlog Hierarchy changed", "scope approval"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["MvpSliceDefinitionProjection", "MVP_SLICE_DEFINITION_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignSystemTokenContract(", "portableRequest(\"design.systemTokenContract.snapshot\"", "parseDesignSystemTokenContractEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design System and Token Contract candidate", "no system, token, variable", "ownership authority"] },
@@ -1001,7 +1014,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T061251Z-phase-3a-backlog-hierarchy-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T070603Z-phase-3a-mvp-slice-definition-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1274,6 +1287,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadBacklogHierarchyAsync(", "\"backlog.hierarchy.snapshot\"", "ParseBacklogHierarchyResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Backlog Hierarchy candidate", "Authority boundary: candidate identities", "implementation readiness"] },
           { "path": "apps/visual-studio/Gaep.HostClient/BacklogHierarchyProtocol.cs", "contains": ["BacklogHierarchyProjection", "BacklogHierarchyProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "mvp-slice-definition", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadMvpSliceDefinitionAsync(", "\"planning.mvpSlices.snapshot\"", "ParseMvpSliceDefinitionResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed MVP and Vertical Slice candidate", "The Backlog Hierarchy changed", "scope approval"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/MvpSliceDefinitionProtocol.cs", "contains": ["MvpSliceDefinitionProjection", "MvpSliceDefinitionProjectionAuthorityBoundary"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignSystemTokenContractAsync(", "\"design.systemTokenContract.snapshot\"", "ParseDesignSystemTokenContractResponse"] },

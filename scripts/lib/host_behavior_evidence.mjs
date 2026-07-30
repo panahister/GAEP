@@ -131,6 +131,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/DesignRequirementsProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/BacklogHierarchyModels.cs",
       "apps/visual-studio/Gaep.HostClient/BacklogHierarchyProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/MvpSliceDefinitionModels.cs",
+      "apps/visual-studio/Gaep.HostClient/MvpSliceDefinitionProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/DesignSystemTokenContractModels.cs",
       "apps/visual-studio/Gaep.HostClient/DesignSystemTokenContractProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/AccessibilityDesignRulesModels.cs",
@@ -185,7 +187,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (602)",
+        "GAEP Visual Studio host-client tests: PASS (610)",
       ],
     }],
   },
