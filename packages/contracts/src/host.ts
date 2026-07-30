@@ -14,6 +14,7 @@ import { technologyProfileInputSchema } from "./technology-profile.js"
 import { boilerplateRegistryInputSchema } from "./boilerplate-registry.js"
 import { boilerplateSelectionBindingInputSchema } from "./boilerplate-selection-binding.js"
 import { boilerplateCompatibilityValidationInputSchema } from "./boilerplate-compatibility-validation.js"
+import { figmaToBoilerplateMappingInputSchema } from "./figma-to-boilerplate-mapping.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -753,6 +754,18 @@ export const hostBoilerplateCompatibilityValidationReviseParamsSchema = z.object
   record: boilerplateCompatibilityValidationInputSchema,
 }).strict()
 
+export const hostFigmaToBoilerplateMappingCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: figmaToBoilerplateMappingInputSchema,
+}).strict()
+
+export const hostFigmaToBoilerplateMappingReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: figmaToBoilerplateMappingInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1067,6 +1080,11 @@ export const hostMethodSchema = z.enum([
   "planning.boilerplateCompatibilityValidation.revise",
   "planning.boilerplateCompatibilityValidation.assess",
   "planning.boilerplateCompatibilityValidation.snapshot",
+  "planning.figmaToBoilerplateMapping.read",
+  "planning.figmaToBoilerplateMapping.create",
+  "planning.figmaToBoilerplateMapping.revise",
+  "planning.figmaToBoilerplateMapping.assess",
+  "planning.figmaToBoilerplateMapping.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1420,6 +1438,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.boilerplateCompatibilityValidation.revise", hostBoilerplateCompatibilityValidationReviseParamsSchema),
   requestVariant("planning.boilerplateCompatibilityValidation.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.boilerplateCompatibilityValidation.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.figmaToBoilerplateMapping.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.figmaToBoilerplateMapping.create", hostFigmaToBoilerplateMappingCreateParamsSchema),
+  requestVariant("planning.figmaToBoilerplateMapping.revise", hostFigmaToBoilerplateMappingReviseParamsSchema),
+  requestVariant("planning.figmaToBoilerplateMapping.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.figmaToBoilerplateMapping.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

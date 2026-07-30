@@ -154,6 +154,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.boilerplateCompatibilityValidation.revise",
   "planning.boilerplateCompatibilityValidation.assess",
   "planning.boilerplateCompatibilityValidation.snapshot",
+  "planning.figmaToBoilerplateMapping.read",
+  "planning.figmaToBoilerplateMapping.create",
+  "planning.figmaToBoilerplateMapping.revise",
+  "planning.figmaToBoilerplateMapping.assess",
+  "planning.figmaToBoilerplateMapping.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1495,6 +1500,21 @@ export class EngineHost {
         return this.engine.boilerplateCompatibilityValidation.assess(request.params.initiativeId)
       case "planning.boilerplateCompatibilityValidation.snapshot":
         return this.engine.boilerplateCompatibilityValidation.project(request.params.initiativeId)
+      case "planning.figmaToBoilerplateMapping.read":
+        return await this.engine.figmaToBoilerplateMapping.readCurrent(request.params.initiativeId) ?? null
+      case "planning.figmaToBoilerplateMapping.create":
+        return this.engine.figmaToBoilerplateMapping.create(request.params.record, actorId(request.params.actorId))
+      case "planning.figmaToBoilerplateMapping.revise":
+        return this.engine.figmaToBoilerplateMapping.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.figmaToBoilerplateMapping.assess":
+        return this.engine.figmaToBoilerplateMapping.assess(request.params.initiativeId)
+      case "planning.figmaToBoilerplateMapping.snapshot":
+        return this.engine.figmaToBoilerplateMapping.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":
