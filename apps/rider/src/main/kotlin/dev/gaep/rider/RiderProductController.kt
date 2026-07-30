@@ -1815,6 +1815,97 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readDefinitionOfDone(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val hierarchy = client.readBacklogHierarchy(initiativeId)
+        val mvp = client.readMvpSliceDefinition(initiativeId)
+        val prioritization = client.readPrioritizationModel(initiativeId)
+        val criteria = client.readAcceptanceCriteria(initiativeId)
+        val ready = client.readDefinitionOfReady(initiativeId)
+        val projection = client.readDefinitionOfDone(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Definition of Done was read. Refresh the exact records." }
+        projection.candidate?.let {
+            val currentHierarchy = requireNotNull(hierarchy.candidate) { "The current Backlog Hierarchy candidate is unavailable. Refresh the exact records." }
+            val currentMvp = requireNotNull(mvp.candidate) { "The current MVP and Vertical Slice candidate is unavailable. Refresh the exact records." }
+            val currentPrioritization = requireNotNull(prioritization.candidate) { "The current Prioritization Model candidate is unavailable. Refresh the exact records." }
+            val currentCriteria = requireNotNull(criteria.candidate) { "The current Acceptance Criteria candidate is unavailable. Refresh the exact records." }
+            val currentReady = requireNotNull(ready.candidate) { "The current Definition of Ready candidate is unavailable. Refresh the exact records." }
+            require(
+                projection.hierarchyRecordId == currentHierarchy.id && projection.hierarchyRevision == currentHierarchy.revision &&
+                    projection.hierarchyDigest == currentHierarchy.digest
+            ) { "The Backlog Hierarchy changed while Definition of Done was read. Refresh the exact records." }
+            require(
+                projection.mvpSliceDefinitionRecordId == currentMvp.id && projection.mvpSliceDefinitionRevision == currentMvp.revision &&
+                    projection.mvpSliceDefinitionDigest == currentMvp.digest
+            ) { "The MVP and Vertical Slice Definition changed while Definition of Done was read. Refresh the exact records." }
+            require(
+                projection.prioritizationModelRecordId == currentPrioritization.id && projection.prioritizationModelRevision == currentPrioritization.revision &&
+                    projection.prioritizationModelDigest == currentPrioritization.digest
+            ) { "The Prioritization Model changed while Definition of Done was read. Refresh the exact records." }
+            require(
+                projection.acceptanceCriteriaRecordId == currentCriteria.id && projection.acceptanceCriteriaRevision == currentCriteria.revision &&
+                    projection.acceptanceCriteriaDigest == currentCriteria.digest
+            ) { "Acceptance Criteria changed while Definition of Done was read. Refresh the exact records." }
+            require(
+                projection.definitionOfReadyRecordId == currentReady.id && projection.definitionOfReadyRevision == currentReady.revision &&
+                    projection.definitionOfReadyDigest == currentReady.digest
+            ) { "Definition of Ready changed while Definition of Done was read. Refresh the exact records." }
+        }
+        return renderDefinitionOfDone(projection)
+    }
+
+    fun renderDefinitionOfDone(projection: DefinitionOfDoneProjection): String = buildString {
+        appendLine("GAEP governed Definition of Done candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.result} · review state: ${projection.reviewState}")
+        appendLine(
+            "Coverage: ${projection.subjectCount} Story/Task subjects · ${projection.policyEntryCount} completion prerequisites · " +
+                "${projection.evaluationCount}/${projection.expectedEvaluationCount} evaluations · ${projection.missingEvaluationCount} missing",
+        )
+        appendLine(
+            "Evaluation states: ${projection.candidateSatisfiedCount} candidate-satisfied · ${projection.notApplicableCount} not-applicable candidates · " +
+                "${projection.notSatisfiedCount} not satisfied · ${projection.exceptionCandidateCount} exception candidates · " +
+                "${projection.notAssessedCount} unassessed · ${projection.staleEvaluationCount} stale · ${projection.invalidEvaluationCount} invalid",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.unresolvedQuestionCount} questions · ${projection.expiredCount} expired · " +
+                "${projection.staleBindingCount} stale bindings · ${projection.staleHierarchyCount} stale hierarchies · " +
+                "${projection.staleMvpSliceDefinitionCount} stale MVP definitions · " +
+                "${projection.stalePrioritizationModelCount} stale prioritization models · " +
+                "${projection.staleAcceptanceCriteriaCount} stale Acceptance Criteria · " +
+                "${projection.staleDefinitionOfReadyCount} stale Definitions of Ready",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Definition of Done candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Policy version: ${record.policyVersion} · valid until ${record.validUntil}")
+            appendLine("Subject catalog digest: ${record.subjectCatalogDigest}")
+            appendLine("Policy digest: ${record.policyDigest}")
+            appendLine("Evaluation digest: ${record.evaluationDigest}")
+            appendLine("Receipt digest: ${record.receiptDigest}")
+            appendLine(
+                "Candidate coverage: ${record.subjectCount} subjects · ${record.policyEntryCount} completion prerequisites · " +
+                    "${record.evaluationCount} evaluations · ${record.reviewState}",
+            )
+        } ?: appendLine("Definition of Done candidate: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, validity time, and subject, policy, evaluation, receipt, " +
+                "and snapshot digests only; no rules, rationales, evidence identities, assessor identities, or personal data. " +
+                "A candidate pass is an evaluation result, not completion, acceptance, approval, merge, release, deployment, " +
+                "implementation completeness, exception or waiver authority, assignment, execution, or action permission.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)

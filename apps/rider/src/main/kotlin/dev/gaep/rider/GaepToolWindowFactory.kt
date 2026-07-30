@@ -626,6 +626,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += definitionOfReadyButton
         actions.add(definitionOfReadyButton)
 
+        val definitionOfDoneButton = JButton("Inspect Definition of Done…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Rules, rationales, evidence and assessor identities, personal data, local paths, secrets, credentials, evidence truth, test success, quality, Requirement or Acceptance Criteria satisfaction, approval, ready or done, exception or waiver authority, implementation completeness, merge, release, deployment, assignment, execution, acceptance, and action authority are withheld.",
+                    "GAEP Definition of Done",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Definition of Done", status, output, buttons) {
+                    controller.readDefinitionOfDone(initiativeId)
+                }
+            }
+        }
+        buttons += definitionOfDoneButton
+        actions.add(definitionOfDoneButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

@@ -1783,6 +1783,64 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Definition of Done projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("definition-of-done-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDefinitionOfDone(entryId)
+            assertEquals("attention-required", projection.result)
+            assertEquals("held", projection.reviewState)
+            assertEquals(4, projection.subjectCount)
+            assertEquals(6, projection.policyEntryCount)
+            assertEquals(24, projection.expectedEvaluationCount)
+            assertEquals(21, projection.evaluationCount)
+            assertEquals(14, projection.candidateSatisfiedCount)
+            assertEquals(3, projection.notApplicableCount)
+            assertEquals(3, projection.missingEvaluationCount)
+            assertEquals(0, projection.staleDefinitionOfReadyCount)
+
+            val rendered = RiderProductController(client).readDefinitionOfDone(entryId)
+            assertTrue(rendered.contains("GAEP governed Definition of Done candidate"))
+            assertTrue(rendered.contains("4 Story/Task subjects · 6 completion prerequisites · 21/24 evaluations · 3 missing"))
+            assertTrue(rendered.contains("candidate pass is an evaluation result, not completion"))
+            assertTrue(rendered.contains("no rules, rationales, evidence identities, assessor identities"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("itemEvaluations"))
+        }
+
+        listOf(
+            "bad-definition-of-done-snapshot-digest",
+            "bad-definition-of-done-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDefinitionOfDone(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf(
+            "bad-definition-of-done-snapshot-binding",
+            "bad-definition-of-done-hierarchy-binding",
+            "bad-definition-of-done-mvp-binding",
+            "bad-definition-of-done-prioritization-binding",
+            "bad-definition-of-done-criteria-binding",
+            "bad-definition-of-done-ready-binding",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDefinitionOfDone(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

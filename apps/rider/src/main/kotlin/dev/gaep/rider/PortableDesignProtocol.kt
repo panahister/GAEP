@@ -2357,6 +2357,72 @@ data class DefinitionOfReadyProjection(
     val snapshotDigest: String,
 )
 
+data class DefinitionOfDoneRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val policyVersion: Long,
+    val validUntil: String,
+    val subjectCatalogDigest: String,
+    val policyDigest: String,
+    val evaluationDigest: String,
+    val receiptDigest: String,
+    val subjectCount: Int,
+    val policyEntryCount: Int,
+    val evaluationCount: Int,
+    val reviewState: String,
+)
+
+data class DefinitionOfDoneProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val result: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val hierarchyRecordId: UUID?,
+    val hierarchyRevision: Long?,
+    val hierarchyDigest: String?,
+    val mvpSliceDefinitionRecordId: UUID?,
+    val mvpSliceDefinitionRevision: Long?,
+    val mvpSliceDefinitionDigest: String?,
+    val prioritizationModelRecordId: UUID?,
+    val prioritizationModelRevision: Long?,
+    val prioritizationModelDigest: String?,
+    val acceptanceCriteriaRecordId: UUID?,
+    val acceptanceCriteriaRevision: Long?,
+    val acceptanceCriteriaDigest: String?,
+    val definitionOfReadyRecordId: UUID?,
+    val definitionOfReadyRevision: Long?,
+    val definitionOfReadyDigest: String?,
+    val subjectCount: Int,
+    val policyEntryCount: Int,
+    val expectedEvaluationCount: Int,
+    val evaluationCount: Int,
+    val candidateSatisfiedCount: Int,
+    val notSatisfiedCount: Int,
+    val notApplicableCount: Int,
+    val exceptionCandidateCount: Int,
+    val notAssessedCount: Int,
+    val staleEvaluationCount: Int,
+    val invalidEvaluationCount: Int,
+    val missingEvaluationCount: Int,
+    val staleBindingCount: Int,
+    val staleHierarchyCount: Int,
+    val staleMvpSliceDefinitionCount: Int,
+    val stalePrioritizationModelCount: Int,
+    val staleAcceptanceCriteriaCount: Int,
+    val staleDefinitionOfReadyCount: Int,
+    val expiredCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: DefinitionOfDoneRecordView?,
+    val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -3528,6 +3594,14 @@ internal object PortableDesignProtocol {
         "definition-of-ready-projection-is-read-only-and-does-not-establish-prerequisite-truth-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-exception-waiver-authority-phase-entry-implementation-readiness-assignment-execution-acceptance-or-action-authority"
     private const val DEFINITION_OF_READY_STATUS_AUTHORITY_BOUNDARY =
         "definition-of-ready-status-is-observational-and-does-not-establish-prerequisite-truth-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-exception-waiver-authority-phase-entry-implementation-readiness-assignment-execution-acceptance-or-action-authority"
+    private const val DEFINITION_OF_DONE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-policy-evaluation-receipt-snapshot-digests-only-not-rules-rationales-evidence-identities-assessor-identities-personal-data-secrets-credentials-or-machine-paths"
+    private const val DEFINITION_OF_DONE_GATE_BOUNDARY =
+        "a-passing-definition-of-done-candidate-is-an-evaluation-result-not-completion-acceptance-approval-merge-release-deployment-or-action-permission"
+    private const val DEFINITION_OF_DONE_PROJECTION_AUTHORITY_BOUNDARY =
+        "definition-of-done-projection-is-read-only-and-does-not-establish-evidence-truth-test-success-quality-requirement-satisfaction-acceptance-criteria-satisfaction-approval-ready-done-exception-waiver-authority-implementation-completeness-merge-readiness-release-readiness-deployment-readiness-assignment-execution-acceptance-or-action-authority"
+    private const val DEFINITION_OF_DONE_STATUS_AUTHORITY_BOUNDARY =
+        "definition-of-done-status-is-observational-and-does-not-establish-evidence-truth-test-success-quality-requirement-satisfaction-acceptance-criteria-satisfaction-approval-ready-done-exception-waiver-authority-implementation-completeness-merge-readiness-release-readiness-deployment-readiness-assignment-execution-acceptance-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -9062,6 +9136,167 @@ internal object PortableDesignProtocol {
             invalidEvaluationCount, missingEvaluationCount, staleBindingCount, staleHierarchyCount,
             staleMvpSliceDefinitionCount, stalePrioritizationModelCount, staleAcceptanceCriteriaCount, expiredCount,
             unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseDefinitionOfDoneEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): DefinitionOfDoneProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "gateBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "definition-of-done-projection" ||
+            projection.requireString("privacyBoundary") != DEFINITION_OF_DONE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("gateBoundary") != DEFINITION_OF_DONE_GATE_BOUNDARY ||
+            projection.requireString("authorityBoundary") != DEFINITION_OF_DONE_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "subjectCount", "policyEntryCount", "expectedEvaluationCount", "evaluationCount",
+                "candidateSatisfiedCount", "notSatisfiedCount", "notApplicableCount", "exceptionCandidateCount",
+                "notAssessedCount", "staleEvaluationCount", "invalidEvaluationCount", "missingEvaluationCount",
+                "staleBindingCount", "staleHierarchyCount", "staleMvpSliceDefinitionCount",
+                "stalePrioritizationModelCount", "staleAcceptanceCriteriaCount", "staleDefinitionOfReadyCount",
+                "expiredCount", "unresolvedQuestionCount", "reviewState", "result", "reasons", "assessedAt",
+                "gateBoundary", "authorityBoundary",
+            ),
+            setOf(
+                "candidate", "hierarchy", "mvpSliceDefinition", "prioritizationModel", "acceptanceCriteria",
+                "definitionOfReady",
+            ),
+        )
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "definition-of-done-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("gateBoundary") != DEFINITION_OF_DONE_GATE_BOUNDARY ||
+            status.requireString("authorityBoundary") != DEFINITION_OF_DONE_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        fun reference(name: String): Reference? = status.get(name)?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val candidateReference = reference("candidate")
+        val hierarchyReference = reference("hierarchy")
+        val mvpReference = reference("mvpSliceDefinition")
+        val prioritizationReference = reference("prioritizationModel")
+        val acceptanceCriteriaReference = reference("acceptanceCriteria")
+        val definitionOfReadyReference = reference("definitionOfReady")
+        val subjectCount = status.requireBoundedNonNegativeInt("subjectCount", 10_000)
+        val policyEntryCount = status.requireBoundedNonNegativeInt("policyEntryCount", 1_024)
+        val expectedEvaluationCount = status.requireBoundedNonNegativeInt("expectedEvaluationCount", 10_000_000)
+        val evaluationCount = status.requireBoundedNonNegativeInt("evaluationCount", 100_000)
+        val candidateSatisfiedCount = status.requireBoundedNonNegativeInt("candidateSatisfiedCount", 100_000)
+        val notSatisfiedCount = status.requireBoundedNonNegativeInt("notSatisfiedCount", 100_000)
+        val notApplicableCount = status.requireBoundedNonNegativeInt("notApplicableCount", 100_000)
+        val exceptionCandidateCount = status.requireBoundedNonNegativeInt("exceptionCandidateCount", 100_000)
+        val notAssessedCount = status.requireBoundedNonNegativeInt("notAssessedCount", 100_000)
+        val staleEvaluationCount = status.requireBoundedNonNegativeInt("staleEvaluationCount", 100_000)
+        val invalidEvaluationCount = status.requireBoundedNonNegativeInt("invalidEvaluationCount", 100_000)
+        val missingEvaluationCount = status.requireBoundedNonNegativeInt("missingEvaluationCount", 10_000_000)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 1)
+        val staleHierarchyCount = status.requireBoundedNonNegativeInt("staleHierarchyCount", 1)
+        val staleMvpSliceDefinitionCount = status.requireBoundedNonNegativeInt("staleMvpSliceDefinitionCount", 1)
+        val stalePrioritizationModelCount = status.requireBoundedNonNegativeInt("stalePrioritizationModelCount", 1)
+        val staleAcceptanceCriteriaCount = status.requireBoundedNonNegativeInt("staleAcceptanceCriteriaCount", 1)
+        val staleDefinitionOfReadyCount = status.requireBoundedNonNegativeInt("staleDefinitionOfReadyCount", 1)
+        val expiredCount = status.requireBoundedNonNegativeInt("expiredCount", 1)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        if (candidateSatisfiedCount + notSatisfiedCount + exceptionCandidateCount + notAssessedCount +
+            staleEvaluationCount + invalidEvaluationCount != evaluationCount || notApplicableCount > candidateSatisfiedCount
+        ) throw invalidResponse()
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val result = status.requireOneOf("result", setOf("attention-required", "candidate-passed"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gaps = notSatisfiedCount + exceptionCandidateCount + notAssessedCount + staleEvaluationCount +
+            invalidEvaluationCount + missingEvaluationCount + staleBindingCount + staleHierarchyCount +
+            staleMvpSliceDefinitionCount + stalePrioritizationModelCount + staleAcceptanceCriteriaCount +
+            staleDefinitionOfReadyCount + expiredCount + unresolvedQuestionCount
+        val allReferencesPresent = hierarchyReference != null && mvpReference != null && prioritizationReference != null &&
+            acceptanceCriteriaReference != null && definitionOfReadyReference != null
+        if ((result == "candidate-passed" &&
+                (gaps > 0 || reviewState != "ready-for-human-review" || reasons.isNotEmpty() ||
+                    candidateReference == null || !allReferencesPresent || evaluationCount != expectedEvaluationCount)) ||
+            (result == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "policyVersion", "validUntil", "subjectCatalogDigest",
+                "policyDigest", "evaluationDigest", "receiptDigest", "subjectCount", "policyEntryCount",
+                "evaluationCount", "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val policyVersion = value.requireLong("policyVersion")
+            val record = DefinitionOfDoneRecordView(
+                id, revision, value.requireDigest("digest"), policyVersion, value.requireInstant("validUntil").toString(),
+                value.requireDigest("subjectCatalogDigest"), value.requireDigest("policyDigest"),
+                value.requireDigest("evaluationDigest"), value.requireDigest("receiptDigest"),
+                value.requireBoundedNonNegativeInt("subjectCount", 10_000),
+                value.requireBoundedNonNegativeInt("policyEntryCount", 1_024),
+                value.requireBoundedNonNegativeInt("evaluationCount", 100_000),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || policyVersion !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate" || candidateReference == null ||
+                candidateReference.id != id || candidateReference.revision != revision || candidateReference.digest != record.digest ||
+                record.subjectCount != subjectCount || record.policyEntryCount != policyEntryCount ||
+                record.evaluationCount != evaluationCount || record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((candidateReference == null) != (candidate == null) || (candidate == null) != !allReferencesPresent ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return DefinitionOfDoneProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, result, reviewState, reasons,
+            hierarchyReference?.id, hierarchyReference?.revision, hierarchyReference?.digest,
+            mvpReference?.id, mvpReference?.revision, mvpReference?.digest,
+            prioritizationReference?.id, prioritizationReference?.revision, prioritizationReference?.digest,
+            acceptanceCriteriaReference?.id, acceptanceCriteriaReference?.revision, acceptanceCriteriaReference?.digest,
+            definitionOfReadyReference?.id, definitionOfReadyReference?.revision, definitionOfReadyReference?.digest,
+            subjectCount, policyEntryCount, expectedEvaluationCount, evaluationCount, candidateSatisfiedCount,
+            notSatisfiedCount, notApplicableCount, exceptionCandidateCount, notAssessedCount, staleEvaluationCount,
+            invalidEvaluationCount, missingEvaluationCount, staleBindingCount, staleHierarchyCount,
+            staleMvpSliceDefinitionCount, stalePrioritizationModelCount, staleAcceptanceCriteriaCount,
+            staleDefinitionOfReadyCount, expiredCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 
