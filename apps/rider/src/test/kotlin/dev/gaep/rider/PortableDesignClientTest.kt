@@ -2268,6 +2268,55 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Design Baseline projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("design-baseline-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDesignBaseline(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("supersession-candidate", projection.candidateResult)
+            assertEquals("ready-for-human-review", projection.reviewState)
+            assertEquals(1, projection.candidateSetCount)
+            assertEquals(1, projection.designationCandidateCount)
+            assertEquals(1, projection.supersessionCandidateCount)
+            assertEquals("not-established", projection.approvalDeterminationState)
+            assertEquals("not-established", projection.baselineDesignationState)
+            assertEquals("2.0.0", projection.candidate?.semanticVersion)
+            assertEquals("supersede-baseline-candidate", projection.candidate?.designationKind)
+
+            val rendered = RiderProductController(client).readDesignBaseline(entryId)
+            assertTrue(rendered.contains("GAEP Design Baseline version candidate"))
+            assertTrue(rendered.contains("1 set · 1 designation · 1 supersession"))
+            assertTrue(rendered.contains("Version: 2.0.0"))
+            assertTrue(rendered.contains("approval determination not-established · baseline designation not-established"))
+            assertTrue(rendered.contains("does not convert an approval candidate into approval"))
+            assertTrue(rendered.contains("implementation or action authority"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("designRationale="))
+        }
+
+        listOf("bad-design-baseline-digest", "bad-design-baseline-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDesignBaseline(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-design-baseline-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDesignBaseline(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

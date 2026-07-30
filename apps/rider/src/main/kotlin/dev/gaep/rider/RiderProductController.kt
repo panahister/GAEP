@@ -2385,6 +2385,79 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readDesignBaseline(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readDesignBaseline(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Design Baseline was read. Refresh the exact records." }
+        return renderDesignBaseline(projection)
+    }
+
+    fun renderDesignBaseline(projection: DesignBaselineProjection): String = buildString {
+        appendLine("GAEP Design Baseline version candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate result: ${projection.candidateResult} · ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine(
+            "Candidate inventory: ${projection.candidateSetCount} set · ${projection.designationCandidateCount} designation · " +
+                "${projection.supersessionCandidateCount} supersession · ${projection.withdrawalCandidateCount} withdrawal · " +
+                "${projection.restorationCandidateCount} restoration",
+        )
+        appendLine(
+            "Candidate gaps: ${projection.expiredDesignationCount} expired · ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleSourceReferenceCount} stale Source references · ${projection.unresolvedQuestionCount} unresolved questions",
+        )
+        appendLine(
+            "Authority: approval determination ${projection.approvalDeterminationState} · baseline designation " +
+                projection.baselineDesignationState,
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Candidate record: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine(
+                "Exact approval candidate: ${record.approval.recordId}@${record.approval.revision} · " +
+                    record.approval.assessmentState,
+            )
+            appendLine(
+                "Exact finalized snapshot: ${record.subject.recordId}@${record.subject.revision} · " +
+                    "${record.subject.itemCount} items · catalog ${record.subject.itemCatalogDigest}",
+            )
+            appendLine("Scope digest: ${record.scopeDigest}")
+            appendLine(
+                "Lineage: ${record.baselineLineageId} · candidate set ${record.candidateSetId}@${record.candidateSetRevision}",
+            )
+            appendLine("Version: ${record.semanticVersion} · policy ${record.versionPolicyDigest}")
+            appendLine(
+                "Designation evidence: definition ${record.designationDefinitionDigest} · receipt ${record.designationReceiptDigest}",
+            )
+            appendLine(
+                "Designation candidate: ${record.designationKind ?: "not proposed"} · " +
+                    (record.designationDigest ?: "not recorded"),
+            )
+            appendLine(
+                "Exact predecessor: " + (record.supersedes?.let {
+                    "${it.recordId}@${it.revision} · ${it.semanticVersion}"
+                } ?: "initial candidate"),
+            )
+        } ?: appendLine("Candidate record: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, exact Human Design Approval and finalized-snapshot bindings, " +
+                "version axes, lineage, scope and receipt digests, designation kind, predecessor, counts, and recorded " +
+                "states only; this view does not convert an approval candidate into approval, verify approver authority, " +
+                "enforce separation of duties, establish a Baseline Set designation, readiness, or phase entry, call " +
+                "Figma, request credentials, grant permissions, execute imports or writes, or grant implementation or action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

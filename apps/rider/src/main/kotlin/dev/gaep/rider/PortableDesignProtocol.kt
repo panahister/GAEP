@@ -2765,6 +2765,76 @@ data class HumanDesignApprovalProjection(
     val snapshotDigest: String,
 )
 
+data class DesignBaselineApprovalView(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val decisionReceiptDigest: String,
+    val subjectDigest: String,
+    val scopeDigest: String,
+    val assessmentDigest: String,
+    val assessmentState: String,
+)
+
+data class DesignBaselinePredecessorView(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val baselineLineageId: UUID,
+    val semanticVersion: String,
+)
+
+data class DesignBaselineRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val approval: DesignBaselineApprovalView,
+    val subject: HumanDesignApprovalSubjectView,
+    val scopeDigest: String,
+    val baselineLineageId: UUID,
+    val candidateSetId: UUID,
+    val candidateSetRevision: Long,
+    val semanticVersion: String,
+    val versionPolicyDigest: String,
+    val designationDefinitionDigest: String,
+    val designationReceiptDigest: String,
+    val designationKind: String?,
+    val designationDigest: String?,
+    val supersedes: DesignBaselinePredecessorView?,
+    val candidateResult: String,
+    val reviewState: String,
+)
+
+data class DesignBaselineProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val candidateResult: String,
+    val reviewState: String,
+    val assessmentState: String,
+    val candidateSetCount: Int,
+    val designationCandidateCount: Int,
+    val supersessionCandidateCount: Int,
+    val withdrawalCandidateCount: Int,
+    val restorationCandidateCount: Int,
+    val expiredDesignationCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val approvalDeterminationState: String,
+    val baselineDesignationState: String,
+    val reasons: List<String>,
+    val candidate: DesignBaselineRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -3056,6 +3126,12 @@ internal object PortableDesignProtocol {
         "human-design-approval-projection-is-read-only-and-does-not-verify-approver-authority-enforce-separation-of-duties-establish-design-approval-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority"
     private const val HUMAN_DESIGN_APPROVAL_STATUS_AUTHORITY_BOUNDARY =
         "human-design-approval-status-is-observational-and-does-not-verify-approver-authority-enforce-separation-of-duties-establish-design-approval-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority"
+    private const val DESIGN_BASELINE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-version-axes-counts-results-and-digests-only-not-design-content-rationale-evidence-source-content-human-attribution-personal-content-secrets-credentials-or-permissions"
+    private const val DESIGN_BASELINE_PROJECTION_AUTHORITY_BOUNDARY =
+        "design-baseline-projection-is-read-only-and-does-not-convert-an-approval-candidate-into-approval-verify-approver-authority-enforce-separation-of-duties-establish-a-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority"
+    private const val DESIGN_BASELINE_STATUS_AUTHORITY_BOUNDARY =
+        "design-baseline-status-is-observational-and-does-not-convert-an-approval-candidate-into-approval-verify-approver-authority-enforce-separation-of-duties-establish-a-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -10027,6 +10103,210 @@ internal object PortableDesignProtocol {
             abstainCount, expiredDecisionCount, revokedDecisionCount, staleBindingCount,
             staleSourceReferenceCount, unresolvedQuestionCount, approverAuthorityState,
             separationOfDutiesEnforcementState, reasons, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseDesignBaselineEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): DesignBaselineProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "design-baseline-projection" ||
+            projection.requireString("privacyBoundary") != DESIGN_BASELINE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != DESIGN_BASELINE_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "candidateSetCount", "designationCandidateCount", "supersessionCandidateCount",
+                "withdrawalCandidateCount", "restorationCandidateCount", "expiredDesignationCount",
+                "staleBindingCount", "staleSourceReferenceCount", "unresolvedQuestionCount", "candidateResult",
+                "reviewState", "approvalDeterminationState", "baselineDesignationState", "state", "reasons",
+                "assessedAt", "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "design-baseline-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != DESIGN_BASELINE_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val candidateSetCount = status.requireBoundedNonNegativeInt("candidateSetCount", 1)
+        val designationCandidateCount = status.requireBoundedNonNegativeInt("designationCandidateCount", 1)
+        val supersessionCandidateCount = status.requireBoundedNonNegativeInt("supersessionCandidateCount", 1)
+        val withdrawalCandidateCount = status.requireBoundedNonNegativeInt("withdrawalCandidateCount", 1)
+        val restorationCandidateCount = status.requireBoundedNonNegativeInt("restorationCandidateCount", 1)
+        val expiredDesignationCount = status.requireBoundedNonNegativeInt("expiredDesignationCount", 1)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        if (supersessionCandidateCount + withdrawalCandidateCount + restorationCandidateCount > designationCandidateCount) {
+            throw invalidResponse()
+        }
+        val candidateResults = setOf(
+            "baseline-proposal-candidate", "blocked", "incomplete", "not-assessed", "restoration-candidate",
+            "supersession-candidate", "withdrawal-candidate",
+        )
+        val candidateResult = status.requireOneOf("candidateResult", candidateResults)
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val approvalDeterminationState = status.requireString("approvalDeterminationState")
+        val baselineDesignationState = status.requireString("baselineDesignationState")
+        if (approvalDeterminationState != "not-established" || baselineDesignationState != "not-established") {
+            throw invalidResponse()
+        }
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-baseline-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = expiredDesignationCount + staleBindingCount + staleSourceReferenceCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-baseline-review" &&
+                (reference == null || reasons.isNotEmpty() || candidateSetCount != 1 || designationCandidateCount != 1 ||
+                    gapCount > 0 || reviewState != "ready-for-human-review")) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+        val semanticVersionPattern = Regex("^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$")
+        fun semanticVersion(value: String): String = value.also {
+            if (!semanticVersionPattern.matches(it)) throw invalidResponse()
+        }
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireKeys(
+                setOf(
+                    "id", "revision", "digest", "membershipDigest", "state", "humanDesignApproval", "subject",
+                    "scopeDigest", "baselineLineageId", "candidateSetId", "candidateSetRevision", "semanticVersion",
+                    "versionPolicyDigest", "designationDefinitionDigest", "designationReceiptDigest", "candidateResult",
+                    "reviewState", "updatedAt",
+                ),
+                setOf("designationKind", "designationDigest", "supersedes"),
+            )
+            val approvalValue = value.get("humanDesignApproval").requireObject()
+            approvalValue.requireExactKeys(
+                "kind", "recordId", "revision", "digest", "membershipDigest", "decisionReceiptDigest",
+                "subjectDigest", "scopeDigest", "candidateResult", "reviewState", "assessmentDigest", "assessmentState",
+            )
+            val approvalRevision = approvalValue.requireLong("revision")
+            if (approvalValue.requireString("kind") != "human-design-approval-candidate" ||
+                approvalRevision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                approvalValue.requireString("candidateResult") != "approved-candidate" ||
+                approvalValue.requireString("reviewState") != "recorded-human-decision"
+            ) throw invalidResponse()
+            val approval = DesignBaselineApprovalView(
+                approvalValue.requireNonEmptyUuid("recordId"), approvalRevision,
+                approvalValue.requireDigest("digest"), approvalValue.requireDigest("membershipDigest"),
+                approvalValue.requireDigest("decisionReceiptDigest"), approvalValue.requireDigest("subjectDigest"),
+                approvalValue.requireDigest("scopeDigest"), approvalValue.requireDigest("assessmentDigest"),
+                approvalValue.requireOneOf("assessmentState", setOf("attention-required", "complete-for-recorded-decision")),
+            )
+            val subjectValue = value.get("subject").requireObject()
+            subjectValue.requireExactKeys(
+                "kind", "recordId", "revision", "digest", "membershipDigest", "externalFileIdentityDigest",
+                "returnedExternalVersionDigest", "itemCatalogDigest", "itemCount",
+            )
+            if (subjectValue.requireString("kind") != "finalized-figma-snapshot-import-candidate") throw invalidResponse()
+            val subjectRevision = subjectValue.requireLong("revision")
+            if (subjectRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            val subject = HumanDesignApprovalSubjectView(
+                subjectValue.requireNonEmptyUuid("recordId"), subjectRevision, subjectValue.requireDigest("digest"),
+                subjectValue.requireDigest("membershipDigest"), subjectValue.requireDigest("externalFileIdentityDigest"),
+                subjectValue.requireDigest("returnedExternalVersionDigest"), subjectValue.requireDigest("itemCatalogDigest"),
+                subjectValue.requireBoundedNonNegativeInt("itemCount", 33_792).also { if (it == 0) throw invalidResponse() },
+            )
+            val scopeDigest = value.requireDigest("scopeDigest")
+            if (approval.subjectDigest != subject.digest || approval.scopeDigest != scopeDigest) throw invalidResponse()
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val candidateSetRevision = value.requireLong("candidateSetRevision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || candidateSetRevision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                value.requireString("state") != "candidate"
+            ) throw invalidResponse()
+            val recordCandidateResult = value.requireOneOf("candidateResult", candidateResults - "not-assessed")
+            val recordReviewState = value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+            val designationKind = value.get("designationKind")?.let {
+                value.requireOneOf(
+                    "designationKind",
+                    setOf(
+                        "propose-baseline-candidate", "restore-baseline-candidate",
+                        "supersede-baseline-candidate", "withdraw-baseline-candidate",
+                    ),
+                )
+            }
+            val designationDigest = value.get("designationDigest")?.let { value.requireDigest("designationDigest") }
+            if ((designationKind == null) != (designationDigest == null)) throw invalidResponse()
+            val supersedes = value.get("supersedes")?.let { predecessorElement ->
+                val predecessor = predecessorElement.requireObject()
+                predecessor.requireExactKeys(
+                    "recordId", "revision", "digest", "membershipDigest", "baselineLineageId", "semanticVersion",
+                )
+                val predecessorRevision = predecessor.requireLong("revision")
+                if (predecessorRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+                DesignBaselinePredecessorView(
+                    predecessor.requireNonEmptyUuid("recordId"), predecessorRevision,
+                    predecessor.requireDigest("digest"), predecessor.requireDigest("membershipDigest"),
+                    predecessor.requireNonEmptyUuid("baselineLineageId"),
+                    semanticVersion(predecessor.requireString("semanticVersion")),
+                )
+            }
+            val record = DesignBaselineRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("membershipDigest"), approval, subject,
+                scopeDigest, value.requireNonEmptyUuid("baselineLineageId"), value.requireNonEmptyUuid("candidateSetId"),
+                candidateSetRevision, semanticVersion(value.requireString("semanticVersion")),
+                value.requireDigest("versionPolicyDigest"), value.requireDigest("designationDefinitionDigest"),
+                value.requireDigest("designationReceiptDigest"), designationKind, designationDigest, supersedes,
+                recordCandidateResult, recordReviewState,
+            )
+            if (reference == null || reference.id != id || reference.revision != revision || reference.digest != record.digest ||
+                record.candidateResult != candidateResult || record.reviewState != reviewState ||
+                (designationKind == "propose-baseline-candidate" && supersedes != null) ||
+                (designationKind != null && designationKind != "propose-baseline-candidate" && supersedes == null)
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((reference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return DesignBaselineProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, candidateResult, reviewState, assessmentState, candidateSetCount,
+            designationCandidateCount, supersessionCandidateCount, withdrawalCandidateCount,
+            restorationCandidateCount, expiredDesignationCount, staleBindingCount, staleSourceReferenceCount,
+            unresolvedQuestionCount, approvalDeterminationState, baselineDesignationState, reasons, candidate, snapshotDigest,
         )
     }
 
