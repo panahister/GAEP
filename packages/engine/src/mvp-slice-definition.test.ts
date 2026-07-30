@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type { AcceptanceCriteriaInput, BacklogHierarchyInput, MvpSliceDefinitionInput, PrioritizationModelInput } from "@gaep/contracts"
+import type { AcceptanceCriteriaInput, BacklogHierarchyInput, DefinitionOfReadyInput, MvpSliceDefinitionInput, PrioritizationModelInput } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -262,6 +262,72 @@ describe("MVP and Slice Definition engine", () => {
       commitmentState: "not-established",
       approvalState: "not-established",
       readyDoneState: "not-established",
+      implementationReadinessState: "not-established",
+      assignmentExecutionState: "not-established",
+      acceptanceDecisionState: "not-established",
+      implementationAuthorityState: "not-granted",
+    }
+  }
+
+  function definitionOfReadyInput(
+    initiativeId: string,
+    context: MvpSliceDefinitionInput["context"],
+    hierarchy: Awaited<ReturnType<typeof engine.backlogHierarchy.create>>,
+    mvp: Awaited<ReturnType<typeof engine.mvpSliceDefinition.create>>,
+    priority: Awaited<ReturnType<typeof engine.prioritizationModel.create>>,
+    criteria: Awaited<ReturnType<typeof engine.acceptanceCriteria.create>>,
+  ): DefinitionOfReadyInput {
+    const subjects = hierarchy.nodes.filter((node) => node.level === "story" || node.level === "task")
+    return {
+      initiativeId,
+      context,
+      informationClassification: "internal",
+      title: "Atlas item Definition of Ready candidate",
+      hierarchy: { recordId: hierarchy.id, revision: hierarchy.revision, digest: canonicalDigest(hierarchy) },
+      mvpSliceDefinition: { recordId: mvp.id, revision: mvp.revision, digest: canonicalDigest(mvp) },
+      prioritizationModel: { recordId: priority.id, revision: priority.revision, digest: canonicalDigest(priority) },
+      acceptanceCriteria: { recordId: criteria.id, revision: criteria.revision, digest: canonicalDigest(criteria) },
+      policyVersion: 1,
+      policyEntries: [{
+        key: "acceptance-criteria",
+        kind: "acceptance-criteria",
+        title: "Acceptance Criteria candidate",
+        rule: "An exact current Acceptance Criteria candidate must be available for each item",
+        notApplicableAllowed: false,
+        evidenceRequired: true,
+      }],
+      itemEvaluations: subjects.map((subject, index) => ({
+        id: randomUUID(),
+        ordinal: index + 1,
+        subjectNodeId: subject.id,
+        subjectKey: subject.key,
+        subjectLevel: subject.level as "story" | "task",
+        prerequisiteKey: "acceptance-criteria",
+        applicability: "required",
+        assessmentState: "candidate-satisfied",
+        rationale: `The exact current Acceptance Criteria candidate covers this ${subject.level} for human review`,
+        evidenceReferences: [{
+          kind: "acceptance-criteria",
+          recordId: criteria.id,
+          revision: criteria.revision,
+          digest: canonicalDigest(criteria),
+        }],
+        assessedBy: { kind: "human", id: actorId },
+        assessedAt: "2026-07-30T00:00:00.000Z",
+      })),
+      validUntil: "2099-07-30T00:00:00.000Z",
+      unresolvedQuestions: [],
+      limitations: ["A passing candidate does not admit work or grant implementation permission."],
+      reviewState: "ready-for-human-review",
+      prerequisiteTruthState: "not-established",
+      criterionValidityState: "not-established",
+      requirementSatisfactionState: "not-established",
+      priorityDecisionState: "not-established",
+      commitmentState: "not-established",
+      approvalState: "not-established",
+      readyDoneState: "not-established",
+      exceptionWaiverAuthorityState: "not-established",
+      phaseEntryState: "not-established",
       implementationReadinessState: "not-established",
       assignmentExecutionState: "not-established",
       acceptanceDecisionState: "not-established",
@@ -559,5 +625,86 @@ describe("MVP and Slice Definition engine", () => {
       uncoveredRequirementCount: 1,
     })
     expect(status.reasons).toContain("One or more exact MVP Story or Task subjects lack candidate criteria")
+  })
+
+  it("persists, revises, assesses, and projects exact Definition of Ready item evaluations without granting admission", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteria = await engine.acceptanceCriteria.create(
+      acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority), actorId,
+    )
+    const readyInput = definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria)
+    const created = await engine.definitionOfReady.create(readyInput, actorId)
+    const revised = await engine.definitionOfReady.revise(created.id, created.revision, {
+      ...readyInput,
+      title: "Atlas reviewed item Definition of Ready candidate",
+    }, actorId)
+    expect(revised).toMatchObject({ revision: 2, predecessorDigest: canonicalDigest(created) })
+    expect((await engine.definitionOfReady.listHistory(created.id)).map((record) => record.revision)).toEqual([2, 1])
+
+    const status = await engine.definitionOfReady.assess(initiative.id)
+    expect(status).toMatchObject({
+      result: "candidate-passed",
+      subjectCount: 2,
+      policyEntryCount: 1,
+      expectedEvaluationCount: 2,
+      evaluationCount: 2,
+      candidateSatisfiedCount: 2,
+      missingEvaluationCount: 0,
+      expiredCount: 0,
+    })
+    expect(status.gateBoundary).toContain("not-admission-readiness-assignment-execution-or-implementation-permission")
+
+    const projection = await engine.definitionOfReady.project(initiative.id)
+    expect(projection.candidate).toMatchObject({
+      id: revised.id, revision: 2, policyVersion: 1, subjectCount: 2, policyEntryCount: 1, evaluationCount: 2,
+    })
+    expect(projection.snapshotDigest).toMatch(/^sha256:[0-9a-f]{64}$/u)
+    const serialized = JSON.stringify(projection)
+    expect(serialized).not.toContain(readyInput.title)
+    expect(serialized).not.toContain(readyInput.itemEvaluations[0]!.rationale)
+    expect(serialized).not.toContain(actorId)
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    const event = events.findLast((entry) => entry.eventType === "definition-of-ready.revised")
+    expect(event?.payload).toMatchObject({
+      revision: 2, subjectCount: 2, policyEntryCount: 1, expectedEvaluationCount: 2, evaluationCount: 2,
+      prerequisiteTruthState: "not-established", exceptionWaiverAuthorityState: "not-established",
+      phaseEntryState: "not-established", implementationReadinessState: "not-established",
+      implementationAuthorityState: "not-granted", actionAuthorityState: "not-granted",
+    })
+    expect(JSON.stringify(event)).not.toContain(readyInput.title)
+    expect(JSON.stringify(event)).not.toContain(readyInput.itemEvaluations[0]!.rationale)
+    expect((await engine.repository.verifyAudit()).valid).toBe(true)
+  })
+
+  it("fails closed on incomplete ready evaluations and reports superseded Acceptance Criteria bindings", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteriaInput = acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority)
+    const criteria = await engine.acceptanceCriteria.create(criteriaInput, actorId)
+    const incomplete = definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria)
+    incomplete.itemEvaluations = [incomplete.itemEvaluations[0]!]
+    await expect(engine.definitionOfReady.create(incomplete, actorId)).rejects.toThrow(/evaluate every policy prerequisite/u)
+
+    const ready = await engine.definitionOfReady.create(
+      definitionOfReadyInput(initiative.id, input.context, hierarchy, mvp, priority, criteria), actorId,
+    )
+    await engine.acceptanceCriteria.revise(criteria.id, criteria.revision, {
+      ...criteriaInput,
+      title: "Superseding Acceptance Criteria candidate",
+    }, actorId)
+    const status = await engine.definitionOfReady.assess(initiative.id)
+    expect(status).toMatchObject({ result: "attention-required", staleAcceptanceCriteriaCount: 1 })
+    expect(await engine.definitionOfReady.healthIssues()).toEqual([
+      expect.objectContaining({
+        code: "definition-of-ready.binding-review-required",
+        severity: "warning",
+        record: { type: ready.kind, id: ready.id, revision: ready.revision },
+      }),
+    ])
   })
 })

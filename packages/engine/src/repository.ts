@@ -60,6 +60,7 @@ import {
   mvpSliceDefinitionSchema,
   prioritizationModelSchema,
   acceptanceCriteriaSchema,
+  definitionOfReadySchema,
   businessRuleCatalogSchema,
   businessUnderstandingSchema,
   changeSchema,
@@ -140,6 +141,8 @@ const directoryNames = [
   "prioritization-model-history",
   "acceptance-criteria",
   "acceptance-criteria-history",
+  "definition-of-ready",
+  "definition-of-ready-history",
   "value-stream-models",
   "value-stream-model-history",
   "operating-models",
@@ -1001,6 +1004,8 @@ export class GaepRepository {
       ["prioritization-model-history", /^prioritization-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["acceptance-criteria", /^[0-9a-f-]+\.json$/i],
       ["acceptance-criteria-history", /^acceptance-criteria-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["definition-of-ready", /^[0-9a-f-]+\.json$/i],
+      ["definition-of-ready-history", /^definition-of-ready-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["value-stream-models", /^[0-9a-f-]+\.json$/i],
       ["value-stream-model-history", /^value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["operating-models", /^[0-9a-f-]+\.json$/i],
@@ -1192,6 +1197,10 @@ export class GaepRepository {
     if (/^acceptance-criteria\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^acceptance-criteria-history\/acceptance-criteria-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, acceptanceCriteriaSchema)
+    }
+    if (/^definition-of-ready\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^definition-of-ready-history\/definition-of-ready-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, definitionOfReadySchema)
     }
     if (/^value-stream-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^value-stream-model-history\/value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
