@@ -87,6 +87,7 @@ import { BoilerplateCompatibilityValidationService } from "./boilerplate-compati
 import { FigmaToBoilerplateMappingService } from "./figma-to-boilerplate-mapping.js"
 import { DesignToCodeBindingRegistryService } from "./design-to-code-binding-registry.js"
 import { RouteScreenComponentMappingService } from "./route-screen-component-mapping.js"
+import { TestMethodologyService } from "./test-methodology.js"
 import { BusinessArchitectureBaselineService } from "./business-architecture-baseline.js"
 import { BusinessRuleCatalogService } from "./business-rule-catalog.js"
 import { BusinessUnderstandingService } from "./business-understanding.js"
@@ -307,6 +308,7 @@ export class GaepEngine {
   readonly figmaToBoilerplateMapping: FigmaToBoilerplateMappingService
   readonly designToCodeBindingRegistry: DesignToCodeBindingRegistryService
   readonly routeScreenComponentMapping: RouteScreenComponentMappingService
+  readonly testMethodology: TestMethodologyService
   readonly valueStreamModel: ValueStreamModelService
   readonly operatingModel: OperatingModelService
   readonly businessRuleCatalog: BusinessRuleCatalogService
@@ -923,6 +925,18 @@ export class GaepEngine {
       this.implementationUnitModel,
       this.acceptanceCriteria,
     )
+    this.testMethodology = new TestMethodologyService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.acceptanceCriteria,
+      this.definitionOfReady,
+      this.definitionOfDone,
+      this.implementationUnitModel,
+      this.dependencyMapping,
+      this.securityPrivacyAssessment,
+      this.routeScreenComponentMapping,
+    )
     this.designDriftDetection = new DesignDriftDetectionService(
       this.repository,
       () => this.readProduct(),
@@ -1028,7 +1042,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [acceptanceCriteriaIssues, definitionOfReadyIssues, definitionOfDoneIssues, implementationUnitModelIssues, dependencyMappingIssues, technologyProfileIssues, boilerplateRegistryIssues, boilerplateSelectionBindingIssues, boilerplateCompatibilityValidationIssues, routeScreenComponentMappingIssues] = await Promise.all([
+      const [acceptanceCriteriaIssues, definitionOfReadyIssues, definitionOfDoneIssues, implementationUnitModelIssues, dependencyMappingIssues, technologyProfileIssues, boilerplateRegistryIssues, boilerplateSelectionBindingIssues, boilerplateCompatibilityValidationIssues, routeScreenComponentMappingIssues, testMethodologyIssues] = await Promise.all([
         this.acceptanceCriteria.healthIssues(),
         this.definitionOfReady.healthIssues(),
         this.definitionOfDone.healthIssues(),
@@ -1039,6 +1053,7 @@ export class GaepEngine {
         this.boilerplateSelectionBinding.healthIssues(),
         this.boilerplateCompatibilityValidation.healthIssues(),
         this.routeScreenComponentMapping.healthIssues(),
+        this.testMethodology.healthIssues(),
       ])
       const [productIssues, backlogHierarchyIssues, mvpSliceDefinitionIssues, prioritizationModelIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues, figmaContextImportIssues, outboundDesignBriefPackageIssues, governedFigmaWriteIssues, finalizedFigmaSnapshotImportIssues, designToRequirementBindingIssues, designerReadyGateIssues, designDeltaIssues, designConflictResolutionIssues, humanDesignApprovalIssues, designBaselineIssues, designDriftDetectionIssues, figmaToBoilerplateMappingIssues, designToCodeBindingRegistryIssues] = await Promise.all([
         this.productStudio.healthIssues(),
@@ -1110,6 +1125,7 @@ export class GaepEngine {
         ...figmaToBoilerplateMappingIssues,
         ...designToCodeBindingRegistryIssues,
         ...routeScreenComponentMappingIssues,
+        ...testMethodologyIssues,
         ...sourceIssues,
         ...businessIssues,
         ...capabilityMapIssues,
