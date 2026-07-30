@@ -11,6 +11,7 @@ import type {
   BacklogHierarchyProjection,
   MvpSliceDefinitionProjection,
   PrioritizationModelProjection,
+  AcceptanceCriteriaProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -191,6 +192,9 @@ export interface CurrentStudioEngineReader {
   prioritizationModel?: {
     project(initiativeId: string): Promise<PrioritizationModelProjection>
   }
+  acceptanceCriteria?: {
+    project(initiativeId: string): Promise<AcceptanceCriteriaProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -363,6 +367,7 @@ interface ObservedStudioState {
   backlogHierarchyProjections: Map<string, BacklogHierarchyProjection>
   mvpSliceDefinitionProjections: Map<string, MvpSliceDefinitionProjection>
   prioritizationModelProjections: Map<string, PrioritizationModelProjection>
+  acceptanceCriteriaProjections: Map<string, AcceptanceCriteriaProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3782,6 +3787,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     backlogHierarchy: backlogHierarchyTable(state),
     mvpSliceDefinitions: mvpSliceDefinitionsTable(state),
     prioritizationModels: prioritizationModelsTable(state),
+    acceptanceCriteria: acceptanceCriteriaTable(state),
   }
 }
 
@@ -4008,6 +4014,59 @@ function prioritizationModelsTable(state: ObservedStudioState): StudioTableSnaps
       emptyState: emptySurface(
         "No governed Prioritization Model candidate",
         "Create the candidate through the governed engine workflow after an exact MVP and Vertical Slice candidate exists. This view does not infer evidence validity, priority, commitment, scope decisions, approval, readiness, assignment, execution, implementation authority, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function acceptanceCriteriaTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.acceptanceCriteriaProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        subjects: record.subjectCatalogDigest,
+        criteria: record.criterionCatalogDigest,
+        methods: record.verificationMethodCatalogDigest,
+        coverageDigest: record.coverageDigest,
+        coverage: `${status.subjectCount} subjects · ${status.coveredSubjectCount} covered · ${status.uncoveredSubjectCount} uncovered · ${status.requirementTraceCount} Requirement traces · ${status.uncoveredRequirementCount} uncovered Requirements`,
+        assessment: `${status.state} · ${status.reviewState} · ${status.criterionCount} criteria · ${status.testableCriterionCount} candidate-testable · ${status.unassessedCriterionCount} unassessed · ${status.verificationMethodCount} methods`,
+        gaps: `${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleHierarchyCount} stale hierarchies · ${status.staleMvpSliceDefinitionCount} stale MVP definitions · ${status.stalePrioritizationModelCount} stale prioritization models · ${status.invalidCriterionCount} invalid criteria`,
+        boundary: "Candidate identities, counts, statuses, and subject, criterion, verification-method, coverage, and snapshot digests only; no criterion text, Requirement identities, verification evidence, personal data, criterion validity or completeness, Requirement satisfaction, priority, commitment, approval, ready or done, implementation readiness, assignment, execution, acceptance, implementation authority, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "acceptance-criteria",
+    title: "Governed Acceptance Criteria Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "subjects", label: "Subject catalog digest" },
+      { key: "criteria", label: "Criterion catalog digest" },
+      { key: "methods", label: "Verification-method digest" },
+      { key: "coverageDigest", label: "Coverage digest" },
+      { key: "coverage", label: "Privacy-safe coverage" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Acceptance Criteria candidate",
+        "Create the candidate through the governed engine workflow after exact Backlog Hierarchy, MVP and Vertical Slice, and Prioritization Model candidates exist. This view does not infer criterion validity or completeness, Requirement satisfaction, priority, commitment, approval, readiness, assignment, execution, acceptance, implementation authority, or action authority.",
       ),
     } : {}),
   }
@@ -5850,6 +5909,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       backlogHierarchyProjections: new Map(),
       mvpSliceDefinitionProjections: new Map(),
       prioritizationModelProjections: new Map(),
+      acceptanceCriteriaProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -6195,6 +6255,60 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "prioritization-model-unavailable",
           "Prioritization Model metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.acceptanceCriteria) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.acceptanceCriteria!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            const hierarchy = empty.backlogHierarchyProjections.get(initiative.id)?.candidate
+            const mvp = empty.mvpSliceDefinitionProjections.get(initiative.id)?.candidate
+            const priority = empty.prioritizationModelProjections.get(initiative.id)?.candidate
+            const candidate = projection.value.candidate
+            const exactDependencies = !candidate || (
+              hierarchy !== undefined && projection.value.status.hierarchy?.recordId === hierarchy.id &&
+              projection.value.status.hierarchy.revision === hierarchy.revision && projection.value.status.hierarchy.digest === hierarchy.digest &&
+              mvp !== undefined && projection.value.status.mvpSliceDefinition?.recordId === mvp.id &&
+              projection.value.status.mvpSliceDefinition.revision === mvp.revision && projection.value.status.mvpSliceDefinition.digest === mvp.digest &&
+              priority !== undefined && projection.value.status.prioritizationModel?.recordId === priority.id &&
+              projection.value.status.prioritizationModel.revision === priority.revision && projection.value.status.prioritizationModel.digest === priority.digest
+            )
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              exactDependencies && snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.acceptanceCriteriaProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Acceptance Criteria projection was unavailable or did not bind the exact Product, Initiative, Backlog Hierarchy, MVP and Slice Definition, and Prioritization Model revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `acceptance-criteria-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Acceptance Criteria metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "acceptance-criteria-unavailable",
+          "Acceptance Criteria metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

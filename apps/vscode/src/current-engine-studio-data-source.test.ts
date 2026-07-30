@@ -50,6 +50,7 @@ import {
   type BacklogHierarchyProjection,
   type MvpSliceDefinitionProjection,
   type PrioritizationModelProjection,
+  type AcceptanceCriteriaProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -2097,6 +2098,78 @@ function prioritizationModelProjection(mvp = mvpSliceDefinitionProjection()): Pr
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function acceptanceCriteriaProjection(
+  hierarchy = backlogHierarchyProjection(),
+  mvp = mvpSliceDefinitionProjection(hierarchy),
+  priority = prioritizationModelProjection(mvp),
+): AcceptanceCriteriaProjection {
+  const exactHierarchy = hierarchy.candidate!
+  const exactMvp = mvp.candidate!
+  const exactPriority = priority.candidate!
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "acceptance-criteria-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "f7f7f7f7-f7f7-47f7-87f7-f7f7f7f7f7f7", revision: 2, digest: `sha256:${"4".repeat(64)}` as const },
+    hierarchy: { recordId: exactHierarchy.id, revision: exactHierarchy.revision, digest: exactHierarchy.digest },
+    mvpSliceDefinition: { recordId: exactMvp.id, revision: exactMvp.revision, digest: exactMvp.digest },
+    prioritizationModel: { recordId: exactPriority.id, revision: exactPriority.revision, digest: exactPriority.digest },
+    subjectCount: 4,
+    coveredSubjectCount: 3,
+    uncoveredSubjectCount: 1,
+    criterionCount: 6,
+    testableCriterionCount: 5,
+    unassessedCriterionCount: 1,
+    requirementTraceCount: 8,
+    uncoveredRequirementCount: 2,
+    verificationMethodCount: 2,
+    staleBindingCount: 0,
+    staleHierarchyCount: 0,
+    staleMvpSliceDefinitionCount: 0,
+    stalePrioritizationModelCount: 0,
+    invalidCriterionCount: 1,
+    unresolvedQuestionCount: 2,
+    criterionSetCompletenessState: "not-assessed" as const,
+    requirementCoverageState: "not-assessed" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more Acceptance Criteria subjects require review"],
+    assessedAt: "2026-07-30T12:20:00.000Z",
+    authorityBoundary: "acceptance-criteria-status-is-observational-and-does-not-establish-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-implementation-readiness-assignment-execution-acceptance-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "acceptance-criteria-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      state: "candidate" as const,
+      subjectCatalogDigest: `sha256:${"5".repeat(64)}` as const,
+      criterionCatalogDigest: `sha256:${"6".repeat(64)}` as const,
+      verificationMethodCatalogDigest: `sha256:${"7".repeat(64)}` as const,
+      coverageDigest: `sha256:${"8".repeat(64)}` as const,
+      subjectCount: 4,
+      criterionCount: 6,
+      testableCriterionCount: 5,
+      requirementTraceCount: 8,
+      verificationMethodCount: 2,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-30T12:19:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-subject-criterion-method-coverage-snapshot-digests-only-not-criterion-text-requirement-identities-verification-evidence-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "acceptance-criteria-projection-is-read-only-and-does-not-establish-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-implementation-readiness-assignment-execution-acceptance-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -3887,6 +3960,7 @@ interface HarnessOptions {
   backlogHierarchyProjection?: BacklogHierarchyProjection
   mvpSliceDefinitionProjection?: MvpSliceDefinitionProjection
   prioritizationModelProjection?: PrioritizationModelProjection
+  acceptanceCriteriaProjection?: AcceptanceCriteriaProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -4052,6 +4126,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.prioritizationModelProjection ? {
       prioritizationModel: {
         project: async () => options.prioritizationModelProjection!,
+      },
+    } : {}),
+    ...(options.acceptanceCriteriaProjection ? {
+      acceptanceCriteria: {
+        project: async () => options.acceptanceCriteriaProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -4651,6 +4730,42 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private estimate|private evidence identity|private uncertainty|private slice content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects exact privacy-safe Acceptance Criteria metadata on Delivery", async () => {
+    const hierarchy = backlogHierarchyProjection()
+    const mvp = mvpSliceDefinitionProjection(hierarchy)
+    const priority = prioritizationModelProjection(mvp)
+    const projection = acceptanceCriteriaProjection(hierarchy, mvp, priority)
+    const { source } = harness({
+      backlogHierarchyProjection: hierarchy,
+      mvpSliceDefinitionProjection: mvp,
+      prioritizationModelProjection: priority,
+      acceptanceCriteriaProjection: projection,
+    })
+    const snapshot = await source.readSnapshot("delivery")
+
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.kind === "delivery" && snapshot.page.acceptanceCriteria).toMatchObject({
+      id: "acceptance-criteria",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          subjects: projection.candidate?.subjectCatalogDigest,
+          criteria: projection.candidate?.criterionCatalogDigest,
+          methods: projection.candidate?.verificationMethodCatalogDigest,
+          coverageDigest: projection.candidate?.coverageDigest,
+          coverage: "4 subjects · 3 covered · 1 uncovered · 8 Requirement traces · 2 uncovered Requirements",
+          assessment: "attention-required · held · 6 criteria · 5 candidate-testable · 1 unassessed · 2 methods",
+          gaps: "2 questions · 0 stale bindings · 0 stale hierarchies · 0 stale MVP definitions · 0 stale prioritization models · 1 invalid criteria",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private criterion text|private requirement identity|private verification evidence|customer@example\.com|api_key/iu,
     )
   })
 
