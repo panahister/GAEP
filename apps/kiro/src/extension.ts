@@ -30,6 +30,7 @@ import {
   type InformationArchitectureModelProjection,
   type ScreenStateInventoryProjection,
   type DesignRequirementsProjection,
+  type BacklogHierarchyProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -152,6 +153,7 @@ const commandIds = {
   informationArchitecture: "gaepKiro.informationArchitecture.inspect",
   screenStateInventory: "gaepKiro.screenStateInventory.inspect",
   designRequirements: "gaepKiro.designRequirements.inspect",
+  backlogHierarchy: "gaepKiro.backlogHierarchy.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -291,6 +293,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.informationArchitecture, (input?: unknown) => runUserCommand(() => showInformationArchitectureModel(pool, input))),
     vscode.commands.registerCommand(commandIds.screenStateInventory, (input?: unknown) => runUserCommand(() => showScreenStateInventory(pool, input))),
     vscode.commands.registerCommand(commandIds.designRequirements, (input?: unknown) => runUserCommand(() => showDesignRequirements(pool, input))),
+    vscode.commands.registerCommand(commandIds.backlogHierarchy, (input?: unknown) => runUserCommand(() => showBacklogHierarchy(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -1727,6 +1730,46 @@ async function showDesignRequirements(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and digests only; this does not establish requirement validity, completeness, priority approval, satisfaction, backlog commitment, design approval, readiness, implementation, write, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showBacklogHierarchy(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<BacklogHierarchyProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Backlog Hierarchy", "Initiative ID")
+  const projection = await client.readBacklogHierarchy(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Backlog Hierarchy candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState} · hierarchy: ${status.hierarchyCompletenessState}`,
+    `Hierarchy: ${status.epicCount} Epics · ${status.featureCount} Features · ${status.storyCount} Stories · ${status.taskCount} Tasks`,
+    `Topology and trace: ${status.rootCount} roots · ${status.leafCount} leaves · ${status.requirementTraceCount} Requirement traces`,
+    `Candidate gaps: ${status.untracedStoryTaskCount} untraced delivery nodes · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleWorkItemCount} stale Work Items · ${status.staleChangeCount} stale Changes · ${status.staleRequirementCount} stale Requirements`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Membership digest: ${record.membershipDigest}`,
+      `Candidate hierarchy: ${record.epicCount} Epics · ${record.featureCount} Features · ${record.storyCount} Stories · ${record.taskCount} Tasks · ${record.requirementTraceCount} Requirement traces · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, level counts, statuses, and digests only; this does not establish priority, commitment, ownership authority, Definition of Ready or Done, implementation readiness, assignment, execution, implementation authority, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

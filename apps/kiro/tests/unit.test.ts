@@ -1665,6 +1665,60 @@ test("protocol-v2 Design Requirements projection is exact, private-safe, and non
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 Backlog Hierarchy projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-backlog-hierarchy-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-backlog-hierarchy-snapshot-binding",
+    "bad-backlog-hierarchy-snapshot-digest",
+    "bad-backlog-hierarchy-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readBacklogHierarchy(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.nodeCount, 24)
+    assert.equal(projection.status.epicCount, 2)
+    assert.equal(projection.status.featureCount, 5)
+    assert.equal(projection.status.storyCount, 8)
+    assert.equal(projection.status.taskCount, 9)
+    assert.equal(projection.status.requirementTraceCount, 17)
+    assert.equal(projection.candidate?.nodeCount, 24)
+    assert.equal(
+      projection.authorityBoundary,
+      "backlog-hierarchy-projection-is-read-only-and-does-not-prioritize-commit-assign-admit-execute-or-authorize-implementation-or-action",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"workItemObjective":'), false)
+    assert.equal(serialized.includes('"nodes":'), false)
+    assert.equal(serialized.includes('"requirements":'), false)
+    assert.equal(serialized.includes('"owner":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readBacklogHierarchy(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 Design System and Token Contract projection is exact, private-safe, and non-authorizing", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-design-system-token-contract-"))
   const workspace = join(root, "workspace")

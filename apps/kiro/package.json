@@ -82,6 +82,7 @@
     "onCommand:gaepKiro.informationArchitecture.inspect",
     "onCommand:gaepKiro.screenStateInventory.inspect",
     "onCommand:gaepKiro.designRequirements.inspect",
+    "onCommand:gaepKiro.backlogHierarchy.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -304,6 +305,10 @@
       {
         "command": "gaepKiro.designRequirements.inspect",
         "title": "GAEP for Kiro: Inspect Governed Design Requirements Candidate"
+      },
+      {
+        "command": "gaepKiro.backlogHierarchy.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Backlog Hierarchy Candidate"
       },
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",

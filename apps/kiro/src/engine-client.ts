@@ -29,6 +29,7 @@ import {
   informationArchitectureModelProjectionSchema,
   screenStateInventoryProjectionSchema,
   designRequirementsProjectionSchema,
+  backlogHierarchyProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -84,6 +85,7 @@ import {
   type InformationArchitectureModelProjection,
   type ScreenStateInventoryProjection,
   type DesignRequirementsProjection,
+  type BacklogHierarchyProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -750,6 +752,23 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = designRequirementsProjectionSchema.safeParse(
         await this.request("design.requirements.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (
+        projection.initiative.id.toLowerCase() !== initiativeId ||
+        snapshotDigest !== canonicalDigest(projectionBody)
+      ) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readBacklogHierarchy(initiativeValue: string): Promise<BacklogHierarchyProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = backlogHierarchyProjectionSchema.safeParse(
+        await this.request("backlog.hierarchy.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

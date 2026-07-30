@@ -56,6 +56,7 @@ const userJourneyId = "58585858-5858-4858-8858-585858585858"
 const informationArchitectureId = "59595959-5959-4959-8959-595959595959"
 const screenStateInventoryId = "60606060-6060-4060-8060-606060606060"
 const designRequirementsId = "61616161-6161-4161-8161-616161616161"
+const backlogHierarchyId = "81818181-8181-4181-8181-818181818181"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -166,6 +167,8 @@ input.on("line", (line) => {
       return readScreenStateInventory(id, request.params)
     case "design.requirements.snapshot":
       return readDesignRequirements(id, request.params)
+    case "backlog.hierarchy.snapshot":
+      return readBacklogHierarchy(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -2120,6 +2123,74 @@ function readDesignRequirements(id, params) {
   if (workspacePath.endsWith("bad-design-requirements-snapshot-digest")) value.candidate.requirementCount = 13
   if (workspacePath.endsWith("bad-design-requirements-snapshot-private")) {
     value.requirementStatement = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readBacklogHierarchy(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE BACKLOG HIERARCHY PARAMS")
+  }
+  const candidateDigest = `sha256:${"8".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "backlog-hierarchy-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: backlogHierarchyId, revision: 2, digest: candidateDigest },
+    nodeCount: 24,
+    epicCount: 2,
+    featureCount: 5,
+    storyCount: 8,
+    taskCount: 9,
+    rootCount: 2,
+    leafCount: 12,
+    requirementTraceCount: 17,
+    untracedStoryTaskCount: 1,
+    staleBindingCount: 0,
+    staleWorkItemCount: 1,
+    staleChangeCount: 0,
+    staleRequirementCount: 2,
+    unresolvedQuestionCount: 3,
+    hierarchyCompletenessState: "not-assessed",
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Backlog Hierarchy bindings require review"],
+    assessedAt: "2026-07-30T09:20:00.000Z",
+    authorityBoundary: "backlog-hierarchy-status-is-observational-and-does-not-establish-priority-commitment-ownership-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "backlog-hierarchy-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: backlogHierarchyId,
+      revision: 2,
+      digest: candidateDigest,
+      membershipDigest: `sha256:${"9".repeat(64)}`,
+      state: "candidate",
+      nodeCount: 24,
+      epicCount: 2,
+      featureCount: 5,
+      storyCount: 8,
+      taskCount: 9,
+      requirementTraceCount: 17,
+      reviewState: "held",
+      updatedAt: "2026-07-30T09:19:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-level-counts-statuses-and-digests-only-not-backlog-objectives-criteria-scope-owner-requirement-content-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "backlog-hierarchy-projection-is-read-only-and-does-not-prioritize-commit-assign-admit-execute-or-authorize-implementation-or-action",
+  }
+  if (workspacePath.endsWith("bad-backlog-hierarchy-snapshot-binding")) content.initiative.id = backlogHierarchyId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-backlog-hierarchy-snapshot-digest")) value.candidate.taskCount = 10
+  if (workspacePath.endsWith("bad-backlog-hierarchy-snapshot-private")) {
+    value.workItemObjective = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }
