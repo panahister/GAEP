@@ -44,6 +44,7 @@
     "onCommand:gaepKiro.runs.stagedReview",
     "onCommand:gaepKiro.dashboard.phase",
     "onCommand:gaepKiro.dashboard.phase2UxFigma",
+    "onCommand:gaepKiro.dashboard.phase2ChangeImpactAgentModel",
     "onCommand:gaepKiro.dashboard.phase1Summary",
     "onCommand:gaepKiro.dashboard.phase1ChangeImpact",
     "onCommand:gaepKiro.dashboard.changeImpact",
@@ -151,6 +152,10 @@
       {
         "command": "gaepKiro.dashboard.phase2UxFigma",
         "title": "GAEP for Kiro: Show Phase 2 UX and Figma Dashboard"
+      },
+      {
+        "command": "gaepKiro.dashboard.phase2ChangeImpactAgentModel",
+        "title": "GAEP for Kiro: Show Phase 2 Change, Impact, Agent and Model Dashboard"
       },
       {
         "command": "gaepKiro.dashboard.phase1Summary",

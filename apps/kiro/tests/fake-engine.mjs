@@ -204,6 +204,8 @@ input.on("line", (line) => {
       return readPhaseDashboard(id, request.params)
     case "dashboard.phase2UxFigma":
       return readPhase2UxFigmaDashboard(id, request.params)
+    case "dashboard.phase2ChangeImpactAgentModel":
+      return readPhase2ChangeImpactAgentModelDashboard(id, request.params)
     case "dashboard.phase1Summary":
       return readPhase1Summary(id, request.params)
     case "dashboard.phase1ChangeImpact":
@@ -4336,6 +4338,97 @@ function readPhase1AgentModel(id, params) {
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-phase1-agent-model-digest")) value.executionTruth.capabilities.detected = 2
   if (workspacePath.endsWith("bad-phase1-agent-model-private")) value.sourceRoot = `${privateRoot}/${privateCredential}`
+  return writeResult(id, value)
+}
+
+function readPhase2ChangeImpactAgentModelDashboard(id, params) {
+  const productDigest = canonicalDigest(productRecord())
+  const initiativeDigest = canonicalDigest(initiativeState)
+  if (!exactKeys(params, [
+    "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+    "expectedInitiativeRevision", "expectedInitiativeDigest", "agentModel",
+  ]) || params.expectedProductId !== productId || params.expectedProductRevision !== 7 ||
+      params.expectedProductDigest !== productDigest || params.expectedInitiativeId !== initiativeId ||
+      params.expectedInitiativeRevision !== initiativeState.revision || params.expectedInitiativeDigest !== initiativeDigest) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PHASE 2 INTEGRATED PARAMS")
+  }
+  const agentModel = buildAgentModel(params.agentModel)
+  if (!agentModel) return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE PHASE 2 INTEGRATED PARAMS")
+  const detected = agentModel.capabilities.filter((entry) => entry.detected).length
+  const selected = agentModel.capabilities.filter((entry) => entry.selected).length
+  const content = {
+    schemaVersion: 1,
+    kind: "phase-2-change-impact-agent-model-dashboard",
+    viewDefinitionVersion: "gaep-phase-2-change-impact-agent-model-dashboard-v1",
+    phase: { id: "phase-2-design", label: "Phase 2 — UX and Figma Loop" },
+    product: { recordType: "product", recordId: productId, revision: 7, digest: productDigest },
+    initiative: {
+      recordType: "initiative", recordId: initiativeId, revision: initiativeState.revision,
+      digest: initiativeDigest, state: initiativeState.state,
+    },
+    sources: {
+      phase2UxFigmaSnapshotDigest: canonicalDigest({ fixture: "phase2-ux-figma", initiativeDigest }),
+      phase2SourceCatalogDigest: canonicalDigest({ fixture: "phase2-source-catalog", expected: 23 }),
+      agentModelSnapshotDigest: agentModel.snapshotDigest,
+    },
+    synchronizationChange: {
+      state: "attention-required", designDelta: "unavailable", conflictResolution: "unavailable",
+      humanDesignApproval: "unavailable", designBaseline: "unavailable", designDriftDetection: "unavailable",
+      figmaConnectionState: "not-established", figmaWriteExecutionState: "not-performed",
+      figmaImportExecutionState: "not-performed", synchronizationEffectState: "not-applied",
+    },
+    impact: {
+      state: "current-bounded-observation", coverage: "bounded-not-complete", requirementCount: 0,
+      designBindingCount: 0, unboundDesignItemCount: 0, driftObservationCount: 0, driftCount: 0,
+      unassessedCount: 0, blockerCount: 0, highSeverityCount: 0, remediationCandidateCount: 0,
+      staleBindingCount: 0, staleSourceReferenceCount: 0, unresolvedQuestionCount: 0,
+      impactCompleteness: "not-established", designValidity: "not-established", revalidationState: "not-established",
+    },
+    agentModel: {
+      selectionState: agentModel.selection.status,
+      capabilities: {
+        shown: agentModel.capabilities.length, total: agentModel.limits.capabilities.total,
+        omitted: agentModel.limits.capabilities.omitted, detected,
+        unavailable: agentModel.capabilities.length - detected, selected,
+      },
+      runs: { shown: 0, total: 0, omitted: 0, terminal: 0, nonTerminal: 0, managedObserved: 0, resultBound: 0, actualEffectCount: 0 },
+      managedRuns: { shown: 0, total: 0, omitted: 0 },
+      handoffs: { shown: 0, total: 0, omitted: 0, pendingAcknowledgement: 0, acknowledged: 0 },
+      providerMetrics: { usage: "unavailable", cost: "unavailable" },
+      liveProviderQuality: "not-assessed", semanticOutputQuality: "not-assessed",
+    },
+    freshness: {
+      state: "attention-required", phase2State: "attention-required", agentModelState: agentModel.freshness.state,
+      selectionCapabilityState: agentModel.freshness.selectionCapabilityState,
+      phase2ObservedAt: "2026-07-30T03:10:00.000Z", agentModelObservedAt: agentModel.observedAt,
+      oldestCapabilityObservedAt: agentModel.freshness.oldestCapabilityObservedAt,
+      newestCapabilityObservedAt: agentModel.freshness.newestCapabilityObservedAt, truncated: agentModel.limits.truncated,
+    },
+    governance: {
+      humanDesignApproval: "not-established", baselineDesignation: "not-established",
+      impactAcceptance: "not-established", providerAccountReadiness: "not-established",
+      providerPreference: "not-established", automaticSelectionAuthority: "not-granted",
+      runLaunchAuthority: "not-granted", effectAuthority: "not-granted",
+      phaseReadinessAuthority: "not-established", productOwnerAcceptance: "not-established",
+    },
+    evidenceCues: {
+      freshness: "unknown",
+      confidence: { state: "not-assessed", basis: "no-governed-confidence-evaluation-is-bound" },
+    },
+    observedAt: "2026-07-30T03:12:00.000Z",
+    sourceBoundary: "exact-derived-phase-2-dashboard-and-current-initiative-scoped-agent-model-metadata-only",
+    privacyBoundary: "dashboard-exposes-identities-digests-counts-statuses-and-times-not-design-content-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-permissions-or-machine-paths",
+    limitations: [
+      "Synchronization and impact panels are derived from exact bounded source projections.",
+      "Agent and model counts are bounded to the exact current Initiative and source limits.",
+      "No dashboard state grants approval, baseline, readiness, remediation, launch, or effect authority.",
+    ],
+    authorityBoundary: "phase-2-change-impact-agent-model-dashboard-is-derived-read-only-evidence-not-a-second-source-of-truth-impact-completeness-design-validity-provider-quality-selection-run-launch-approval-baseline-readiness-remediation-effect-release-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-phase2-integrated-binding")) content.product.digest = `sha256:${"0".repeat(64)}`
+  if (workspacePath.endsWith("bad-phase2-integrated-private")) content.privateRoot = `${privateRoot}/${privateCredential}`
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-phase2-integrated-digest")) value.agentModel.capabilities.detected = 0
   return writeResult(id, value)
 }
 

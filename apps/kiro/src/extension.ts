@@ -48,6 +48,7 @@ import {
   type DesignBaselineProjection,
   type DesignDriftDetectionProjection,
   type Phase2UxFigmaDashboard,
+  type Phase2ChangeImpactAgentModelDashboard,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -113,6 +114,7 @@ const commandIds = {
   stagedReview: "gaepKiro.runs.stagedReview",
   dashboard: "gaepKiro.dashboard.phase",
   phase2UxFigma: "gaepKiro.dashboard.phase2UxFigma",
+  phase2ChangeImpactAgentModel: "gaepKiro.dashboard.phase2ChangeImpactAgentModel",
   phase1Summary: "gaepKiro.dashboard.phase1Summary",
   phase1ChangeImpact: "gaepKiro.dashboard.phase1ChangeImpact",
   changeImpact: "gaepKiro.dashboard.changeImpact",
@@ -251,6 +253,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.stagedReview, () => runUserCommand(() => reviewManagedStagedChanges(pool))),
     vscode.commands.registerCommand(commandIds.dashboard, () => runUserCommand(() => showPhaseDashboard(pool))),
     vscode.commands.registerCommand(commandIds.phase2UxFigma, (input?: unknown) => runUserCommand(() => showPhase2UxFigmaDashboard(pool, input))),
+    vscode.commands.registerCommand(commandIds.phase2ChangeImpactAgentModel, (input?: unknown) => runUserCommand(() => showPhase2ChangeImpactAgentModelDashboard(pool, input))),
     vscode.commands.registerCommand(commandIds.phase1Summary, (input?: unknown) => runUserCommand(() => showPhase1Summary(pool, input))),
     vscode.commands.registerCommand(commandIds.phase1ChangeImpact, (input?: unknown) => runUserCommand(() => showPhase1ChangeImpact(pool, input))),
     vscode.commands.registerCommand(commandIds.changeImpact, () => runUserCommand(() => showChangeImpactDashboard(pool))),
@@ -2981,6 +2984,46 @@ async function showPhase2UxFigmaDashboard(pool: EngineClientPool, input: unknown
     ...dashboard.limitations.map((limitation) => `Limit: ${limitation}`),
     "",
     "Boundary: this derived read-only view is not a second source of truth and grants no completeness, validity, approval, baseline, readiness, phase-entry, Figma, remediation, implementation, release, or action authority.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return dashboard
+}
+
+async function showPhase2ChangeImpactAgentModelDashboard(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<Phase2ChangeImpactAgentModelDashboard> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Phase 2 Change, Impact, Agent and Model dashboard", "Initiative ID")
+  const [product, initiative] = await Promise.all([client.readProduct(), client.readInitiative(initiativeId)])
+  const dashboard = await client.readPhase2ChangeImpactAgentModelDashboard(product, initiative)
+  const lines = [
+    "GAEP exact Phase 2 Change, Impact, Agent and Model dashboard",
+    "",
+    `Initiative: ${dashboard.initiative.recordId}@${dashboard.initiative.revision} · ${dashboard.initiative.state}`,
+    `Synchronization: ${dashboard.synchronizationChange.state} · design delta ${dashboard.synchronizationChange.designDelta} · conflicts ${dashboard.synchronizationChange.conflictResolution} · human approval ${dashboard.synchronizationChange.humanDesignApproval} · baseline ${dashboard.synchronizationChange.designBaseline} · drift ${dashboard.synchronizationChange.designDriftDetection}`,
+    `Synchronization effects: ${dashboard.synchronizationChange.synchronizationEffectState} · Figma connection ${dashboard.synchronizationChange.figmaConnectionState} · write ${dashboard.synchronizationChange.figmaWriteExecutionState} · import ${dashboard.synchronizationChange.figmaImportExecutionState}`,
+    `Bounded impact: ${dashboard.impact.state} · ${dashboard.impact.requirementCount} requirements · ${dashboard.impact.designBindingCount} bindings · ${dashboard.impact.unboundDesignItemCount} unbound items · ${dashboard.impact.driftCount} drift · ${dashboard.impact.unassessedCount} unassessed`,
+    `Impact boundary: ${dashboard.impact.coverage} · completeness ${dashboard.impact.impactCompleteness} · design validity ${dashboard.impact.designValidity} · revalidation ${dashboard.impact.revalidationState}`,
+    `Capabilities: ${dashboard.agentModel.capabilities.shown}/${dashboard.agentModel.capabilities.total} shown · ${dashboard.agentModel.capabilities.detected} detected · ${dashboard.agentModel.capabilities.selected} selected · selection ${dashboard.agentModel.selectionState}`,
+    `Runs: ${dashboard.agentModel.runs.shown}/${dashboard.agentModel.runs.total} shown · ${dashboard.agentModel.runs.terminal} terminal · ${dashboard.agentModel.runs.nonTerminal} non-terminal · ${dashboard.agentModel.runs.resultBound} results bound · ${dashboard.agentModel.runs.actualEffectCount} recorded actual effects`,
+    `Handoffs: ${dashboard.agentModel.handoffs.shown}/${dashboard.agentModel.handoffs.total} shown · ${dashboard.agentModel.handoffs.pendingAcknowledgement} pending acknowledgement · ${dashboard.agentModel.handoffs.acknowledged} acknowledged`,
+    `Provider usage and cost: ${dashboard.agentModel.providerMetrics.usage}/${dashboard.agentModel.providerMetrics.cost} · live provider quality ${dashboard.agentModel.liveProviderQuality} · semantic output quality ${dashboard.agentModel.semanticOutputQuality}`,
+    `Freshness: ${dashboard.freshness.state} · Phase 2 ${dashboard.freshness.phase2State} · Agent/Model ${dashboard.freshness.agentModelState}`,
+    `Product Owner acceptance: ${dashboard.governance.productOwnerAcceptance} · Run launch authority: ${dashboard.governance.runLaunchAuthority} · effect authority: ${dashboard.governance.effectAuthority}`,
+    `Snapshot digest: ${dashboard.snapshotDigest}`,
+    `Phase 2 source digest: ${dashboard.sources.phase2UxFigmaSnapshotDigest}`,
+    `Agent/Model source digest: ${dashboard.sources.agentModelSnapshotDigest}`,
+    "",
+    ...dashboard.limitations.map((limitation) => `Limit: ${limitation}`),
+    "",
+    "Boundary: these derived read-only views are not a second source of truth and grant no impact completeness, design validity, provider quality, selection, Run launch, approval, baseline, readiness, remediation, Figma, implementation, effect, release, or action authority.",
+    "Design content, Product text, Run narrative, provider output, prompts, source bytes, machine paths, credentials, permissions, and sensitive setting values are withheld.",
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })

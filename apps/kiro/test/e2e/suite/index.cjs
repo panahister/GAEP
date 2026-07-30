@@ -17,6 +17,7 @@ const commands = [
   "gaepKiro.runs.stagedReview",
   "gaepKiro.dashboard.phase",
   "gaepKiro.dashboard.phase2UxFigma",
+  "gaepKiro.dashboard.phase2ChangeImpactAgentModel",
   "gaepKiro.dashboard.phase1Summary",
   "gaepKiro.dashboard.phase1ChangeImpact",
   "gaepKiro.dashboard.changeImpact",
@@ -190,6 +191,30 @@ async function run() {
   assertPrivateSafe(phase2UxFigmaText, workspace, fixtureProductName)
   await phase2UxFigmaRequest
 
+  const phase2IntegratedRequest = vscode.commands.executeCommand(
+    "gaepKiro.dashboard.phase2ChangeImpactAgentModel",
+    { initiativeId: fixtureInitiativeId },
+  )
+  const phase2IntegratedDocument = await waitFor(
+    () => vscode.workspace.textDocuments.find((document) =>
+      document.getText().startsWith("GAEP exact Phase 2 Change, Impact, Agent and Model dashboard\n")),
+    "The installed package-local engine did not return the integrated Phase 2 dashboard",
+    60_000,
+  )
+  const phase2IntegratedText = phase2IntegratedDocument.getText()
+  for (const marker of [
+    `Initiative: ${fixtureInitiativeId}@1 · proposed`,
+    "Synchronization: attention-required",
+    "Impact boundary: bounded-not-complete · completeness not-established · design validity not-established · revalidation not-established",
+    "Capabilities: 2/2 shown",
+    "Runs: 0/0 shown · 0 terminal · 0 non-terminal",
+    "Provider usage and cost: unavailable/unavailable · live provider quality not-assessed · semantic output quality not-assessed",
+    "Product Owner acceptance: not-established · Run launch authority: not-granted · effect authority: not-granted",
+    "Boundary: these derived read-only views are not a second source of truth",
+  ]) assert.ok(phase2IntegratedText.includes(marker), `Integrated Phase 2 dashboard must include ${marker}`)
+  assertPrivateSafe(phase2IntegratedText, workspace, fixtureProductName)
+  await phase2IntegratedRequest
+
   const evidenceRequest = vscode.commands.executeCommand("gaepKiro.runs.evidence")
   const evidenceDocument = await waitFor(
     () => vscode.workspace.textDocuments.find((document) => document.getText().startsWith("GAEP bounded Managed Run evidence\n")),
@@ -204,8 +229,8 @@ async function run() {
   await evidenceRequest
   const finalStoreManifest = await inspectPortableStore(path.join(workspace, ".gaep"))
   assert.deepEqual(finalStoreManifest, fixtureStoreManifest)
-  process.stdout.write("PASS installed compatible-host provider/model/Phase 1 and Phase 2 dashboard smoke: two bounded capability rows, exact Initiative scope, 23-of-23 UX/Figma attention state, explicit no-authority boundaries, private-safe output, and immutable fixture store\n")
-  process.stdout.write(`PASS activation: sixty-six bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, provider/model/UX/Figma dashboards, empty audit-gated evidence workflow, and no workspace mutation\n`)
+  process.stdout.write("PASS installed compatible-host provider/model/Phase 1 and Phase 2 dashboard smoke: two bounded capability rows, exact Initiative scope, 23-of-23 UX/Figma attention state, integrated change/impact/execution truth, explicit no-authority boundaries, private-safe output, and immutable fixture store\n")
+  process.stdout.write(`PASS activation: sixty-seven bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, provider/model/UX/Figma/integrated dashboards, empty audit-gated evidence workflow, and no workspace mutation\n`)
 }
 
 function assertPrivateSafe(content, workspace, fixtureProductName) {
