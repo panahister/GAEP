@@ -60,6 +60,7 @@ const backlogHierarchyId = "81818181-8181-4181-8181-818181818181"
 const mvpSliceDefinitionId = "82828282-8282-4282-8282-828282828282"
 const prioritizationModelId = "83838383-8383-4383-8383-838383838383"
 const acceptanceCriteriaId = "84848484-8484-4484-8484-848484848484"
+const definitionOfReadyId = "85858585-8585-4585-8585-858585858585"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -178,6 +179,8 @@ input.on("line", (line) => {
       return readPrioritizationModel(id, request.params)
     case "planning.acceptanceCriteria.snapshot":
       return readAcceptanceCriteria(id, request.params)
+    case "planning.definitionOfReady.snapshot":
+      return readDefinitionOfReady(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -2411,6 +2414,86 @@ function readAcceptanceCriteria(id, params) {
   if (workspacePath.endsWith("bad-acceptance-criteria-snapshot-digest")) value.candidate.testableCriterionCount = 6
   if (workspacePath.endsWith("bad-acceptance-criteria-snapshot-private")) {
     value.criterionText = `${privateRoot}/${privateCredential}`
+  }
+  return writeResult(id, value)
+}
+
+function readDefinitionOfReady(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DEFINITION OF READY PARAMS")
+  }
+  const candidateDigest = `sha256:${"9".repeat(64)}`
+  const status = {
+    schemaVersion: 1,
+    kind: "definition-of-ready-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: definitionOfReadyId, revision: 2, digest: candidateDigest },
+    hierarchy: { recordId: backlogHierarchyId, revision: 2, digest: `sha256:${"8".repeat(64)}` },
+    mvpSliceDefinition: { recordId: mvpSliceDefinitionId, revision: 2, digest: `sha256:${"a".repeat(64)}` },
+    prioritizationModel: { recordId: prioritizationModelId, revision: 2, digest: `sha256:${"c".repeat(64)}` },
+    acceptanceCriteria: { recordId: acceptanceCriteriaId, revision: 2, digest: `sha256:${"4".repeat(64)}` },
+    subjectCount: 4,
+    policyEntryCount: 5,
+    expectedEvaluationCount: 20,
+    evaluationCount: 18,
+    candidateSatisfiedCount: 12,
+    notSatisfiedCount: 2,
+    notApplicableCount: 3,
+    exceptionCandidateCount: 1,
+    notAssessedCount: 1,
+    staleEvaluationCount: 1,
+    invalidEvaluationCount: 1,
+    missingEvaluationCount: 2,
+    staleBindingCount: 0,
+    staleHierarchyCount: 0,
+    staleMvpSliceDefinitionCount: 0,
+    stalePrioritizationModelCount: 0,
+    staleAcceptanceCriteriaCount: 0,
+    expiredCount: 0,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    result: "attention-required",
+    reasons: ["One or more item prerequisites require review"],
+    assessedAt: "2026-07-30T13:20:00.000Z",
+    gateBoundary: "a-passing-definition-of-ready-candidate-is-an-evaluation-result-not-admission-readiness-assignment-execution-or-implementation-permission",
+    authorityBoundary: "definition-of-ready-status-is-observational-and-does-not-establish-prerequisite-truth-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-exception-waiver-authority-phase-entry-implementation-readiness-assignment-execution-acceptance-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "definition-of-ready-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: definitionOfReadyId,
+      revision: 2,
+      digest: candidateDigest,
+      state: "candidate",
+      policyVersion: 3,
+      validUntil: "2026-08-30T13:19:00.000Z",
+      subjectCatalogDigest: `sha256:${"a".repeat(64)}`,
+      policyDigest: `sha256:${"b".repeat(64)}`,
+      evaluationDigest: `sha256:${"c".repeat(64)}`,
+      receiptDigest: `sha256:${"d".repeat(64)}`,
+      subjectCount: 4,
+      policyEntryCount: 5,
+      evaluationCount: 18,
+      reviewState: "held",
+      updatedAt: "2026-07-30T13:19:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-policy-evaluation-receipt-snapshot-digests-only-not-rules-rationales-evidence-identities-assessor-identities-personal-data-secrets-credentials-or-machine-paths",
+    gateBoundary: "a-passing-definition-of-ready-candidate-is-an-evaluation-result-not-admission-readiness-assignment-execution-or-implementation-permission",
+    authorityBoundary: "definition-of-ready-projection-is-read-only-and-does-not-establish-prerequisite-truth-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-exception-waiver-authority-phase-entry-implementation-readiness-assignment-execution-acceptance-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-definition-of-ready-snapshot-binding")) content.initiative.id = definitionOfReadyId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-definition-of-ready-snapshot-digest")) value.candidate.evaluationCount = 19
+  if (workspacePath.endsWith("bad-definition-of-ready-snapshot-private")) {
+    value.rationale = `${privateRoot}/${privateCredential}`
   }
   return writeResult(id, value)
 }

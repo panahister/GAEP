@@ -1882,6 +1882,61 @@ test("protocol-v2 Acceptance Criteria projection is exact, private-safe, and non
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 Definition of Ready projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-definition-of-ready-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-definition-of-ready-snapshot-binding",
+    "bad-definition-of-ready-snapshot-digest",
+    "bad-definition-of-ready-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readDefinitionOfReady(initiativeId)
+    assert.equal(projection.status.result, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.subjectCount, 4)
+    assert.equal(projection.status.policyEntryCount, 5)
+    assert.equal(projection.status.expectedEvaluationCount, 20)
+    assert.equal(projection.status.evaluationCount, 18)
+    assert.equal(projection.status.candidateSatisfiedCount, 12)
+    assert.equal(projection.status.notApplicableCount, 3)
+    assert.equal(projection.status.missingEvaluationCount, 2)
+    assert.equal(
+      projection.gateBoundary,
+      "a-passing-definition-of-ready-candidate-is-an-evaluation-result-not-admission-readiness-assignment-execution-or-implementation-permission",
+    )
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"rationale":'), false)
+    assert.equal(serialized.includes('"policyEntries":'), false)
+    assert.equal(serialized.includes('"itemEvaluations":'), false)
+    assert.equal(serialized.includes('"evidenceReferences":'), false)
+    assert.equal(serialized.includes('"assessedBy":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readDefinitionOfReady(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 Design System and Token Contract projection is exact, private-safe, and non-authorizing", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-design-system-token-contract-"))
   const workspace = join(root, "workspace")
