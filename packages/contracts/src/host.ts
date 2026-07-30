@@ -3,6 +3,7 @@ import { z } from "zod"
 import { portableSelectionSettingsSchema } from "./agent.js"
 import { businessCapabilityMapInputSchema } from "./business-capability-map.js"
 import { backlogHierarchyInputSchema } from "./backlog-hierarchy.js"
+import { mvpSliceDefinitionInputSchema } from "./mvp-slice-definition.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -610,6 +611,18 @@ export const hostBacklogHierarchyReviseParamsSchema = z.object({
   record: backlogHierarchyInputSchema,
 }).strict()
 
+export const hostMvpSliceDefinitionCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: mvpSliceDefinitionInputSchema,
+}).strict()
+
+export const hostMvpSliceDefinitionReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: mvpSliceDefinitionInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -869,6 +882,11 @@ export const hostMethodSchema = z.enum([
   "backlog.hierarchy.revise",
   "backlog.hierarchy.assess",
   "backlog.hierarchy.snapshot",
+  "planning.mvpSlices.read",
+  "planning.mvpSlices.create",
+  "planning.mvpSlices.revise",
+  "planning.mvpSlices.assess",
+  "planning.mvpSlices.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1167,6 +1185,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("backlog.hierarchy.revise", hostBacklogHierarchyReviseParamsSchema),
   requestVariant("backlog.hierarchy.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("backlog.hierarchy.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.mvpSlices.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.mvpSlices.create", hostMvpSliceDefinitionCreateParamsSchema),
+  requestVariant("planning.mvpSlices.revise", hostMvpSliceDefinitionReviseParamsSchema),
+  requestVariant("planning.mvpSlices.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.mvpSlices.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

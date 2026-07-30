@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type { BacklogHierarchyInput } from "@gaep/contracts"
+import type { BacklogHierarchy, BacklogHierarchyInput, MvpSliceDefinitionInput } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -170,13 +170,14 @@ describe("Backlog Hierarchy host protocol", () => {
     }) as { id: string; revision: number; membershipDigest: string }
     expect(created).toMatchObject({ revision: 1, membershipDigest: expect.stringMatching(/^sha256:/u) })
 
-    await expect(host.dispatch({
+    const exactHierarchy = await host.dispatch({
       jsonrpc: "2.0",
       id: "backlog-read",
       protocolVersion: 2,
       method: "backlog.hierarchy.read",
       params: { initiativeId: initiative.id },
-    })).resolves.toMatchObject({ id: created.id, revision: 1 })
+    }) as BacklogHierarchy
+    expect(exactHierarchy).toMatchObject({ id: created.id, revision: 1 })
 
     await expect(host.dispatch({
       jsonrpc: "2.0",
@@ -206,6 +207,114 @@ describe("Backlog Hierarchy host protocol", () => {
       authorityBoundary: expect.stringContaining("does-not-prioritize-commit-assign-admit-execute"),
     })
     expect(JSON.stringify(snapshot)).not.toContain(input.title)
+
+    const mvpInput: MvpSliceDefinitionInput = {
+      initiativeId: initiative.id,
+      context: input.context,
+      informationClassification: "internal",
+      title: "Host MVP and vertical slice candidate",
+      hierarchy: { recordId: exactHierarchy.id, revision: exactHierarchy.revision, digest: canonicalDigest(exactHierarchy) },
+      scopeEntries: exactHierarchy.nodes.map((node) => ({
+        nodeId: node.id,
+        key: node.key,
+        level: node.level,
+        ordinal: node.ordinal,
+        disposition: "mvp" as const,
+        rationale: `Include ${node.level} candidate in the bounded MVP scope.`,
+      })),
+      slices: [{
+        id: randomUUID(),
+        key: "host.first.slice",
+        ordinal: 1,
+        storyNodeIds: [storyId],
+        taskNodeIds: [taskId],
+        dependencySliceIds: [],
+        testabilityState: "candidate-testable",
+      }],
+      scopeCompletenessState: "candidate-complete",
+      unresolvedQuestions: [],
+      limitations: ["Protocol transport does not establish scope approval, readiness, assignment, execution, or implementation authority."],
+      reviewState: "ready-for-human-review",
+      prioritizationState: "not-established",
+      backlogCommitmentState: "not-established",
+      scopeApprovalState: "not-established",
+      acceptanceCriteriaValidityState: "not-established",
+      readyDoneState: "not-established",
+      implementationReadinessState: "not-established",
+      assignmentExecutionState: "not-established",
+      implementationAuthorityState: "not-granted",
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "mvp-v1-rejected",
+      protocolVersion: 1,
+      method: "planning.mvpSlices.snapshot",
+      params: { initiativeId: initiative.id },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "mvp-read-empty",
+      protocolVersion: 2,
+      method: "planning.mvpSlices.read",
+      params: { initiativeId: initiative.id },
+    })).resolves.toBeNull()
+    const mvpCreated = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "mvp-create",
+      protocolVersion: 2,
+      method: "planning.mvpSlices.create",
+      params: { actorId: "host-test", record: mvpInput },
+    }) as { id: string; revision: number; membershipDigest: string }
+    expect(mvpCreated).toMatchObject({ revision: 1, membershipDigest: expect.stringMatching(/^sha256:/u) })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "mvp-read",
+      protocolVersion: 2,
+      method: "planning.mvpSlices.read",
+      params: { initiativeId: initiative.id },
+    })).resolves.toMatchObject({ id: mvpCreated.id, revision: 1 })
+    await expect(host.dispatch({
+      jsonrpc: "2.0",
+      id: "mvp-assess",
+      protocolVersion: 2,
+      method: "planning.mvpSlices.assess",
+      params: { initiativeId: initiative.id },
+    })).resolves.toMatchObject({
+      state: "complete-for-review",
+      scopeNodeCount: 4,
+      sliceCount: 1,
+      storyCount: 1,
+      taskCount: 1,
+      authorityBoundary: expect.stringContaining("does-not-establish-priority"),
+    })
+    const mvpSnapshot = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "mvp-snapshot",
+      protocolVersion: 2,
+      method: "planning.mvpSlices.snapshot",
+      params: { initiativeId: initiative.id },
+    }) as Record<string, unknown> & { snapshotDigest: string }
+    const { snapshotDigest: mvpSnapshotDigest, ...mvpSnapshotBody } = mvpSnapshot
+    expect(mvpSnapshotDigest).toBe(canonicalDigest(mvpSnapshotBody))
+    expect(mvpSnapshot).toMatchObject({
+      candidate: { id: mvpCreated.id, scopeNodeCount: 4, sliceCount: 1, storyCount: 1, taskCount: 1 },
+      privacyBoundary: expect.stringContaining("not-slice-titles-rationales"),
+      authorityBoundary: expect.stringContaining("does-not-prioritize-commit-approve-scope"),
+    })
+    expect(JSON.stringify(mvpSnapshot)).not.toContain(mvpInput.title)
+    const mvpRevised = await host.dispatch({
+      jsonrpc: "2.0",
+      id: "mvp-revise",
+      protocolVersion: 2,
+      method: "planning.mvpSlices.revise",
+      params: {
+        actorId: "host-test",
+        recordId: mvpCreated.id,
+        expectedRevision: mvpCreated.revision,
+        record: { ...mvpInput, title: "Host reviewed MVP and vertical slice candidate" },
+      },
+    }) as { id: string; revision: number; predecessorDigest: string }
+    expect(mvpRevised).toMatchObject({ id: mvpCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
 
     const revised = await host.dispatch({
       jsonrpc: "2.0",

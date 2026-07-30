@@ -99,6 +99,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "backlog.hierarchy.revise",
   "backlog.hierarchy.assess",
   "backlog.hierarchy.snapshot",
+  "planning.mvpSlices.read",
+  "planning.mvpSlices.create",
+  "planning.mvpSlices.revise",
+  "planning.mvpSlices.assess",
+  "planning.mvpSlices.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1272,6 +1277,21 @@ export class EngineHost {
         return this.engine.backlogHierarchy.assess(request.params.initiativeId)
       case "backlog.hierarchy.snapshot":
         return this.engine.backlogHierarchy.project(request.params.initiativeId)
+      case "planning.mvpSlices.read":
+        return await this.engine.mvpSliceDefinition.readCurrent(request.params.initiativeId) ?? null
+      case "planning.mvpSlices.create":
+        return this.engine.mvpSliceDefinition.create(request.params.record, actorId(request.params.actorId))
+      case "planning.mvpSlices.revise":
+        return this.engine.mvpSliceDefinition.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.mvpSlices.assess":
+        return this.engine.mvpSliceDefinition.assess(request.params.initiativeId)
+      case "planning.mvpSlices.snapshot":
+        return this.engine.mvpSliceDefinition.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":
