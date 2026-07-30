@@ -79,6 +79,7 @@ internal static class Program
     private static readonly Guid DefinitionOfDoneId = Guid.Parse("96969696-9696-4696-8696-969696969696");
     private static readonly Guid ImplementationUnitModelId = Guid.Parse("97979797-9797-4797-8797-979797979797");
     private static readonly Guid DependencyMappingId = Guid.Parse("98989898-9898-4898-8898-989898989898");
+    private static readonly Guid TechnologyProfileId = Guid.Parse("89898989-8989-4989-8989-898989898989");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -284,6 +285,11 @@ internal static class Program
         var badDependencyMappingHierarchyBindingRoot = Path.Combine(temporaryRoot, "bad-dependency-mapping-hierarchy-binding");
         var badDependencyMappingMvpBindingRoot = Path.Combine(temporaryRoot, "bad-dependency-mapping-mvp-binding");
         var badDependencyMappingUnitModelBindingRoot = Path.Combine(temporaryRoot, "bad-dependency-mapping-unit-model-binding");
+        var badTechnologyProfileSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-technology-profile-snapshot-binding");
+        var badTechnologyProfileSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-technology-profile-snapshot-digest");
+        var badTechnologyProfileSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-technology-profile-snapshot-private");
+        var badTechnologyProfileUnitModelBindingRoot = Path.Combine(temporaryRoot, "bad-technology-profile-unit-model-binding");
+        var badTechnologyProfileDependencyMappingBindingRoot = Path.Combine(temporaryRoot, "bad-technology-profile-dependency-mapping-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -1358,6 +1364,61 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadDependencyMappingAsync(InitiativeId),
                 "Dependency Mapping workflow rejects substituted Product or current planning dependency bindings");
+        }
+        var technologyProfileProjection = await client.ReadTechnologyProfileAsync(InitiativeId);
+        Check(technologyProfileProjection.ProductId == product.Id &&
+              technologyProfileProjection.ProductRevision == product.Revision &&
+              technologyProfileProjection.ProductDigest == product.Digest &&
+              technologyProfileProjection.InitiativeId == resolved.Id &&
+              technologyProfileProjection.InitiativeRevision == resolved.Revision &&
+              technologyProfileProjection.InitiativeDigest == resolved.Digest &&
+              technologyProfileProjection.State == "attention-required" &&
+              technologyProfileProjection.ReviewState == "held" &&
+              technologyProfileProjection.UnitProfileCount == 3 &&
+              technologyProfileProjection.TechnologyChoiceCount == 5 &&
+              technologyProfileProjection.ExactVersionCandidateCount == 3 &&
+              technologyProfileProjection.RangeVersionCandidateCount == 1 &&
+              technologyProfileProjection.UnresolvedVersionCount == 1 &&
+              technologyProfileProjection.ConstraintCount == 4 &&
+              technologyProfileProjection.UnsupportedChoiceCount == 1 &&
+              technologyProfileProjection.CompatibilityConflictCount == 1 &&
+              technologyProfileProjection.LicenseProhibitedCount == 0 &&
+              technologyProfileProjection.SecurityNonconformantCount == 0 &&
+              technologyProfileProjection.StaleImplementationUnitModelCount == 0 &&
+              technologyProfileProjection.StaleDependencyMappingCount == 0,
+            "Typed Technology Profile projection preserves exact Product, Initiative, prerequisite, selection, compatibility, policy, and privacy-safe metadata");
+        var technologyProfileOutput = await initiativeController.ReadTechnologyProfileAsync(InitiativeId);
+        Check(technologyProfileOutput.Contains("GAEP governed Technology Profile candidate", StringComparison.Ordinal) &&
+              technologyProfileOutput.Contains("3 unit profiles · 5 choices · 3 exact versions · 1 ranges · 1 unresolved versions · 4 constraints", StringComparison.Ordinal) &&
+              technologyProfileOutput.Contains("1 unsupported · 1 lifecycle risks · 1 compatibility conflicts", StringComparison.Ordinal) &&
+              technologyProfileOutput.Contains("no technology names, versions, constraints, evidence, rationale, unit, architecture", StringComparison.Ordinal) &&
+              technologyProfileOutput.Contains("does not establish technology approval, support commitment, compatibility truth or completeness", StringComparison.Ordinal) &&
+              !technologyProfileOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !technologyProfileOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !technologyProfileOutput.Contains("technologyName", StringComparison.Ordinal) &&
+              !technologyProfileOutput.Contains("versionRange", StringComparison.Ordinal) &&
+              !technologyProfileOutput.Contains("constraintText", StringComparison.Ordinal),
+            "Technology Profile workflow renders privacy-safe metadata with explicit technology, compatibility, policy, approval, implementation, and action boundaries");
+        foreach (var hostileRoot in new[] { badTechnologyProfileSnapshotDigestRoot, badTechnologyProfileSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadTechnologyProfileAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Technology Profile projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[]
+                 {
+                     badTechnologyProfileSnapshotBindingRoot,
+                     badTechnologyProfileUnitModelBindingRoot,
+                     badTechnologyProfileDependencyMappingBindingRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadTechnologyProfileAsync(InitiativeId),
+                "Technology Profile workflow rejects substituted Product or current planning dependency bindings");
         }
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
@@ -4650,6 +4711,16 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-dependency-mapping-mvp-binding";
         var badDependencyMappingUnitModelBinding =
             Path.GetFileName(workspace) == "bad-dependency-mapping-unit-model-binding";
+        var badTechnologyProfileSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-technology-profile-snapshot-binding";
+        var badTechnologyProfileSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-technology-profile-snapshot-digest";
+        var badTechnologyProfileSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-technology-profile-snapshot-private";
+        var badTechnologyProfileUnitModelBinding =
+            Path.GetFileName(workspace) == "bad-technology-profile-unit-model-binding";
+        var badTechnologyProfileDependencyMappingBinding =
+            Path.GetFileName(workspace) == "bad-technology-profile-dependency-mapping-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -5261,6 +5332,19 @@ internal static class Program
                         badDependencyMappingHierarchyBinding,
                         badDependencyMappingMvpBinding,
                         badDependencyMappingUnitModelBinding);
+                    break;
+                case "planning.technologyProfile.snapshot":
+                    await HandleTechnologyProfileAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badTechnologyProfileSnapshotBinding,
+                        badTechnologyProfileSnapshotDigest,
+                        badTechnologyProfileSnapshotPrivate,
+                        badTechnologyProfileUnitModelBinding,
+                        badTechnologyProfileDependencyMappingBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -8752,11 +8836,15 @@ internal static class Program
                 ["initiativeRevision"] = initiativeRevision,
                 ["candidate"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = PrioritizationModelId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                    ["recordId"] = PrioritizationModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
                 },
                 ["mvpSliceDefinition"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = MvpSliceDefinitionId.ToString("D"), ["revision"] = 2, ["digest"] = mvpDigest,
+                    ["recordId"] = MvpSliceDefinitionId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = mvpDigest,
                 },
                 ["subjectCount"] = 4,
                 ["scoredSubjectCount"] = 3,
@@ -8859,19 +8947,27 @@ internal static class Program
                 ["initiativeRevision"] = initiativeRevision,
                 ["candidate"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = AcceptanceCriteriaId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                    ["recordId"] = AcceptanceCriteriaId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
                 },
                 ["hierarchy"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = BacklogHierarchyId.ToString("D"), ["revision"] = 2, ["digest"] = hierarchyDigest,
+                    ["recordId"] = BacklogHierarchyId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = hierarchyDigest,
                 },
                 ["mvpSliceDefinition"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = MvpSliceDefinitionId.ToString("D"), ["revision"] = 2, ["digest"] = mvpDigest,
+                    ["recordId"] = MvpSliceDefinitionId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = mvpDigest,
                 },
                 ["prioritizationModel"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = PrioritizationModelId.ToString("D"), ["revision"] = 2, ["digest"] = prioritizationDigest,
+                    ["recordId"] = PrioritizationModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = prioritizationDigest,
                 },
                 ["subjectCount"] = 16,
                 ["coveredSubjectCount"] = 15,
@@ -8979,26 +9075,32 @@ internal static class Program
                 ["initiativeRevision"] = initiativeRevision,
                 ["candidate"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = DefinitionOfReadyId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                    ["recordId"] = DefinitionOfReadyId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
                 },
                 ["hierarchy"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = BacklogHierarchyId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = BacklogHierarchyId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeHierarchyBinding ? '7' : '8', 64)}",
                 },
                 ["mvpSliceDefinition"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = MvpSliceDefinitionId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = MvpSliceDefinitionId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeMvpBinding ? '9' : 'a', 64)}",
                 },
                 ["prioritizationModel"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = PrioritizationModelId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = PrioritizationModelId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgePrioritizationBinding ? 'b' : 'c', 64)}",
                 },
                 ["acceptanceCriteria"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = AcceptanceCriteriaId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = AcceptanceCriteriaId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeAcceptanceCriteriaBinding ? '0' : '1', 64)}",
                 },
                 ["subjectCount"] = 16,
@@ -9114,31 +9216,38 @@ internal static class Program
                 ["initiativeRevision"] = initiativeRevision,
                 ["candidate"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = DefinitionOfDoneId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                    ["recordId"] = DefinitionOfDoneId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
                 },
                 ["hierarchy"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = BacklogHierarchyId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = BacklogHierarchyId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeHierarchyBinding ? '7' : '8', 64)}",
                 },
                 ["mvpSliceDefinition"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = MvpSliceDefinitionId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = MvpSliceDefinitionId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeMvpBinding ? '9' : 'a', 64)}",
                 },
                 ["prioritizationModel"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = PrioritizationModelId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = PrioritizationModelId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgePrioritizationBinding ? 'b' : 'c', 64)}",
                 },
                 ["acceptanceCriteria"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = AcceptanceCriteriaId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = AcceptanceCriteriaId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeAcceptanceCriteriaBinding ? '0' : '1', 64)}",
                 },
                 ["definitionOfReady"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = DefinitionOfReadyId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = DefinitionOfReadyId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeDefinitionOfReadyBinding ? '5' : '6', 64)}",
                 },
                 ["subjectCount"] = 4,
@@ -9252,31 +9361,38 @@ internal static class Program
                 ["initiativeRevision"] = initiativeRevision,
                 ["candidate"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = ImplementationUnitModelId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                    ["recordId"] = ImplementationUnitModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
                 },
                 ["hierarchy"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = BacklogHierarchyId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = BacklogHierarchyId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeHierarchyBinding ? '7' : '8', 64)}",
                 },
                 ["mvpSliceDefinition"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = MvpSliceDefinitionId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = MvpSliceDefinitionId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeMvpBinding ? '9' : 'a', 64)}",
                 },
                 ["acceptanceCriteria"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = AcceptanceCriteriaId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = AcceptanceCriteriaId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeAcceptanceCriteriaBinding ? '0' : '1', 64)}",
                 },
                 ["definitionOfReady"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = DefinitionOfReadyId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = DefinitionOfReadyId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeDefinitionOfReadyBinding ? '5' : '6', 64)}",
                 },
                 ["definitionOfDone"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = DefinitionOfDoneId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = DefinitionOfDoneId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeDefinitionOfDoneBinding ? 'd' : 'e', 64)}",
                 },
                 ["unitCount"] = 3,
@@ -9382,21 +9498,26 @@ internal static class Program
                 ["initiativeRevision"] = initiativeRevision,
                 ["candidate"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = DependencyMappingId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                    ["recordId"] = DependencyMappingId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
                 },
                 ["hierarchy"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = BacklogHierarchyId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = BacklogHierarchyId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeHierarchyBinding ? '7' : '8', 64)}",
                 },
                 ["mvpSliceDefinition"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = MvpSliceDefinitionId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = MvpSliceDefinitionId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeMvpBinding ? '9' : 'a', 64)}",
                 },
                 ["implementationUnitModel"] = new Dictionary<string, object?>
                 {
-                    ["recordId"] = ImplementationUnitModelId.ToString("D"), ["revision"] = 2,
+                    ["recordId"] = ImplementationUnitModelId.ToString("D"),
+                    ["revision"] = 2,
                     ["digest"] = $"sha256:{new string(forgeImplementationUnitModelBinding ? '4' : '5', 64)}",
                 },
                 ["nodeCount"] = 3,
@@ -9435,6 +9556,129 @@ internal static class Program
         };
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["nodeCount"] = 4;
+        if (includePrivateField) result["rationale"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleTechnologyProfileAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeImplementationUnitModelBinding,
+        bool forgeDependencyMappingBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID TECHNOLOGY PROFILE");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T16:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('6', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = TechnologyProfileId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["state"] = "candidate",
+            ["profileCatalogDigest"] = $"sha256:{new string('a', 64)}",
+            ["selectionCatalogDigest"] = $"sha256:{new string('b', 64)}",
+            ["compatibilityAssessmentReceiptDigest"] = $"sha256:{new string('c', 64)}",
+            ["assessmentReceiptDigest"] = $"sha256:{new string('d', 64)}",
+            ["unitProfileCount"] = 3,
+            ["technologyChoiceCount"] = 5,
+            ["constraintCount"] = 4,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T16:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "technology-profile-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "technology-profile-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = TechnologyProfileId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = candidateDigest,
+                },
+                ["implementationUnitModel"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = ImplementationUnitModelId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeImplementationUnitModelBinding ? '4' : '5', 64)}",
+                },
+                ["dependencyMapping"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DependencyMappingId.ToString("D"),
+                    ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeDependencyMappingBinding ? '7' : '9', 64)}",
+                },
+                ["unitProfileCount"] = 3,
+                ["technologyChoiceCount"] = 5,
+                ["exactVersionCandidateCount"] = 3,
+                ["rangeVersionCandidateCount"] = 1,
+                ["unresolvedVersionCount"] = 1,
+                ["constraintCount"] = 4,
+                ["missingProfileCount"] = 1,
+                ["invalidProfileCount"] = 1,
+                ["missingEvidenceCount"] = 2,
+                ["unsupportedChoiceCount"] = 1,
+                ["lifecycleRiskCount"] = 1,
+                ["compatibilityConflictCount"] = 1,
+                ["licenseReviewRequiredCount"] = 1,
+                ["licenseProhibitedCount"] = 0,
+                ["securityReviewRequiredCount"] = 1,
+                ["securityNonconformantCount"] = 0,
+                ["exceptionCandidateCount"] = 1,
+                ["constraintConflictCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleImplementationUnitModelCount"] = 0,
+                ["staleDependencyMappingCount"] = 0,
+                ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more technology-profile candidates require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "technology-profile-status-is-observational-and-does-not-establish-technology-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-authority-architecture-baseline-designation-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-profile-selection-compatibility-assessment-snapshot-digests-only-not-technology-names-versions-constraints-evidence-rationale-unit-architecture-repository-toolchain-license-security-policy-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "technology-profile-projection-is-read-only-and-does-not-establish-technology-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-authority-architecture-baseline-designation-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["unitProfileCount"] = 4;
         if (includePrivateField) result["rationale"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
@@ -10525,13 +10769,13 @@ internal static class Program
             char digestSeed,
             char membershipSeed,
             char catalogSeed) => new()
-        {
-            ["recordId"] = recordId.ToString("D"),
-            ["revision"] = revision,
-            ["digest"] = $"sha256:{new string(digestSeed, 64)}",
-            ["membershipDigest"] = $"sha256:{new string(membershipSeed, 64)}",
-            [catalogProperty] = $"sha256:{new string(catalogSeed, 64)}",
-        };
+            {
+                ["recordId"] = recordId.ToString("D"),
+                ["revision"] = revision,
+                ["digest"] = $"sha256:{new string(digestSeed, 64)}",
+                ["membershipDigest"] = $"sha256:{new string(membershipSeed, 64)}",
+                [catalogProperty] = $"sha256:{new string(catalogSeed, 64)}",
+            };
         var productRevision = forgeProductBinding ? 8 : 7;
         var assessedAt = "2026-07-29T16:30:00.000Z";
         var candidateDigest = $"sha256:{new string('d', 64)}";
@@ -12662,13 +12906,18 @@ internal static class Program
             },
             ["product"] = new Dictionary<string, object?>
             {
-                ["recordType"] = "product", ["recordId"] = ProductId.ToString("D"), ["revision"] = 7,
+                ["recordType"] = "product",
+                ["recordId"] = ProductId.ToString("D"),
+                ["revision"] = 7,
                 ["digest"] = productDigest,
             },
             ["initiative"] = new Dictionary<string, object?>
             {
-                ["recordType"] = "initiative", ["recordId"] = InitiativeId.ToString("D"),
-                ["revision"] = initiativeRevision, ["digest"] = initiativeDigest, ["state"] = initiativeRecord["state"],
+                ["recordType"] = "initiative",
+                ["recordId"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = initiativeDigest,
+                ["state"] = initiativeRecord["state"],
             },
             ["sources"] = sources,
             ["experience"] = ZeroCounts(
@@ -12704,10 +12953,14 @@ internal static class Program
                 .ToDictionary(value => value.Key, value => value.Value, StringComparer.Ordinal),
             ["phaseStatus"] = new Dictionary<string, object?>
             {
-                ["state"] = "attention-required", ["expectedSourceCount"] = 23, ["currentSourceCount"] = 0,
-                ["attentionRequiredSourceCount"] = 0, ["unavailableSourceCount"] = 23,
+                ["state"] = "attention-required",
+                ["expectedSourceCount"] = 23,
+                ["currentSourceCount"] = 0,
+                ["attentionRequiredSourceCount"] = 0,
+                ["unavailableSourceCount"] = 23,
                 ["sourceCatalogDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(sources)),
-                ["productOwnerAcceptance"] = "not-established", ["readinessAuthority"] = "not-established",
+                ["productOwnerAcceptance"] = "not-established",
+                ["readinessAuthority"] = "not-established",
                 ["phaseEntryAuthority"] = "not-established",
             },
             ["evidenceCues"] = DashboardEvidenceCues("unknown"),
@@ -12760,15 +13013,33 @@ internal static class Program
 
         static Dictionary<string, object?> ReadinessGaps() => new()
         {
-            ["applicability"] = 0, ["conditional"] = 0, ["incomplete"] = 0, ["failed"] = 0,
-            ["blocked"] = 0, ["staleOrUnknown"] = 0, ["waivers"] = 0, ["decisions"] = 0,
-            ["conditions"] = 0, ["requirements"] = 0, ["adverseEvidence"] = 0, ["bindings"] = 0,
-            ["sourceReferences"] = 0, ["inconsistencies"] = 0, ["questions"] = 0, ["total"] = 0,
+            ["applicability"] = 0,
+            ["conditional"] = 0,
+            ["incomplete"] = 0,
+            ["failed"] = 0,
+            ["blocked"] = 0,
+            ["staleOrUnknown"] = 0,
+            ["waivers"] = 0,
+            ["decisions"] = 0,
+            ["conditions"] = 0,
+            ["requirements"] = 0,
+            ["adverseEvidence"] = 0,
+            ["bindings"] = 0,
+            ["sourceReferences"] = 0,
+            ["inconsistencies"] = 0,
+            ["questions"] = 0,
+            ["total"] = 0,
         };
         static Dictionary<string, object?> HandoffGaps() => new()
         {
-            ["unresolvedItems"] = 0, ["staleOrUnknownItems"] = 0, ["requirements"] = 0, ["conflicts"] = 0,
-            ["questions"] = 0, ["bindings"] = 0, ["sourceReferences"] = 0, ["total"] = 0,
+            ["unresolvedItems"] = 0,
+            ["staleOrUnknownItems"] = 0,
+            ["requirements"] = 0,
+            ["conflicts"] = 0,
+            ["questions"] = 0,
+            ["bindings"] = 0,
+            ["sourceReferences"] = 0,
+            ["total"] = 0,
         };
 
         var summary = new Dictionary<string, object?>
@@ -12782,53 +13053,77 @@ internal static class Program
             },
             ["product"] = new Dictionary<string, object?>
             {
-                ["recordType"] = "product", ["recordId"] = ProductId.ToString("D"), ["revision"] = 7,
+                ["recordType"] = "product",
+                ["recordId"] = ProductId.ToString("D"),
+                ["revision"] = 7,
                 ["digest"] = productDigest,
             },
             ["initiative"] = new Dictionary<string, object?>
             {
-                ["recordType"] = "initiative", ["recordId"] = InitiativeId.ToString("D"),
-                ["revision"] = initiativeRevision, ["digest"] = initiativeDigest, ["state"] = "active",
+                ["recordType"] = "initiative",
+                ["recordId"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = initiativeDigest,
+                ["state"] = "active",
             },
             ["readiness"] = new Dictionary<string, object?>
             {
-                ["snapshotDigest"] = $"sha256:{new string('1', 64)}", ["result"] = "not-assessed",
+                ["snapshotDigest"] = $"sha256:{new string('1', 64)}",
+                ["result"] = "not-assessed",
                 ["assessedAt"] = "2026-07-27T12:00:00.000Z",
                 ["outputs"] = new Dictionary<string, object?>
                 {
-                    ["total"] = 0, ["applicable"] = 0, ["notApplicable"] = 0,
-                    ["unresolvedApplicability"] = 0, ["satisfied"] = 0,
+                    ["total"] = 0,
+                    ["applicable"] = 0,
+                    ["notApplicable"] = 0,
+                    ["unresolvedApplicability"] = 0,
+                    ["satisfied"] = 0,
                 },
-                ["gaps"] = ReadinessGaps(), ["reasonCount"] = 1, ["attentionRequired"] = true,
+                ["gaps"] = ReadinessGaps(),
+                ["reasonCount"] = 1,
+                ["attentionRequired"] = true,
                 ["authorityBoundary"] = "readiness-result-is-evaluation-only-not-permission-or-product-readiness",
             },
             ["handoff"] = new Dictionary<string, object?>
             {
-                ["snapshotDigest"] = $"sha256:{new string('2', 64)}", ["state"] = "attention-required",
-                ["transferState"] = "draft", ["assessedAt"] = "2026-07-27T12:00:01.000Z",
+                ["snapshotDigest"] = $"sha256:{new string('2', 64)}",
+                ["state"] = "attention-required",
+                ["transferState"] = "draft",
+                ["assessedAt"] = "2026-07-27T12:00:01.000Z",
                 ["items"] = new Dictionary<string, object?>
                 {
-                    ["total"] = 0, ["included"] = 0, ["referenceOnly"] = 0,
-                    ["omittedNotApplicable"] = 0, ["unresolved"] = 0,
+                    ["total"] = 0,
+                    ["included"] = 0,
+                    ["referenceOnly"] = 0,
+                    ["omittedNotApplicable"] = 0,
+                    ["unresolved"] = 0,
                 },
-                ["gaps"] = HandoffGaps(), ["reasonCount"] = 1, ["attentionRequired"] = true,
+                ["gaps"] = HandoffGaps(),
+                ["reasonCount"] = 1,
+                ["attentionRequired"] = true,
                 ["authorityBoundary"] = "handoff-status-is-candidate-context-only-not-transfer-or-phase-entry-authority",
             },
             ["phaseStatus"] = new Dictionary<string, object?>
             {
-                ["state"] = "attention-required", ["declaredGapCount"] = 0, ["attentionSignalCount"] = 2,
-                ["productOwnerAcceptance"] = "not-established", ["readinessAuthority"] = "not-established",
+                ["state"] = "attention-required",
+                ["declaredGapCount"] = 0,
+                ["attentionSignalCount"] = 2,
+                ["productOwnerAcceptance"] = "not-established",
+                ["readinessAuthority"] = "not-established",
                 ["phaseEntryAuthority"] = "not-established",
             },
             ["owners"] = new Dictionary<string, object?>
             {
-                ["state"] = "unbound", ["boundOwnerCount"] = 0,
+                ["state"] = "unbound",
+                ["boundOwnerCount"] = 0,
                 ["basis"] = "no-governed-phase-owner-assignment-is-bound",
             },
             ["freshness"] = new Dictionary<string, object?>
             {
-                ["state"] = "current", ["readinessObservedAt"] = "2026-07-27T12:00:02.000Z",
-                ["handoffObservedAt"] = "2026-07-27T12:00:03.000Z", ["staleBindingCount"] = 0,
+                ["state"] = "current",
+                ["readinessObservedAt"] = "2026-07-27T12:00:02.000Z",
+                ["handoffObservedAt"] = "2026-07-27T12:00:03.000Z",
+                ["staleBindingCount"] = 0,
                 ["staleSourceReferenceCount"] = 0,
                 ["basis"] = "exact-current-projections-and-declared-binding-freshness",
             },
@@ -12909,21 +13204,31 @@ internal static class Program
             ["recordKind"] = item.RecordKind,
             ["readiness"] = new Dictionary<string, object?>
             {
-                ["applicability"] = "not-assessed", ["evaluationState"] = "not-assessed",
-                ["freshness"] = "unknown", ["subjectCount"] = 0,
+                ["applicability"] = "not-assessed",
+                ["evaluationState"] = "not-assessed",
+                ["freshness"] = "unknown",
+                ["subjectCount"] = 0,
             },
             ["impact"] = new Dictionary<string, object?>
             {
-                ["state"] = "not-established", ["exactMatchedSubjectCount"] = 0,
-                ["staleSubjectBindingCount"] = 0, ["traceReferenceCount"] = 0,
-                ["validTraceCount"] = 0, ["unresolvedTraceCount"] = 0, ["staleTraceCount"] = 0,
-                ["invalidTraceCount"] = 0, ["upstreamTraceCount"] = 0, ["downstreamTraceCount"] = 0,
+                ["state"] = "not-established",
+                ["exactMatchedSubjectCount"] = 0,
+                ["staleSubjectBindingCount"] = 0,
+                ["traceReferenceCount"] = 0,
+                ["validTraceCount"] = 0,
+                ["unresolvedTraceCount"] = 0,
+                ["staleTraceCount"] = 0,
+                ["invalidTraceCount"] = 0,
+                ["upstreamTraceCount"] = 0,
+                ["downstreamTraceCount"] = 0,
                 ["revalidationState"] = "not-established",
                 ["coverageBoundary"] = "absence-of-an-exact-trace-match-does-not-prove-absence-of-impact",
             },
             ["handoff"] = new Dictionary<string, object?>
             {
-                ["disposition"] = "not-established", ["freshness"] = "unknown", ["subjectCount"] = 0,
+                ["disposition"] = "not-established",
+                ["freshness"] = "unknown",
+                ["subjectCount"] = 0,
             },
         }).ToArray();
         var dashboard = new Dictionary<string, object?>
@@ -12932,13 +13237,17 @@ internal static class Program
             ["kind"] = "phase-1-change-impact-dashboard",
             ["phase"] = new Dictionary<string, object?>
             {
-                ["id"] = "phase-1b-product", ["label"] = "Phase 1B — Product P0–P4",
+                ["id"] = "phase-1b-product",
+                ["label"] = "Phase 1B — Product P0–P4",
             },
             ["product"] = ExactReference("product", ProductId, 7, productDigest),
             ["initiative"] = new Dictionary<string, object?>
             {
-                ["recordType"] = "initiative", ["recordId"] = InitiativeId.ToString("D"),
-                ["revision"] = initiativeRevision, ["digest"] = initiativeDigest, ["state"] = "active",
+                ["recordType"] = "initiative",
+                ["recordId"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = initiativeDigest,
+                ["state"] = "active",
             },
             ["change"] = change,
             ["sources"] = new Dictionary<string, object?>
@@ -12949,37 +13258,53 @@ internal static class Program
             },
             ["changeScope"] = new Dictionary<string, object?>
             {
-                ["workItemCount"] = 1, ["changedArtifactCount"] = 1, ["effectTargetCount"] = 1,
-                ["affectedUnitCount"] = 1, ["decisionCount"] = 1, ["riskCount"] = 1,
-                ["unresolvedTraceLinkCount"] = 0, ["staleTraceLinkCount"] = 0, ["invalidTraceLinkCount"] = 0,
+                ["workItemCount"] = 1,
+                ["changedArtifactCount"] = 1,
+                ["effectTargetCount"] = 1,
+                ["affectedUnitCount"] = 1,
+                ["decisionCount"] = 1,
+                ["riskCount"] = 1,
+                ["unresolvedTraceLinkCount"] = 0,
+                ["staleTraceLinkCount"] = 0,
+                ["invalidTraceLinkCount"] = 0,
                 ["traceAnalysisTruncated"] = false,
             },
             ["outputs"] = outputs,
             ["coverage"] = new Dictionary<string, object?>
             {
-                ["state"] = "bounded-not-complete", ["outputCount"] = 25, ["applicableOutputCount"] = 0,
-                ["currentTraceObservedOutputCount"] = 0, ["attentionRequiredOutputCount"] = 0,
-                ["impactNotEstablishedOutputCount"] = 25, ["revalidationNotEstablishedOutputCount"] = 25,
+                ["state"] = "bounded-not-complete",
+                ["outputCount"] = 25,
+                ["applicableOutputCount"] = 0,
+                ["currentTraceObservedOutputCount"] = 0,
+                ["attentionRequiredOutputCount"] = 0,
+                ["impactNotEstablishedOutputCount"] = 25,
+                ["revalidationNotEstablishedOutputCount"] = 25,
                 ["basis"] = "exact-current-readiness-subjects-matched-to-bounded-governed-change-trace-results",
                 ["coverageBoundary"] = "trace-presence-proves-only-the-recorded-link-and-trace-absence-does-not-prove-no-impact",
             },
             ["owners"] = new Dictionary<string, object?>
             {
-                ["state"] = "unbound", ["boundOutputOwnerCount"] = 0,
+                ["state"] = "unbound",
+                ["boundOutputOwnerCount"] = 0,
                 ["basis"] = "no-governed-phase-output-owner-assignment-is-bound",
             },
             ["governance"] = new Dictionary<string, object?>
             {
-                ["changeApproval"] = "not-established", ["riskAcceptanceAuthority"] = "not-established",
-                ["revalidationAuthority"] = "not-established", ["productOwnerAcceptance"] = "not-established",
+                ["changeApproval"] = "not-established",
+                ["riskAcceptanceAuthority"] = "not-established",
+                ["revalidationAuthority"] = "not-established",
+                ["productOwnerAcceptance"] = "not-established",
                 ["effectAuthority"] = "not-established",
             },
             ["freshness"] = new Dictionary<string, object?>
             {
-                ["state"] = "current", ["changeImpactEvaluatedAt"] = "2026-07-27T12:04:00.000Z",
+                ["state"] = "current",
+                ["changeImpactEvaluatedAt"] = "2026-07-27T12:04:00.000Z",
                 ["readinessObservedAt"] = "2026-07-27T12:04:01.000Z",
-                ["handoffObservedAt"] = "2026-07-27T12:04:02.000Z", ["staleBindingCount"] = 0,
-                ["staleSourceReferenceCount"] = 0, ["traceAttentionLinkCount"] = 0,
+                ["handoffObservedAt"] = "2026-07-27T12:04:02.000Z",
+                ["staleBindingCount"] = 0,
+                ["staleSourceReferenceCount"] = 0,
+                ["traceAttentionLinkCount"] = 0,
                 ["traceAnalysisTruncated"] = false,
                 ["basis"] = "current-governed-snapshots-and-declared-trace-readiness-handoff-freshness",
             },
@@ -13520,13 +13845,17 @@ internal static class Program
             ["viewDefinitionVersion"] = "gaep-phase-2-change-impact-agent-model-dashboard-v1",
             ["phase"] = new Dictionary<string, object?>
             {
-                ["id"] = "phase-2-design", ["label"] = "Phase 2 — UX and Figma Loop",
+                ["id"] = "phase-2-design",
+                ["label"] = "Phase 2 — UX and Figma Loop",
             },
             ["product"] = ExactReference("product", ProductId, 7, mismatchBinding ? $"sha256:{new string('0', 64)}" : productDigest),
             ["initiative"] = new Dictionary<string, object?>
             {
-                ["recordType"] = "initiative", ["recordId"] = InitiativeId.ToString("D"),
-                ["revision"] = initiativeRevision, ["digest"] = initiativeDigest, ["state"] = initiativeRecord["state"],
+                ["recordType"] = "initiative",
+                ["recordId"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = initiativeDigest,
+                ["state"] = initiativeRecord["state"],
             },
             ["sources"] = new Dictionary<string, object?>
             {
@@ -13536,19 +13865,26 @@ internal static class Program
             },
             ["synchronizationChange"] = new Dictionary<string, object?>
             {
-                ["state"] = "attention-required", ["designDelta"] = "unavailable",
-                ["conflictResolution"] = "unavailable", ["humanDesignApproval"] = "unavailable",
-                ["designBaseline"] = "unavailable", ["designDriftDetection"] = "unavailable",
-                ["figmaConnectionState"] = "not-established", ["figmaWriteExecutionState"] = "not-performed",
-                ["figmaImportExecutionState"] = "not-performed", ["synchronizationEffectState"] = "not-applied",
+                ["state"] = "attention-required",
+                ["designDelta"] = "unavailable",
+                ["conflictResolution"] = "unavailable",
+                ["humanDesignApproval"] = "unavailable",
+                ["designBaseline"] = "unavailable",
+                ["designDriftDetection"] = "unavailable",
+                ["figmaConnectionState"] = "not-established",
+                ["figmaWriteExecutionState"] = "not-performed",
+                ["figmaImportExecutionState"] = "not-performed",
+                ["synchronizationEffectState"] = "not-applied",
             },
             ["impact"] = ZeroCounts(
                 "requirementCount", "designBindingCount", "unboundDesignItemCount", "driftObservationCount", "driftCount",
                 "unassessedCount", "blockerCount", "highSeverityCount", "remediationCandidateCount", "staleBindingCount",
                 "staleSourceReferenceCount", "unresolvedQuestionCount").Concat(new Dictionary<string, object?>
                 {
-                    ["state"] = "current-bounded-observation", ["coverage"] = "bounded-not-complete",
-                    ["impactCompleteness"] = "not-established", ["designValidity"] = "not-established",
+                    ["state"] = "current-bounded-observation",
+                    ["coverage"] = "bounded-not-complete",
+                    ["impactCompleteness"] = "not-established",
+                    ["designValidity"] = "not-established",
                     ["revalidationState"] = "not-established",
                 }).ToDictionary(value => value.Key, value => value.Value, StringComparer.Ordinal),
             ["agentModel"] = new Dictionary<string, object?>
@@ -13556,32 +13892,45 @@ internal static class Program
                 ["selectionState"] = selection["status"],
                 ["capabilities"] = new Dictionary<string, object?>
                 {
-                    ["shown"] = capabilities.LongLength, ["total"] = capabilities.LongLength, ["omitted"] = 0,
-                    ["detected"] = detected, ["unavailable"] = capabilities.LongLength - detected, ["selected"] = selected,
+                    ["shown"] = capabilities.LongLength,
+                    ["total"] = capabilities.LongLength,
+                    ["omitted"] = 0,
+                    ["detected"] = detected,
+                    ["unavailable"] = capabilities.LongLength - detected,
+                    ["selected"] = selected,
                 },
                 ["runs"] = ZeroCounts(
                     "shown", "total", "omitted", "terminal", "nonTerminal", "managedObserved", "resultBound", "actualEffectCount"),
                 ["managedRuns"] = ZeroCounts("shown", "total", "omitted"),
                 ["handoffs"] = ZeroCounts("shown", "total", "omitted", "pendingAcknowledgement", "acknowledged"),
                 ["providerMetrics"] = new Dictionary<string, object?> { ["usage"] = "unavailable", ["cost"] = "unavailable" },
-                ["liveProviderQuality"] = "not-assessed", ["semanticOutputQuality"] = "not-assessed",
+                ["liveProviderQuality"] = "not-assessed",
+                ["semanticOutputQuality"] = "not-assessed",
             },
             ["freshness"] = new Dictionary<string, object?>
             {
-                ["state"] = "attention-required", ["phase2State"] = "attention-required",
+                ["state"] = "attention-required",
+                ["phase2State"] = "attention-required",
                 ["agentModelState"] = nestedFreshness["state"],
                 ["selectionCapabilityState"] = nestedFreshness["selectionCapabilityState"],
-                ["phase2ObservedAt"] = "2026-07-30T03:10:00.000Z", ["agentModelObservedAt"] = agentModel["observedAt"],
+                ["phase2ObservedAt"] = "2026-07-30T03:10:00.000Z",
+                ["agentModelObservedAt"] = agentModel["observedAt"],
                 ["oldestCapabilityObservedAt"] = nestedFreshness["oldestCapabilityObservedAt"],
-                ["newestCapabilityObservedAt"] = nestedFreshness["newestCapabilityObservedAt"], ["truncated"] = false,
+                ["newestCapabilityObservedAt"] = nestedFreshness["newestCapabilityObservedAt"],
+                ["truncated"] = false,
             },
             ["governance"] = new Dictionary<string, object?>
             {
-                ["humanDesignApproval"] = "not-established", ["baselineDesignation"] = "not-established",
-                ["impactAcceptance"] = "not-established", ["providerAccountReadiness"] = "not-established",
-                ["providerPreference"] = "not-established", ["automaticSelectionAuthority"] = "not-granted",
-                ["runLaunchAuthority"] = "not-granted", ["effectAuthority"] = "not-granted",
-                ["phaseReadinessAuthority"] = "not-established", ["productOwnerAcceptance"] = "not-established",
+                ["humanDesignApproval"] = "not-established",
+                ["baselineDesignation"] = "not-established",
+                ["impactAcceptance"] = "not-established",
+                ["providerAccountReadiness"] = "not-established",
+                ["providerPreference"] = "not-established",
+                ["automaticSelectionAuthority"] = "not-granted",
+                ["runLaunchAuthority"] = "not-granted",
+                ["effectAuthority"] = "not-granted",
+                ["phaseReadinessAuthority"] = "not-established",
+                ["productOwnerAcceptance"] = "not-established",
             },
             ["evidenceCues"] = DashboardEvidenceCues("unknown"),
             ["observedAt"] = "2026-07-30T03:12:00.000Z",
@@ -13603,8 +13952,12 @@ internal static class Program
         {
             ((Dictionary<string, object?>)dashboard["agentModel"]!)["capabilities"] = new Dictionary<string, object?>
             {
-                ["shown"] = capabilities.LongLength, ["total"] = capabilities.LongLength, ["omitted"] = 0,
-                ["detected"] = 0, ["unavailable"] = capabilities.LongLength - detected, ["selected"] = selected,
+                ["shown"] = capabilities.LongLength,
+                ["total"] = capabilities.LongLength,
+                ["omitted"] = 0,
+                ["detected"] = 0,
+                ["unavailable"] = capabilities.LongLength - detected,
+                ["selected"] = selected,
             };
         }
         await WriteResultAsync(id, dashboard);

@@ -2379,6 +2379,91 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadTechnologyProfileAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var units = await client.ReadImplementationUnitModelAsync(initiativeId, cancellationToken);
+        var dependencyMapping = await client.ReadDependencyMappingAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadTechnologyProfileAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Technology Profile was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (units.Candidate is not { } currentUnits || projection.ImplementationUnitModelRecordId != currentUnits.Id ||
+                projection.ImplementationUnitModelRevision != currentUnits.Revision ||
+                projection.ImplementationUnitModelDigest != currentUnits.Digest))
+        {
+            throw new ArgumentException("The Implementation Unit Model changed while Technology Profile was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (dependencyMapping.Candidate is not { } currentDependencyMapping ||
+                projection.DependencyMappingRecordId != currentDependencyMapping.Id ||
+                projection.DependencyMappingRevision != currentDependencyMapping.Revision ||
+                projection.DependencyMappingDigest != currentDependencyMapping.Digest))
+        {
+            throw new ArgumentException("The Dependency Mapping changed while Technology Profile was read. Refresh the exact records.");
+        }
+        return RenderTechnologyProfile(projection);
+    }
+
+    public static string RenderTechnologyProfile(TechnologyProfileProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Technology Profile candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Candidate coverage: {projection.UnitProfileCount} unit profiles · {projection.TechnologyChoiceCount} choices · " +
+                $"{projection.ExactVersionCandidateCount} exact versions · {projection.RangeVersionCandidateCount} ranges · " +
+                $"{projection.UnresolvedVersionCount} unresolved versions · {projection.ConstraintCount} constraints")
+            .AppendLine(
+                $"Candidate policy gaps: {projection.UnsupportedChoiceCount} unsupported · " +
+                $"{projection.LifecycleRiskCount} lifecycle risks · {projection.CompatibilityConflictCount} compatibility conflicts · " +
+                $"{projection.LicenseReviewRequiredCount} license reviews · {projection.LicenseProhibitedCount} license-prohibited · " +
+                $"{projection.SecurityReviewRequiredCount} security reviews · {projection.SecurityNonconformantCount} security-nonconformant · " +
+                $"{projection.ExceptionCandidateCount} exception candidates · {projection.ConstraintConflictCount} constraint conflicts")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedQuestionCount} questions · {projection.MissingProfileCount} missing profiles · " +
+                $"{projection.InvalidProfileCount} invalid profiles · {projection.MissingEvidenceCount} missing evidence · " +
+                $"{projection.StaleBindingCount} stale bindings · {projection.StaleImplementationUnitModelCount} stale Implementation Unit Models · " +
+                $"{projection.StaleDependencyMappingCount} stale Dependency Mappings");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Technology Profile candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Profile catalog digest: {candidate.ProfileCatalogDigest}")
+                .AppendLine($"Selection catalog digest: {candidate.SelectionCatalogDigest}")
+                .AppendLine($"Compatibility assessment receipt digest: {candidate.CompatibilityAssessmentReceiptDigest}")
+                .AppendLine($"Assessment receipt digest: {candidate.AssessmentReceiptDigest}")
+                .AppendLine(
+                    $"Candidate coverage: {candidate.UnitProfileCount} unit profiles · {candidate.TechnologyChoiceCount} choices · " +
+                    $"{candidate.ConstraintCount} constraints · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Technology Profile candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and profile, selection, compatibility, assessment, " +
+                "and snapshot digests only; no technology names, versions, constraints, evidence, rationale, unit, architecture, " +
+                "repository, toolchain, license, security-policy, or personal data. Candidate completeness does not establish " +
+                "technology approval, support commitment, compatibility truth or completeness, licensing or security approval, " +
+                "exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, " +
+                "assignment, execution, approval, acceptance, merge, release, deployment, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
