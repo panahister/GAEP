@@ -84,6 +84,7 @@ internal static class Program
     private static readonly Guid BoilerplateSelectionBindingId = Guid.Parse("a9a9a9a9-a9a9-49a9-89a9-a9a9a9a9a9a9");
     private static readonly Guid BoilerplateCompatibilityValidationId = Guid.Parse("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
     private static readonly Guid FigmaToBoilerplateMappingId = Guid.Parse("abababab-abab-4bab-8bab-abababababab");
+    private static readonly Guid DesignToCodeBindingRegistryId = Guid.Parse("bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -318,6 +319,10 @@ internal static class Program
         var badFigmaToBoilerplateMappingSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-figma-to-boilerplate-mapping-snapshot-digest");
         var badFigmaToBoilerplateMappingSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-figma-to-boilerplate-mapping-snapshot-private");
         var badFigmaToBoilerplateMappingDesignApplicabilityBindingRoot = Path.Combine(temporaryRoot, "bad-figma-to-boilerplate-mapping-design-applicability-binding");
+        var badDesignToCodeBindingRegistrySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-to-code-binding-registry-snapshot-binding");
+        var badDesignToCodeBindingRegistrySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-to-code-binding-registry-snapshot-digest");
+        var badDesignToCodeBindingRegistrySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-to-code-binding-registry-snapshot-private");
+        var badDesignToCodeBindingRegistryDependencyBindingRoot = Path.Combine(temporaryRoot, "bad-design-to-code-binding-registry-dependency-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -1671,6 +1676,67 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadFigmaToBoilerplateMappingAsync(InitiativeId),
                 "Figma-to-Boilerplate Mapping workflow rejects substituted Product or exact current dependency bindings");
+        }
+        var designToCodeBindingRegistryProjection = await client.ReadDesignToCodeBindingRegistryAsync(InitiativeId);
+        Check(designToCodeBindingRegistryProjection.ProductId == product.Id &&
+              designToCodeBindingRegistryProjection.ProductRevision == product.Revision &&
+              designToCodeBindingRegistryProjection.ProductDigest == product.Digest &&
+              designToCodeBindingRegistryProjection.InitiativeId == resolved.Id &&
+              designToCodeBindingRegistryProjection.InitiativeRevision == resolved.Revision &&
+              designToCodeBindingRegistryProjection.InitiativeDigest == resolved.Digest &&
+              designToCodeBindingRegistryProjection.State == "attention-required" &&
+              designToCodeBindingRegistryProjection.ReviewState == "held" &&
+              designToCodeBindingRegistryProjection.MappingSubjectCount == 2 &&
+              designToCodeBindingRegistryProjection.SubjectCount == 2 &&
+              designToCodeBindingRegistryProjection.BoundCandidateCount == 1 &&
+              designToCodeBindingRegistryProjection.ConflictCandidateCount == 1 &&
+              designToCodeBindingRegistryProjection.InvalidSubjectCount == 1 &&
+              designToCodeBindingRegistryProjection.TargetGapCount == 1 &&
+              designToCodeBindingRegistryProjection.TraceGapCount == 1 &&
+              designToCodeBindingRegistryProjection.EvidenceGapCount == 1 &&
+              designToCodeBindingRegistryProjection.DuplicateTargetCount == 1 &&
+              designToCodeBindingRegistryProjection.Dependencies.Count == 8 &&
+              designToCodeBindingRegistryProjection.Candidate?.BindingSubjectCatalogDigest == $"sha256:{new string('d', 64)}" &&
+              designToCodeBindingRegistryProjection.Candidate?.CodeTargetCatalogDigest == $"sha256:{new string('e', 64)}",
+            "Typed Design-to-Code Binding Registry projection preserves exact Product, Initiative, eight-dependency, subject, target, trace, and privacy-safe metadata");
+        var designToCodeBindingRegistryOutput = await initiativeController.ReadDesignToCodeBindingRegistryAsync(InitiativeId);
+        Check(designToCodeBindingRegistryOutput.Contains("GAEP governed Design-to-Code Binding Registry candidate", StringComparison.Ordinal) &&
+              designToCodeBindingRegistryOutput.Contains("2 mapping subjects · 2 binding subjects", StringComparison.Ordinal) &&
+              designToCodeBindingRegistryOutput.Contains("1 bound · 1 conflicts · 0 unbound · 0 not assessed", StringComparison.Ordinal) &&
+              designToCodeBindingRegistryOutput.Contains("1 target gaps · 1 trace gaps · 1 evidence gaps · 1 duplicate targets", StringComparison.Ordinal) &&
+              designToCodeBindingRegistryOutput.Contains("no Figma content, design-item, mapping, unit, requirement, repository", StringComparison.Ordinal) &&
+              designToCodeBindingRegistryOutput.Contains("does not connect to or call Figma", StringComparison.Ordinal) &&
+              designToCodeBindingRegistryOutput.Contains("create or change code targets", StringComparison.Ordinal) &&
+              !designToCodeBindingRegistryOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !designToCodeBindingRegistryOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !designToCodeBindingRegistryOutput.Contains("repositoryPath", StringComparison.Ordinal) &&
+              !designToCodeBindingRegistryOutput.Contains("symbolCandidate", StringComparison.Ordinal) &&
+              !designToCodeBindingRegistryOutput.Contains("evidenceReferences", StringComparison.Ordinal) &&
+              !designToCodeBindingRegistryOutput.Contains("boundBy", StringComparison.Ordinal),
+            "Design-to-Code Binding Registry workflow renders privacy-safe metadata with explicit Figma, design, binding, code-target, implementation, and action boundaries");
+        foreach (var hostileRoot in new[]
+                 {
+                     badDesignToCodeBindingRegistrySnapshotDigestRoot,
+                     badDesignToCodeBindingRegistrySnapshotPrivateRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDesignToCodeBindingRegistryAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Design-to-Code Binding Registry projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[]
+                 {
+                     badDesignToCodeBindingRegistrySnapshotBindingRoot,
+                     badDesignToCodeBindingRegistryDependencyBindingRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDesignToCodeBindingRegistryAsync(InitiativeId),
+                "Design-to-Code Binding Registry workflow rejects substituted Product or exact current dependency bindings");
         }
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
@@ -5021,6 +5087,14 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-figma-to-boilerplate-mapping-snapshot-private";
         var badFigmaToBoilerplateMappingDesignApplicabilityBinding =
             Path.GetFileName(workspace) == "bad-figma-to-boilerplate-mapping-design-applicability-binding";
+        var badDesignToCodeBindingRegistrySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-design-to-code-binding-registry-snapshot-binding";
+        var badDesignToCodeBindingRegistrySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-design-to-code-binding-registry-snapshot-digest";
+        var badDesignToCodeBindingRegistrySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-design-to-code-binding-registry-snapshot-private";
+        var badDesignToCodeBindingRegistryDependencyBinding =
+            Path.GetFileName(workspace) == "bad-design-to-code-binding-registry-dependency-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -5701,6 +5775,18 @@ internal static class Program
                         badFigmaToBoilerplateMappingSnapshotDigest,
                         badFigmaToBoilerplateMappingSnapshotPrivate,
                         badFigmaToBoilerplateMappingDesignApplicabilityBinding);
+                    break;
+                case "planning.designToCodeBindingRegistry.snapshot":
+                    await HandleDesignToCodeBindingRegistryAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDesignToCodeBindingRegistrySnapshotBinding,
+                        badDesignToCodeBindingRegistrySnapshotDigest,
+                        badDesignToCodeBindingRegistrySnapshotPrivate,
+                        badDesignToCodeBindingRegistryDependencyBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -10531,6 +10617,111 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["subjectCount"] = 3;
         if (includePrivateField) result["targetCandidate"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDesignToCodeBindingRegistryAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeDependencyBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DESIGN TO CODE BINDING REGISTRY");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T21:30:00.000Z";
+        var candidateDigest = $"sha256:{new string('c', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        Dictionary<string, object?> Reference(Guid recordId, long revision, char digestCharacter) => new()
+        {
+            ["recordId"] = recordId.ToString("D"),
+            ["revision"] = revision,
+            ["digest"] = $"sha256:{new string(digestCharacter, 64)}",
+        };
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DesignToCodeBindingRegistryId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["state"] = "candidate",
+            ["bindingSubjectCatalogDigest"] = $"sha256:{new string('d', 64)}",
+            ["codeTargetCatalogDigest"] = $"sha256:{new string('e', 64)}",
+            ["traceReceiptDigest"] = $"sha256:{new string('f', 64)}",
+            ["bindingReceiptDigest"] = $"sha256:{new string('0', 64)}",
+            ["assessmentReceiptDigest"] = $"sha256:{new string('1', 64)}",
+            ["subjectCount"] = 2,
+            ["boundCandidateCount"] = 1,
+            ["conflictCandidateCount"] = 1,
+            ["unboundCandidateCount"] = 0,
+            ["notAssessedCount"] = 0,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T21:29:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "design-to-code-binding-registry-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"), ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"), ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)), ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "design-to-code-binding-registry-status",
+                ["productId"] = ProductId.ToString("D"), ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"), ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DesignToCodeBindingRegistryId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                },
+                ["designBaseline"] = Reference(DesignBaselineId, 3, 'e'),
+                ["finalizedFigmaSnapshotImport"] = Reference(FinalizedFigmaSnapshotImportId, 2, 'c'),
+                ["designToRequirementBinding"] = Reference(DesignToRequirementBindingId, 2, 'd'),
+                ["figmaToBoilerplateMapping"] = Reference(FigmaToBoilerplateMappingId, 2, forgeDependencyBinding ? 'b' : '4'),
+                ["implementationUnitModel"] = Reference(ImplementationUnitModelId, 2, '5'),
+                ["technologyProfile"] = Reference(TechnologyProfileId, 2, '6'),
+                ["boilerplateSelectionBinding"] = Reference(BoilerplateSelectionBindingId, 2, '8'),
+                ["boilerplateCompatibilityValidation"] = Reference(BoilerplateCompatibilityValidationId, 2, 'd'),
+                ["mappingSubjectCount"] = 2, ["subjectCount"] = 2,
+                ["boundCandidateCount"] = 1, ["conflictCandidateCount"] = 1,
+                ["unboundCandidateCount"] = 0, ["notAssessedCount"] = 0,
+                ["missingSubjectCount"] = 0, ["invalidSubjectCount"] = 1,
+                ["targetGapCount"] = 1, ["traceGapCount"] = 1,
+                ["evidenceGapCount"] = 1, ["duplicateTargetCount"] = 1,
+                ["staleBindingCount"] = 0, ["staleDependencyCount"] = 0,
+                ["invalidCandidateCount"] = 1, ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held", ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Design-to-Code Binding Registry subjects require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "design-to-code-binding-registry-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-or-binding-truth-or-completeness-repository-path-or-symbol-truth-create-or-change-code-targets-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-subject-target-trace-binding-assessment-snapshot-digests-only-not-figma-content-design-item-mapping-unit-requirement-repository-module-path-symbol-evidence-reviewer-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "design-to-code-binding-registry-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-or-binding-truth-or-completeness-repository-path-or-symbol-truth-create-or-change-code-targets-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+        };
+        if (includePrivateField) result["repositoryPath"] = $"{PrivateRoot}/{PrivateCredential}";
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["subjectCount"] = 3;
         await WriteResultAsync(id, result);
     }
 

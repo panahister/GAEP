@@ -1,0 +1,50 @@
+namespace Gaep.HostClient;
+
+public sealed record DesignToCodeBindingRegistryReference(Guid RecordId, long Revision, string Digest);
+
+public sealed record DesignToCodeBindingRegistryRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string BindingSubjectCatalogDigest,
+    string CodeTargetCatalogDigest,
+    string TraceReceiptDigest,
+    string BindingReceiptDigest,
+    string AssessmentReceiptDigest,
+    int SubjectCount,
+    int BoundCandidateCount,
+    int ConflictCandidateCount,
+    int UnboundCandidateCount,
+    int NotAssessedCount,
+    string ReviewState);
+
+public sealed record DesignToCodeBindingRegistryProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string State,
+    string ReviewState,
+    IReadOnlyList<string> Reasons,
+    IReadOnlyDictionary<string, DesignToCodeBindingRegistryReference> Dependencies,
+    int MappingSubjectCount,
+    int SubjectCount,
+    int BoundCandidateCount,
+    int ConflictCandidateCount,
+    int UnboundCandidateCount,
+    int NotAssessedCount,
+    int MissingSubjectCount,
+    int InvalidSubjectCount,
+    int TargetGapCount,
+    int TraceGapCount,
+    int EvidenceGapCount,
+    int DuplicateTargetCount,
+    int StaleBindingCount,
+    int StaleDependencyCount,
+    int InvalidCandidateCount,
+    int UnresolvedQuestionCount,
+    DesignToCodeBindingRegistryRecordView? Candidate,
+    string SnapshotDigest);

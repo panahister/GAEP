@@ -243,6 +243,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadBoilerplateSelectionBindingCommand = new AsyncCommand(LoadBoilerplateSelectionBindingAsync);
         LoadBoilerplateCompatibilityValidationCommand = new AsyncCommand(LoadBoilerplateCompatibilityValidationAsync);
         LoadFigmaToBoilerplateMappingCommand = new AsyncCommand(LoadFigmaToBoilerplateMappingAsync);
+        LoadDesignToCodeBindingRegistryCommand = new AsyncCommand(LoadDesignToCodeBindingRegistryAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -430,6 +431,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     [DataMember]
     public IAsyncCommand LoadBoilerplateCompatibilityValidationCommand { get; }
     public IAsyncCommand LoadFigmaToBoilerplateMappingCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadDesignToCodeBindingRegistryCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1102,6 +1106,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Figma-to-Boilerplate Mapping candidate",
             (controller, _, token) => controller.ReadFigmaToBoilerplateMappingAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadDesignToCodeBindingRegistryAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Design-to-Code Binding Registry candidate",
+            (controller, _, token) => controller.ReadDesignToCodeBindingRegistryAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

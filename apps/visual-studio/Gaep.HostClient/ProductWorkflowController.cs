@@ -2892,6 +2892,111 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDesignToCodeBindingRegistryAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var designBaseline = await client.ReadDesignBaselineAsync(initiativeId, cancellationToken);
+        var finalizedSnapshot = await client.ReadFinalizedFigmaSnapshotImportAsync(initiativeId, cancellationToken);
+        var designBinding = await client.ReadDesignToRequirementBindingAsync(initiativeId, cancellationToken);
+        var figmaMapping = await client.ReadFigmaToBoilerplateMappingAsync(initiativeId, cancellationToken);
+        var units = await client.ReadImplementationUnitModelAsync(initiativeId, cancellationToken);
+        var technologyProfile = await client.ReadTechnologyProfileAsync(initiativeId, cancellationToken);
+        var selectionBinding = await client.ReadBoilerplateSelectionBindingAsync(initiativeId, cancellationToken);
+        var compatibilityValidation = await client.ReadBoilerplateCompatibilityValidationAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDesignToCodeBindingRegistryAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Design-to-Code Binding Registry was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null)
+        {
+            void RequireDependency(string name, Guid id, long revision, string digest)
+            {
+                if (!projection.Dependencies.TryGetValue(name, out var reference) || reference.RecordId != id ||
+                    reference.Revision != revision || reference.Digest != digest)
+                {
+                    throw new ArgumentException($"The {name} candidate changed while Design-to-Code Binding Registry was read. Refresh the exact records.");
+                }
+            }
+            if (designBaseline.Candidate is not { } designBaselineCandidate ||
+                finalizedSnapshot.Candidate is not { } finalizedSnapshotCandidate ||
+                designBinding.Candidate is not { } designBindingCandidate ||
+                figmaMapping.Candidate is not { } figmaMappingCandidate ||
+                units.Candidate is not { } unitsCandidate ||
+                technologyProfile.Candidate is not { } technologyProfileCandidate ||
+                selectionBinding.Candidate is not { } selectionBindingCandidate ||
+                compatibilityValidation.Candidate is not { } compatibilityValidationCandidate)
+            {
+                throw new ArgumentException("One or more exact current dependency candidates are unavailable. Refresh the exact records.");
+            }
+            RequireDependency("designBaseline", designBaselineCandidate.Id, designBaselineCandidate.Revision, designBaselineCandidate.Digest);
+            RequireDependency("finalizedFigmaSnapshotImport", finalizedSnapshotCandidate.Id, finalizedSnapshotCandidate.Revision, finalizedSnapshotCandidate.Digest);
+            RequireDependency("designToRequirementBinding", designBindingCandidate.Id, designBindingCandidate.Revision, designBindingCandidate.Digest);
+            RequireDependency("figmaToBoilerplateMapping", figmaMappingCandidate.Id, figmaMappingCandidate.Revision, figmaMappingCandidate.Digest);
+            RequireDependency("implementationUnitModel", unitsCandidate.Id, unitsCandidate.Revision, unitsCandidate.Digest);
+            RequireDependency("technologyProfile", technologyProfileCandidate.Id, technologyProfileCandidate.Revision, technologyProfileCandidate.Digest);
+            RequireDependency("boilerplateSelectionBinding", selectionBindingCandidate.Id, selectionBindingCandidate.Revision, selectionBindingCandidate.Digest);
+            RequireDependency("boilerplateCompatibilityValidation", compatibilityValidationCandidate.Id, compatibilityValidationCandidate.Revision, compatibilityValidationCandidate.Digest);
+        }
+        return RenderDesignToCodeBindingRegistry(projection);
+    }
+
+    public static string RenderDesignToCodeBindingRegistry(DesignToCodeBindingRegistryProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Design-to-Code Binding Registry candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine($"Candidate coverage: {projection.MappingSubjectCount} mapping subjects · {projection.SubjectCount} binding subjects")
+            .AppendLine(
+                $"Candidate outcomes: {projection.BoundCandidateCount} bound · {projection.ConflictCandidateCount} conflicts · " +
+                $"{projection.UnboundCandidateCount} unbound · {projection.NotAssessedCount} not assessed")
+            .AppendLine(
+                $"Candidate binding gaps: {projection.MissingSubjectCount} missing subjects · {projection.InvalidSubjectCount} invalid subjects · " +
+                $"{projection.TargetGapCount} target gaps · {projection.TraceGapCount} trace gaps · " +
+                $"{projection.EvidenceGapCount} evidence gaps · {projection.DuplicateTargetCount} duplicate targets")
+            .AppendLine(
+                $"Candidate freshness gaps: {projection.StaleBindingCount} stale bindings · {projection.StaleDependencyCount} stale dependencies · " +
+                $"{projection.InvalidCandidateCount} invalid candidates · {projection.UnresolvedQuestionCount} questions");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Design-to-Code Binding Registry candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Binding subject catalog digest: {candidate.BindingSubjectCatalogDigest}")
+                .AppendLine($"Code target catalog digest: {candidate.CodeTargetCatalogDigest}")
+                .AppendLine($"Trace receipt digest: {candidate.TraceReceiptDigest}")
+                .AppendLine($"Binding receipt digest: {candidate.BindingReceiptDigest}")
+                .AppendLine($"Assessment receipt digest: {candidate.AssessmentReceiptDigest}")
+                .AppendLine(
+                    $"Candidate coverage: {candidate.SubjectCount} subjects · {candidate.BoundCandidateCount} bound · " +
+                    $"{candidate.ConflictCandidateCount} conflicts · {candidate.UnboundCandidateCount} unbound · " +
+                    $"{candidate.NotAssessedCount} not assessed · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Design-to-Code Binding Registry candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and subject, target, trace, binding, assessment, " +
+                "and snapshot digests only; no Figma content, design-item, mapping, unit, requirement, repository, module, " +
+                "path, symbol, evidence, reviewer, or personal data. This inspection does not connect to or call Figma, " +
+                "establish returned Figma content, design validity, approval or baseline, mapping or binding truth or " +
+                "completeness, repository, path, or symbol truth, create or change code targets, retrieve, import, " +
+                "instantiate, generate or execute assets, establish implementation readiness or completeness, assign, " +
+                "execute, accept, merge, release, deploy, or grant action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
