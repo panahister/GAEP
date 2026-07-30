@@ -832,14 +832,123 @@ describe("Backlog Hierarchy host protocol", () => {
     })
     expect(JSON.stringify(dependencySnapshot)).not.toContain(dependencyMappingInput.title)
     expect(JSON.stringify(dependencySnapshot)).not.toContain(dependencyMappingInput.edges[0]!.rationale)
-    await expect(host.dispatch({
+    const dependencyRevised = await host.dispatch({
       jsonrpc: "2.0", id: "dependency-revise", protocolVersion: 2,
       method: "planning.dependencyMapping.revise",
       params: {
         actorId: "host-test", recordId: dependencyCreated.id, expectedRevision: dependencyCreated.revision,
         record: { ...dependencyMappingInput, title: "Host reviewed dependency mapping candidate" },
       },
-    })).resolves.toMatchObject({ id: dependencyCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+    }) as typeof dependencyCreated & { predecessorDigest: string }
+    expect(dependencyRevised).toMatchObject({ id: dependencyCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
+
+    const architectureEvidence = {
+      kind: "architecture" as const,
+      sourceId: "host-system-solution-architecture-candidate",
+      revision: 1,
+      digest: canonicalDigest({ initiativeId: initiative.id, kind: "architecture-candidate" }),
+      observationState: "candidate-asserted" as const,
+    }
+    const technologyProfileInput = {
+      initiativeId: initiative.id,
+      context: input.context,
+      informationClassification: "internal" as const,
+      title: "Host Technology Profile candidate",
+      implementationUnitModel: {
+        recordId: unitsRevised.id, revision: unitsRevised.revision, digest: canonicalDigest(unitsRevised),
+      },
+      dependencyMapping: {
+        recordId: dependencyRevised.id, revision: dependencyRevised.revision, digest: canonicalDigest(dependencyRevised),
+      },
+      architectureEvidenceReferences: [architectureEvidence],
+      profiles: unitIds.map((implementationUnitId, index) => ({
+        id: randomUUID(), ordinal: index + 1, implementationUnitId,
+        profileKind: index === 0 ? "service" as const : "client" as const,
+        choices: [{
+          id: randomUUID(), ordinal: 1, category: "runtime" as const, canonicalName: "Node.js",
+          versionConstraint: "24.4.1", versionState: "exact-candidate" as const,
+          selectionState: "candidate-selected" as const, registryStatus: "candidate-supported" as const,
+          supportState: "candidate-supported" as const, lifecycleState: "active" as const,
+          compatibilityState: "candidate-compatible" as const, licenseState: "candidate-allowed" as const,
+          securityPolicyState: "candidate-conformant" as const,
+          rationale: "The exact host fixture manifest observation identifies this candidate runtime version",
+          evidenceReferences: [{
+            kind: "manifest-observation" as const, sourceId: `unit-${index + 1}-manifest-observation`, revision: 1,
+            digest: canonicalDigest({ implementationUnitId, runtime: "node-24.4.1" }),
+            observationState: "observed-not-validated" as const,
+          }],
+          assessedBy: { kind: "human" as const, id: "host-technology-reviewer" },
+          assessedAt: "2026-07-30T00:00:00.000Z",
+        }],
+        constraints: [{
+          id: randomUUID(), ordinal: 1, kind: "platform" as const,
+          requirement: "The candidate runtime must remain portable across the declared host platforms",
+          disposition: "mandatory" as const, assessmentState: "candidate-satisfied" as const,
+          evidenceReferences: [architectureEvidence],
+          assessedBy: { kind: "human" as const, id: "host-technology-reviewer" },
+          assessedAt: "2026-07-30T00:00:00.000Z",
+        }],
+        assuranceObligations: ["Verify the exact runtime candidate through governed package evidence"],
+        observabilityObligations: ["Retain bounded runtime and package lifecycle evidence"],
+      })),
+      unresolvedQuestions: [],
+      limitations: ["Observed facts and selected technologies remain candidates for accountable review"],
+      reviewState: "ready-for-human-review" as const,
+      technologyApprovalState: "not-established" as const, supportCommitmentState: "not-established" as const,
+      compatibilityTruthState: "not-established" as const, compatibilityCompletenessState: "not-established" as const,
+      licensingApprovalState: "not-established" as const, securityApprovalState: "not-established" as const,
+      exceptionWaiverState: "not-established" as const, architectureBaselineDesignationState: "not-established" as const,
+      implementationReadinessState: "not-established" as const, implementationCompletenessState: "not-established" as const,
+      assignmentExecutionState: "not-established" as const, approvalState: "not-established" as const,
+      acceptanceDecisionState: "not-established" as const, mergeReadinessState: "not-established" as const,
+      releaseReadinessState: "not-established" as const, deploymentReadinessState: "not-established" as const,
+      actionAuthorityState: "not-granted" as const,
+    }
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "technology-v1-rejected", protocolVersion: 1,
+      method: "planning.technologyProfile.snapshot", params: { initiativeId: initiative.id },
+    })).rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "technology-read-empty", protocolVersion: 2,
+      method: "planning.technologyProfile.read", params: { initiativeId: initiative.id },
+    })).resolves.toBeNull()
+    const technologyCreated = await host.dispatch({
+      jsonrpc: "2.0", id: "technology-create", protocolVersion: 2,
+      method: "planning.technologyProfile.create", params: { actorId: "host-test", record: technologyProfileInput },
+    }) as { id: string; revision: number; profileCatalogDigest: string; selectionCatalogDigest: string }
+    expect(technologyCreated).toMatchObject({
+      revision: 1, profileCatalogDigest: expect.stringMatching(/^sha256:/u),
+      selectionCatalogDigest: expect.stringMatching(/^sha256:/u),
+    })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "technology-assess", protocolVersion: 2,
+      method: "planning.technologyProfile.assess", params: { initiativeId: initiative.id },
+    })).resolves.toMatchObject({
+      state: "candidate-complete", unitProfileCount: 2, technologyChoiceCount: 2,
+      exactVersionCandidateCount: 2, constraintCount: 2, missingProfileCount: 0,
+      invalidProfileCount: 0, staleDependencyMappingCount: 0,
+    })
+    const technologySnapshot = await host.dispatch({
+      jsonrpc: "2.0", id: "technology-snapshot", protocolVersion: 2,
+      method: "planning.technologyProfile.snapshot", params: { initiativeId: initiative.id },
+    }) as Record<string, unknown> & { snapshotDigest: string }
+    const { snapshotDigest: technologySnapshotDigest, ...technologySnapshotBody } = technologySnapshot
+    expect(technologySnapshotDigest).toBe(canonicalDigest(technologySnapshotBody))
+    expect(technologySnapshot).toMatchObject({
+      candidate: { id: technologyCreated.id, unitProfileCount: 2, technologyChoiceCount: 2, constraintCount: 2 },
+      privacyBoundary: expect.stringContaining("not-technology-names-versions-constraints-evidence-rationale"),
+      authorityBoundary: expect.stringContaining("does-not-establish-technology-approval-support-commitment"),
+    })
+    expect(JSON.stringify(technologySnapshot)).not.toContain(technologyProfileInput.title)
+    expect(JSON.stringify(technologySnapshot)).not.toContain("Node.js")
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: "technology-revise", protocolVersion: 2,
+      method: "planning.technologyProfile.revise",
+      params: {
+        actorId: "host-test", recordId: technologyCreated.id, expectedRevision: technologyCreated.revision,
+        record: { ...technologyProfileInput, title: "Host reviewed Technology Profile candidate" },
+      },
+    })).resolves.toMatchObject({ id: technologyCreated.id, revision: 2, predecessorDigest: expect.stringMatching(/^sha256:/u) })
 
     const revised = await host.dispatch({
       jsonrpc: "2.0",

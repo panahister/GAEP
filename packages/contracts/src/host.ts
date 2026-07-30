@@ -10,6 +10,7 @@ import { definitionOfReadyInputSchema } from "./definition-of-ready.js"
 import { definitionOfDoneInputSchema } from "./definition-of-done.js"
 import { implementationUnitModelInputSchema } from "./implementation-unit-model.js"
 import { dependencyMappingInputSchema } from "./dependency-mapping.js"
+import { technologyProfileInputSchema } from "./technology-profile.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -701,6 +702,18 @@ export const hostDependencyMappingReviseParamsSchema = z.object({
   record: dependencyMappingInputSchema,
 }).strict()
 
+export const hostTechnologyProfileCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: technologyProfileInputSchema,
+}).strict()
+
+export const hostTechnologyProfileReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: technologyProfileInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -995,6 +1008,11 @@ export const hostMethodSchema = z.enum([
   "planning.dependencyMapping.revise",
   "planning.dependencyMapping.assess",
   "planning.dependencyMapping.snapshot",
+  "planning.technologyProfile.read",
+  "planning.technologyProfile.create",
+  "planning.technologyProfile.revise",
+  "planning.technologyProfile.assess",
+  "planning.technologyProfile.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1328,6 +1346,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.dependencyMapping.revise", hostDependencyMappingReviseParamsSchema),
   requestVariant("planning.dependencyMapping.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.dependencyMapping.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.technologyProfile.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.technologyProfile.create", hostTechnologyProfileCreateParamsSchema),
+  requestVariant("planning.technologyProfile.revise", hostTechnologyProfileReviseParamsSchema),
+  requestVariant("planning.technologyProfile.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.technologyProfile.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

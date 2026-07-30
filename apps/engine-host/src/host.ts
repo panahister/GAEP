@@ -134,6 +134,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.dependencyMapping.revise",
   "planning.dependencyMapping.assess",
   "planning.dependencyMapping.snapshot",
+  "planning.technologyProfile.read",
+  "planning.technologyProfile.create",
+  "planning.technologyProfile.revise",
+  "planning.technologyProfile.assess",
+  "planning.technologyProfile.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1412,6 +1417,21 @@ export class EngineHost {
         return this.engine.dependencyMapping.assess(request.params.initiativeId)
       case "planning.dependencyMapping.snapshot":
         return this.engine.dependencyMapping.project(request.params.initiativeId)
+      case "planning.technologyProfile.read":
+        return await this.engine.technologyProfile.readCurrent(request.params.initiativeId) ?? null
+      case "planning.technologyProfile.create":
+        return this.engine.technologyProfile.create(request.params.record, actorId(request.params.actorId))
+      case "planning.technologyProfile.revise":
+        return this.engine.technologyProfile.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.technologyProfile.assess":
+        return this.engine.technologyProfile.assess(request.params.initiativeId)
+      case "planning.technologyProfile.snapshot":
+        return this.engine.technologyProfile.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":
