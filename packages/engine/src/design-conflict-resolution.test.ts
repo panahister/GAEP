@@ -195,6 +195,13 @@ describe("Design Conflict Resolution service", () => {
     expect((await service.listHistory(created.id)).map((entry) => entry.revision)).toEqual([2, 1])
     expect((await service.assess(initiative.id)).state).toBe("attention-required")
 
+    const bundle = await engine.productStudio.buildPortableExport()
+    expect(bundle.manifest.members.map((member) => member.path)).toEqual(expect.arrayContaining([
+      `design-conflict-resolutions/${created.id}.json`,
+      `design-conflict-resolution-history/design-conflict-resolution-${created.id}-r1.json`,
+      `design-conflict-resolution-history/design-conflict-resolution-${created.id}-r2.json`,
+    ]))
+
   })
 
   it("fails closed on forged receipts, non-conflicting entries, and superseded Design Delta bindings", async () => {

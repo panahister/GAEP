@@ -30,6 +30,7 @@ import {
   designToRequirementBindingSchema,
   designerReadyGateSchema,
   designDeltaSchema,
+  designConflictResolutionSchema,
   architectureRecordSchema,
   boundedContextModelSchema,
   securityPrivacyAssessmentSchema,
@@ -116,6 +117,7 @@ import {
   type DesignToRequirementBinding,
   type DesignerReadyGate,
   type DesignDelta,
+  type DesignConflictResolution,
   type TraceabilitySubjectKind,
   type BoundedContextModel,
   type SecurityPrivacyAssessment,
@@ -171,6 +173,10 @@ import {
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { designerReadyAssessmentReceiptDigest } from "./designer-ready-gate.js"
 import { designDeltaComparisonReceiptDigest } from "./design-delta.js"
+import {
+  designConflictResolutionReceiptDigest,
+  designDeltaResolutionReference,
+} from "./design-conflict-resolution.js"
 import {
   canonicalDigest as portableDesignDigest,
   importPortableDesignBundle,
@@ -2379,6 +2385,16 @@ export class ProductStudioService {
       /^design-delta-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
       designDeltaSchema,
     )
+    const designConflictResolutions = await this.listRecords(
+      "design-conflict-resolutions",
+      /^[0-9a-f-]+\.json$/i,
+      designConflictResolutionSchema,
+    )
+    const designConflictResolutionHistory = await this.listRecords(
+      "design-conflict-resolution-history",
+      /^design-conflict-resolution-[0-9a-f-]+-r[1-9][0-9]*\.json$/i,
+      designConflictResolutionSchema,
+    )
     const portableDesignSnapshotIds = [...new Set([
       ...designSystemTokenContracts,
       ...designSystemTokenContractHistory,
@@ -2481,6 +2497,8 @@ export class ProductStudioService {
       ...designerReadyGateHistory,
       ...designDeltas,
       ...designDeltaHistory,
+      ...designConflictResolutions,
+      ...designConflictResolutionHistory,
       ...stakeholderModels,
       ...stakeholderModelHistory,
       ...outcomeModels,
@@ -2524,6 +2542,7 @@ export class ProductStudioService {
           responsiveMultiPlatformTargets.find((record) => record.id === id)?.informationClassification ??
           manualFigmaExecutionPaths.find((record) => record.id === id)?.informationClassification ??
           figmaMcpCapabilityDiscoveries.find((record) => record.id === id)?.informationClassification ??
+          designConflictResolutions.find((record) => record.id === id)?.informationClassification ??
           portableDesignSnapshots.find((record) => record.bundleId === id)?.classification ??
           stakeholderModels.find((record) => record.id === id)?.informationClassification ??
           outcomeModels.find((record) => record.id === id)?.informationClassification
@@ -2863,6 +2882,14 @@ export class ProductStudioService {
       "design-delta-candidate",
       designDeltaHistory,
       (record) => `design-delta-history/design-delta-${record.id}-r${record.revision}.json`,
+    )
+    append("design-conflict-resolutions", "design-conflict-resolution-candidate", designConflictResolutions)
+    append(
+      "design-conflict-resolution-history",
+      "design-conflict-resolution-candidate",
+      designConflictResolutionHistory,
+      (record) =>
+        `design-conflict-resolution-history/design-conflict-resolution-${record.id}-r${record.revision}.json`,
     )
     append(
       "candidates",
@@ -3392,6 +3419,14 @@ export class ProductStudioService {
         const expectedHistoryPath = `design-delta-history/design-delta-${record.id}-r${record.revision}.json`
         if (member.path !== expectedHistoryPath) {
           throw new Error(`Import Design Delta history filename does not match its snapshot: ${member.path}`)
+        }
+      }
+      if (member.path.startsWith("design-conflict-resolution-history/")) {
+        const record = validated as DesignConflictResolution
+        const expectedHistoryPath =
+          `design-conflict-resolution-history/design-conflict-resolution-${record.id}-r${record.revision}.json`
+        if (member.path !== expectedHistoryPath) {
+          throw new Error(`Import Design Conflict Resolution history filename does not match its snapshot: ${member.path}`)
         }
       }
       if (member.path.startsWith("candidates/portable-design-")) {
@@ -4526,7 +4561,7 @@ export class ProductStudioService {
       history.product,
     ]))
     const validateBusinessRecordBase = (
-      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta,
+      record: BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution,
       label: string,
     ): void => {
       const initiative = initiativesById.get(record.initiativeId)
@@ -4558,7 +4593,7 @@ export class ProductStudioService {
       }
     }
     const validateVersionedBusinessRecords = <
-      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta,
+      T extends BusinessUnderstanding | StakeholderModel | OutcomeModel | BusinessCapabilityMap | ValueStreamModel | OperatingModel | BusinessRuleCatalog | BusinessArchitectureBaseline | SystemSolutionArchitecture | BoundedContextModel | SecurityPrivacyAssessment | ProcessModel | DataModel | AuthorizationModel | EventIntegrationModel | FailureRecoveryModel | ArchitectureChallengeModel | DecisionRegister | RiskRegister | EvidenceRegistry | EndToEndTraceability | P0P4ReadinessGate | P5HandoffPackage | DesignApplicability | DesignPersonaRoleModel | UserJourneyModel | InformationArchitectureModel | ScreenStateInventory | DesignRequirements | DesignSystemTokenContract | AccessibilityDesignRules | ResponsiveMultiPlatformTargets | ManualFigmaExecutionPath | FigmaMcpCapabilityDiscovery | FigmaReadSnapshot | FigmaContextImport | OutboundDesignBriefPackage | GovernedFigmaWrite | FinalizedFigmaSnapshotImport | DesignToRequirementBinding | DesignerReadyGate | DesignDelta | DesignConflictResolution,
     >(
       currentRecords: T[],
       historyRecords: T[],
@@ -8763,6 +8798,86 @@ export class ProductStudioService {
       }
     }
 
+    const designConflictResolutions = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-conflict-resolutions/"))
+      .map(([, record]) => designConflictResolutionSchema.parse(record))
+    const designConflictResolutionHistory = [...recordsByPath.entries()]
+      .filter(([path]) => path.startsWith("design-conflict-resolution-history/"))
+      .map(([, record]) => designConflictResolutionSchema.parse(record))
+    validateVersionedBusinessRecords(
+      designConflictResolutions,
+      designConflictResolutionHistory,
+      "Design Conflict Resolution",
+    )
+    const exactDesignDelta = new Map([...designDeltas, ...designDeltaHistory].map((record) => [
+      `${record.id}:${record.revision}:${canonicalDigest(record)}`,
+      record,
+    ]))
+    for (const candidate of [...designConflictResolutions, ...designConflictResolutionHistory]) {
+      const expectedMembership = {
+        initiativeId: candidate.initiativeId,
+        context: candidate.context,
+        informationClassification: candidate.informationClassification,
+        title: candidate.title,
+        objectiveDigest: candidate.objectiveDigest,
+        designDelta: candidate.designDelta,
+        resolutionDefinitionDigest: candidate.resolutionDefinitionDigest,
+        resolutionReceiptDigest: candidate.resolutionReceiptDigest,
+        conflictCount: candidate.conflictCount,
+        resolutions: candidate.resolutions,
+        coverageState: candidate.coverageState,
+        provenanceState: candidate.provenanceState,
+        candidateResult: candidate.candidateResult,
+        unresolvedConflictKeys: candidate.unresolvedConflictKeys,
+        unresolvedQuestions: candidate.unresolvedQuestions,
+        limitations: candidate.limitations,
+        reviewState: candidate.reviewState,
+        separationOfDutiesEnforcementState: candidate.separationOfDutiesEnforcementState,
+        conflictResolutionAuthorityState: candidate.conflictResolutionAuthorityState,
+        synchronizationAuthorityState: candidate.synchronizationAuthorityState,
+        designValidityState: candidate.designValidityState,
+        designApprovalState: candidate.designApprovalState,
+        designBaselineState: candidate.designBaselineState,
+        readinessState: candidate.readinessState,
+        figmaConnectionAuthorityState: candidate.figmaConnectionAuthorityState,
+        credentialAuthorityState: candidate.credentialAuthorityState,
+        permissionGrantState: candidate.permissionGrantState,
+        importExecutionState: candidate.importExecutionState,
+        writeExecutionState: candidate.writeExecutionState,
+        implementationAuthorityState: candidate.implementationAuthorityState,
+      }
+      if (candidate.membershipDigest !== canonicalDigest(expectedMembership)) {
+        throw new Error(`Import Design Conflict Resolution ${candidate.id} membership digest is invalid`)
+      }
+      if (candidate.resolutionReceiptDigest !== designConflictResolutionReceiptDigest(candidate)) {
+        throw new Error(`Import Design Conflict Resolution ${candidate.id} receipt digest is invalid`)
+      }
+      const delta = exactDesignDelta.get(
+        `${candidate.designDelta.recordId}:${candidate.designDelta.revision}:${candidate.designDelta.digest}`,
+      )
+      if (!delta || delta.productId !== candidate.productId || delta.initiativeId !== candidate.initiativeId ||
+          canonicalDigest(designDeltaResolutionReference(delta)) !== canonicalDigest(candidate.designDelta)) {
+        throw new Error(`Import Design Conflict Resolution ${candidate.id} has an unresolved exact Design Delta binding`)
+      }
+      const conflicts = delta.deltas.filter((entry) => entry.changeKind === "conflicting")
+      if (candidate.conflictCount !== conflicts.length) {
+        throw new Error(`Import Design Conflict Resolution ${candidate.id} conflict count does not match its exact Design Delta`)
+      }
+      const conflictByKey = new Map(conflicts.map((entry) => [entry.key, entry]))
+      for (const resolution of candidate.resolutions) {
+        const conflict = conflictByKey.get(resolution.conflictKey)
+        if (!conflict || conflict.subjectKind !== resolution.subjectKind ||
+            canonicalDigest(conflict) !== resolution.conflictDigest) {
+          throw new Error(`Import Design Conflict Resolution ${candidate.id} contains an unresolved exact conflict binding`)
+        }
+      }
+      for (const key of candidate.unresolvedConflictKeys) {
+        if (!conflictByKey.has(key)) {
+          throw new Error(`Import Design Conflict Resolution ${candidate.id} contains an unknown unresolved conflict key`)
+        }
+      }
+    }
+
     const plans = [...recordsByPath.entries()].filter(([path]) => path.startsWith("workflow-plans/"))
       .map(([, record]) => workflowPlanSchema.parse(record))
     for (const plan of plans) this.validateWorkflowInImport(plan, resolveExact)
@@ -9379,6 +9494,10 @@ export class ProductStudioService {
         /^design-delta-history\/design-delta-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return "design-delta-candidate"
     }
+    if (/^design-conflict-resolutions\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-conflict-resolution-history\/design-conflict-resolution-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return "design-conflict-resolution-candidate"
+    }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return "portable-design-snapshot"
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
         /^stakeholder-model-history\/stakeholder-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
@@ -9584,6 +9703,10 @@ export class ProductStudioService {
     if (/^design-deltas\/[0-9a-f-]+\.json$/i.test(path) ||
         /^design-delta-history\/design-delta-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
       return designDeltaSchema
+    }
+    if (/^design-conflict-resolutions\/[0-9a-f-]+\.json$/i.test(path) ||
+        /^design-conflict-resolution-history\/design-conflict-resolution-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(path)) {
+      return designConflictResolutionSchema
     }
     if (/^candidates\/portable-design-[0-9a-f-]+\.json$/i.test(path)) return portableDesignImportResultSchema
     if (/^stakeholder-models\/[0-9a-f-]+\.json$/i.test(path) ||
