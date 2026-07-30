@@ -553,6 +553,20 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParseAcceptanceCriteriaResponse(envelope, initiativeId));
     }
 
+    public async Task<DefinitionOfReadyProjection> ReadDefinitionOfReadyAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        using var response = await RequestPortableDesignAsync(
+            "planning.definitionOfReady.snapshot",
+            new Dictionary<string, object?> { ["initiativeId"] = initiativeId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseDefinitionOfReadyResponse(envelope, initiativeId));
+    }
+
     public async Task<AccessibilityDesignRulesProjection> ReadAccessibilityDesignRulesAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

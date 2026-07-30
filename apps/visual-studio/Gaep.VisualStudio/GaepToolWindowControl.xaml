@@ -158,6 +158,10 @@
                 Command="{Binding LoadAcceptanceCriteriaCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and subject, criterion, method, coverage, and snapshot digests only; it withholds criterion text, Requirement identities, verification evidence, personal data, local paths, secrets, and credentials, and does not establish criterion validity, completeness, Requirement satisfaction, priority, commitment, approval, readiness, assignment, execution, acceptance, implementation authority, or action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadDefinitionOfReadyButton" Content="Inspect governed Definition of Ready"
+                Command="{Binding LoadDefinitionOfReadyCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, validity time, and subject, policy, evaluation, receipt, and snapshot digests only; it withholds rules, rationales, evidence and assessor identities, personal data, local paths, secrets, and credentials. A candidate pass is not admission, readiness, assignment, execution, implementation permission, exception or waiver authority, phase entry, acceptance, or action authority."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
         <Button x:Name="LoadDesignSystemTokenContractButton" Content="Inspect governed Design System and Token Contract"
                 Command="{Binding LoadDesignSystemTokenContractCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds token values, component content, requirements, Source, design, and personal content, and does not establish system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."

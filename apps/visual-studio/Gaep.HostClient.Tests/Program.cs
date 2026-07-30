@@ -75,6 +75,7 @@ internal static class Program
     private static readonly Guid MvpSliceDefinitionId = Guid.Parse("92929292-9292-4292-8292-929292929292");
     private static readonly Guid PrioritizationModelId = Guid.Parse("93939393-9393-4393-8393-939393939393");
     private static readonly Guid AcceptanceCriteriaId = Guid.Parse("94949494-9494-4494-8494-949494949494");
+    private static readonly Guid DefinitionOfReadyId = Guid.Parse("95959595-9595-4595-8595-959595959595");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -251,6 +252,13 @@ internal static class Program
         var badAcceptanceCriteriaHierarchyBindingRoot = Path.Combine(temporaryRoot, "bad-acceptance-criteria-hierarchy-binding");
         var badAcceptanceCriteriaMvpBindingRoot = Path.Combine(temporaryRoot, "bad-acceptance-criteria-mvp-binding");
         var badAcceptanceCriteriaPrioritizationBindingRoot = Path.Combine(temporaryRoot, "bad-acceptance-criteria-prioritization-binding");
+        var badDefinitionOfReadySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-definition-of-ready-snapshot-binding");
+        var badDefinitionOfReadySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-definition-of-ready-snapshot-digest");
+        var badDefinitionOfReadySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-definition-of-ready-snapshot-private");
+        var badDefinitionOfReadyHierarchyBindingRoot = Path.Combine(temporaryRoot, "bad-definition-of-ready-hierarchy-binding");
+        var badDefinitionOfReadyMvpBindingRoot = Path.Combine(temporaryRoot, "bad-definition-of-ready-mvp-binding");
+        var badDefinitionOfReadyPrioritizationBindingRoot = Path.Combine(temporaryRoot, "bad-definition-of-ready-prioritization-binding");
+        var badDefinitionOfReadyCriteriaBindingRoot = Path.Combine(temporaryRoot, "bad-definition-of-ready-criteria-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -1118,6 +1126,55 @@ internal static class Program
                   !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
                   !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
                 "Business Architecture Baseline rejects hostile digest and private-field drift");
+        }
+
+        var definitionOfReadyProjection = await client.ReadDefinitionOfReadyAsync(InitiativeId);
+        Check(definitionOfReadyProjection.ProductId == product.Id &&
+              definitionOfReadyProjection.ProductRevision == product.Revision &&
+              definitionOfReadyProjection.ProductDigest == product.Digest &&
+              definitionOfReadyProjection.InitiativeId == resolved.Id &&
+              definitionOfReadyProjection.InitiativeRevision == resolved.Revision &&
+              definitionOfReadyProjection.InitiativeDigest == resolved.Digest &&
+              definitionOfReadyProjection.Result == "attention-required" &&
+              definitionOfReadyProjection.ReviewState == "held" &&
+              definitionOfReadyProjection.SubjectCount == 16 &&
+              definitionOfReadyProjection.PolicyEntryCount == 9 &&
+              definitionOfReadyProjection.ExpectedEvaluationCount == 144 &&
+              definitionOfReadyProjection.EvaluationCount == 140 &&
+              definitionOfReadyProjection.CandidateSatisfiedCount == 130 &&
+              definitionOfReadyProjection.NotApplicableCount == 12 &&
+              definitionOfReadyProjection.MissingEvaluationCount == 4,
+            "Typed Definition of Ready projection preserves exact Product, Initiative, assessment, evaluation, and privacy-safe metadata");
+        var definitionOfReadyOutput = await initiativeController.ReadDefinitionOfReadyAsync(InitiativeId);
+        Check(definitionOfReadyOutput.Contains("GAEP governed Definition of Ready candidate", StringComparison.Ordinal) &&
+              definitionOfReadyOutput.Contains("16 Story/Task subjects · 9 prerequisites · 140/144 evaluations · 4 missing", StringComparison.Ordinal) &&
+              definitionOfReadyOutput.Contains("candidate pass is an evaluation result, not admission", StringComparison.Ordinal) &&
+              !definitionOfReadyOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !definitionOfReadyOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !definitionOfReadyOutput.Contains("itemEvaluations", StringComparison.Ordinal),
+            "Definition of Ready workflow renders privacy-safe metadata with an explicit evaluation-not-admission boundary");
+        foreach (var hostileRoot in new[] { badDefinitionOfReadySnapshotDigestRoot, badDefinitionOfReadySnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDefinitionOfReadyAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Definition of Ready projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[]
+                 {
+                     badDefinitionOfReadySnapshotBindingRoot,
+                     badDefinitionOfReadyHierarchyBindingRoot,
+                     badDefinitionOfReadyMvpBindingRoot,
+                     badDefinitionOfReadyPrioritizationBindingRoot,
+                     badDefinitionOfReadyCriteriaBindingRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDefinitionOfReadyAsync(InitiativeId),
+                "Definition of Ready workflow rejects substituted Product or current planning dependency bindings");
         }
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
@@ -4352,6 +4409,20 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-acceptance-criteria-mvp-binding";
         var badAcceptanceCriteriaPrioritizationBinding =
             Path.GetFileName(workspace) == "bad-acceptance-criteria-prioritization-binding";
+        var badDefinitionOfReadySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-definition-of-ready-snapshot-binding";
+        var badDefinitionOfReadySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-definition-of-ready-snapshot-digest";
+        var badDefinitionOfReadySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-definition-of-ready-snapshot-private";
+        var badDefinitionOfReadyHierarchyBinding =
+            Path.GetFileName(workspace) == "bad-definition-of-ready-hierarchy-binding";
+        var badDefinitionOfReadyMvpBinding =
+            Path.GetFileName(workspace) == "bad-definition-of-ready-mvp-binding";
+        var badDefinitionOfReadyPrioritizationBinding =
+            Path.GetFileName(workspace) == "bad-definition-of-ready-prioritization-binding";
+        var badDefinitionOfReadyCriteriaBinding =
+            Path.GetFileName(workspace) == "bad-definition-of-ready-criteria-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -4902,6 +4973,21 @@ internal static class Program
                         badAcceptanceCriteriaHierarchyBinding,
                         badAcceptanceCriteriaMvpBinding,
                         badAcceptanceCriteriaPrioritizationBinding);
+                    break;
+                case "planning.definitionOfReady.snapshot":
+                    await HandleDefinitionOfReadyAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDefinitionOfReadySnapshotBinding,
+                        badDefinitionOfReadySnapshotDigest,
+                        badDefinitionOfReadySnapshotPrivate,
+                        badDefinitionOfReadyHierarchyBinding,
+                        badDefinitionOfReadyMvpBinding,
+                        badDefinitionOfReadyPrioritizationBinding,
+                        badDefinitionOfReadyCriteriaBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -8548,6 +8634,140 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["criterionCount"] = 29;
         if (includePrivateField) result["criterionText"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDefinitionOfReadyAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeHierarchyBinding,
+        bool forgeMvpBinding,
+        bool forgePrioritizationBinding,
+        bool forgeAcceptanceCriteriaBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DEFINITION OF READY");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T13:20:00.000Z";
+        var candidateDigest = $"sha256:{new string('6', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DefinitionOfReadyId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["state"] = "candidate",
+            ["policyVersion"] = 3,
+            ["validUntil"] = "2026-08-30T13:19:00.000Z",
+            ["subjectCatalogDigest"] = $"sha256:{new string('2', 64)}",
+            ["policyDigest"] = $"sha256:{new string('3', 64)}",
+            ["evaluationDigest"] = $"sha256:{new string('4', 64)}",
+            ["receiptDigest"] = $"sha256:{new string('5', 64)}",
+            ["subjectCount"] = 16,
+            ["policyEntryCount"] = 9,
+            ["evaluationCount"] = 140,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T13:19:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "definition-of-ready-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "definition-of-ready-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DefinitionOfReadyId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                },
+                ["hierarchy"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BacklogHierarchyId.ToString("D"), ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeHierarchyBinding ? '7' : '8', 64)}",
+                },
+                ["mvpSliceDefinition"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = MvpSliceDefinitionId.ToString("D"), ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeMvpBinding ? '9' : 'a', 64)}",
+                },
+                ["prioritizationModel"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = PrioritizationModelId.ToString("D"), ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgePrioritizationBinding ? 'b' : 'c', 64)}",
+                },
+                ["acceptanceCriteria"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = AcceptanceCriteriaId.ToString("D"), ["revision"] = 2,
+                    ["digest"] = $"sha256:{new string(forgeAcceptanceCriteriaBinding ? '0' : '1', 64)}",
+                },
+                ["subjectCount"] = 16,
+                ["policyEntryCount"] = 9,
+                ["expectedEvaluationCount"] = 144,
+                ["evaluationCount"] = 140,
+                ["candidateSatisfiedCount"] = 130,
+                ["notSatisfiedCount"] = 3,
+                ["notApplicableCount"] = 12,
+                ["exceptionCandidateCount"] = 2,
+                ["notAssessedCount"] = 2,
+                ["staleEvaluationCount"] = 2,
+                ["invalidEvaluationCount"] = 1,
+                ["missingEvaluationCount"] = 4,
+                ["staleBindingCount"] = 0,
+                ["staleHierarchyCount"] = 0,
+                ["staleMvpSliceDefinitionCount"] = 0,
+                ["stalePrioritizationModelCount"] = 0,
+                ["staleAcceptanceCriteriaCount"] = 0,
+                ["expiredCount"] = 0,
+                ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held",
+                ["result"] = "attention-required",
+                ["reasons"] = new[] { "One or more item prerequisites require review" },
+                ["assessedAt"] = assessedAt,
+                ["gateBoundary"] =
+                    "a-passing-definition-of-ready-candidate-is-an-evaluation-result-not-admission-readiness-assignment-execution-or-implementation-permission",
+                ["authorityBoundary"] =
+                    "definition-of-ready-status-is-observational-and-does-not-establish-prerequisite-truth-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-exception-waiver-authority-phase-entry-implementation-readiness-assignment-execution-acceptance-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-policy-evaluation-receipt-snapshot-digests-only-not-rules-rationales-evidence-identities-assessor-identities-personal-data-secrets-credentials-or-machine-paths",
+            ["gateBoundary"] =
+                "a-passing-definition-of-ready-candidate-is-an-evaluation-result-not-admission-readiness-assignment-execution-or-implementation-permission",
+            ["authorityBoundary"] =
+                "definition-of-ready-projection-is-read-only-and-does-not-establish-prerequisite-truth-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-exception-waiver-authority-phase-entry-implementation-readiness-assignment-execution-acceptance-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["evaluationCount"] = 141;
+        if (includePrivateField) result["rationale"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
