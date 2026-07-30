@@ -71,6 +71,7 @@ import type {
   DesignerReadyGateProjection,
   DesignDeltaProjection,
   DesignConflictResolutionProjection,
+  HumanDesignApprovalProjection,
   SourceGovernanceProjection,
   SystemSolutionArchitectureProjection,
   ToolDefinition,
@@ -291,6 +292,9 @@ export interface CurrentStudioEngineReader {
   designConflictResolution?: {
     project(initiativeId: string): Promise<DesignConflictResolutionProjection>
   }
+  humanDesignApproval?: {
+    project(initiativeId: string): Promise<HumanDesignApprovalProjection>
+  }
 }
 
 export type ExistingStudioCommand =
@@ -371,6 +375,7 @@ interface ObservedStudioState {
   designerReadyGateProjections: Map<string, DesignerReadyGateProjection>
   designDeltaProjections: Map<string, DesignDeltaProjection>
   designConflictResolutionProjections: Map<string, DesignConflictResolutionProjection>
+  humanDesignApprovalProjections: Map<string, HumanDesignApprovalProjection>
   sourceGovernanceProjections: Map<string, SourceGovernanceProjection>
   runs: Run[]
   runsObserved: boolean
@@ -2706,6 +2711,65 @@ function designConflictResolutionTable(state: ObservedStudioState): StudioTableS
   }
 }
 
+function humanDesignApprovalTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.humanDesignApprovalProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        subject: `${record.subject.recordId} · r${record.subject.revision} · returned version ${record.subject.returnedExternalVersionDigest} · ${record.subject.itemCount} items`,
+        scope: `${record.scopeDigest} · exact finalized snapshot`,
+        evidence: `definition ${record.decisionDefinitionDigest} · receipt ${record.decisionReceiptDigest}`,
+        decision: record.decisionKind
+          ? `${record.decisionKind} · ${record.decisionLifecycleState} · ${record.decisionDigest}`
+          : "not-recorded",
+        result: `${status.candidateResult} · ${status.state} · ${status.reviewState}`,
+        prerequisites: `${status.completePrerequisiteCount}/${status.prerequisiteCount} complete`,
+        governance: `approver authority ${status.approverAuthorityState} · separation enforcement ${status.separationOfDutiesEnforcementState}`,
+        gaps: `${status.expiredDecisionCount} expired · ${status.revokedDecisionCount} revoked · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleSourceReferenceCount} stale Source references`,
+        boundary: "Candidate identities, exact prerequisite and finalized-snapshot bindings, scope and receipt digests, decision kind, lifecycle, counts, and recorded states only; no design, decision rationale, condition, evidence, Source, human-attribution, personal, secret, credential, or permission content. This view does not verify approver authority, enforce separation of duties, establish design approval, baseline, readiness, or phase entry, call Figma, request credentials, grant permissions, execute imports or writes, or grant implementation or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "human-design-approval",
+    title: "Human Design Approval Decision Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "subject", label: "Exact approval subject" },
+      { key: "scope", label: "Approval scope" },
+      { key: "evidence", label: "Decision receipts" },
+      { key: "decision", label: "Recorded decision" },
+      { key: "result", label: "Candidate result" },
+      { key: "prerequisites", label: "Prerequisite state" },
+      { key: "governance", label: "Authority boundary state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No Human Design Approval candidate",
+        "Record an exact attributable design-decision candidate through the governed engine workflow. This view does not verify approver authority, enforce separation of duties, establish design approval, baseline, readiness, or phase entry, access Figma, execute imports or writes, or grant implementation or action authority.",
+      ),
+    } : {}),
+  }
+}
+
 function designForm(route: RecordFormRoute, state: ObservedStudioState): RecordFormPageSnapshot {
   const design = designPanel(route, state)
   const businessTable = route === "direction" || route === "users-jobs" || route === "outcomes"
@@ -4416,6 +4480,7 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
   const designerReadyGates = designerReadyGateTable(state)
   const designDeltas = designDeltaTable(state)
   const designConflictResolutions = designConflictResolutionTable(state)
+  const humanDesignApprovals = humanDesignApprovalTable(state)
   const portableDesignInventory = portableDesignPage
     ? `${portableDesignPage.total} governed record${portableDesignPage.total === 1 ? "" : "s"}; every validated import remains pending human review.`
     : "Unavailable until audit and governed snapshot inventory verification both succeed."
@@ -4446,6 +4511,7 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
     designerReadyGates,
     designDeltas,
     designConflictResolutions,
+    humanDesignApprovals,
     portability: [
       { term: "Export", value: "Portable bundle only; authority, readiness, runtime bindings, credentials, and implementation approval are not conferred." },
       { term: "Product export preview", value: state.importPreview ? `${state.importPreview.status}; preview only; no mutation performed.` : "No Product export preview is loaded; that preview workflow never mutates Product state." },
@@ -4548,6 +4614,7 @@ function capPageTables(page: StudioPageSnapshot): StudioPageSnapshot {
       designerReadyGates: capTable(page.designerReadyGates),
       designDeltas: capTable(page.designDeltas),
       designConflictResolutions: capTable(page.designConflictResolutions),
+      humanDesignApprovals: capTable(page.humanDesignApprovals),
     }
   }
 }
@@ -4631,6 +4698,7 @@ function addDomainPagination(page: StudioPageSnapshot, state: ObservedStudioStat
       designerReadyGates: page.designerReadyGates,
       designDeltas: page.designDeltas,
       designConflictResolutions: page.designConflictResolutions,
+      humanDesignApprovals: page.humanDesignApprovals,
     }
   }
 }
@@ -5415,6 +5483,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       designerReadyGateProjections: new Map(),
       designDeltaProjections: new Map(),
       designConflictResolutionProjections: new Map(),
+      humanDesignApprovalProjections: new Map(),
       sourceGovernanceProjections: new Map(),
       runs: [], runsObserved: false, managedRuns: [], managedRunTotal: 0, managedRunsObserved: false,
       handoffs: [], handoffTotal: 0, handoffsObserved: false,
@@ -7299,6 +7368,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "design-conflict-resolution-unavailable",
           "Design Conflict Resolution metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "readiness" && engine.humanDesignApproval) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.humanDesignApproval!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product?.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.humanDesignApprovalProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Human Design Approval projection was unavailable or did not bind the exact Product and Initiative revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `human-design-approval-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Human Design Approval metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "human-design-approval-unavailable",
+          "Human Design Approval metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

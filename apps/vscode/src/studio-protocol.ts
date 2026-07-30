@@ -393,6 +393,7 @@ export interface ReadinessPageSnapshot extends StudioPageBase {
   designerReadyGates: StudioTableSnapshot
   designDeltas: StudioTableSnapshot
   designConflictResolutions: StudioTableSnapshot
+  humanDesignApprovals: StudioTableSnapshot
   portability: StudioDefinitionEntry[]
 }
 
@@ -1413,7 +1414,7 @@ function isRunPage(page: Record<string, unknown>): boolean {
 function isReadinessPage(page: Record<string, unknown>): boolean {
   return hasOnlyKeys(page, [
     "kind", "route", "title", "purpose", "source", "actions", "design", "statement", "sections", "gaps", "conflicts", "nextAction",
-    "health", "designRevisions", "productRevisions", "portableDesignSnapshots", "designerReadyGates", "designDeltas", "designConflictResolutions", "portability",
+    "health", "designRevisions", "productRevisions", "portableDesignSnapshots", "designerReadyGates", "designDeltas", "designConflictResolutions", "humanDesignApprovals", "portability",
   ]) && isPageBase(page, "readiness") && page.kind === "readiness" && isNonEmptyString(page.statement) &&
     Array.isArray(page.sections) && page.sections.length === studioRoutes.length && page.sections.every(isOverviewSection) &&
     Array.isArray(page.gaps) && page.gaps.length <= 1_000 && page.gaps.every(isStudioIssue) &&
@@ -1423,6 +1424,7 @@ function isReadinessPage(page: Record<string, unknown>): boolean {
     isTableSnapshot(page.productRevisions) && isTableSnapshot(page.portableDesignSnapshots) &&
     isTableSnapshot(page.designerReadyGates) && isTableSnapshot(page.designDeltas) &&
     isTableSnapshot(page.designConflictResolutions) &&
+    isTableSnapshot(page.humanDesignApprovals) &&
     Array.isArray(page.portability) && page.portability.every(isDefinitionEntry)
 }
 

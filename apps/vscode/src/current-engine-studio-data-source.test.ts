@@ -43,6 +43,7 @@ import {
   type DesignerReadyGateProjection,
   type DesignDeltaProjection,
   type DesignConflictResolutionProjection,
+  type HumanDesignApprovalProjection,
   type BusinessCapabilityMapProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
@@ -2827,6 +2828,77 @@ function designConflictResolutionProjection(): DesignConflictResolutionProjectio
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function humanDesignApprovalProjection(): HumanDesignApprovalProjection {
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "human-design-approval-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "83838383-8383-4383-8383-838383838383", revision: 2, digest: `sha256:${"4".repeat(64)}` as const },
+    prerequisiteCount: 5,
+    completePrerequisiteCount: 4,
+    decisionCount: 1,
+    approveCount: 1,
+    rejectCount: 0,
+    requestChangeCount: 0,
+    abstainCount: 0,
+    expiredDecisionCount: 1,
+    revokedDecisionCount: 0,
+    staleBindingCount: 1,
+    staleSourceReferenceCount: 2,
+    unresolvedQuestionCount: 3,
+    candidateResult: "approved-candidate" as const,
+    reviewState: "recorded-human-decision" as const,
+    approverAuthorityState: "not-established" as const,
+    separationOfDutiesEnforcementState: "not-established" as const,
+    state: "attention-required" as const,
+    reasons: ["The recorded human design decision candidate is expired"],
+    assessedAt: "2026-07-30T00:55:00.000Z",
+    authorityBoundary: "human-design-approval-status-is-observational-and-does-not-verify-approver-authority-enforce-separation-of-duties-establish-design-approval-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "human-design-approval-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      membershipDigest: `sha256:${"5".repeat(64)}` as const,
+      state: "candidate" as const,
+      prerequisiteCatalogDigest: `sha256:${"6".repeat(64)}` as const,
+      subject: {
+        kind: "finalized-figma-snapshot-import-candidate" as const,
+        recordId: "71717171-7171-4171-8171-717171717171",
+        revision: 2,
+        digest: `sha256:${"7".repeat(64)}` as const,
+        membershipDigest: `sha256:${"8".repeat(64)}` as const,
+        externalFileIdentityDigest: `sha256:${"9".repeat(64)}` as const,
+        returnedExternalVersionDigest: `sha256:${"a".repeat(64)}` as const,
+        itemCatalogDigest: `sha256:${"b".repeat(64)}` as const,
+        itemCount: 18,
+      },
+      scopeDigest: `sha256:${"c".repeat(64)}` as const,
+      decisionDefinitionDigest: `sha256:${"d".repeat(64)}` as const,
+      decisionReceiptDigest: `sha256:${"e".repeat(64)}` as const,
+      decisionKind: "approve-candidate" as const,
+      decisionDigest: `sha256:${"f".repeat(64)}` as const,
+      decisionLifecycleState: "active-candidate" as const,
+      candidateResult: status.candidateResult,
+      reviewState: status.reviewState,
+      updatedAt: "2026-07-30T00:54:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-results-and-digests-only-not-design-content-decision-rationale-condition-evidence-source-content-human-attribution-personal-content-secrets-credentials-or-permissions" as const,
+    authorityBoundary: "human-design-approval-projection-is-read-only-and-does-not-verify-approver-authority-enforce-separation-of-duties-establish-design-approval-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function p0P4ReadinessGateProjectionWithoutCandidate(): P0P4ReadinessGateProjection {
   const projection = p0P4ReadinessGateProjection()
   const body = {
@@ -3494,6 +3566,8 @@ interface HarnessOptions {
   designDeltaProjectionError?: Error
   designConflictResolutionProjection?: DesignConflictResolutionProjection
   designConflictResolutionProjectionError?: Error
+  humanDesignApprovalProjection?: HumanDesignApprovalProjection
+  humanDesignApprovalProjectionError?: Error
   commandResult?: unknown
 }
 
@@ -3799,6 +3873,14 @@ function harness(options: HarnessOptions = {}) {
         project: async () => {
           if (options.designConflictResolutionProjectionError) throw options.designConflictResolutionProjectionError
           return options.designConflictResolutionProjection!
+        },
+      },
+    } : {}),
+    ...(options.humanDesignApprovalProjection || options.humanDesignApprovalProjectionError ? {
+      humanDesignApproval: {
+        project: async () => {
+          if (options.humanDesignApprovalProjectionError) throw options.humanDesignApprovalProjectionError
+          return options.humanDesignApprovalProjection!
         },
       },
     } : {}),
@@ -4971,6 +5053,64 @@ describe("current-engine Product Studio data source", () => {
     expect(snapshot.page.kind === "readiness" && snapshot.page.designConflictResolutions.rows).toEqual([])
     expect(snapshot.page.kind === "readiness" && snapshot.page.gaps).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "design-conflict-resolution-unavailable", severity: "blocker" }),
+    ]))
+  })
+
+  it("projects privacy-safe Human Design Approval metadata on the native readiness page", async () => {
+    const projection = humanDesignApprovalProjection()
+    const { source } = harness({ humanDesignApprovalProjection: projection })
+    const snapshot = await source.readSnapshot("readiness")
+    expect(snapshot.page.kind === "readiness" && snapshot.page.humanDesignApprovals).toMatchObject({
+      id: "human-design-approval",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          subject: `${projection.candidate?.subject.recordId} · r2 · returned version ${projection.candidate?.subject.returnedExternalVersionDigest} · 18 items`,
+          scope: `${projection.candidate?.scopeDigest} · exact finalized snapshot`,
+          evidence: `definition ${projection.candidate?.decisionDefinitionDigest} · receipt ${projection.candidate?.decisionReceiptDigest}`,
+          decision: `approve-candidate · active-candidate · ${projection.candidate?.decisionDigest}`,
+          result: "approved-candidate · attention-required · recorded-human-decision",
+          prerequisites: "4/5 complete",
+          governance: "approver authority not-established · separation enforcement not-established",
+          gaps: "1 expired · 0 revoked · 3 questions · 1 stale bindings · 2 stale Source references",
+          boundary: expect.stringContaining("does not verify approver authority"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private design content|private decision rationale|private condition|private evidence|private source content|private human attribution|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("fails closed when Human Design Approval metadata is unavailable, mismatched, or audit-invalid", async () => {
+    const unavailable = harness({ humanDesignApprovalProjectionError: new Error("private upstream failure") })
+    const unavailableSnapshot = await unavailable.source.readSnapshot("readiness")
+    expect(unavailableSnapshot.page.kind === "readiness" && unavailableSnapshot.page.humanDesignApprovals.rows).toEqual([])
+    expect(unavailableSnapshot.page.kind === "readiness" && unavailableSnapshot.page.gaps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: `human-design-approval-${initiative.id}-unavailable`, severity: "warning" }),
+    ]))
+    expect(unavailable.diagnostics.join(" ")).not.toContain("private upstream failure")
+
+    const projection = humanDesignApprovalProjection()
+    const body = { ...projection, product: { ...projection.product, digest: `sha256:${"0".repeat(64)}` as const } }
+    const mismatched = harness({ humanDesignApprovalProjection: { ...body, snapshotDigest: canonicalDigest(body) } })
+    const mismatchedSnapshot = await mismatched.source.readSnapshot("readiness")
+    expect(mismatchedSnapshot.page.kind === "readiness" && mismatchedSnapshot.page.humanDesignApprovals.rows).toEqual([])
+    expect(mismatched.diagnostics).toEqual(expect.arrayContaining([
+      expect.stringContaining("did not bind the exact Product and Initiative revisions"),
+    ]))
+
+    const invalidAudit = harness({
+      audit: { valid: false, events: 1 },
+      humanDesignApprovalProjection: humanDesignApprovalProjection(),
+    })
+    const invalidAuditSnapshot = await invalidAudit.source.readSnapshot("readiness")
+    expect(invalidAuditSnapshot.page.kind === "readiness" && invalidAuditSnapshot.page.humanDesignApprovals.rows).toEqual([])
+    expect(invalidAuditSnapshot.page.kind === "readiness" && invalidAuditSnapshot.page.gaps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "human-design-approval-unavailable", severity: "blocker" }),
     ]))
   })
 
