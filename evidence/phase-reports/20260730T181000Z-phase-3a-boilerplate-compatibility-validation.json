@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-3a-delivery-planning",
+  "evidenceScope": "phase-3a-boilerplate-compatibility-validation-local",
+  "recordedAt": "2026-07-30T18:12:00Z",
+  "sourceCommit": "a53eb50f36e38827730b88857c00f0cf4be6c8f1",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 88,
+    "hostAssessments": 352,
+    "hostAssessmentsImplemented": 352,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:c60c30fc4552eecd3cf737e73c69f23813ff5222e3a57d42cfd88b1a43687345",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 243784,
+      "digest": "sha256:df96affc3ba6a4eac9fa49e3ea1848d1990f5705f0b7ddd50ead3bd4cbc2b510",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260730T180300Z-phase-3a-boilerplate-compatibility-validation-packages.json",
+      "bytes": 3925,
+      "digest": "sha256:5ef925d9b4c42ddc5dd0b0725652e90576dd5c766a45c32b883c71ca9f723579",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260730T180200Z-phase-3a-boilerplate-compatibility-validation-host-behavior.json",
+      "bytes": 3575,
+      "digest": "sha256:6c73869fa218754756ec640d0fd26cbe8fd045af53722a33a31dca19dacddd52",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260730T180400Z-phase-3a-boilerplate-compatibility-validation.json",
+      "bytes": 59769,
+      "digest": "sha256:798c6d25c3b6073bfdfda6e01e0bea03393af9d0e1381f9c5ad1e58df0b31e32",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
+      "bytes": 5234,
+      "digest": "sha256:f44e4a370357cf7738fbf691a49178cd3da20ff4d01e593e2af1565cfc1b71d7",
+      "kind": "gaep-phase2-realistic-figma-loop-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 116,
+        "testsPassed": 981,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:3a4cabdcb1cd405e845e9ef0426b86685411b052c8fe68a883fd039025f0facd"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:456794974a2f35f6846e2407b91b3996571d09b6e09b052ddc637c5358a38c31"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 26,
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:696a7cd397d8a1b6289700d7bc4ec8f52c5559c6255cb102c35f7b1f9ad8de16"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:f7e6fec7866973a5d5d9d8f08ae5aeaa0eebea85d266f8ab1ad13b2290f606ef"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:3e31477f7f4a08eae5dd43a94276feaf4d7eff22ae9d2b11086681f8ea24a8c5"
+    }
+  ],
+  "testsDigest": "sha256:4a193ba738a6f14a1fdc97fd454885587a6e65631f7c76d7fd17c16df1b1336b",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-3a-boilerplate-compatibility-validation-closure",
+      "state": "not-established",
+      "basis": "the exact versioned Boilerplate Compatibility Validation candidate lifecycle, one exact subject per selected Boilerplate Selection and Binding decision, complete canonical fourteen-dimension coverage, evidence and exception candidates, deterministic validation-subject, dimension, evidence, validation and assessment receipts, exact current Implementation Unit Model, Dependency Mapping, Technology Profile, Boilerplate Registry and Boilerplate Selection and Binding bindings, immutable revisions, privacy-safe Product Studio table and four host projections are implemented locally; candidates do not establish compatibility truth or completeness, validation decisions, actual asset behavior, test execution, design validity, security, privacy or licensing approval, exception or waiver authority, effective selection or binding, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, native-host interaction or Product Owner acceptance"
+    }
+  ],
+  "knownGapsDigest": "sha256:224a21c6f5577fa22db70113a0adb855aeb5459355a6799e3651d041e5ebd03a",
+  "claimBoundary": "This report binds the exact governed Boilerplate Compatibility Validation candidate lifecycle, immutable revision history, one exact validation subject per selected Boilerplate Selection and Binding decision, complete canonical architecture, build, dependency, deployment, design-system, licensing-policy, packaging, platform, runtime, security-privacy, stack, test, toolchain and version dimension coverage, exact evidence and exception candidates, deterministic validation-subject, dimension, evidence, validation and assessment receipts, exact current Product, Initiative, Implementation Unit Model, Dependency Mapping, Technology Profile, Boilerplate Registry and Boilerplate Selection and Binding bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Compatibility validations remain governed candidates only. This report does not establish compatibility truth or completeness, validation decisions, actual asset behavior, test execution, design validity, security, privacy or licensing approval, exception or waiver authority, effective selection or binding, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+}
