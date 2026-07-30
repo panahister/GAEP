@@ -2633,6 +2633,24 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         return renderPhaseDashboard(client.readPhaseDashboard(product))
     }
 
+    fun readPhase2UxFigmaDashboard(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        require(initiative.productId == product.id) {
+            "The Initiative does not target the exact current Product. Reload the Product and Initiative."
+        }
+        return renderPhase2UxFigmaDashboard(client.readPhase2UxFigmaDashboard(product, initiative))
+    }
+
+    fun readPhase2UxFigmaDashboardTables(initiativeId: UUID): List<AccessibleMetadataTable> {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        require(initiative.productId == product.id) {
+            "The Initiative does not target the exact current Product. Reload the Product and Initiative."
+        }
+        return AccessibleDashboardTables.phase2UxFigma(client.readPhase2UxFigmaDashboard(product, initiative))
+    }
+
     fun readPhase1Summary(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)
@@ -3068,6 +3086,54 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
         append(
             "Product text, source bytes, local paths, provider output, prompts, executable state, and credentials are withheld.",
+        )
+    }
+
+    private fun renderPhase2UxFigmaDashboard(dashboard: Phase2UxFigmaDashboard): String = buildString {
+        appendLine("GAEP exact Phase 2 UX and Figma dashboard")
+        appendLine()
+        appendLine("Initiative: ${dashboard.initiativeId} · revision ${dashboard.initiativeRevision} · ${dashboard.initiativeState}")
+        appendLine("Phase state: ${dashboard.phaseState}")
+        appendLine(
+            "Sources: ${dashboard.currentSourceCount} current · ${dashboard.attentionRequiredSourceCount} attention-required · " +
+                "${dashboard.unavailableSourceCount} unavailable · 23 expected",
+        )
+        appendLine(
+            "Experience: ${dashboard.personaCount} personas · ${dashboard.designRoleCount} design roles · " +
+                "${dashboard.journeyCount} journeys · ${dashboard.screenCount} screens · ${dashboard.stateCount} states",
+        )
+        appendLine(
+            "Design system: ${dashboard.requirementCount} requirements · ${dashboard.tokenCount} tokens · " +
+                "${dashboard.componentCount} components · ${dashboard.accessibilityRuleCount} accessibility rules",
+        )
+        appendLine(
+            "Figma and trace: ${dashboard.figmaFileCount} files · ${dashboard.designBindingCount} bindings · " +
+                "connection ${dashboard.figmaConnectionState} · write ${dashboard.figmaWriteExecutionState} · " +
+                "import ${dashboard.figmaImportExecutionState}",
+        )
+        appendLine(
+            "Drift: ${dashboard.driftObservationCount} observations · ${dashboard.driftCount} drift · " +
+                "${dashboard.unassessedDriftCount} unassessed · ${dashboard.remediationCandidateCount} remediation candidates",
+        )
+        appendLine(
+            "Freshness: ${dashboard.freshnessState} · ${dashboard.staleBindingCount} stale bindings · " +
+                "${dashboard.staleSourceReferenceCount} stale sources · ${dashboard.unresolvedQuestionCount} questions",
+        )
+        appendLine(
+            "Product Owner acceptance: not established · approval: not established · Baseline Set designation: " +
+                "not established · readiness and phase-entry authority: not established",
+        )
+        appendLine("Snapshot digest: ${dashboard.snapshotDigest}")
+        appendLine()
+        dashboard.sources.forEach { source ->
+            appendLine("${source.title} · ${source.group} · ${source.availability} · ${source.assessmentState ?: "no state inferred"}")
+        }
+        appendLine()
+        dashboard.limitations.forEach { appendLine("Limit: $it") }
+        appendLine()
+        append(
+            "Boundary: this derived read-only view is not a second source of truth and grants no completeness, validity, " +
+                "approval, baseline, readiness, phase-entry, Figma, remediation, implementation, release, or action authority.",
         )
     }
 

@@ -93,6 +93,54 @@ data class PhaseDashboardFramework(
     val compositionDigest: String,
 )
 
+data class Phase2UxFigmaDashboardSource(
+    val id: String,
+    val title: String,
+    val group: String,
+    val projectionKind: String,
+    val availability: String,
+    val assessmentState: String?,
+)
+
+data class Phase2UxFigmaDashboard(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val phaseState: String,
+    val currentSourceCount: Int,
+    val attentionRequiredSourceCount: Int,
+    val unavailableSourceCount: Int,
+    val personaCount: Int,
+    val designRoleCount: Int,
+    val journeyCount: Int,
+    val screenCount: Int,
+    val stateCount: Int,
+    val requirementCount: Int,
+    val tokenCount: Int,
+    val componentCount: Int,
+    val accessibilityRuleCount: Int,
+    val figmaFileCount: Int,
+    val designBindingCount: Int,
+    val figmaConnectionState: String,
+    val figmaWriteExecutionState: String,
+    val figmaImportExecutionState: String,
+    val driftObservationCount: Int,
+    val driftCount: Int,
+    val unassessedDriftCount: Int,
+    val remediationCandidateCount: Int,
+    val freshnessState: String,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val sources: List<Phase2UxFigmaDashboardSource>,
+    val limitations: List<String>,
+    val snapshotDigest: String,
+)
+
 data class Phase1SummaryDashboard(
     val productId: UUID,
     val productRevision: Long,
@@ -3249,6 +3297,12 @@ internal object PortableDesignProtocol {
         "Persisted discard or apply state does not independently prove machine-local stage or recovery-journal cleanup."
     private const val PHASE_DASHBOARD_AUTHORITY_BOUNDARY =
         "dashboard-is-a-projection-not-phase-approval-readiness-or-applicability-evidence"
+    private const val PHASE2_UX_FIGMA_SOURCE_BOUNDARY =
+        "current-governed-product-initiative-and-phase-2-projections-only"
+    private const val PHASE2_UX_FIGMA_PRIVACY_BOUNDARY =
+        "dashboard-exposes-identities-counts-statuses-times-and-digests-not-design-requirement-figma-source-human-or-personal-content-secrets-credentials-or-permissions"
+    private const val PHASE2_UX_FIGMA_AUTHORITY_BOUNDARY =
+        "phase-2-dashboard-is-a-derived-read-only-view-not-a-second-source-of-truth-or-completeness-validity-approval-baseline-readiness-remediation-figma-implementation-or-action-authority"
     private const val PHASE1_SUMMARY_AUTHORITY_BOUNDARY =
         "phase-1-summary-is-read-only-candidate-evidence-not-readiness-approval-acceptance-phase-entry-release-or-action-authority"
     private const val PHASE1_SUMMARY_SOURCE_BOUNDARY =
@@ -10688,6 +10742,269 @@ internal object PortableDesignProtocol {
             sourceBoundary = "governed-repository-and-engine-only",
             limitations = limitations,
             compositionDigest = compositionDigest,
+        )
+    }
+
+    fun parsePhase2UxFigmaDashboardEnvelope(
+        envelope: JsonObject,
+        expectedProduct: ProductBinding,
+        expectedInitiative: InitiativeEntryRecord,
+    ): Phase2UxFigmaDashboard {
+        val dashboard = readResult(envelope).requireObject()
+        dashboard.requireExactKeys(
+            "schemaVersion", "kind", "viewDefinitionVersion", "phase", "product", "initiative", "sources",
+            "experience", "designSystem", "figma", "governance", "drift", "freshness", "phaseStatus",
+            "evidenceCues", "observedAt", "sourceBoundary", "privacyBoundary", "limitations",
+            "authorityBoundary", "snapshotDigest",
+        )
+        if (dashboard.requireInt("schemaVersion") != 1 ||
+            dashboard.requireString("kind") != "phase-2-ux-figma-dashboard" ||
+            dashboard.requireString("viewDefinitionVersion") != "gaep-phase-2-ux-figma-dashboard-v1" ||
+            dashboard.requireString("sourceBoundary") != PHASE2_UX_FIGMA_SOURCE_BOUNDARY ||
+            dashboard.requireString("privacyBoundary") != PHASE2_UX_FIGMA_PRIVACY_BOUNDARY ||
+            dashboard.requireString("authorityBoundary") != PHASE2_UX_FIGMA_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+
+        val phase = dashboard.get("phase").requireObject()
+        phase.requireExactKeys("id", "label")
+        if (phase.requireString("id") != "phase-2-design" ||
+            phase.requireString("label") != "Phase 2 — UX and Figma Loop"
+        ) throw invalidResponse()
+
+        val product = dashboard.get("product").requireObject()
+        product.requireExactKeys("recordType", "recordId", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("recordId")
+        val productRevision = product.requireLong("revision")
+        val productDigest = product.requireDigest("digest")
+        if (product.requireString("recordType") != "product" || productId != expectedProduct.id ||
+            productRevision != expectedProduct.revision || productDigest != expectedProduct.digest
+        ) throw invalidResponse()
+
+        val initiative = dashboard.get("initiative").requireObject()
+        initiative.requireExactKeys("recordType", "recordId", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("recordId")
+        val initiativeRevision = initiative.requireLong("revision")
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("active", "blocked", "cancelled", "completed", "proposed"))
+        if (initiative.requireString("recordType") != "initiative" || initiativeId != expectedInitiative.id ||
+            initiativeRevision != expectedInitiative.revision || initiativeDigest != expectedInitiative.digest ||
+            initiativeState != expectedInitiative.state || expectedInitiative.productId != expectedProduct.id
+        ) throw invalidResponse()
+
+        val definitions = listOf(
+            listOf("design-applicability", "Design applicability", "experience", "design-applicability-projection"),
+            listOf("design-personas-roles", "Design personas and roles", "experience", "design-persona-role-projection"),
+            listOf("user-journeys", "User journeys", "experience", "user-journey-model-projection"),
+            listOf("information-architecture", "Information architecture", "experience", "information-architecture-model-projection"),
+            listOf("screen-state-inventory", "Screen and state inventory", "experience", "screen-state-inventory-projection"),
+            listOf("design-requirements", "Design requirements", "design-system", "design-requirements-projection"),
+            listOf("design-system-token-contract", "Design system and token contract", "design-system", "design-system-token-contract-projection"),
+            listOf("accessibility-design-rules", "Accessibility design rules", "design-system", "accessibility-design-rules-projection"),
+            listOf("responsive-multi-platform-targets", "Responsive and multi-platform targets", "design-system", "responsive-multi-platform-targets-projection"),
+            listOf("manual-figma-execution-path", "Manual Figma execution path", "figma-exchange", "manual-figma-execution-path-projection"),
+            listOf("figma-mcp-capability-discovery", "Figma MCP capability discovery", "figma-exchange", "figma-mcp-capability-discovery-projection"),
+            listOf("figma-read-snapshot", "Figma read snapshot", "figma-exchange", "figma-read-snapshot-projection"),
+            listOf("figma-context-import", "Figma context import", "figma-exchange", "figma-context-import-projection"),
+            listOf("outbound-design-brief-package", "Outbound design brief package", "figma-exchange", "outbound-design-brief-package-projection"),
+            listOf("governed-figma-write", "Governed Figma write", "figma-exchange", "governed-figma-write-projection"),
+            listOf("finalized-figma-snapshot-import", "Finalized Figma snapshot import", "figma-exchange", "finalized-figma-snapshot-import-projection"),
+            listOf("design-to-requirement-binding", "Design-to-requirement binding", "governance-assurance", "design-to-requirement-binding-projection"),
+            listOf("designer-ready-gate", "Designer-ready gate", "governance-assurance", "designer-ready-gate-projection"),
+            listOf("design-delta", "Design delta", "governance-assurance", "design-delta-projection"),
+            listOf("design-conflict-resolution", "Design conflict resolution", "governance-assurance", "design-conflict-resolution-projection"),
+            listOf("human-design-approval", "Human design approval", "governance-assurance", "human-design-approval-projection"),
+            listOf("design-baseline", "Design baseline", "governance-assurance", "design-baseline-projection"),
+            listOf("design-drift-detection", "Design drift detection", "governance-assurance", "design-drift-detection-projection"),
+        )
+        val sourcesElement = dashboard.get("sources")
+        if (sourcesElement == null || !sourcesElement.isJsonArray || sourcesElement.asJsonArray.size() != definitions.size) {
+            throw invalidResponse()
+        }
+        val statePattern = Regex("^[a-z0-9]+(?:-[a-z0-9]+)*$")
+        val sources = sourcesElement.asJsonArray.mapIndexed { index, element ->
+            val source = element.requireObject()
+            source.requireKeys(
+                setOf("id", "title", "group", "projectionKind", "availability"),
+                setOf("binding", "assessment"),
+            )
+            val definition = definitions[index]
+            val id = source.requireString("id")
+            val title = source.requireString("title")
+            val group = source.requireString("group")
+            val projectionKind = source.requireString("projectionKind")
+            val availability = source.requireOneOf(
+                "availability",
+                setOf("current", "attention-required", "unavailable"),
+            )
+            if (id != definition[0] || title != definition[1] || group != definition[2] ||
+                projectionKind != definition[3] || !statePattern.matches(projectionKind)
+            ) throw invalidResponse()
+            val binding = source.get("binding")
+            val assessment = source.get("assessment")
+            var assessmentState: String? = null
+            if (availability == "unavailable") {
+                if (binding != null || assessment != null) throw invalidResponse()
+            } else {
+                val exactBinding = binding.requireObject()
+                exactBinding.requireKeys(
+                    setOf("snapshotDigest", "observedAt", "assessedAt"),
+                    setOf("candidate"),
+                )
+                exactBinding.requireDigest("snapshotDigest")
+                exactBinding.requireInstant("observedAt")
+                exactBinding.requireInstant("assessedAt")
+                exactBinding.get("candidate")?.requireObject()?.let { candidate ->
+                    candidate.requireExactKeys("recordId", "revision", "digest")
+                    candidate.requireNonEmptyUuid("recordId")
+                    if (candidate.requireLong("revision") !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+                    candidate.requireDigest("digest")
+                }
+                val exactAssessment = assessment.requireObject()
+                exactAssessment.requireKeys(
+                    setOf(
+                        "state", "reasonCount", "staleBindingCount", "staleSourceReferenceCount",
+                        "unresolvedQuestionCount", "attentionRequired",
+                    ),
+                    setOf("reviewState", "candidateResult"),
+                )
+                assessmentState = exactAssessment.requireString("state").takeIf(statePattern::matches)
+                    ?: throw invalidResponse()
+                exactAssessment.get("reviewState")?.requireString()?.takeIf(statePattern::matches)
+                    ?: if (exactAssessment.has("reviewState")) throw invalidResponse() else null
+                exactAssessment.get("candidateResult")?.requireString()?.takeIf(statePattern::matches)
+                    ?: if (exactAssessment.has("candidateResult")) throw invalidResponse() else null
+                exactAssessment.requireBoundedNonNegativeInt("reasonCount", 4_096)
+                exactAssessment.requireBoundedNonNegativeInt("staleBindingCount", Int.MAX_VALUE)
+                exactAssessment.requireBoundedNonNegativeInt("staleSourceReferenceCount", Int.MAX_VALUE)
+                exactAssessment.requireBoundedNonNegativeInt("unresolvedQuestionCount", 4_096)
+                val attentionRequired = exactAssessment.requireBoolean("attentionRequired")
+                if ((availability == "attention-required") != attentionRequired) throw invalidResponse()
+            }
+            Phase2UxFigmaDashboardSource(id, title, group, projectionKind, availability, assessmentState)
+        }
+
+        fun counts(name: String, keys: List<String>): Map<String, Int> {
+            val value = dashboard.get(name).requireObject()
+            value.requireExactKeys(*keys.toTypedArray())
+            return keys.associateWith { key -> value.requireBoundedNonNegativeInt(key, 10_000_000) }
+        }
+        val experience = counts("experience", listOf(
+            "personaCount", "designRoleCount", "journeyCount", "touchpointCount",
+            "informationArchitectureNodeCount", "routeCount", "screenCount", "stateCount", "variantCount",
+        ))
+        val designSystem = counts("designSystem", listOf(
+            "requirementCount", "designSystemCount", "tokenCount", "componentCount", "accessibilityRuleCount",
+            "accessibilityCheckCount", "platformTargetCount", "breakpointCount",
+        ))
+        val figma = dashboard.get("figma").requireObject()
+        figma.requireExactKeys(
+            "fileCount", "componentCount", "variableCount", "designBindingCount", "humanReviewedBindingCount",
+            "unboundDesignItemCount", "connectionState", "writeExecutionState", "importExecutionState",
+        )
+        listOf(
+            "fileCount", "componentCount", "variableCount", "designBindingCount",
+            "humanReviewedBindingCount", "unboundDesignItemCount",
+        ).forEach { figma.requireBoundedNonNegativeInt(it, 10_000_000) }
+        val figmaConnectionState = figma.requireOneOf("connectionState", setOf("not-established"))
+        val figmaWriteExecutionState = figma.requireOneOf("writeExecutionState", setOf("not-performed"))
+        val figmaImportExecutionState = figma.requireOneOf("importExecutionState", setOf("not-performed"))
+
+        val governance = dashboard.get("governance").requireObject()
+        governance.requireExactKeys(
+            "designerReadyCandidateResult", "humanApprovalCandidateResult", "baselineCandidateResult",
+            "baselineDesignationState", "driftCandidateResult", "approvalState", "readinessState",
+            "remediationEffectState",
+        )
+        listOf(
+            "designerReadyCandidateResult", "humanApprovalCandidateResult", "baselineCandidateResult", "driftCandidateResult",
+        ).forEach { if (!statePattern.matches(governance.requireString(it))) throw invalidResponse() }
+        if (governance.requireString("baselineDesignationState") != "not-established" ||
+            governance.requireString("approvalState") != "not-established" ||
+            governance.requireString("readinessState") != "not-established" ||
+            governance.requireString("remediationEffectState") != "not-applied"
+        ) throw invalidResponse()
+
+        val drift = counts("drift", listOf(
+            "observationCount", "requirementToDesignCount", "designToImplementationCount", "conformantCount",
+            "driftCount", "unassessedCount", "blockerCount", "highSeverityCount", "remediationCandidateCount",
+        ))
+        val freshness = dashboard.get("freshness").requireObject()
+        freshness.requireKeys(
+            setOf("state", "staleBindingCount", "staleSourceReferenceCount", "unresolvedQuestionCount"),
+            setOf("oldestSourceObservedAt", "newestSourceObservedAt"),
+        )
+        val staleBindingCount = freshness.requireBoundedNonNegativeInt("staleBindingCount", 10_000_000)
+        val staleSourceReferenceCount = freshness.requireBoundedNonNegativeInt("staleSourceReferenceCount", 10_000_000)
+        val unresolvedQuestionCount = freshness.requireBoundedNonNegativeInt("unresolvedQuestionCount", 10_000_000)
+        val freshnessState = freshness.requireOneOf("state", setOf("current", "attention-required"))
+        freshness.get("oldestSourceObservedAt")?.let(::parseInstant)
+        freshness.get("newestSourceObservedAt")?.let(::parseInstant)
+        if ((freshnessState == "attention-required") != (staleBindingCount > 0 || staleSourceReferenceCount > 0)) {
+            throw invalidResponse()
+        }
+
+        val phaseStatus = dashboard.get("phaseStatus").requireObject()
+        phaseStatus.requireExactKeys(
+            "state", "expectedSourceCount", "currentSourceCount", "attentionRequiredSourceCount",
+            "unavailableSourceCount", "sourceCatalogDigest", "productOwnerAcceptance", "readinessAuthority",
+            "phaseEntryAuthority",
+        )
+        val phaseState = phaseStatus.requireOneOf("state", setOf("candidate-complete-for-human-review", "attention-required"))
+        val expectedSourceCount = phaseStatus.requireBoundedNonNegativeInt("expectedSourceCount", 10_000_000)
+        val currentSourceCount = phaseStatus.requireBoundedNonNegativeInt("currentSourceCount", 10_000_000)
+        val attentionRequiredSourceCount = phaseStatus.requireBoundedNonNegativeInt("attentionRequiredSourceCount", 10_000_000)
+        val unavailableSourceCount = phaseStatus.requireBoundedNonNegativeInt("unavailableSourceCount", 10_000_000)
+        if (expectedSourceCount != definitions.size || currentSourceCount != sources.count { it.availability == "current" } ||
+            attentionRequiredSourceCount != sources.count { it.availability == "attention-required" } ||
+            unavailableSourceCount != sources.count { it.availability == "unavailable" } ||
+            currentSourceCount + attentionRequiredSourceCount + unavailableSourceCount != definitions.size ||
+            phaseStatus.requireDigest("sourceCatalogDigest") != canonicalDigest(sourcesElement) ||
+            phaseStatus.requireString("productOwnerAcceptance") != "not-established" ||
+            phaseStatus.requireString("readinessAuthority") != "not-established" ||
+            phaseStatus.requireString("phaseEntryAuthority") != "not-established" ||
+            (phaseState == "attention-required") !=
+                (attentionRequiredSourceCount > 0 || unavailableSourceCount > 0 || freshnessState == "attention-required")
+        ) throw invalidResponse()
+
+        val evidenceCues = dashboard.get("evidenceCues").requireObject()
+        evidenceCues.requireExactKeys("freshness", "confidence")
+        val expectedEvidenceFreshness = when {
+            unavailableSourceCount > 0 -> "unknown"
+            freshnessState == "attention-required" -> "potentially-stale"
+            else -> "current"
+        }
+        if (evidenceCues.requireString("freshness") != expectedEvidenceFreshness) throw invalidResponse()
+        val confidence = evidenceCues.get("confidence").requireObject()
+        confidence.requireExactKeys("state", "basis")
+        if (confidence.requireString("state") != "not-assessed" ||
+            confidence.requireString("basis") != "no-governed-confidence-evaluation-is-bound"
+        ) throw invalidResponse()
+
+        dashboard.requireInstant("observedAt")
+        val limitationsElement = dashboard.get("limitations")
+        if (limitationsElement == null || !limitationsElement.isJsonArray || limitationsElement.asJsonArray.size() !in 2..8) {
+            throw invalidResponse()
+        }
+        val limitations = limitationsElement.asJsonArray.map { value ->
+            portableText(value.requireString(), minimum = 4).also { if (it.length > 1_000) throw invalidResponse() }
+        }
+        val snapshotDigest = dashboard.requireDigest("snapshotDigest")
+        val digestBody = dashboard.deepCopy().apply { remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        return Phase2UxFigmaDashboard(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, phaseState, currentSourceCount, attentionRequiredSourceCount, unavailableSourceCount,
+            experience.getValue("personaCount"), experience.getValue("designRoleCount"),
+            experience.getValue("journeyCount"), experience.getValue("screenCount"), experience.getValue("stateCount"),
+            designSystem.getValue("requirementCount"), designSystem.getValue("tokenCount"),
+            designSystem.getValue("componentCount"), designSystem.getValue("accessibilityRuleCount"),
+            figma.requireBoundedNonNegativeInt("fileCount", 10_000_000),
+            figma.requireBoundedNonNegativeInt("designBindingCount", 10_000_000),
+            figmaConnectionState, figmaWriteExecutionState, figmaImportExecutionState,
+            drift.getValue("observationCount"), drift.getValue("driftCount"), drift.getValue("unassessedCount"),
+            drift.getValue("remediationCandidateCount"), freshnessState, staleBindingCount,
+            staleSourceReferenceCount, unresolvedQuestionCount, sources, limitations, snapshotDigest,
         )
     }
 

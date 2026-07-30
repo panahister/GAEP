@@ -179,6 +179,66 @@ internal object AccessibleDashboardTables {
         ),
     )
 
+    fun phase2UxFigma(dashboard: Phase2UxFigmaDashboard): List<AccessibleMetadataTable> {
+        val common = Triple(
+            dashboard.snapshotDigest,
+            "current-governed-product-initiative-and-phase-2-projections-only",
+            "phase-2-dashboard-is-a-derived-read-only-view-not-a-second-source-of-truth-or-completeness-validity-approval-baseline-readiness-remediation-figma-implementation-or-action-authority",
+        )
+        return listOf(
+            table(
+                id = "phase2-summary",
+                title = "Phase 2 UX and Figma summary",
+                columns = columns("area" to "Area", "inventory" to "Inventory", "boundary" to "Authority boundary"),
+                rows = listOf(
+                    row(
+                        "experience", "area" to "Experience",
+                        "inventory" to "${dashboard.personaCount} personas · ${dashboard.designRoleCount} roles · " +
+                            "${dashboard.journeyCount} journeys · ${dashboard.screenCount} screens · ${dashboard.stateCount} states",
+                        "boundary" to "Counts do not establish completeness or validity.",
+                    ),
+                    row(
+                        "figma", "area" to "Figma and trace",
+                        "inventory" to "${dashboard.figmaFileCount} files · ${dashboard.designBindingCount} bindings",
+                        "boundary" to "Connection ${dashboard.figmaConnectionState}; write ${dashboard.figmaWriteExecutionState}; " +
+                            "import ${dashboard.figmaImportExecutionState}.",
+                    ),
+                    row(
+                        "governance", "area" to "Governance",
+                        "inventory" to "${dashboard.currentSourceCount} current · ${dashboard.attentionRequiredSourceCount} attention · " +
+                            "${dashboard.unavailableSourceCount} unavailable",
+                        "boundary" to "Approval, Baseline Set, readiness, phase entry, and remediation effects are not established.",
+                    ),
+                ),
+                total = 3L,
+                omitted = 0L,
+                snapshotDigest = common.first,
+                sourceBoundary = common.second,
+                authorityBoundary = common.third,
+            ),
+            table(
+                id = "phase2-sources",
+                title = "Phase 2 governed source projections",
+                columns = columns(
+                    "source" to "Source", "group" to "Group", "projection-kind" to "Projection kind",
+                    "availability" to "Availability", "assessment" to "Assessment",
+                ),
+                rows = dashboard.sources.map { source ->
+                    row(
+                        source.id, "source" to source.title, "group" to source.group,
+                        "projection-kind" to source.projectionKind, "availability" to source.availability,
+                        "assessment" to (source.assessmentState ?: "no state inferred"),
+                    )
+                },
+                total = dashboard.sources.size.toLong(),
+                omitted = 0L,
+                snapshotDigest = common.first,
+                sourceBoundary = common.second,
+                authorityBoundary = common.third,
+            ),
+        )
+    }
+
     fun changeImpact(dashboard: ChangeImpactDashboard): List<AccessibleMetadataTable> {
         val common = Triple(
             dashboard.snapshotDigest,

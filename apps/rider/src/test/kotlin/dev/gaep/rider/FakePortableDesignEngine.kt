@@ -361,6 +361,11 @@ fun main(arguments: Array<String>) {
                 request.getAsJsonObject("params"),
                 workspacePath,
             )
+            "dashboard.phase2UxFigma" -> handlePhase2UxFigmaDashboard(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
             "dashboard.phase1Summary" -> handlePhase1Summary(
                 id,
                 request.getAsJsonObject("params"),
@@ -5158,6 +5163,151 @@ private fun handlePhaseDashboard(id: Long, params: JsonObject, workspacePath: St
     }
     if (workspacePath.endsWith("bad-dashboard-private")) {
         value.addProperty("sourceRoot", "$privateRoot/$privateCredential")
+    }
+    writeResult(id, value)
+}
+
+private fun handlePhase2UxFigmaDashboard(id: Long, params: JsonObject, workspacePath: String) {
+    val productDigest = canonicalDigest(productRecord())
+    val initiativeRevision = initiativeState.get("revision").asLong
+    val initiativeDigest = canonicalDigest(initiativeState)
+    if (params.keySet() != setOf(
+            "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+            "expectedInitiativeRevision", "expectedInitiativeDigest",
+        ) || params.get("expectedProductId").asString != productId.toString() ||
+        params.get("expectedProductRevision").asLong != 7L || params.get("expectedProductDigest").asString != productDigest ||
+        params.get("expectedInitiativeId").asString != initiativeId.toString() ||
+        params.get("expectedInitiativeRevision").asLong != initiativeRevision ||
+        params.get("expectedInitiativeDigest").asString != initiativeDigest
+    ) {
+        writeError(id, -32_602, "PHASE2_UX_FIGMA_PARAMS_INVALID", "PRIVATE PHASE 2 DASHBOARD PARAMS")
+        return
+    }
+    val definitions = listOf(
+        listOf("design-applicability", "Design applicability", "experience", "design-applicability-projection"),
+        listOf("design-personas-roles", "Design personas and roles", "experience", "design-persona-role-projection"),
+        listOf("user-journeys", "User journeys", "experience", "user-journey-model-projection"),
+        listOf("information-architecture", "Information architecture", "experience", "information-architecture-model-projection"),
+        listOf("screen-state-inventory", "Screen and state inventory", "experience", "screen-state-inventory-projection"),
+        listOf("design-requirements", "Design requirements", "design-system", "design-requirements-projection"),
+        listOf("design-system-token-contract", "Design system and token contract", "design-system", "design-system-token-contract-projection"),
+        listOf("accessibility-design-rules", "Accessibility design rules", "design-system", "accessibility-design-rules-projection"),
+        listOf("responsive-multi-platform-targets", "Responsive and multi-platform targets", "design-system", "responsive-multi-platform-targets-projection"),
+        listOf("manual-figma-execution-path", "Manual Figma execution path", "figma-exchange", "manual-figma-execution-path-projection"),
+        listOf("figma-mcp-capability-discovery", "Figma MCP capability discovery", "figma-exchange", "figma-mcp-capability-discovery-projection"),
+        listOf("figma-read-snapshot", "Figma read snapshot", "figma-exchange", "figma-read-snapshot-projection"),
+        listOf("figma-context-import", "Figma context import", "figma-exchange", "figma-context-import-projection"),
+        listOf("outbound-design-brief-package", "Outbound design brief package", "figma-exchange", "outbound-design-brief-package-projection"),
+        listOf("governed-figma-write", "Governed Figma write", "figma-exchange", "governed-figma-write-projection"),
+        listOf("finalized-figma-snapshot-import", "Finalized Figma snapshot import", "figma-exchange", "finalized-figma-snapshot-import-projection"),
+        listOf("design-to-requirement-binding", "Design-to-requirement binding", "governance-assurance", "design-to-requirement-binding-projection"),
+        listOf("designer-ready-gate", "Designer-ready gate", "governance-assurance", "designer-ready-gate-projection"),
+        listOf("design-delta", "Design delta", "governance-assurance", "design-delta-projection"),
+        listOf("design-conflict-resolution", "Design conflict resolution", "governance-assurance", "design-conflict-resolution-projection"),
+        listOf("human-design-approval", "Human design approval", "governance-assurance", "human-design-approval-projection"),
+        listOf("design-baseline", "Design baseline", "governance-assurance", "design-baseline-projection"),
+        listOf("design-drift-detection", "Design drift detection", "governance-assurance", "design-drift-detection-projection"),
+    )
+    val sources = JsonArray().apply {
+        definitions.forEach { definition ->
+            add(JsonObject().apply {
+                addProperty("id", definition[0])
+                addProperty("title", definition[1])
+                addProperty("group", definition[2])
+                addProperty("projectionKind", definition[3])
+                addProperty("availability", "unavailable")
+            })
+        }
+    }
+    fun zeroCounts(vararg names: String) = JsonObject().apply { names.forEach { addProperty(it, 0) } }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "phase-2-ux-figma-dashboard")
+        addProperty("viewDefinitionVersion", "gaep-phase-2-ux-figma-dashboard-v1")
+        add("phase", JsonObject().apply {
+            addProperty("id", "phase-2-design")
+            addProperty("label", "Phase 2 — UX and Figma Loop")
+        })
+        add("product", JsonObject().apply {
+            addProperty("recordType", "product")
+            addProperty("recordId", productId.toString())
+            addProperty("revision", 7)
+            addProperty("digest", productDigest)
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("recordType", "initiative")
+            addProperty("recordId", initiativeId.toString())
+            addProperty("revision", initiativeRevision)
+            addProperty("digest", initiativeDigest)
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("sources", sources)
+        add("experience", zeroCounts(
+            "personaCount", "designRoleCount", "journeyCount", "touchpointCount",
+            "informationArchitectureNodeCount", "routeCount", "screenCount", "stateCount", "variantCount",
+        ))
+        add("designSystem", zeroCounts(
+            "requirementCount", "designSystemCount", "tokenCount", "componentCount", "accessibilityRuleCount",
+            "accessibilityCheckCount", "platformTargetCount", "breakpointCount",
+        ))
+        add("figma", zeroCounts(
+            "fileCount", "componentCount", "variableCount", "designBindingCount",
+            "humanReviewedBindingCount", "unboundDesignItemCount",
+        ).apply {
+            addProperty("connectionState", "not-established")
+            addProperty("writeExecutionState", "not-performed")
+            addProperty("importExecutionState", "not-performed")
+        })
+        add("governance", JsonObject().apply {
+            addProperty("designerReadyCandidateResult", "not-assessed")
+            addProperty("humanApprovalCandidateResult", "not-assessed")
+            addProperty("baselineCandidateResult", "not-assessed")
+            addProperty("baselineDesignationState", "not-established")
+            addProperty("driftCandidateResult", "not-assessed")
+            addProperty("approvalState", "not-established")
+            addProperty("readinessState", "not-established")
+            addProperty("remediationEffectState", "not-applied")
+        })
+        add("drift", zeroCounts(
+            "observationCount", "requirementToDesignCount", "designToImplementationCount", "conformantCount",
+            "driftCount", "unassessedCount", "blockerCount", "highSeverityCount", "remediationCandidateCount",
+        ))
+        add("freshness", zeroCounts("staleBindingCount", "staleSourceReferenceCount", "unresolvedQuestionCount").apply {
+            addProperty("state", "current")
+        })
+        add("phaseStatus", JsonObject().apply {
+            addProperty("state", "attention-required")
+            addProperty("expectedSourceCount", 23)
+            addProperty("currentSourceCount", 0)
+            addProperty("attentionRequiredSourceCount", 0)
+            addProperty("unavailableSourceCount", 23)
+            addProperty("sourceCatalogDigest", canonicalDigest(sources))
+            addProperty("productOwnerAcceptance", "not-established")
+            addProperty("readinessAuthority", "not-established")
+            addProperty("phaseEntryAuthority", "not-established")
+        })
+        add("evidenceCues", dashboardEvidenceCues("unknown"))
+        addProperty("observedAt", "2026-07-30T03:10:00.000Z")
+        addProperty("sourceBoundary", "current-governed-product-initiative-and-phase-2-projections-only")
+        addProperty(
+            "privacyBoundary",
+            "dashboard-exposes-identities-counts-statuses-times-and-digests-not-design-requirement-figma-source-human-or-personal-content-secrets-credentials-or-permissions",
+        )
+        add("limitations", JsonArray().apply {
+            add("Missing projections remain explicitly unavailable and do not establish completeness.")
+            add("No approval, Baseline Set, readiness, Figma, remediation, implementation, release, or action authority is granted.")
+        })
+        addProperty(
+            "authorityBoundary",
+            "phase-2-dashboard-is-a-derived-read-only-view-not-a-second-source-of-truth-or-completeness-validity-approval-baseline-readiness-remediation-figma-implementation-or-action-authority",
+        )
+    }
+    if (workspacePath.endsWith("bad-phase2-dashboard-private")) {
+        content.addProperty("sourceRoot", "$privateRoot/$privateCredential")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-phase2-dashboard-digest")) {
+        value.getAsJsonObject("phaseStatus").addProperty("unavailableSourceCount", 22)
     }
     writeResult(id, value)
 }

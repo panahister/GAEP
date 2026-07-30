@@ -820,6 +820,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
 
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
+        val phase2UxFigmaButton = JButton("Show Phase 2 UX and Figma dashboard…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Design, Requirement, Figma, Source, human, personal, local-path, secret, credential, permission, and authority content is withheld.",
+                    "GAEP Phase 2 UX and Figma Dashboard",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Show Phase 2 UX and Figma dashboard", status, output, buttons) {
+                    controller.readPhase2UxFigmaDashboard(initiativeId)
+                }
+            }
+        }
+        buttons += phase2UxFigmaButton
+        actions.add(phase2UxFigmaButton)
+
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

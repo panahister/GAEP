@@ -580,6 +580,30 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readPhase2UxFigmaDashboard(
+        product: ProductBinding,
+        initiative: InitiativeEntryRecord,
+    ): Phase2UxFigmaDashboard {
+        PortableDesignProtocol.validateProductId(product.id)
+        PortableDesignProtocol.validateProductRevision(product.revision)
+        PortableDesignProtocol.validateProductRevision(initiative.revision)
+        require(initiative.productId == product.id) { "Initiative must target the exact current Product" }
+        require(Regex("^sha256:[0-9a-f]{64}$").matches(product.digest) &&
+            Regex("^sha256:[0-9a-f]{64}$").matches(initiative.digest)) { "Exact digests must be SHA-256" }
+        val params = JsonObject().apply {
+            addProperty("expectedProductId", product.id.toString())
+            addProperty("expectedProductRevision", product.revision)
+            addProperty("expectedProductDigest", product.digest)
+            addProperty("expectedInitiativeId", initiative.id.toString())
+            addProperty("expectedInitiativeRevision", initiative.revision)
+            addProperty("expectedInitiativeDigest", initiative.digest)
+        }
+        return portableRequest("dashboard.phase2UxFigma", params) { envelope ->
+            PortableDesignProtocol.parsePhase2UxFigmaDashboardEnvelope(envelope, product, initiative)
+        }
+    }
+
+    @Synchronized
     fun readPhase1Summary(product: ProductBinding, initiative: InitiativeEntryRecord): Phase1SummaryDashboard {
         PortableDesignProtocol.validateProductId(product.id)
         PortableDesignProtocol.validateProductRevision(product.revision)

@@ -2368,6 +2368,50 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Phase 2 UX Figma dashboard is exact accessible private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("phase2-dashboard-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val product = client.readProductBinding()
+            val initiative = client.readInitiative(entryId)
+            val dashboard = client.readPhase2UxFigmaDashboard(product, initiative)
+            assertEquals(23, dashboard.sources.size)
+            assertEquals("attention-required", dashboard.phaseState)
+            assertEquals(23, dashboard.unavailableSourceCount)
+            assertEquals("not-established", dashboard.figmaConnectionState)
+            assertEquals("not-performed", dashboard.figmaWriteExecutionState)
+
+            val controller = RiderProductController(client)
+            val rendered = controller.readPhase2UxFigmaDashboard(entryId)
+            assertTrue(rendered.contains("GAEP exact Phase 2 UX and Figma dashboard"))
+            assertTrue(rendered.contains("23 unavailable · 23 expected"))
+            assertTrue(rendered.contains("Product Owner acceptance: not established"))
+            assertTrue(rendered.contains("grants no completeness, validity, approval, baseline"))
+            assertFalse(rendered.contains("Founder Product"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+
+            val tables = controller.readPhase2UxFigmaDashboardTables(entryId)
+            assertEquals(listOf("phase2-summary", "phase2-sources"), tables.map { it.id })
+            assertEquals(23, tables.last().rows.size)
+            assertTrue(tables.all { it.snapshotDigest == dashboard.snapshotDigest })
+            assertTrue(tables.all { it.authorityBoundary.contains("not-a-second-source-of-truth") })
+        }
+
+        listOf("bad-phase2-dashboard-digest", "bad-phase2-dashboard-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val product = client.readProductBinding()
+                val initiative = client.readInitiative(entryId)
+                val error = hostError { client.readPhase2UxFigmaDashboard(product, initiative) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))
