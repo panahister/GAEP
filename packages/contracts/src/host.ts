@@ -18,6 +18,7 @@ import { figmaToBoilerplateMappingInputSchema } from "./figma-to-boilerplate-map
 import { designToCodeBindingRegistryInputSchema } from "./design-to-code-binding-registry.js"
 import { routeScreenComponentMappingInputSchema } from "./route-screen-component-mapping.js"
 import { testMethodologyInputSchema } from "./test-methodology.js"
+import { testInventoryInputSchema } from "./test-inventory.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -805,6 +806,18 @@ export const hostTestMethodologyReviseParamsSchema = z.object({
   record: testMethodologyInputSchema,
 }).strict()
 
+export const hostTestInventoryCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: testInventoryInputSchema,
+}).strict()
+
+export const hostTestInventoryReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: testInventoryInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1502,6 +1515,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.testMethodology.revise", hostTestMethodologyReviseParamsSchema),
   requestVariant("planning.testMethodology.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.testMethodology.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.testInventory.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.testInventory.create", hostTestInventoryCreateParamsSchema),
+  requestVariant("planning.testInventory.revise", hostTestInventoryReviseParamsSchema),
+  requestVariant("planning.testInventory.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.testInventory.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),
