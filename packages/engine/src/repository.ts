@@ -56,6 +56,7 @@ import {
   processModelSchema,
   dataModelSchema,
   businessCapabilityMapSchema,
+  backlogHierarchySchema,
   businessRuleCatalogSchema,
   businessUnderstandingSchema,
   changeSchema,
@@ -128,6 +129,8 @@ const directoryNames = [
   "business-understanding-history",
   "business-capability-maps",
   "business-capability-map-history",
+  "backlog-hierarchies",
+  "backlog-hierarchy-history",
   "value-stream-models",
   "value-stream-model-history",
   "operating-models",
@@ -981,6 +984,8 @@ export class GaepRepository {
       ["business-understanding-history", /^business-understanding-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["business-capability-maps", /^[0-9a-f-]+\.json$/i],
       ["business-capability-map-history", /^business-capability-map-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
+      ["backlog-hierarchies", /^[0-9a-f-]+\.json$/i],
+      ["backlog-hierarchy-history", /^backlog-hierarchy-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["value-stream-models", /^[0-9a-f-]+\.json$/i],
       ["value-stream-model-history", /^value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i],
       ["operating-models", /^[0-9a-f-]+\.json$/i],
@@ -1156,6 +1161,10 @@ export class GaepRepository {
     if (/^business-capability-maps\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^business-capability-map-history\/business-capability-map-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, businessCapabilityMapSchema)
+    }
+    if (/^backlog-hierarchies\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^backlog-hierarchy-history\/backlog-hierarchy-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, backlogHierarchySchema)
     }
     if (/^value-stream-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^value-stream-model-history\/value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
