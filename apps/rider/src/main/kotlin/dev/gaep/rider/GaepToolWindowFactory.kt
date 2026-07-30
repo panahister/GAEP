@@ -738,6 +738,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += boilerplateCompatibilityValidationButton
         actions.add(boilerplateCompatibilityValidationButton)
 
+        val figmaToBoilerplateMappingButton = JButton("Inspect Figma-to-Boilerplate Mapping…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Figma content, design-item, binding, unit, profile, registry-entry, validation-subject, requirement, target-locator, evidence, reviewer, personal data, local paths, secrets, credentials, design validity, approval or baseline, mapping truth or completeness, effective selection or compatibility truth, retrieval, import, instantiation, generated assets, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, and action authority are withheld.",
+                    "GAEP Figma-to-Boilerplate Mapping",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Figma-to-Boilerplate Mapping", status, output, buttons) {
+                    controller.readFigmaToBoilerplateMapping(initiativeId)
+                }
+            }
+        }
+        buttons += figmaToBoilerplateMappingButton
+        actions.add(figmaToBoilerplateMappingButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

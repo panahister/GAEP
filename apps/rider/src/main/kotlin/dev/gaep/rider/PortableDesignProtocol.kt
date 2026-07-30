@@ -2784,6 +2784,61 @@ data class BoilerplateCompatibilityValidationProjection(
     val snapshotDigest: String,
 )
 
+data class FigmaToBoilerplateMappingReference(val recordId: UUID, val revision: Long, val digest: String)
+
+data class FigmaToBoilerplateMappingRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val mappingSubjectCatalogDigest: String,
+    val targetCatalogDigest: String,
+    val traceReceiptDigest: String,
+    val mappingReceiptDigest: String,
+    val assessmentReceiptDigest: String,
+    val subjectCount: Int,
+    val mappedCandidateCount: Int,
+    val conflictCandidateCount: Int,
+    val unmappedCandidateCount: Int,
+    val notAssessedCount: Int,
+    val reviewState: String,
+)
+
+data class FigmaToBoilerplateMappingProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val state: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val dependencies: Map<String, FigmaToBoilerplateMappingReference>,
+    val designBindingCount: Int,
+    val subjectCount: Int,
+    val mappedCandidateCount: Int,
+    val conflictCandidateCount: Int,
+    val unmappedCandidateCount: Int,
+    val notAssessedCount: Int,
+    val componentMappingCount: Int,
+    val tokenMappingCount: Int,
+    val layoutMappingCount: Int,
+    val responsiveBehaviorMappingCount: Int,
+    val platformTargetMappingCount: Int,
+    val missingSubjectCount: Int,
+    val invalidSubjectCount: Int,
+    val targetGapCount: Int,
+    val traceGapCount: Int,
+    val evidenceGapCount: Int,
+    val staleBindingCount: Int,
+    val staleDependencyCount: Int,
+    val invalidCandidateCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: FigmaToBoilerplateMappingRecordView?,
+    val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -3999,6 +4054,12 @@ internal object PortableDesignProtocol {
         "boilerplate-compatibility-validation-projection-is-read-only-and-does-not-establish-compatibility-truth-or-completeness-validation-decision-actual-asset-behavior-test-execution-design-validity-security-privacy-or-licensing-approval-exception-waiver-selection-binding-effectiveness-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
     private const val BOILERPLATE_COMPATIBILITY_VALIDATION_STATUS_AUTHORITY_BOUNDARY =
         "boilerplate-compatibility-validation-status-is-observational-and-does-not-establish-compatibility-truth-or-completeness-validation-decision-actual-asset-behavior-test-execution-design-validity-security-privacy-or-licensing-approval-exception-waiver-selection-binding-effectiveness-source-retrieval-import-instantiation-architecture-baseline-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
+    private const val FIGMA_TO_BOILERPLATE_MAPPING_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-subject-target-trace-mapping-assessment-snapshot-digests-only-not-figma-content-design-item-binding-unit-profile-registry-entry-validation-subject-requirement-target-locator-evidence-reviewer-personal-data-secrets-credentials-or-machine-paths"
+    private const val FIGMA_TO_BOILERPLATE_MAPPING_PROJECTION_AUTHORITY_BOUNDARY =
+        "figma-to-boilerplate-mapping-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-truth-or-completeness-selection-binding-effectiveness-compatibility-truth-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
+    private const val FIGMA_TO_BOILERPLATE_MAPPING_STATUS_AUTHORITY_BOUNDARY =
+        "figma-to-boilerplate-mapping-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-truth-or-completeness-selection-binding-effectiveness-compatibility-truth-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -10622,6 +10683,162 @@ internal object PortableDesignProtocol {
             conflictingOutcomeCount, selectionBindingGapCount, staleBindingCount, staleImplementationUnitModelCount,
             staleDependencyMappingCount, staleTechnologyProfileCount, staleBoilerplateRegistryCount,
             staleSelectionBindingCount, invalidCandidateCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseFigmaToBoilerplateMappingEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): FigmaToBoilerplateMappingProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "figma-to-boilerplate-mapping-projection" ||
+            projection.requireString("privacyBoundary") != FIGMA_TO_BOILERPLATE_MAPPING_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != FIGMA_TO_BOILERPLATE_MAPPING_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        val dependencyNames = listOf(
+            "designApplicability", "designSystemTokenContract", "responsiveMultiPlatformTargets",
+            "finalizedFigmaSnapshotImport", "designToRequirementBinding", "designBaseline",
+            "implementationUnitModel", "technologyProfile", "boilerplateRegistry",
+            "boilerplateSelectionBinding", "boilerplateCompatibilityValidation",
+        )
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "designBindingCount", "subjectCount", "mappedCandidateCount", "conflictCandidateCount",
+                "unmappedCandidateCount", "notAssessedCount", "componentMappingCount", "tokenMappingCount",
+                "layoutMappingCount", "responsiveBehaviorMappingCount", "platformTargetMappingCount",
+                "missingSubjectCount", "invalidSubjectCount", "targetGapCount", "traceGapCount", "evidenceGapCount",
+                "staleBindingCount", "staleDependencyCount", "invalidCandidateCount", "unresolvedQuestionCount",
+                "reviewState", "state", "reasons", "assessedAt", "authorityBoundary",
+            ),
+            (dependencyNames + "candidate").toSet(),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "figma-to-boilerplate-mapping-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != FIGMA_TO_BOILERPLATE_MAPPING_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        fun reference(name: String): FigmaToBoilerplateMappingReference? = status.get(name)?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            FigmaToBoilerplateMappingReference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val candidateReference = reference("candidate")
+        val dependencies = dependencyNames.mapNotNull { name -> reference(name)?.let { name to it } }.toMap()
+        val designBindingCount = status.requireBoundedNonNegativeInt("designBindingCount", 32_768)
+        val subjectCount = status.requireBoundedNonNegativeInt("subjectCount", 32_768)
+        val mappedCandidateCount = status.requireBoundedNonNegativeInt("mappedCandidateCount", 32_768)
+        val conflictCandidateCount = status.requireBoundedNonNegativeInt("conflictCandidateCount", 32_768)
+        val unmappedCandidateCount = status.requireBoundedNonNegativeInt("unmappedCandidateCount", 32_768)
+        val notAssessedCount = status.requireBoundedNonNegativeInt("notAssessedCount", 32_768)
+        if (mappedCandidateCount + conflictCandidateCount + unmappedCandidateCount + notAssessedCount != subjectCount) {
+            throw invalidResponse()
+        }
+        val componentMappingCount = status.requireBoundedNonNegativeInt("componentMappingCount", 32_768)
+        val tokenMappingCount = status.requireBoundedNonNegativeInt("tokenMappingCount", 32_768)
+        val layoutMappingCount = status.requireBoundedNonNegativeInt("layoutMappingCount", 32_768)
+        val responsiveBehaviorMappingCount = status.requireBoundedNonNegativeInt("responsiveBehaviorMappingCount", 32_768)
+        val platformTargetMappingCount = status.requireBoundedNonNegativeInt("platformTargetMappingCount", 32_768)
+        if (componentMappingCount + tokenMappingCount + layoutMappingCount + responsiveBehaviorMappingCount +
+            platformTargetMappingCount != subjectCount
+        ) throw invalidResponse()
+        val missingSubjectCount = status.requireBoundedNonNegativeInt("missingSubjectCount", 32_768)
+        val invalidSubjectCount = status.requireBoundedNonNegativeInt("invalidSubjectCount", 32_768)
+        val targetGapCount = status.requireBoundedNonNegativeInt("targetGapCount", 32_768)
+        val traceGapCount = status.requireBoundedNonNegativeInt("traceGapCount", 32_768)
+        val evidenceGapCount = status.requireBoundedNonNegativeInt("evidenceGapCount", 32_768)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 1)
+        val staleDependencyCount = status.requireBoundedNonNegativeInt("staleDependencyCount", 11)
+        val invalidCandidateCount = status.requireBoundedNonNegativeInt("invalidCandidateCount", 1)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val state = status.requireOneOf("state", setOf("attention-required", "candidate-complete"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gaps = conflictCandidateCount + unmappedCandidateCount + notAssessedCount + missingSubjectCount +
+            invalidSubjectCount + targetGapCount + traceGapCount + evidenceGapCount + staleBindingCount +
+            staleDependencyCount + invalidCandidateCount + unresolvedQuestionCount
+        if ((state == "candidate-complete" &&
+                (gaps > 0 || candidateReference == null || dependencies.size != dependencyNames.size ||
+                    subjectCount != designBindingCount || mappedCandidateCount != subjectCount ||
+                    reviewState != "ready-for-human-review" || reasons.isNotEmpty())) ||
+            (state == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "mappingSubjectCatalogDigest", "targetCatalogDigest",
+                "traceReceiptDigest", "mappingReceiptDigest", "assessmentReceiptDigest", "subjectCount",
+                "mappedCandidateCount", "conflictCandidateCount", "unmappedCandidateCount", "notAssessedCount",
+                "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = FigmaToBoilerplateMappingRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("mappingSubjectCatalogDigest"),
+                value.requireDigest("targetCatalogDigest"), value.requireDigest("traceReceiptDigest"),
+                value.requireDigest("mappingReceiptDigest"), value.requireDigest("assessmentReceiptDigest"),
+                value.requireBoundedNonNegativeInt("subjectCount", 32_768),
+                value.requireBoundedNonNegativeInt("mappedCandidateCount", 32_768),
+                value.requireBoundedNonNegativeInt("conflictCandidateCount", 32_768),
+                value.requireBoundedNonNegativeInt("unmappedCandidateCount", 32_768),
+                value.requireBoundedNonNegativeInt("notAssessedCount", 32_768),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                candidateReference == null || candidateReference.recordId != id || candidateReference.revision != revision ||
+                candidateReference.digest != record.digest || record.subjectCount != subjectCount ||
+                record.mappedCandidateCount != mappedCandidateCount || record.conflictCandidateCount != conflictCandidateCount ||
+                record.unmappedCandidateCount != unmappedCandidateCount || record.notAssessedCount != notAssessedCount ||
+                record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((candidateReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) {
+            throw invalidResponse()
+        }
+        return FigmaToBoilerplateMappingProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, state, reviewState, reasons, dependencies, designBindingCount, subjectCount,
+            mappedCandidateCount, conflictCandidateCount, unmappedCandidateCount, notAssessedCount,
+            componentMappingCount, tokenMappingCount, layoutMappingCount, responsiveBehaviorMappingCount,
+            platformTargetMappingCount, missingSubjectCount, invalidSubjectCount, targetGapCount, traceGapCount,
+            evidenceGapCount, staleBindingCount, staleDependencyCount, invalidCandidateCount,
+            unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }
 

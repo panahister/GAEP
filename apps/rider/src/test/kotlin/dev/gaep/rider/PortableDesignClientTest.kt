@@ -2207,6 +2207,66 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Figma to Boilerplate Mapping projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("figma-to-boilerplate-mapping-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readFigmaToBoilerplateMapping(entryId)
+            assertEquals("attention-required", projection.state)
+            assertEquals("held", projection.reviewState)
+            assertEquals(2, projection.designBindingCount)
+            assertEquals(2, projection.subjectCount)
+            assertEquals(1, projection.mappedCandidateCount)
+            assertEquals(1, projection.conflictCandidateCount)
+            assertEquals(1, projection.componentMappingCount)
+            assertEquals(1, projection.tokenMappingCount)
+            assertEquals(1, projection.invalidSubjectCount)
+            assertEquals(1, projection.targetGapCount)
+            assertEquals(1, projection.traceGapCount)
+            assertEquals(11, projection.dependencies.size)
+
+            val rendered = RiderProductController(client).readFigmaToBoilerplateMapping(entryId)
+            assertTrue(rendered.contains("GAEP governed Figma-to-Boilerplate Mapping candidate"))
+            assertTrue(rendered.contains("2 design bindings · 2 mapping subjects"))
+            assertTrue(rendered.contains("1 mapped · 1 conflicts · 0 unmapped · 0 not assessed"))
+            assertTrue(rendered.contains("1 component · 1 token · 0 layout · 0 responsive · 0 platform-target"))
+            assertTrue(rendered.contains("no Figma content, design-item, binding, unit, profile"))
+            assertTrue(rendered.contains("does not connect to or call Figma"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("targetCandidate"))
+            assertFalse(rendered.contains("requirementKeys"))
+            assertFalse(rendered.contains("mappedBy"))
+        }
+
+        listOf(
+            "bad-figma-to-boilerplate-mapping-snapshot-digest",
+            "bad-figma-to-boilerplate-mapping-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readFigmaToBoilerplateMapping(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf(
+            "bad-figma-to-boilerplate-mapping-snapshot-binding",
+            "bad-figma-to-boilerplate-mapping-design-applicability-binding",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readFigmaToBoilerplateMapping(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

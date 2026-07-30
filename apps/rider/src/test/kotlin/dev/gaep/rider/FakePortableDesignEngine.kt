@@ -54,6 +54,7 @@ private val technologyProfileId = UUID.fromString("89898989-8989-4989-8989-89898
 private val boilerplateRegistryId = UUID.fromString("90909090-9090-4090-8090-909090909090")
 private val boilerplateSelectionBindingId = UUID.fromString("a9a9a9a9-a9a9-49a9-89a9-a9a9a9a9a9a9")
 private val boilerplateCompatibilityValidationId = UUID.fromString("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+private val figmaToBoilerplateMappingId = UUID.fromString("abababab-abab-4bab-8bab-abababababab")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -339,6 +340,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.boilerplateCompatibilityValidation.snapshot" -> handleBoilerplateCompatibilityValidation(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.figmaToBoilerplateMapping.snapshot" -> handleFigmaToBoilerplateMapping(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4456,6 +4462,113 @@ private fun handleBoilerplateCompatibilityValidation(id: Long, params: JsonObjec
         workspacePath.endsWith("bad-boilerplate-compatibility-validation-snapshot-private") -> {
             value.addProperty("claim", "$privateRoot/$privateCredential")
         }
+    }
+    writeResult(id, value)
+}
+
+private fun handleFigmaToBoilerplateMapping(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE FIGMA TO BOILERPLATE MAPPING PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-figma-to-boilerplate-mapping-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T20:30:00.000Z"
+    val candidateDigest = "sha256:${"4".repeat(64)}"
+    fun reference(recordId: UUID, revision: Int, digest: String) = JsonObject().apply {
+        addProperty("recordId", recordId.toString())
+        addProperty("revision", revision)
+        addProperty("digest", digest)
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "figma-to-boilerplate-mapping-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "figma-to-boilerplate-mapping-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", reference(figmaToBoilerplateMappingId, 2, candidateDigest))
+            add("designApplicability", reference(
+                designApplicabilityId, 2,
+                if (workspacePath.endsWith("bad-figma-to-boilerplate-mapping-design-applicability-binding")) "sha256:${"3".repeat(64)}" else "sha256:${"4".repeat(64)}",
+            ))
+            add("designSystemTokenContract", reference(designSystemTokenContractId, 2, "sha256:${"1".repeat(64)}"))
+            add("responsiveMultiPlatformTargets", reference(responsiveMultiPlatformTargetsId, 2, "sha256:${"5".repeat(64)}"))
+            add("finalizedFigmaSnapshotImport", reference(finalizedFigmaSnapshotImportId, 2, "sha256:${"c".repeat(64)}"))
+            add("designToRequirementBinding", reference(designToRequirementBindingId, 2, "sha256:${"d".repeat(64)}"))
+            add("designBaseline", reference(designBaselineId, 3, "sha256:${"e".repeat(64)}"))
+            add("implementationUnitModel", reference(implementationUnitModelId, 2, "sha256:${"5".repeat(64)}"))
+            add("technologyProfile", reference(technologyProfileId, 2, "sha256:${"6".repeat(64)}"))
+            add("boilerplateRegistry", reference(boilerplateRegistryId, 2, "sha256:${"3".repeat(64)}"))
+            add("boilerplateSelectionBinding", reference(boilerplateSelectionBindingId, 2, "sha256:${"8".repeat(64)}"))
+            add("boilerplateCompatibilityValidation", reference(boilerplateCompatibilityValidationId, 2, "sha256:${"d".repeat(64)}"))
+            addProperty("designBindingCount", 2)
+            addProperty("subjectCount", 2)
+            addProperty("mappedCandidateCount", 1)
+            addProperty("conflictCandidateCount", 1)
+            addProperty("unmappedCandidateCount", 0)
+            addProperty("notAssessedCount", 0)
+            addProperty("componentMappingCount", 1)
+            addProperty("tokenMappingCount", 1)
+            addProperty("layoutMappingCount", 0)
+            addProperty("responsiveBehaviorMappingCount", 0)
+            addProperty("platformTargetMappingCount", 0)
+            addProperty("missingSubjectCount", 0)
+            addProperty("invalidSubjectCount", 1)
+            addProperty("targetGapCount", 1)
+            addProperty("traceGapCount", 1)
+            addProperty("evidenceGapCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleDependencyCount", 0)
+            addProperty("invalidCandidateCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more Figma-to-Boilerplate Mapping subjects require human review") })
+            addProperty("assessedAt", assessedAt)
+            addProperty("authorityBoundary", "figma-to-boilerplate-mapping-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-truth-or-completeness-selection-binding-effectiveness-compatibility-truth-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority")
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", figmaToBoilerplateMappingId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("state", "candidate")
+            addProperty("mappingSubjectCatalogDigest", "sha256:${"5".repeat(64)}")
+            addProperty("targetCatalogDigest", "sha256:${"6".repeat(64)}")
+            addProperty("traceReceiptDigest", "sha256:${"7".repeat(64)}")
+            addProperty("mappingReceiptDigest", "sha256:${"8".repeat(64)}")
+            addProperty("assessmentReceiptDigest", "sha256:${"9".repeat(64)}")
+            addProperty("subjectCount", 2)
+            addProperty("mappedCandidateCount", 1)
+            addProperty("conflictCandidateCount", 1)
+            addProperty("unmappedCandidateCount", 0)
+            addProperty("notAssessedCount", 0)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T20:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-subject-target-trace-mapping-assessment-snapshot-digests-only-not-figma-content-design-item-binding-unit-profile-registry-entry-validation-subject-requirement-target-locator-evidence-reviewer-personal-data-secrets-credentials-or-machine-paths")
+        addProperty("authorityBoundary", "figma-to-boilerplate-mapping-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-truth-or-completeness-selection-binding-effectiveness-compatibility-truth-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-figma-to-boilerplate-mapping-snapshot-digest") ->
+            value.getAsJsonObject("candidate").addProperty("subjectCount", 3)
+        workspacePath.endsWith("bad-figma-to-boilerplate-mapping-snapshot-private") ->
+            value.addProperty("targetCandidate", "$privateRoot/$privateCredential")
     }
     writeResult(id, value)
 }

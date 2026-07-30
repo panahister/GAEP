@@ -456,6 +456,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readFigmaToBoilerplateMapping(initiativeId: UUID): FigmaToBoilerplateMappingProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("planning.figmaToBoilerplateMapping.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseFigmaToBoilerplateMappingEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
