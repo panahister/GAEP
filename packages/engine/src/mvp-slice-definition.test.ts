@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import type { BacklogHierarchyInput, MvpSliceDefinitionInput, PrioritizationModelInput } from "@gaep/contracts"
+import type { AcceptanceCriteriaInput, BacklogHierarchyInput, MvpSliceDefinitionInput, PrioritizationModelInput } from "@gaep/contracts"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -214,6 +214,61 @@ describe("MVP and Slice Definition engine", () => {
     }
   }
 
+  function acceptanceCriteriaInput(
+    initiativeId: string,
+    context: MvpSliceDefinitionInput["context"],
+    hierarchy: Awaited<ReturnType<typeof engine.backlogHierarchy.create>>,
+    mvp: Awaited<ReturnType<typeof engine.mvpSliceDefinition.create>>,
+    priority: Awaited<ReturnType<typeof engine.prioritizationModel.create>>,
+  ): AcceptanceCriteriaInput {
+    const subjects = hierarchy.nodes.filter((node) => node.level === "story" || node.level === "task")
+    return {
+      initiativeId,
+      context,
+      informationClassification: "internal",
+      title: "Atlas structured Acceptance Criteria candidate",
+      hierarchy: { recordId: hierarchy.id, revision: hierarchy.revision, digest: canonicalDigest(hierarchy) },
+      mvpSliceDefinition: { recordId: mvp.id, revision: mvp.revision, digest: canonicalDigest(mvp) },
+      prioritizationModel: { recordId: priority.id, revision: priority.revision, digest: canonicalDigest(priority) },
+      verificationMethods: [{
+        key: "automated-contract-test",
+        kind: "automated-test",
+        state: "candidate-defined",
+        evidenceReferences: [{ kind: "test", recordId: randomUUID(), revision: 1, digest: `sha256:${"2".repeat(64)}` }],
+      }],
+      criteria: subjects.map((node, index) => ({
+        id: randomUUID(),
+        key: `${node.key}.observable-result`,
+        subjectNodeId: node.id,
+        subjectKey: node.key,
+        subjectLevel: node.level as "story" | "task",
+        ordinal: index + 1,
+        classification: "functional-positive",
+        precondition: `Given exact ${node.level} inputs satisfy their declared preconditions`,
+        stimulus: `When the ${node.level} behavior is exercised through its bounded interface`,
+        expectedResult: `Then the ${node.level} produces one observable result without undeclared effects`,
+        requirements: structuredClone(node.requirements),
+        verificationMethodKeys: ["automated-contract-test"],
+        testabilityState: "candidate-testable",
+      })),
+      criterionSetCompletenessState: "candidate-complete",
+      requirementCoverageState: "candidate-complete",
+      unresolvedQuestions: [],
+      limitations: ["Criterion validity, Requirement satisfaction, acceptance, readiness, execution, and authority remain unestablished."],
+      reviewState: "ready-for-human-review",
+      criterionValidityState: "not-established",
+      requirementSatisfactionState: "not-established",
+      priorityDecisionState: "not-established",
+      commitmentState: "not-established",
+      approvalState: "not-established",
+      readyDoneState: "not-established",
+      implementationReadinessState: "not-established",
+      assignmentExecutionState: "not-established",
+      acceptanceDecisionState: "not-established",
+      implementationAuthorityState: "not-granted",
+    }
+  }
+
   it("persists immutable revisions and emits minimized exact audit evidence", async () => {
     const { initiative, input } = await fixture()
     const created = await engine.mvpSliceDefinition.create(input, actorId)
@@ -398,5 +453,111 @@ describe("MVP and Slice Definition engine", () => {
     const status = await engine.prioritizationModel.assess(initiative.id)
     expect(status).toMatchObject({ state: "attention-required", scoredSubjectCount: 0, unassessedSubjectCount: 1 })
     expect(status.reasons).toContain("One or more Prioritization subjects are not fully assessed")
+  })
+
+  it("persists and assesses exact structured Acceptance Criteria without synthesizing acceptance", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const criteriaInput = acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority)
+    const created = await engine.acceptanceCriteria.create(criteriaInput, actorId)
+    const revised = await engine.acceptanceCriteria.revise(created.id, created.revision, {
+      ...criteriaInput,
+      title: "Atlas reviewed structured Acceptance Criteria candidate",
+    }, actorId)
+    expect(revised).toMatchObject({ revision: 2, predecessorDigest: canonicalDigest(created) })
+    expect((await engine.acceptanceCriteria.listHistory(created.id)).map((record) => record.revision)).toEqual([2, 1])
+    const status = await engine.acceptanceCriteria.assess(initiative.id)
+    expect(status).toMatchObject({
+      state: "complete-for-review",
+      subjectCount: 2,
+      coveredSubjectCount: 2,
+      uncoveredSubjectCount: 0,
+      criterionCount: 2,
+      testableCriterionCount: 2,
+      unassessedCriterionCount: 0,
+      requirementTraceCount: 2,
+      uncoveredRequirementCount: 0,
+      verificationMethodCount: 1,
+      invalidCriterionCount: 0,
+    })
+    expect(status.authorityBoundary).toContain("does-not-establish-criterion-validity")
+
+    const events = (await readFile(join(workspace, ".gaep", "audit", "events.jsonl"), "utf8"))
+      .trim().split("\n").map((line) => JSON.parse(line) as { eventType: string; payload: Record<string, unknown> })
+    const event = events.findLast((entry) => entry.eventType === "acceptance-criteria.revised")
+    expect(event?.payload).toMatchObject({
+      revision: 2,
+      subjectCount: 2,
+      criterionCount: 2,
+      requirementTraceCount: 2,
+      criterionValidityState: "not-established",
+      requirementSatisfactionState: "not-established",
+      acceptanceDecisionState: "not-established",
+      implementationAuthorityState: "not-granted",
+      actionAuthorityState: "not-granted",
+    })
+    expect(JSON.stringify(event)).not.toContain(criteriaInput.title)
+    expect(JSON.stringify(event)).not.toContain(criteriaInput.criteria[0]!.expectedResult)
+    expect((await engine.repository.verifyAudit()).valid).toBe(true)
+  })
+
+  it("projects privacy-safe Acceptance Criteria metadata and reports superseded priority bindings", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priorityInput = prioritizationInput(initiative.id, input.context, mvp)
+    const priority = await engine.prioritizationModel.create(priorityInput, actorId)
+    const criteriaInput = acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority)
+    const created = await engine.acceptanceCriteria.create(criteriaInput, actorId)
+    const projection = await engine.acceptanceCriteria.project(initiative.id)
+    expect(projection.candidate).toMatchObject({
+      id: created.id, subjectCount: 2, criterionCount: 2, testableCriterionCount: 2,
+      requirementTraceCount: 2, verificationMethodCount: 1,
+    })
+    expect(projection.snapshotDigest).toMatch(/^sha256:[0-9a-f]{64}$/u)
+    const serialized = JSON.stringify(projection)
+    expect(serialized).not.toContain(criteriaInput.title)
+    expect(serialized).not.toContain(criteriaInput.criteria[0]!.precondition)
+    expect(serialized).not.toContain(criteriaInput.criteria[0]!.requirements[0]!.recordId)
+    expect(serialized).not.toContain("founder")
+
+    await engine.prioritizationModel.revise(priority.id, priority.revision, {
+      ...priorityInput,
+      title: "Superseding prioritization candidate",
+    }, actorId)
+    const status = await engine.acceptanceCriteria.assess(initiative.id)
+    expect(status).toMatchObject({ state: "attention-required", stalePrioritizationModelCount: 1 })
+    expect(await engine.acceptanceCriteria.healthIssues()).toEqual([
+      expect.objectContaining({
+        code: "acceptance-criteria.binding-review-required",
+        severity: "warning",
+        record: { type: created.kind, id: created.id, revision: created.revision },
+      }),
+    ])
+  })
+
+  it("fails closed on foreign Requirement traces and reports incomplete draft coverage", async () => {
+    const { initiative, hierarchy, input } = await fixture()
+    const mvp = await engine.mvpSliceDefinition.create(input, actorId)
+    const priority = await engine.prioritizationModel.create(prioritizationInput(initiative.id, input.context, mvp), actorId)
+    const invalid = acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority)
+    invalid.criteria[0]!.requirements[0]!.digest = `sha256:${"0".repeat(64)}`
+    await expect(engine.acceptanceCriteria.create(invalid, actorId)).rejects.toThrow(/exact Requirement traces/u)
+
+    const incomplete = acceptanceCriteriaInput(initiative.id, input.context, hierarchy, mvp, priority)
+    incomplete.criteria = [incomplete.criteria[0]!]
+    incomplete.criterionSetCompletenessState = "not-assessed"
+    incomplete.requirementCoverageState = "not-assessed"
+    incomplete.reviewState = "draft"
+    await engine.acceptanceCriteria.create(incomplete, actorId)
+    const status = await engine.acceptanceCriteria.assess(initiative.id)
+    expect(status).toMatchObject({
+      state: "attention-required",
+      subjectCount: 2,
+      coveredSubjectCount: 1,
+      uncoveredSubjectCount: 1,
+      uncoveredRequirementCount: 1,
+    })
+    expect(status.reasons).toContain("One or more exact MVP Story or Task subjects lack candidate criteria")
   })
 })
