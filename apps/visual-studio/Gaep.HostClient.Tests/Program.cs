@@ -86,6 +86,7 @@ internal static class Program
     private static readonly Guid DesignDeltaId = Guid.Parse("81818181-8181-4181-8181-818181818181");
     private static readonly Guid DesignConflictResolutionId = Guid.Parse("82828282-8282-4282-8282-828282828282");
     private static readonly Guid HumanDesignApprovalId = Guid.Parse("83838383-8383-4383-8383-838383838383");
+    private static readonly Guid DesignBaselineId = Guid.Parse("84848484-8484-4484-8484-848484848484");
     private const string CompletenessPolicyVersion = "gaep-initiative-classification-completeness-v1";
     private const string SubjectCatalogVersion = "gaep-initiative-applicability-subjects-v1";
     private const int SubjectCatalogCount = 49;
@@ -273,6 +274,9 @@ internal static class Program
         var badHumanDesignApprovalBindingRoot = Path.Combine(temporaryRoot, "bad-human-design-approval-binding");
         var badHumanDesignApprovalDigestRoot = Path.Combine(temporaryRoot, "bad-human-design-approval-digest");
         var badHumanDesignApprovalPrivateRoot = Path.Combine(temporaryRoot, "bad-human-design-approval-private");
+        var badDesignBaselineBindingRoot = Path.Combine(temporaryRoot, "bad-design-baseline-binding");
+        var badDesignBaselineDigestRoot = Path.Combine(temporaryRoot, "bad-design-baseline-digest");
+        var badDesignBaselinePrivateRoot = Path.Combine(temporaryRoot, "bad-design-baseline-private");
         var badRunsRoot = Path.Combine(temporaryRoot, "bad-runs");
         var badHandoffRoot = Path.Combine(temporaryRoot, "bad-handoff");
         var badHandoffBindingRoot = Path.Combine(temporaryRoot, "bad-handoff-binding");
@@ -460,6 +464,9 @@ internal static class Program
         Directory.CreateDirectory(badHumanDesignApprovalBindingRoot);
         Directory.CreateDirectory(badHumanDesignApprovalDigestRoot);
         Directory.CreateDirectory(badHumanDesignApprovalPrivateRoot);
+        Directory.CreateDirectory(badDesignBaselineBindingRoot);
+        Directory.CreateDirectory(badDesignBaselineDigestRoot);
+        Directory.CreateDirectory(badDesignBaselinePrivateRoot);
         Directory.CreateDirectory(badRunsRoot);
         Directory.CreateDirectory(badHandoffRoot);
         Directory.CreateDirectory(badHandoffBindingRoot);
@@ -2603,6 +2610,51 @@ internal static class Program
                 "Human Design Approval rejects a projection rebound to a substituted Product revision");
         }
 
+        var designBaselineProjection = await client.ReadDesignBaselineAsync(InitiativeId);
+        Check(designBaselineProjection.ProductId == product.Id &&
+              designBaselineProjection.ProductRevision == product.Revision &&
+              designBaselineProjection.ProductDigest == product.Digest &&
+              designBaselineProjection.InitiativeId == resolved.Id &&
+              designBaselineProjection.InitiativeRevision == resolved.Revision &&
+              designBaselineProjection.InitiativeDigest == resolved.Digest &&
+              designBaselineProjection.AssessmentState == "attention-required" &&
+              designBaselineProjection.CandidateResult == "supersession-candidate" &&
+              designBaselineProjection.ReviewState == "ready-for-human-review" &&
+              designBaselineProjection.CandidateSetCount == 1 &&
+              designBaselineProjection.DesignationCandidateCount == 1 &&
+              designBaselineProjection.SupersessionCandidateCount == 1 &&
+              designBaselineProjection.ApprovalDeterminationState == "not-established" &&
+              designBaselineProjection.BaselineDesignationState == "not-established" &&
+              designBaselineProjection.Candidate?.SemanticVersion == "2.0.0" &&
+              designBaselineProjection.Candidate?.DesignationKind == "supersede-baseline-candidate",
+            "Typed Design Baseline preserves exact Product, Initiative, version, lineage, approval-candidate, and privacy-safe designation metadata");
+        var designBaselineOutput = await initiativeController.ReadDesignBaselineAsync(InitiativeId);
+        Check(designBaselineOutput.Contains("GAEP Design Baseline version candidate", StringComparison.Ordinal) &&
+              designBaselineOutput.Contains("1 set · 1 designation · 1 supersession", StringComparison.Ordinal) &&
+              designBaselineOutput.Contains("Version: 2.0.0", StringComparison.Ordinal) &&
+              designBaselineOutput.Contains("approval determination not-established · baseline designation not-established", StringComparison.Ordinal) &&
+              designBaselineOutput.Contains("does not convert an approval candidate into approval", StringComparison.Ordinal) &&
+              designBaselineOutput.Contains("implementation or action authority", StringComparison.Ordinal) &&
+              !designBaselineOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !designBaselineOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !designBaselineOutput.Contains("designRationale=", StringComparison.Ordinal),
+            "Design Baseline workflow renders privacy-safe exact version metadata with explicit no-designation and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badDesignBaselineDigestRoot, badDesignBaselinePrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadDesignBaselineAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Design Baseline rejects hostile digest and private-field drift");
+        }
+        await using (var hostileClient = new EngineClient(badDesignBaselineBindingRoot, executable))
+        {
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadDesignBaselineAsync(InitiativeId),
+                "Design Baseline rejects a projection rebound to a substituted Product revision");
+        }
+
         var dashboard = await client.ReadPhaseDashboardAsync(product);
         Check(dashboard.Phase == DeliveryPhaseId.Phase0Foundation &&
               dashboard.Panels.Select(panel => panel.Id).SequenceEqual([
@@ -3971,6 +4023,9 @@ internal static class Program
         var badHumanDesignApprovalBinding = Path.GetFileName(workspace) == "bad-human-design-approval-binding";
         var badHumanDesignApprovalDigest = Path.GetFileName(workspace) == "bad-human-design-approval-digest";
         var badHumanDesignApprovalPrivate = Path.GetFileName(workspace) == "bad-human-design-approval-private";
+        var badDesignBaselineBinding = Path.GetFileName(workspace) == "bad-design-baseline-binding";
+        var badDesignBaselineDigest = Path.GetFileName(workspace) == "bad-design-baseline-digest";
+        var badDesignBaselinePrivate = Path.GetFileName(workspace) == "bad-design-baseline-private";
         var badRuns = Path.GetFileName(workspace) == "bad-runs";
         var badHandoff = Path.GetFileName(workspace) == "bad-handoff";
         var badHandoffBinding = Path.GetFileName(workspace) == "bad-handoff-binding";
@@ -4565,6 +4620,17 @@ internal static class Program
                         badHumanDesignApprovalBinding,
                         badHumanDesignApprovalDigest,
                         badHumanDesignApprovalPrivate);
+                    break;
+                case "design.designBaseline.snapshot":
+                    await HandleDesignBaselineAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badDesignBaselineBinding,
+                        badDesignBaselineDigest,
+                        badDesignBaselinePrivate);
                     break;
                 case "dashboard.framework":
                     await HandlePhaseDashboardAsync(
@@ -9227,6 +9293,147 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) ((Dictionary<string, object?>)result["status"]!)["completePrerequisiteCount"] = 5;
         if (includePrivateField) result["decisionRationale"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleDesignBaselineAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID DESIGN BASELINE");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T01:40:00.000Z";
+        var candidateDigest = $"sha256:{new string('e', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var subject = new Dictionary<string, object?>
+        {
+            ["kind"] = "finalized-figma-snapshot-import-candidate",
+            ["recordId"] = FinalizedFigmaSnapshotImportId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = $"sha256:{new string('5', 64)}",
+            ["membershipDigest"] = $"sha256:{new string('6', 64)}",
+            ["externalFileIdentityDigest"] = $"sha256:{new string('7', 64)}",
+            ["returnedExternalVersionDigest"] = $"sha256:{new string('8', 64)}",
+            ["itemCatalogDigest"] = $"sha256:{new string('9', 64)}",
+            ["itemCount"] = 18,
+        };
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = DesignBaselineId.ToString("D"),
+            ["revision"] = 3,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('f', 64)}",
+            ["state"] = "candidate",
+            ["humanDesignApproval"] = new Dictionary<string, object?>
+            {
+                ["kind"] = "human-design-approval-candidate",
+                ["recordId"] = HumanDesignApprovalId.ToString("D"),
+                ["revision"] = 2,
+                ["digest"] = $"sha256:{new string('2', 64)}",
+                ["membershipDigest"] = $"sha256:{new string('3', 64)}",
+                ["decisionReceiptDigest"] = $"sha256:{new string('c', 64)}",
+                ["subjectDigest"] = $"sha256:{new string('5', 64)}",
+                ["scopeDigest"] = $"sha256:{new string('a', 64)}",
+                ["candidateResult"] = "approved-candidate",
+                ["reviewState"] = "recorded-human-decision",
+                ["assessmentDigest"] = $"sha256:{new string('1', 64)}",
+                ["assessmentState"] = "complete-for-recorded-decision",
+            },
+            ["subject"] = subject,
+            ["scopeDigest"] = $"sha256:{new string('a', 64)}",
+            ["baselineLineageId"] = "85858585-8585-4585-8585-858585858585",
+            ["candidateSetId"] = "86868686-8686-4686-8686-868686868686",
+            ["candidateSetRevision"] = 3,
+            ["semanticVersion"] = "2.0.0",
+            ["versionPolicyDigest"] = $"sha256:{new string('2', 64)}",
+            ["designationDefinitionDigest"] = $"sha256:{new string('3', 64)}",
+            ["designationReceiptDigest"] = $"sha256:{new string('4', 64)}",
+            ["designationKind"] = "supersede-baseline-candidate",
+            ["designationDigest"] = $"sha256:{new string('5', 64)}",
+            ["supersedes"] = new Dictionary<string, object?>
+            {
+                ["recordId"] = DesignBaselineId.ToString("D"),
+                ["revision"] = 2,
+                ["digest"] = $"sha256:{new string('6', 64)}",
+                ["membershipDigest"] = $"sha256:{new string('7', 64)}",
+                ["baselineLineageId"] = "85858585-8585-4585-8585-858585858585",
+                ["semanticVersion"] = "1.0.0",
+            },
+            ["candidateResult"] = "supersession-candidate",
+            ["reviewState"] = "ready-for-human-review",
+            ["updatedAt"] = "2026-07-30T01:39:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "design-baseline-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "design-baseline-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = DesignBaselineId.ToString("D"),
+                    ["revision"] = 3,
+                    ["digest"] = candidateDigest,
+                },
+                ["candidateSetCount"] = 1,
+                ["designationCandidateCount"] = 1,
+                ["supersessionCandidateCount"] = 1,
+                ["withdrawalCandidateCount"] = 0,
+                ["restorationCandidateCount"] = 0,
+                ["expiredDesignationCount"] = 1,
+                ["staleBindingCount"] = 2,
+                ["staleSourceReferenceCount"] = 3,
+                ["unresolvedQuestionCount"] = 4,
+                ["candidateResult"] = "supersession-candidate",
+                ["reviewState"] = "ready-for-human-review",
+                ["approvalDeterminationState"] = "not-established",
+                ["baselineDesignationState"] = "not-established",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "The baseline designation candidate is expired" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "design-baseline-status-is-observational-and-does-not-convert-an-approval-candidate-into-approval-verify-approver-authority-enforce-separation-of-duties-establish-a-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-version-axes-counts-results-and-digests-only-not-design-content-rationale-evidence-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+            ["authorityBoundary"] =
+                "design-baseline-projection-is-read-only-and-does-not-convert-an-approval-candidate-into-approval-verify-approver-authority-enforce-separation-of-duties-establish-a-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) ((Dictionary<string, object?>)result["status"]!)["candidateSetCount"] = 0;
+        if (includePrivateField) result["designRationale"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

@@ -2699,6 +2699,82 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadDesignBaselineAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadDesignBaselineAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Design Baseline was read. Refresh the exact records.");
+        }
+        return RenderDesignBaseline(projection);
+    }
+
+    public static string RenderDesignBaseline(DesignBaselineProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP Design Baseline version candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate result: {projection.CandidateResult} · {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Candidate inventory: {projection.CandidateSetCount} set · {projection.DesignationCandidateCount} designation · " +
+                $"{projection.SupersessionCandidateCount} supersession · {projection.WithdrawalCandidateCount} withdrawal · " +
+                $"{projection.RestorationCandidateCount} restoration")
+            .AppendLine(
+                $"Candidate gaps: {projection.ExpiredDesignationCount} expired · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleSourceReferenceCount} stale Source references · {projection.UnresolvedQuestionCount} unresolved questions")
+            .AppendLine(
+                $"Authority: approval determination {projection.ApprovalDeterminationState} · baseline designation " +
+                projection.BaselineDesignationState);
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Candidate record: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine(
+                    $"Exact approval candidate: {candidate.Approval.RecordId:D}@{candidate.Approval.Revision} · " +
+                    candidate.Approval.AssessmentState)
+                .AppendLine(
+                    $"Exact finalized snapshot: {candidate.Subject.RecordId:D}@{candidate.Subject.Revision} · " +
+                    $"{candidate.Subject.ItemCount} items · catalog {candidate.Subject.ItemCatalogDigest}")
+                .AppendLine($"Scope digest: {candidate.ScopeDigest}")
+                .AppendLine(
+                    $"Lineage: {candidate.BaselineLineageId:D} · candidate set " +
+                    $"{candidate.CandidateSetId:D}@{candidate.CandidateSetRevision}")
+                .AppendLine($"Version: {candidate.SemanticVersion} · policy {candidate.VersionPolicyDigest}")
+                .AppendLine(
+                    $"Designation evidence: definition {candidate.DesignationDefinitionDigest} · receipt {candidate.DesignationReceiptDigest}")
+                .AppendLine(
+                    $"Designation candidate: {candidate.DesignationKind ?? "not proposed"} · " +
+                    (candidate.DesignationDigest ?? "not recorded"))
+                .AppendLine(
+                    "Exact predecessor: " + (candidate.Supersedes is { } predecessor
+                        ? $"{predecessor.RecordId:D}@{predecessor.Revision} · {predecessor.SemanticVersion}"
+                        : "initial candidate"));
+        }
+        else output.AppendLine("Candidate record: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, exact Human Design Approval and finalized-snapshot bindings, " +
+                "version axes, lineage, scope and receipt digests, designation kind, predecessor, counts, and recorded " +
+                "states only; this view does not convert an approval candidate into approval, verify approver authority, " +
+                "enforce separation of duties, establish a Baseline Set designation, readiness, or phase entry, call " +
+                "Figma, request credentials, grant permissions, execute imports or writes, or grant implementation or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ClassifyInitiativeAsync(
         InitiativeEntryContext context,
         InitiativeClassificationInput input,
