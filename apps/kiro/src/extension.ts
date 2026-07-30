@@ -43,6 +43,7 @@ import {
   type BoilerplateSelectionBindingProjection,
   type BoilerplateCompatibilityValidationProjection,
   type FigmaToBoilerplateMappingProjection,
+  type DesignToCodeBindingRegistryProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -178,6 +179,7 @@ const commandIds = {
   boilerplateSelectionBinding: "gaepKiro.boilerplateSelectionBinding.inspect",
   boilerplateCompatibilityValidation: "gaepKiro.boilerplateCompatibilityValidation.inspect",
   figmaToBoilerplateMapping: "gaepKiro.figmaToBoilerplateMapping.inspect",
+  designToCodeBindingRegistry: "gaepKiro.designToCodeBindingRegistry.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -330,6 +332,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.boilerplateSelectionBinding, (input?: unknown) => runUserCommand(() => showBoilerplateSelectionBinding(pool, input))),
     vscode.commands.registerCommand(commandIds.boilerplateCompatibilityValidation, (input?: unknown) => runUserCommand(() => showBoilerplateCompatibilityValidation(pool, input))),
     vscode.commands.registerCommand(commandIds.figmaToBoilerplateMapping, (input?: unknown) => runUserCommand(() => showFigmaToBoilerplateMapping(pool, input))),
+    vscode.commands.registerCommand(commandIds.designToCodeBindingRegistry, (input?: unknown) => runUserCommand(() => showDesignToCodeBindingRegistry(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2327,6 +2330,51 @@ async function showFigmaToBoilerplateMapping(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and subject, target, trace, mapping, assessment, and snapshot digests only; no Figma content, design-item, binding, unit, profile, registry-entry, validation-subject, requirement, target-locator, evidence, reviewer, or personal data. This inspection does not connect to or call Figma, establish returned Figma content, design validity, approval or baseline, mapping truth or completeness, effective selection or compatibility truth, retrieve, import, instantiate, generate or execute assets, establish implementation readiness or completeness, assign, execute, accept, merge, release, deploy, or grant action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showDesignToCodeBindingRegistry(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<DesignToCodeBindingRegistryProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Design-to-Code Binding Registry inspection", "Initiative ID")
+  const projection = await client.readDesignToCodeBindingRegistry(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Design-to-Code Binding Registry candidate",
+    "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Candidate coverage: ${status.mappingSubjectCount} mapping subjects · ${status.subjectCount} binding subjects`,
+    `Candidate outcomes: ${status.boundCandidateCount} bound · ${status.conflictCandidateCount} conflicts · ${status.unboundCandidateCount} unbound · ${status.notAssessedCount} not assessed`,
+    `Candidate binding gaps: ${status.missingSubjectCount} missing subjects · ${status.invalidSubjectCount} invalid subjects · ${status.targetGapCount} target gaps · ${status.traceGapCount} trace gaps · ${status.evidenceGapCount} evidence gaps · ${status.duplicateTargetCount} duplicate targets`,
+    `Candidate freshness gaps: ${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+    ...status.reasons.map((reason) => `  - ${reason}`),
+    "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Binding subject catalog digest: ${record.bindingSubjectCatalogDigest}`,
+      `Code target catalog digest: ${record.codeTargetCatalogDigest}`,
+      `Trace receipt digest: ${record.traceReceiptDigest}`,
+      `Binding receipt digest: ${record.bindingReceiptDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`,
+      `Candidate coverage: ${record.subjectCount} subjects · ${record.boundCandidateCount} bound · ${record.conflictCandidateCount} conflicts · ${record.unboundCandidateCount} unbound · ${record.notAssessedCount} not assessed · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []),
+    "",
+    "Candidate identities, counts, statuses, and subject, target, trace, binding, assessment, and snapshot digests only; no Figma content, design-item, mapping, unit, requirement, repository, module, path, symbol, evidence, reviewer, or personal data. This inspection does not connect to or call Figma, establish returned Figma content, design validity, approval or baseline, mapping or binding truth or completeness, repository, path, or symbol truth, create or change code targets, retrieve, import, instantiate, generate or execute assets, establish implementation readiness or completeness, assign, execute, accept, merge, release, deploy, or grant action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

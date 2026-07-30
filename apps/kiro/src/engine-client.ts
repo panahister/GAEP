@@ -42,6 +42,7 @@ import {
   boilerplateSelectionBindingProjectionSchema,
   boilerplateCompatibilityValidationProjectionSchema,
   figmaToBoilerplateMappingProjectionSchema,
+  designToCodeBindingRegistryProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -110,6 +111,7 @@ import {
   type BoilerplateSelectionBindingProjection,
   type BoilerplateCompatibilityValidationProjection,
   type FigmaToBoilerplateMappingProjection,
+  type DesignToCodeBindingRegistryProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -999,6 +1001,21 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = figmaToBoilerplateMappingProjectionSchema.safeParse(
         await this.request("planning.figmaToBoilerplateMapping.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId ||
+          snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readDesignToCodeBindingRegistry(initiativeValue: string): Promise<DesignToCodeBindingRegistryProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = designToCodeBindingRegistryProjectionSchema.safeParse(
+        await this.request("planning.designToCodeBindingRegistry.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

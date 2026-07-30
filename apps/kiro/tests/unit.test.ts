@@ -2372,6 +2372,64 @@ test("protocol-v2 Figma-to-Boilerplate Mapping projection is exact, private-safe
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 Design-to-Code Binding Registry projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-design-to-code-binding-registry-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-design-to-code-binding-registry-snapshot-binding",
+    "bad-design-to-code-binding-registry-snapshot-digest",
+    "bad-design-to-code-binding-registry-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath, engineExecutable: process.execPath, engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readDesignToCodeBindingRegistry(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.mappingSubjectCount, 2)
+    assert.equal(projection.status.subjectCount, 2)
+    assert.equal(projection.status.boundCandidateCount, 1)
+    assert.equal(projection.status.conflictCandidateCount, 1)
+    assert.equal(projection.status.invalidSubjectCount, 1)
+    assert.equal(projection.status.targetGapCount, 1)
+    assert.equal(projection.status.traceGapCount, 1)
+    assert.equal(projection.status.duplicateTargetCount, 1)
+    assert.equal(projection.status.staleDependencyCount, 0)
+    assert.equal(projection.candidate?.bindingSubjectCatalogDigest, `sha256:${"d".repeat(64)}`)
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"designItemKey":'), false)
+    assert.equal(serialized.includes('"mappingSubjectKey":'), false)
+    assert.equal(serialized.includes('"implementationUnitId":'), false)
+    assert.equal(serialized.includes('"repositoryCandidate":'), false)
+    assert.equal(serialized.includes('"moduleCandidate":'), false)
+    assert.equal(serialized.includes('"pathCandidates":'), false)
+    assert.equal(serialized.includes('"symbolCandidates":'), false)
+    assert.equal(serialized.includes('"requirementKeys":'), false)
+    assert.equal(serialized.includes('"evidenceReferences":'), false)
+    assert.equal(serialized.includes('"boundBy":'), false)
+    assert.equal(serialized.includes('"subjects":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(
+        () => hostile.readDesignToCodeBindingRegistry(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 Design System and Token Contract projection is exact, private-safe, and non-authorizing", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-design-system-token-contract-"))
   const workspace = join(root, "workspace")

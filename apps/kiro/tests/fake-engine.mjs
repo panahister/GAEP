@@ -69,6 +69,7 @@ const boilerplateRegistryId = "90909090-9090-4090-8090-909090909090"
 const boilerplateSelectionBindingId = "91919191-9191-4191-8191-919191919191"
 const boilerplateCompatibilityValidationId = "92929292-9292-4292-8292-929292929292"
 const figmaToBoilerplateMappingId = "93939393-9393-4393-8393-939393939393"
+const designToCodeBindingRegistryId = "94949494-9494-4494-8494-949494949494"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -205,6 +206,8 @@ input.on("line", (line) => {
       return readBoilerplateCompatibilityValidation(id, request.params)
     case "planning.figmaToBoilerplateMapping.snapshot":
       return readFigmaToBoilerplateMapping(id, request.params)
+    case "planning.designToCodeBindingRegistry.snapshot":
+      return readDesignToCodeBindingRegistry(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -3159,6 +3162,88 @@ function readFigmaToBoilerplateMapping(id, params) {
   if (workspacePath.endsWith("bad-figma-to-boilerplate-mapping-snapshot-digest")) value.candidate.subjectCount = 3
   if (workspacePath.endsWith("bad-figma-to-boilerplate-mapping-snapshot-private")) {
     value.targetCandidate = `${privateRoot}/${privateCredential}`
+    value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
+  }
+  return writeResult(id, value)
+}
+
+function readDesignToCodeBindingRegistry(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN TO CODE BINDING REGISTRY PARAMS")
+  }
+  const candidateDigest = `sha256:${"c".repeat(64)}`
+  const reference = (recordId, value) => ({ recordId, revision: 2, digest: `sha256:${value.repeat(64)}` })
+  const status = {
+    schemaVersion: 1,
+    kind: "design-to-code-binding-registry-status",
+    productId,
+    productRevision: 7,
+    initiativeId,
+    initiativeRevision: initiativeState.revision,
+    candidate: { recordId: designToCodeBindingRegistryId, revision: 2, digest: candidateDigest },
+    designBaseline: reference(designBaselineId, "6"),
+    finalizedFigmaSnapshotImport: reference(finalizedFigmaSnapshotImportId, "4"),
+    designToRequirementBinding: reference(designToRequirementBindingId, "5"),
+    figmaToBoilerplateMapping: reference(figmaToBoilerplateMappingId, "4"),
+    implementationUnitModel: reference(implementationUnitModelId, "7"),
+    technologyProfile: reference(technologyProfileId, "8"),
+    boilerplateSelectionBinding: reference(boilerplateSelectionBindingId, "a"),
+    boilerplateCompatibilityValidation: reference(boilerplateCompatibilityValidationId, "b"),
+    mappingSubjectCount: 2,
+    subjectCount: 2,
+    boundCandidateCount: 1,
+    conflictCandidateCount: 1,
+    unboundCandidateCount: 0,
+    notAssessedCount: 0,
+    missingSubjectCount: 0,
+    invalidSubjectCount: 1,
+    targetGapCount: 1,
+    traceGapCount: 1,
+    evidenceGapCount: 1,
+    duplicateTargetCount: 1,
+    staleBindingCount: 0,
+    staleDependencyCount: 0,
+    invalidCandidateCount: 1,
+    unresolvedQuestionCount: 2,
+    reviewState: "held",
+    state: "attention-required",
+    reasons: ["One or more Design-to-Code Binding Registry subjects require human review"],
+    assessedAt: "2026-07-30T20:05:00.000Z",
+    authorityBoundary: "design-to-code-binding-registry-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-or-binding-truth-or-completeness-repository-path-or-symbol-truth-create-or-change-code-targets-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1,
+    kind: "design-to-code-binding-registry-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: designToCodeBindingRegistryId,
+      revision: 2,
+      digest: candidateDigest,
+      state: "candidate",
+      bindingSubjectCatalogDigest: `sha256:${"d".repeat(64)}`,
+      codeTargetCatalogDigest: `sha256:${"e".repeat(64)}`,
+      traceReceiptDigest: `sha256:${"f".repeat(64)}`,
+      bindingReceiptDigest: `sha256:${"0".repeat(64)}`,
+      assessmentReceiptDigest: `sha256:${"1".repeat(64)}`,
+      subjectCount: 2,
+      boundCandidateCount: 1,
+      conflictCandidateCount: 1,
+      unboundCandidateCount: 0,
+      notAssessedCount: 0,
+      reviewState: "held",
+      updatedAt: "2026-07-30T20:04:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-subject-target-trace-binding-assessment-snapshot-digests-only-not-figma-content-design-item-mapping-unit-requirement-repository-module-path-symbol-evidence-reviewer-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "design-to-code-binding-registry-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-or-binding-truth-or-completeness-repository-path-or-symbol-truth-create-or-change-code-targets-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-design-to-code-binding-registry-snapshot-binding")) content.initiative.id = designToCodeBindingRegistryId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-design-to-code-binding-registry-snapshot-digest")) value.candidate.subjectCount = 3
+  if (workspacePath.endsWith("bad-design-to-code-binding-registry-snapshot-private")) {
+    value.repositoryPath = `${privateRoot}/${privateCredential}`
     value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
   }
   return writeResult(id, value)

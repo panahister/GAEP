@@ -95,6 +95,7 @@
     "onCommand:gaepKiro.boilerplateSelectionBinding.inspect",
     "onCommand:gaepKiro.boilerplateCompatibilityValidation.inspect",
     "onCommand:gaepKiro.figmaToBoilerplateMapping.inspect",
+    "onCommand:gaepKiro.designToCodeBindingRegistry.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -369,6 +370,10 @@
       {
         "command": "gaepKiro.figmaToBoilerplateMapping.inspect",
         "title": "GAEP for Kiro: Inspect Governed Figma-to-Boilerplate Mapping Candidate"
+      },
+      {
+        "command": "gaepKiro.designToCodeBindingRegistry.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Design-to-Code Binding Registry Candidate"
       },
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",
