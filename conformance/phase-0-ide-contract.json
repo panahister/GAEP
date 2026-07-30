@@ -70,6 +70,7 @@
     { "id": "definition-of-done", "label": "Exact governed Definition of Done item-evaluation candidate over current MVP Story and Task subjects with a versioned completion policy, required or not-applicable candidate dispositions, exact evidence and assessor inputs, deterministic evaluation receipt, expiry and invalidation, and exact current Backlog Hierarchy, MVP and Vertical Slice, Prioritization Model, Acceptance Criteria, and Definition of Ready bindings, without elevating a candidate pass into evidence truth, test success, quality, Requirement or Acceptance Criteria satisfaction, approval, ready or done state, exception or waiver authority, implementation completeness, merge, release or deployment readiness, assignment, execution, acceptance, implementation, write, or action authority" },
     { "id": "implementation-unit-model", "label": "Exact governed Implementation Unit Model candidate over current MVP Story and Task subjects with exact Requirement membership, candidate repository and module placement, owner candidates, dependency edges, blast-radius assessments, deterministic membership, placement and assessment receipts, and exact current Backlog Hierarchy, MVP and Vertical Slice, Acceptance Criteria, Definition of Ready and Definition of Done bindings, without establishing repository truth, ownership appointment, dependency or impact completeness, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, write, or action authority" },
     { "id": "dependency-mapping", "label": "Exact governed Dependency Mapping candidate over every current Implementation Unit with typed directed acyclic dependency edges, deterministic longest candidate-effort critical path, graph and assessment receipts, and exact current Backlog Hierarchy, MVP and Vertical Slice, and Implementation Unit Model bindings, without establishing dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, write, or action authority" },
+    { "id": "technology-profile", "label": "Exact governed Technology Profile candidate for every current Implementation Unit with bounded technology, runtime, framework, library, toolchain, platform, version and constraint selections; compatibility, provenance, support, licensing, security-policy and lifecycle evidence states; deterministic profile, selection, compatibility and assessment receipts; and exact current Implementation Unit Model and Dependency Mapping bindings, without establishing technology approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, write, or action authority" },
     { "id": "design-system-token-contract", "label": "Exact governed Design System and Token Contract candidate projection with bounded system, token, variable, component and requirement-coverage metadata, without system, token, variable or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "accessibility-design-rules", "label": "Exact governed Accessibility Design Rules candidate projection with bounded target, rule, check, evidence-state and requirement-coverage metadata, without accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "responsive-multi-platform-targets", "label": "Exact governed Responsive and Multi-Platform Targets candidate projection with bounded platform-target, breakpoint, behavior, check, evidence-state and requirement-coverage metadata, without responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
@@ -97,7 +98,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T134500Z-phase-3a-dependency-mapping-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T151229Z-phase-3a-technology-profile-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -314,6 +315,9 @@
         { "capabilityId": "dependency-mapping", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["dependencyMapping?: {", "engine.dependencyMapping!.project(initiative.id)", "id: \"dependency-mapping\"", "does not infer dependency truth or completeness, critical-path authority"] }
         ] },
+        { "capabilityId": "technology-profile", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["technologyProfile?: {", "engine.technologyProfile!.project(initiative.id)", "id: \"technology-profile\"", "does not infer technology approval, support commitment"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designSystemTokenContract?: {", "engine.designSystemTokenContract!.project(initiative.id)", "id: \"design-system-token-contract\"", "no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."] }
         ] },
@@ -375,7 +379,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T134500Z-phase-3a-dependency-mapping-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T151229Z-phase-3a-technology-profile-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -622,6 +626,10 @@
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDependencyMapping(", "this.request(\"planning.dependencyMapping.snapshot\"", "dependencyMappingProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDependencyMapping", "GAEP governed Dependency Mapping candidate", "dependency truth or completeness, critical-path authority"] }
         ] },
+        { "capabilityId": "technology-profile", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readTechnologyProfile(", "this.request(\"planning.technologyProfile.snapshot\"", "technologyProfileProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showTechnologyProfile", "GAEP governed Technology Profile candidate", "does not establish technology approval, support commitment"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignSystemTokenContract(", "this.request(\"design.systemTokenContract.snapshot\"", "designSystemTokenContractProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignSystemTokenContract", "GAEP governed Design System and Token Contract candidate", "does not establish system, token, variable, or component validity"] }
@@ -700,7 +708,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T134500Z-phase-3a-dependency-mapping-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T151229Z-phase-3a-technology-profile-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -997,6 +1005,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Dependency Mapping candidate", "Implementation Unit Model changed", "dependency truth or completeness, critical-path authority"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DependencyMappingProjection", "DEPENDENCY_MAPPING_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] },
+        { "capabilityId": "technology-profile", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readTechnologyProfile(", "portableRequest(\"planning.technologyProfile.snapshot\"", "parseTechnologyProfileEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Technology Profile candidate", "Dependency Mapping changed", "technology approval, support commitment"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["TechnologyProfileProjection", "TECHNOLOGY_PROFILE_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignSystemTokenContract(", "portableRequest(\"design.systemTokenContract.snapshot\"", "parseDesignSystemTokenContractEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design System and Token Contract candidate", "no system, token, variable", "ownership authority"] },
@@ -1092,7 +1105,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T134500Z-phase-3a-dependency-mapping-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T151229Z-phase-3a-technology-profile-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1400,6 +1413,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDependencyMappingAsync(", "\"planning.dependencyMapping.snapshot\"", "ParseDependencyMappingResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Dependency Mapping candidate", "Implementation Unit Model changed", "dependency truth or completeness, critical-path authority"] },
           { "path": "apps/visual-studio/Gaep.HostClient/DependencyMappingProtocol.cs", "contains": ["DependencyMappingProjection", "DependencyMappingProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "technology-profile", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadTechnologyProfileAsync(", "\"planning.technologyProfile.snapshot\"", "ParseTechnologyProfileResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Technology Profile candidate", "Dependency Mapping changed", "technology approval, support commitment"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/TechnologyProfileProtocol.cs", "contains": ["TechnologyProfileProjection", "TechnologyProfileProjectionAuthorityBoundary"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignSystemTokenContractAsync(", "\"design.systemTokenContract.snapshot\"", "ParseDesignSystemTokenContractResponse"] },
