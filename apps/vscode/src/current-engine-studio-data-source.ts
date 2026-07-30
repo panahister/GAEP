@@ -9,6 +9,7 @@ import type {
   BusinessArchitectureBaselineProjection,
   BusinessCapabilityMapProjection,
   BacklogHierarchyProjection,
+  MvpSliceDefinitionProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -183,6 +184,9 @@ export interface CurrentStudioEngineReader {
   backlogHierarchy?: {
     project(initiativeId: string): Promise<BacklogHierarchyProjection>
   }
+  mvpSliceDefinition?: {
+    project(initiativeId: string): Promise<MvpSliceDefinitionProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -353,6 +357,7 @@ interface ObservedStudioState {
   businessUnderstandingProjections: Map<string, BusinessUnderstandingProjection>
   businessCapabilityMapProjections: Map<string, BusinessCapabilityMapProjection>
   backlogHierarchyProjections: Map<string, BacklogHierarchyProjection>
+  mvpSliceDefinitionProjections: Map<string, MvpSliceDefinitionProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3770,6 +3775,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     changes: changesTable(state.changes, state.product),
     workItems: workItemsTable(state.workItems),
     backlogHierarchy: backlogHierarchyTable(state),
+    mvpSliceDefinitions: mvpSliceDefinitionsTable(state),
   }
 }
 
@@ -3894,6 +3900,57 @@ function backlogHierarchyTable(state: ObservedStudioState): StudioTableSnapshot 
       emptyState: emptySurface(
         "No governed Backlog Hierarchy candidate",
         "Create the candidate through the governed engine workflow. This view does not infer priority, commitment, ownership authority, Definition of Ready or Done, implementation readiness, assignment, execution, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function mvpSliceDefinitionsTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.mvpSliceDefinitionProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        hierarchy: record.hierarchyDigest,
+        scope: `${status.scopeNodeCount} nodes · ${status.mvpNodeCount} MVP · ${status.laterNodeCount} later · ${status.excludedNodeCount} excluded`,
+        slices: `${status.sliceCount} slices · ${status.storyCount} Stories · ${status.taskCount} Tasks · ${status.dependencyCount} dependencies`,
+        assessment: `${status.state} · ${status.reviewState} · ${status.scopeCompletenessState}`,
+        gaps: `${status.unassignedMvpStoryTaskCount} unassigned MVP Stories or Tasks · ${status.unresolvedQuestionCount} questions · ${status.staleBindingCount} stale bindings · ${status.staleHierarchyCount} stale hierarchies · ${status.invalidScopeCount} invalid scope entries · ${status.invalidSliceCount} invalid slices`,
+        boundary: "Candidate identities, scope and slice counts, statuses, and digests only; no slice titles, rationales, objectives, criteria, scope content, Requirement content, personal data, priority, commitment, scope approval, ready or done, implementation readiness, assignment, execution, implementation authority, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "mvp-slice-definitions",
+    title: "Governed MVP and Vertical Slice Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "hierarchy", label: "Exact Backlog Hierarchy digest" },
+      { key: "scope", label: "Privacy-safe scope" },
+      { key: "slices", label: "Privacy-safe slices" },
+      { key: "assessment", label: "Candidate state" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed MVP and Vertical Slice candidate",
+        "Create the candidate through the governed engine workflow after an exact Backlog Hierarchy exists. This view does not infer priority, commitment, scope approval, acceptance-criteria validity, Definition of Ready or Done, implementation readiness, assignment, execution, implementation authority, or action authority.",
       ),
     } : {}),
   }
@@ -5734,6 +5791,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     const empty: ObservedStudioState = {
       initiatives: [], initiativeEntryAssessments: new Map(), businessUnderstandingProjections: new Map(),
       backlogHierarchyProjections: new Map(),
+      mvpSliceDefinitionProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -5979,6 +6037,56 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "backlog-hierarchy-unavailable",
           "Backlog Hierarchy metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.mvpSliceDefinition) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.mvpSliceDefinition!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            const backlog = empty.backlogHierarchyProjections.get(initiative.id)?.candidate
+            const hierarchy = projection.value.status.hierarchy
+            const candidate = projection.value.candidate
+            const exactHierarchy = !candidate || (
+              hierarchy !== undefined && backlog !== undefined &&
+              hierarchy.recordId === backlog.id && hierarchy.revision === backlog.revision &&
+              hierarchy.digest === backlog.digest && candidate.hierarchyDigest === hierarchy.digest
+            )
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              exactHierarchy && snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.mvpSliceDefinitionProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio MVP and Slice Definition projection was unavailable or did not bind the exact Product, Initiative, and current Backlog Hierarchy revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `mvp-slice-definition-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe MVP and Vertical Slice metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "mvp-slice-definition-unavailable",
+          "MVP and Vertical Slice metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

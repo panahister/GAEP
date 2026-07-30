@@ -48,6 +48,7 @@ import {
   type DesignDriftDetectionProjection,
   type BusinessCapabilityMapProjection,
   type BacklogHierarchyProjection,
+  type MvpSliceDefinitionProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -1971,6 +1972,72 @@ function backlogHierarchyProjection(): BacklogHierarchyProjection {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function mvpSliceDefinitionProjection(hierarchy = backlogHierarchyProjection()): MvpSliceDefinitionProjection {
+  const exactHierarchy = hierarchy.candidate!
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "mvp-slice-definition-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: {
+      recordId: "e5e5e5e5-e5e5-45e5-85e5-e5e5e5e5e5e5",
+      revision: 2,
+      digest: `sha256:${"c".repeat(64)}` as const,
+    },
+    hierarchy: { recordId: exactHierarchy.id, revision: exactHierarchy.revision, digest: exactHierarchy.digest },
+    scopeNodeCount: 24,
+    mvpNodeCount: 16,
+    laterNodeCount: 5,
+    excludedNodeCount: 3,
+    sliceCount: 4,
+    storyCount: 7,
+    taskCount: 9,
+    dependencyCount: 3,
+    unassignedMvpStoryTaskCount: 1,
+    staleBindingCount: 0,
+    staleHierarchyCount: 0,
+    invalidScopeCount: 0,
+    invalidSliceCount: 1,
+    unresolvedQuestionCount: 2,
+    scopeCompletenessState: "not-assessed" as const,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more MVP scope or Vertical Slice candidates require review"],
+    assessedAt: "2026-07-30T10:20:00.000Z",
+    authorityBoundary: "mvp-slice-definition-status-is-observational-and-does-not-establish-priority-commitment-scope-approval-acceptance-criteria-validity-ready-done-implementation-readiness-assignment-execution-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "mvp-slice-definition-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      state: "candidate" as const,
+      membershipDigest: `sha256:${"d".repeat(64)}` as const,
+      hierarchyDigest: exactHierarchy.digest,
+      scopeNodeCount: 24,
+      mvpNodeCount: 16,
+      laterNodeCount: 5,
+      excludedNodeCount: 3,
+      sliceCount: 4,
+      storyCount: 7,
+      taskCount: 9,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-30T10:19:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-scope-and-slice-counts-statuses-and-digests-only-not-slice-titles-rationales-objectives-criteria-scope-content-requirement-content-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "mvp-slice-definition-projection-is-read-only-and-does-not-prioritize-commit-approve-scope-admit-assign-execute-or-authorize-implementation-or-action" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -3759,6 +3826,7 @@ interface HarnessOptions {
   businessUnderstandingProjection?: BusinessUnderstandingProjection
   businessCapabilityMapProjection?: BusinessCapabilityMapProjection
   backlogHierarchyProjection?: BacklogHierarchyProjection
+  mvpSliceDefinitionProjection?: MvpSliceDefinitionProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -3914,6 +3982,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.backlogHierarchyProjection ? {
       backlogHierarchy: {
         project: async () => options.backlogHierarchyProjection!,
+      },
+    } : {}),
+    ...(options.mvpSliceDefinitionProjection ? {
+      mvpSliceDefinition: {
+        project: async () => options.mvpSliceDefinitionProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -4452,6 +4525,34 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private objective|private completion criterion|private owner|private requirement content|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects exact privacy-safe MVP and Vertical Slice metadata on Delivery", async () => {
+    const hierarchy = backlogHierarchyProjection()
+    const projection = mvpSliceDefinitionProjection(hierarchy)
+    const { source } = harness({ backlogHierarchyProjection: hierarchy, mvpSliceDefinitionProjection: projection })
+    const snapshot = await source.readSnapshot("delivery")
+
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.kind === "delivery" && snapshot.page.mvpSliceDefinitions).toMatchObject({
+      id: "mvp-slice-definitions",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          hierarchy: hierarchy.candidate?.digest,
+          scope: "24 nodes · 16 MVP · 5 later · 3 excluded",
+          slices: "4 slices · 7 Stories · 9 Tasks · 3 dependencies",
+          assessment: "attention-required · held · not-assessed",
+          gaps: "1 unassigned MVP Stories or Tasks · 2 questions · 0 stale bindings · 0 stale hierarchies · 0 invalid scope entries · 1 invalid slices",
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private slice title|private rationale|private scope content|customer@example\.com|api_key/iu,
     )
   })
 
