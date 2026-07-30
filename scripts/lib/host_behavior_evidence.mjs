@@ -117,6 +117,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/P0P4ReadinessGateProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/P5HandoffPackageModels.cs",
       "apps/visual-studio/Gaep.HostClient/P5HandoffPackageProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/ImplementationUnitModelModels.cs",
+      "apps/visual-studio/Gaep.HostClient/ImplementationUnitModelProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/DesignApplicabilityModels.cs",
       "apps/visual-studio/Gaep.HostClient/DesignApplicabilityProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/DesignPersonaRoleModels.cs",
@@ -187,7 +189,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (651)",
+        "GAEP Visual Studio host-client tests: PASS (663)",
       ],
     }],
   },
