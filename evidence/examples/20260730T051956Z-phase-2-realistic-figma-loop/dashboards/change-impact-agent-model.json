@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "kind": "phase-2-change-impact-agent-model-dashboard",
+  "viewDefinitionVersion": "gaep-phase-2-change-impact-agent-model-dashboard-v1",
+  "phase": {
+    "id": "phase-2-design",
+    "label": "Phase 2 — UX and Figma Loop"
+  },
+  "product": {
+    "recordType": "product",
+    "recordId": "21000000-0000-4000-8000-000000000001",
+    "revision": 1,
+    "digest": "sha256:b1f7a0d365596ab89862a893078fefe813d1b40d21f0c53356931782ab8e0002"
+  },
+  "initiative": {
+    "recordType": "initiative",
+    "recordId": "21000000-0000-4000-8000-000000000002",
+    "revision": 1,
+    "digest": "sha256:30967f01ba1215cca477ce8b59c273da67afc0814d3ee2a392b11e6014649429",
+    "state": "active"
+  },
+  "sources": {
+    "phase2UxFigmaSnapshotDigest": "sha256:e027d34ebf966fc615255c4fc10534fddda098d88845d981dbb51361e81072da",
+    "phase2SourceCatalogDigest": "sha256:24b74930168e643a2b2ba325b484934bf2c2c6993cee817eae892829485595dc",
+    "agentModelSnapshotDigest": "sha256:3b71cc6a8c45cf864cd0323a76631aaf8872859b3225ed7bf91831f8c6995423"
+  },
+  "synchronizationChange": {
+    "state": "attention-required",
+    "designDelta": "attention-required",
+    "conflictResolution": "attention-required",
+    "humanDesignApproval": "attention-required",
+    "designBaseline": "attention-required",
+    "designDriftDetection": "attention-required",
+    "figmaConnectionState": "not-established",
+    "figmaWriteExecutionState": "not-performed",
+    "figmaImportExecutionState": "not-performed",
+    "synchronizationEffectState": "not-applied"
+  },
+  "impact": {
+    "state": "attention-required",
+    "coverage": "bounded-not-complete",
+    "requirementCount": 8,
+    "designBindingCount": 7,
+    "unboundDesignItemCount": 1,
+    "driftObservationCount": 3,
+    "driftCount": 1,
+    "unassessedCount": 1,
+    "blockerCount": 0,
+    "highSeverityCount": 1,
+    "remediationCandidateCount": 1,
+    "staleBindingCount": 0,
+    "staleSourceReferenceCount": 0,
+    "unresolvedQuestionCount": 3,
+    "impactCompleteness": "not-established",
+    "designValidity": "not-established",
+    "revalidationState": "not-established"
+  },
+  "agentModel": {
+    "selectionState": "unselected",
+    "capabilities": {
+      "shown": 1,
+      "total": 1,
+      "omitted": 0,
+      "detected": 1,
+      "unavailable": 0,
+      "selected": 0
+    },
+    "runs": {
+      "shown": 0,
+      "total": 0,
+      "omitted": 0,
+      "terminal": 0,
+      "nonTerminal": 0,
+      "managedObserved": 0,
+      "resultBound": 0,
+      "actualEffectCount": 0
+    },
+    "managedRuns": {
+      "shown": 0,
+      "total": 0,
+      "omitted": 0
+    },
+    "handoffs": {
+      "shown": 0,
+      "total": 0,
+      "omitted": 0,
+      "pendingAcknowledgement": 0,
+      "acknowledged": 0
+    },
+    "providerMetrics": {
+      "usage": "unavailable",
+      "cost": "unavailable"
+    },
+    "liveProviderQuality": "not-assessed",
+    "semanticOutputQuality": "not-assessed"
+  },
+  "freshness": {
+    "state": "attention-required",
+    "phase2State": "attention-required",
+    "agentModelState": "current",
+    "selectionCapabilityState": "unselected",
+    "phase2ObservedAt": "2026-07-30T05:20:00.000Z",
+    "agentModelObservedAt": "2026-07-30T05:20:00.000Z",
+    "oldestCapabilityObservedAt": "2026-07-30T05:20:00.000Z",
+    "newestCapabilityObservedAt": "2026-07-30T05:20:00.000Z",
+    "truncated": false
+  },
+  "governance": {
+    "humanDesignApproval": "not-established",
+    "baselineDesignation": "not-established",
+    "impactAcceptance": "not-established",
+    "providerAccountReadiness": "not-established",
+    "providerPreference": "not-established",
+    "automaticSelectionAuthority": "not-granted",
+    "runLaunchAuthority": "not-granted",
+    "effectAuthority": "not-granted",
+    "phaseReadinessAuthority": "not-established",
+    "productOwnerAcceptance": "not-established"
+  },
+  "evidenceCues": {
+    "freshness": "potentially-stale",
+    "confidence": {
+      "state": "not-assessed",
+      "basis": "no-governed-confidence-evaluation-is-bound"
+    }
+  },
+  "observedAt": "2026-07-30T05:21:00.000Z",
+  "sourceBoundary": "exact-derived-phase-2-dashboard-and-current-initiative-scoped-agent-model-metadata-only",
+  "privacyBoundary": "dashboard-exposes-identities-digests-counts-statuses-and-times-not-design-content-prompts-provider-output-run-content-evidence-content-personal-data-secrets-credentials-permissions-or-machine-paths",
+  "limitations": [
+    "Synchronization and impact panels are derived from the exact Phase 2 dashboard and do not establish complete change or impact coverage.",
+    "Agent, model, Run, Managed Run and handoff counts are bounded to the exact current Initiative and declared source limits.",
+    "Provider usage, cost, live-provider quality and semantic output quality remain unavailable or not assessed.",
+    "No dashboard state establishes design validity, approval, a Baseline Set, readiness, remediation, implementation or effect authority."
+  ],
+  "authorityBoundary": "phase-2-change-impact-agent-model-dashboard-is-derived-read-only-evidence-not-a-second-source-of-truth-impact-completeness-design-validity-provider-quality-selection-run-launch-approval-baseline-readiness-remediation-effect-release-or-action-authority",
+  "snapshotDigest": "sha256:23fab699f4606c9b86b3e4fc4ce9e4103e6364f65a5249b2f7f6384ef31ec76a"
+}

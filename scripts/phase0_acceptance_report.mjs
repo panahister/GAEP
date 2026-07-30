@@ -14,6 +14,7 @@ import { verifyClaudeP0P4ReceiptFile } from "./verify_claude_p0_p4_receipt.mjs"
 import { verifyCodexP0P4ReceiptFile } from "./verify_codex_p0_p4_receipt.mjs"
 import { verifyPhase0ExampleReceiptFile } from "./verify_phase0_example_receipt.mjs"
 import { verifyProviderOutputComparisonFile } from "./verify_provider_output_comparison_receipt.mjs"
+import { verifyPhase2RealisticFigmaLoopArtifactDirectory } from "./phase2_realistic_figma_loop_artifacts.mjs"
 
 const execute = promisify(execFile)
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
@@ -23,7 +24,7 @@ const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
   packages: "evidence/local-packages/20260730T045105Z-phase-2-change-impact-agent-model-dashboard-packages.json",
   conformance: "evidence/ide-conformance/20260730T045105Z-phase-2-change-impact-agent-model-dashboard.json",
-  example: "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
+  example: "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
 }
 const gateDefinitions = [
   { id: "typecheck", command: ["npm", "run", "typecheck"], parser: parseTypecheck },
@@ -172,7 +173,9 @@ async function verifiedSources(root, paths) {
   } catch {
     fail("conformance report differs from current contract, package, host, provider, or source evidence")
   }
-  const receipt = example.value?.kind === "gaep-phase1-realistic-reference-receipt"
+  const receipt = example.value?.kind === "gaep-phase2-realistic-figma-loop-receipt"
+    ? (await verifyPhase2RealisticFigmaLoopArtifactDirectory(dirname(example.resolved))).receipt
+    : example.value?.kind === "gaep-phase1-realistic-reference-receipt"
     ? (await verifyPhase1RealisticReferenceArtifactDirectory(dirname(example.resolved))).receipt
     : example.value?.kind === "gaep-provider-output-comparison-receipt"
     ? await verifyProviderOutputComparisonFile(example.resolved)
@@ -200,7 +203,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -227,7 +230,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    phase2ChangeImpactAgentModelDashboard
+    phase2RealisticFigmaLoop
+      ? {
+          id: "phase-2-realistic-figma-loop-example-closure",
+          state: "not-established",
+          basis: "the exact deterministic 12-stage, 23-source Phase 2 realistic Figma loop artifact, two derived dashboards, four host projection bindings and three fail-closed recovery cases are implemented locally with zero writes, imports, approvals, Baseline Set designations or implementation effects; real Product research, returned current Figma content, live Figma or provider execution, external completeness and design validity, accountable human review and authority, effective approval, an actual Baseline Set, native-host interaction and Product Owner acceptance remain incomplete",
+        }
+      : phase2ChangeImpactAgentModelDashboard
       ? {
           id: "phase-2-change-impact-agent-model-dashboard-closure",
           state: "not-established",
@@ -488,6 +497,7 @@ export async function buildPhase0AcceptanceReport({
   const phase2ChangeImpactAgentModelDashboard = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "phase2-change-impact-agent-model-dashboard" && capability.state === "implemented"))
+  const phase2RealisticFigmaLoop = inputs.exampleKind === "gaep-phase2-realistic-figma-loop-receipt"
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -514,6 +524,7 @@ export async function buildPhase0AcceptanceReport({
     designDriftDetection,
     phase2UxFigmaDashboard,
     phase2ChangeImpactAgentModelDashboard,
+    phase2RealisticFigmaLoop,
   })
   const p0P4 = [
     "gaep-codex-p0-p4-acceptance-receipt",
@@ -532,7 +543,9 @@ export async function buildPhase0AcceptanceReport({
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
     phase: phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: phase2ChangeImpactAgentModelDashboard
+    evidenceScope: phase2RealisticFigmaLoop
+      ? "phase-2-realistic-figma-loop-example-local"
+      : phase2ChangeImpactAgentModelDashboard
       ? "phase-2-change-impact-agent-model-dashboard-local"
       : phase2UxFigmaDashboard
       ? "phase-2-ux-figma-dashboard-local"
@@ -624,7 +637,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: phase2ChangeImpactAgentModelDashboard
+    claimBoundary: phase2RealisticFigmaLoop
+      ? "This report binds the exact deterministic Phase 2 realistic Figma-loop scenario, 12 ordered candidate stages, 23 governed source candidates, two derived dashboard snapshots, three fail-closed recovery cases, four exact host projection bindings, copied prior local evidence and zero external or implementation effects to current package, test, host and conformance evidence. This report does not establish real Product research, returned current Figma content, a live Figma or provider connection, credentials, permissions, content transfer, write or import execution, provider usage, cost or quality, design or external completeness or validity, accountable human authority, effective approval, an actual Baseline Set, readiness, remediation, implementation or action authority, native-host or Product Owner acceptance, security approval, release authorization or deployment approval."
+      : phase2ChangeImpactAgentModelDashboard
       ? "This report binds the exact derived Phase 2 synchronization-change, bounded-impact and Initiative-scoped Agent/Model execution-truth views to the exact Phase 2 UX/Figma and Agent/Model source snapshot digests, exact Product and Initiative identity and revision digests, bounded source availability, trace, drift, freshness, capability, selection, Run, Managed Run and handoff counts, unavailable provider usage and cost, not-assessed live-provider and semantic output quality, explicit no-authority governance states, accessible Product Studio and four-host projections, and current package, test, host and conformance evidence. This report does not create a second source of truth, establish impact completeness, design or external completeness or validity, provider readiness or quality, provider preference, selection, Run launch, handoff acknowledgement, approval, a Baseline Set designation, readiness, phase entry, remediation, Figma, implementation or effect authority, connect to or call Figma, request credentials, grant permissions, authorize or perform imports or writes, prove real Product research or returned current Figma content, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : phase2UxFigmaDashboard
       ? "This report binds the exact derived Phase 2 UX/Figma dashboard, canonical ordered P2-01 through P2-23 source catalog, exact Product and Initiative identity and revision digests, explicit current, attention-required and unavailable source states, bounded experience, design-system, Figma, trace, drift and freshness aggregates, stable source-catalog and snapshot digests, explicit no-authority governance states, accessible Product Studio and four-host projections, and current package, test, host and conformance evidence. This report does not create a second source of truth, establish design or external completeness or validity, connect to or call Figma, request credentials, grant permissions, authorize or perform imports or writes, establish Human Design Approval or a Baseline Set designation, grant readiness or phase entry, apply remediation, change implementation, grant action authority, prove real Product research or returned current Figma content, establish native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."

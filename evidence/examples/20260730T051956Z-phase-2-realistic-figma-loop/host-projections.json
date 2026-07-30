@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase2-realistic-figma-loop-host-projections",
+  "source": {
+    "path": "sources/phase2-conformance.json",
+    "bytes": 51722,
+    "digest": "sha256:fcf00e03cfcc09ced1f9fa1f0c228081893bd197a27fcc778b6475d4b25045e0",
+    "recordedAt": "2026-07-30T04:51:05Z"
+  },
+  "hosts": [
+    {
+      "id": "vscode",
+      "displayName": "VS Code",
+      "capabilityState": "implemented",
+      "sourceProbesVerified": 3,
+      "packageStatus": "produced",
+      "runtimeEvidenceLevel": "installed-package-bundled-engine-workflow-local",
+      "runtimeSourceSnapshotDigest": "sha256:337ab7d593d3cb9f453fddfb953d64d68c8a63cf9d1b8446ffa23bb24e1e43c6",
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "kiro",
+      "displayName": "Kiro",
+      "capabilityState": "implemented",
+      "sourceProbesVerified": 3,
+      "packageStatus": "produced",
+      "runtimeEvidenceLevel": "compatible-host-packaged-engine-workflow-local",
+      "runtimeSourceSnapshotDigest": "sha256:2aa56245f1c5a15b64a37591ea25d748eee7c0bee1119a574740127f592e6091",
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "rider",
+      "displayName": "Rider",
+      "capabilityState": "implemented",
+      "sourceProbesVerified": 4,
+      "packageStatus": "produced",
+      "runtimeEvidenceLevel": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
+      "runtimeSourceSnapshotDigest": "sha256:7a7626a0497aad6fd482f7ee94a05192a05e89c3fbc6b53534101fcae5ad513e",
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "visual-studio",
+      "displayName": "Visual Studio",
+      "capabilityState": "implemented",
+      "sourceProbesVerified": 4,
+      "packageStatus": "not-produced-on-this-platform",
+      "runtimeEvidenceLevel": "cross-platform-packaged-engine-client-workflow-local",
+      "runtimeSourceSnapshotDigest": "sha256:c2a1e559e00e6ffa76a78ba127a5b4913371c3a202f0baa9ba97cc59f48ec132",
+      "acceptance": "incomplete"
+    }
+  ],
+  "summary": {
+    "hostCount": 4,
+    "implementedProjectionCount": 4,
+    "acceptedHostCount": 0,
+    "producedPackageCount": 3
+  },
+  "authorityBoundary": "host-projection-binding-proves-bounded-local-capability-evidence-not-native-host-supported-platform-product-owner-readiness-release-or-deployment-acceptance",
+  "hostProjectionDigest": "sha256:bc48f5907a5527211cf46b96ccad3fbfbe4c564b5629654c21fddf9ee641f963"
+}

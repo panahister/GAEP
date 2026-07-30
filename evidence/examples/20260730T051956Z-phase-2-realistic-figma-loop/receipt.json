@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase2-realistic-figma-loop-receipt",
+  "scenario": {
+    "id": "phase-2-atlas-evidence-review-design-loop-v1",
+    "path": "scenario.json",
+    "sourcePath": "examples/phase-2-realistic-figma-loop/scenario.json",
+    "sourceDigest": "sha256:1534f9905c149e7c20218734968556c51747082ae649d68ca6267940ea06ac4a",
+    "semanticDigest": "sha256:27636fd7e881740882294b9f860958602d27af4dd1c15b69469d656aeed4a156",
+    "product": {
+      "id": "21000000-0000-4000-8000-000000000001",
+      "revision": 1,
+      "digest": "sha256:b1f7a0d365596ab89862a893078fefe813d1b40d21f0c53356931782ab8e0002"
+    },
+    "initiative": {
+      "id": "21000000-0000-4000-8000-000000000002",
+      "revision": 1,
+      "digest": "sha256:30967f01ba1215cca477ce8b59c273da67afc0814d3ee2a392b11e6014649429"
+    }
+  },
+  "sources": [
+    {
+      "path": "sources/phase1-reference-receipt.json",
+      "bytes": 5790,
+      "digest": "sha256:bda03985ec201ac53ec3f311f5d8bc91e6f4bca6ff8b189e27c4518f35f14389",
+      "semanticDigest": "sha256:1a9e2da0c5c54ef56643c18be298c3e9df6d5e11480afbfab77f9891a6a2d4d9"
+    },
+    {
+      "path": "sources/phase2-conformance.json",
+      "bytes": 51722,
+      "digest": "sha256:fcf00e03cfcc09ced1f9fa1f0c228081893bd197a27fcc778b6475d4b25045e0",
+      "semanticDigest": "sha256:c4188b98380ed6d22e562c676ca7dcd110d2b38eb374f1947cedaf95a4954bb9"
+    },
+    {
+      "path": "sources/phase2-report.json",
+      "bytes": 8328,
+      "digest": "sha256:495cc5b39cf6d4f7f7f161c282c31c919fb80b179de6c7ce2bd2b14b0634bf5e",
+      "semanticDigest": "sha256:d2ca1c41703925e604be7b15f5e0b971d62f4ae855a6aadf158cd8637ec09215"
+    }
+  ],
+  "outputs": {
+    "loop-catalog.json": {
+      "path": "loop-catalog.json",
+      "bytes": 15132,
+      "digest": "sha256:a8d3e951d28486cd8eb3a624c478c75e5f6edbdfbdf2eecd84c2564cd723ada9",
+      "semanticDigest": "sha256:07caa269d490e583914eccbad3425b3b364a8de5686424d366a3d86666dc3b4e"
+    },
+    "dashboards/phase2-ux-figma.json": {
+      "path": "dashboards/phase2-ux-figma.json",
+      "bytes": 27168,
+      "digest": "sha256:7f596fadf36e99df1474b53a7d078552d6fc3e3e75238508ef6b0c6cabfe2749",
+      "semanticDigest": "sha256:e027d34ebf966fc615255c4fc10534fddda098d88845d981dbb51361e81072da"
+    },
+    "dashboards/change-impact-agent-model.json": {
+      "path": "dashboards/change-impact-agent-model.json",
+      "bytes": 5330,
+      "digest": "sha256:0078bd58f8a7beff01aa2ad066e4319ebe50aba134505a9cf24fe675cf1d2912",
+      "semanticDigest": "sha256:23fab699f4606c9b86b3e4fc4ce9e4103e6364f65a5249b2f7f6384ef31ec76a"
+    },
+    "failure-recovery.json": {
+      "path": "failure-recovery.json",
+      "bytes": 2055,
+      "digest": "sha256:d9dfe744a48b634d858aa020374f23c7b19e5ecf9a6b8abf516fd909a96daa6b",
+      "semanticDigest": "sha256:15bade013baa4846bba9f08170b680963d6ee7521acd14b2b033ec13160027f4"
+    },
+    "host-projections.json": {
+      "path": "host-projections.json",
+      "bytes": 2422,
+      "digest": "sha256:0f8437ef29ed5efb66559e9d4c25e647309974372689bda7efe61568850fa8d2",
+      "semanticDigest": "sha256:bc48f5907a5527211cf46b96ccad3fbfbe4c564b5629654c21fddf9ee641f963"
+    }
+  },
+  "summary": {
+    "loopStageCount": 12,
+    "governedSourceCount": 23,
+    "dashboardCount": 2,
+    "hostProjectionCount": 4,
+    "failureRecoveryCaseCount": 3,
+    "writesPerformed": 0,
+    "importsPerformed": 0,
+    "implementationEffectsApplied": 0,
+    "approvalsEstablished": 0,
+    "baselinesDesignated": 0,
+    "hostsAccepted": 0,
+    "providersAccepted": 0,
+    "productOwnerAcceptance": "not-established",
+    "readinessAuthority": "not-established"
+  },
+  "summaryDigest": "sha256:c60c30fc4552eecd3cf737e73c69f23813ff5222e3a57d42cfd88b1a43687345",
+  "authority": {
+    "figmaConnection": "not-established",
+    "providerConnection": "not-established",
+    "writeAuthority": "not-granted",
+    "importAuthority": "not-granted",
+    "approval": "not-established",
+    "baselineDesignation": "not-established",
+    "readinessAuthority": "not-established",
+    "productOwnerAcceptance": "not-established",
+    "nativeHostAcceptance": "not-established",
+    "securityScan": "skipped-by-product-owner",
+    "releaseAuthority": "not-granted",
+    "deploymentAuthority": "not-granted",
+    "boundary": "realistic-phase-2-loop-receipt-is-local-candidate-evidence-not-live-execution-product-research-completeness-validity-approval-baseline-readiness-security-release-deployment-or-action-authority"
+  },
+  "limitations": [
+    "This is a deterministic local fixture, not real Product research, returned current Figma content, or a production dataset.",
+    "No Figma or provider connection, authentication, permission grant, request, transfer, write, import, usage, cost, or semantic-quality assessment occurs.",
+    "Recorded human-review, approval, and baseline objects remain candidates; accountable authority, enforced separation of duties, effective approval, and an actual Baseline Set are not established.",
+    "Native host and Product Owner acceptance, readiness, security completion, release authorization, and deployment approval remain absent."
+  ],
+  "compositionDigest": "sha256:ddeb13e922c9f924fd525b73a77268a8aadd29d4740be445d7123cab5ff77dd8"
+}

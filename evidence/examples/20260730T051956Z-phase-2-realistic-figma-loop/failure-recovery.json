@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase2-realistic-figma-loop-failure-recovery",
+  "scenario": {
+    "id": "phase-2-atlas-evidence-review-design-loop-v1",
+    "digest": "sha256:27636fd7e881740882294b9f860958602d27af4dd1c15b69469d656aeed4a156"
+  },
+  "cases": [
+    {
+      "id": "permission-evidence-absent",
+      "trigger": "The deterministic write-review candidate has no granted permission evidence.",
+      "expectedState": "hold",
+      "recovery": "An accountable human may provide current bounded permission evidence and request a new preview.",
+      "automaticRetry": false,
+      "effectApplied": false,
+      "caseDigest": "sha256:5ec1a0435949a15b3976e60864edb7be191b123a8f79d6e075e12a61dc8aec78"
+    },
+    {
+      "id": "target-revision-stale",
+      "trigger": "The exact target version differs from the version bound to the outbound preview.",
+      "expectedState": "hold",
+      "recovery": "Re-read the bounded target, recompute the delta, and require a new human confirmation.",
+      "automaticRetry": false,
+      "effectApplied": false,
+      "caseDigest": "sha256:05f915bf8ebfffa183fd7521a98bea240beb37e6c4ea0b34542618812020521e"
+    },
+    {
+      "id": "returned-snapshot-conflict",
+      "trigger": "The local returned-snapshot fixture conflicts with the exact outbound design-package candidate.",
+      "expectedState": "hold",
+      "recovery": "Route the exact conflict set to accountable human resolution before any approval or baseline candidate is reconsidered.",
+      "automaticRetry": false,
+      "effectApplied": false,
+      "caseDigest": "sha256:dc53fb8158bd80b7bdd34b1c114a1e6dc500be7445a18bbd97bd2f3eac373c9e"
+    }
+  ],
+  "summary": {
+    "caseCount": 3,
+    "holdCount": 3,
+    "automaticRetryCount": 0,
+    "appliedEffectCount": 0
+  },
+  "authorityBoundary": "failure-recovery-catalog-records-holds-and-unapplied-recovery-candidates-not-retry-write-import-approval-baseline-remediation-or-action-authority",
+  "recoveryDigest": "sha256:15bade013baa4846bba9f08170b680963d6ee7521acd14b2b033ec13160027f4"
+}

@@ -1,0 +1,416 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase2-realistic-figma-loop-catalog",
+  "scenario": {
+    "id": "phase-2-atlas-evidence-review-design-loop-v1",
+    "digest": "sha256:27636fd7e881740882294b9f860958602d27af4dd1c15b69469d656aeed4a156"
+  },
+  "stages": [
+    {
+      "ordinal": 1,
+      "id": "product-intent-bound",
+      "direction": "gaep",
+      "state": "candidate-recorded"
+    },
+    {
+      "ordinal": 2,
+      "id": "design-package-bounded",
+      "direction": "gaep-to-figma",
+      "state": "candidate-recorded"
+    },
+    {
+      "ordinal": 3,
+      "id": "outbound-brief-previewed",
+      "direction": "gaep-to-figma",
+      "state": "candidate-recorded"
+    },
+    {
+      "ordinal": 4,
+      "id": "target-capability-observed",
+      "direction": "gaep-to-figma",
+      "state": "candidate-recorded"
+    },
+    {
+      "ordinal": 5,
+      "id": "write-review-held",
+      "direction": "gaep-to-figma",
+      "state": "attention-required"
+    },
+    {
+      "ordinal": 6,
+      "id": "external-write-not-performed",
+      "direction": "boundary",
+      "state": "not-performed"
+    },
+    {
+      "ordinal": 7,
+      "id": "returned-snapshot-fixture-recorded",
+      "direction": "figma-to-gaep",
+      "state": "candidate-recorded"
+    },
+    {
+      "ordinal": 8,
+      "id": "trace-and-delta-compared",
+      "direction": "figma-to-gaep",
+      "state": "candidate-recorded"
+    },
+    {
+      "ordinal": 9,
+      "id": "conflict-resolution-proposed",
+      "direction": "gaep",
+      "state": "attention-required"
+    },
+    {
+      "ordinal": 10,
+      "id": "human-approval-candidate-recorded",
+      "direction": "gaep",
+      "state": "attention-required"
+    },
+    {
+      "ordinal": 11,
+      "id": "baseline-candidate-recorded",
+      "direction": "gaep",
+      "state": "attention-required"
+    },
+    {
+      "ordinal": 12,
+      "id": "drift-and-impact-projected",
+      "direction": "gaep",
+      "state": "candidate-recorded"
+    }
+  ],
+  "sources": [
+    {
+      "ordinal": 1,
+      "id": "design-applicability",
+      "title": "Design applicability",
+      "group": "experience",
+      "projectionKind": "design-applicability-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000001",
+        "revision": 1,
+        "digest": "sha256:d54be162e9aacf3a379a0bf245e895915a8fe99683242ededcbc6f69e23b1b22"
+      },
+      "snapshotDigest": "sha256:eea60ada884d1beb1aecede3353172c226cc122830246743c04ca566610dcd5c"
+    },
+    {
+      "ordinal": 2,
+      "id": "design-personas-roles",
+      "title": "Design personas and roles",
+      "group": "experience",
+      "projectionKind": "design-persona-role-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000002",
+        "revision": 1,
+        "digest": "sha256:0a7333a5b7e5c88c6c677095ad4a609e04f7c0fa030ea004d1c1b7e7032177b0"
+      },
+      "snapshotDigest": "sha256:21ebf17e7e45d3b1fb0eef78ea9fea406729793c5c6dc7f65232cabcef398e1f"
+    },
+    {
+      "ordinal": 3,
+      "id": "user-journeys",
+      "title": "User journeys",
+      "group": "experience",
+      "projectionKind": "user-journey-model-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000003",
+        "revision": 1,
+        "digest": "sha256:e4b3dd582c92bbdf50b8942b67e70a59ef5f16d867250be193e01e35bb96c655"
+      },
+      "snapshotDigest": "sha256:d62e07dbad0b4177c7a161f90e48f6c84724699786aaf353b99e8cd64c2e0d90"
+    },
+    {
+      "ordinal": 4,
+      "id": "information-architecture",
+      "title": "Information architecture",
+      "group": "experience",
+      "projectionKind": "information-architecture-model-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000004",
+        "revision": 1,
+        "digest": "sha256:bdefe15b4b26d18e01236d4ff445f8c67c2a8b0dc0431dbd636c4e607c6056b4"
+      },
+      "snapshotDigest": "sha256:dcdc2392443890bdab6b80535a2a7a7f45a5ae6de74de9f83adbc9e3fed99726"
+    },
+    {
+      "ordinal": 5,
+      "id": "screen-state-inventory",
+      "title": "Screen and state inventory",
+      "group": "experience",
+      "projectionKind": "screen-state-inventory-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000005",
+        "revision": 1,
+        "digest": "sha256:6fb370cacf21aaa861ead3b1ca5c20194d7d87d736fc22ab2ee4ffaececfad3e"
+      },
+      "snapshotDigest": "sha256:f96ebeb9d4d3703e804d033713731289b7e35c7b4a7e56e50e70d8492f025a19"
+    },
+    {
+      "ordinal": 6,
+      "id": "design-requirements",
+      "title": "Design requirements",
+      "group": "design-system",
+      "projectionKind": "design-requirements-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000006",
+        "revision": 1,
+        "digest": "sha256:045d44b675d049bebba9c66b9f4e68ba149eeaeda4426504b119567cc0a1315e"
+      },
+      "snapshotDigest": "sha256:2ef0209a586cfa2800996f6f27ba73503a2599f93abe2176e1d13647b89fc470"
+    },
+    {
+      "ordinal": 7,
+      "id": "design-system-token-contract",
+      "title": "Design system and token contract",
+      "group": "design-system",
+      "projectionKind": "design-system-token-contract-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000007",
+        "revision": 1,
+        "digest": "sha256:4332a4c74940982524354ff1306d7dfb418ba8a12962eb8e35c7ac490030486f"
+      },
+      "snapshotDigest": "sha256:e694093b44b69a3b86b7e988c44d11bc396dba586a2a7619a971c8d4ae3fb316"
+    },
+    {
+      "ordinal": 8,
+      "id": "accessibility-design-rules",
+      "title": "Accessibility design rules",
+      "group": "design-system",
+      "projectionKind": "accessibility-design-rules-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000008",
+        "revision": 1,
+        "digest": "sha256:77d455349e30cb150cf43725a3b07b4d8996688747517ebe50373ec714687916"
+      },
+      "snapshotDigest": "sha256:5c3e304b63961f59f63b7d63218717e08f04e038d2f944704a13a65983ae855f"
+    },
+    {
+      "ordinal": 9,
+      "id": "responsive-multi-platform-targets",
+      "title": "Responsive and multi-platform targets",
+      "group": "design-system",
+      "projectionKind": "responsive-multi-platform-targets-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000009",
+        "revision": 1,
+        "digest": "sha256:20211c4c5ca82c6649cb9d45f061519ba9d798d82af66e4000c13dd43739dd8d"
+      },
+      "snapshotDigest": "sha256:9652de7800e338b50086912dffab9e6c1cb7d395408ddc9c6936507d0ee11c72"
+    },
+    {
+      "ordinal": 10,
+      "id": "manual-figma-execution-path",
+      "title": "Manual Figma execution path",
+      "group": "figma-exchange",
+      "projectionKind": "manual-figma-execution-path-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000010",
+        "revision": 1,
+        "digest": "sha256:4f172558fd8a2a9b7b4f4740d0fb22677c6d114cc39162d002a5ea3e39b95c29"
+      },
+      "snapshotDigest": "sha256:0dafee2a8b633065f58526761164194dc8e567081260d900e67562177c03ba0a"
+    },
+    {
+      "ordinal": 11,
+      "id": "figma-mcp-capability-discovery",
+      "title": "Figma MCP capability discovery",
+      "group": "figma-exchange",
+      "projectionKind": "figma-mcp-capability-discovery-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000011",
+        "revision": 1,
+        "digest": "sha256:08c3c5051ac7e7868244e4ae36ec223a73a373037b9d2ee0af1ac748dac6a558"
+      },
+      "snapshotDigest": "sha256:8715fe6e06bee2a41eacaed3d05fe8c18136ca4dff7a3dfeda3a4f146c84d765"
+    },
+    {
+      "ordinal": 12,
+      "id": "figma-read-snapshot",
+      "title": "Figma read snapshot",
+      "group": "figma-exchange",
+      "projectionKind": "figma-read-snapshot-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000012",
+        "revision": 1,
+        "digest": "sha256:4db41871f0282257c3d138cc5eb5c0e999f90b54298691da5c9fddf52cd89ecb"
+      },
+      "snapshotDigest": "sha256:c34ed8032d4ae9d0aa1fbc57cd7a1ced3e60c60b72dc3a2a592e85f9fd02806a"
+    },
+    {
+      "ordinal": 13,
+      "id": "figma-context-import",
+      "title": "Figma context import",
+      "group": "figma-exchange",
+      "projectionKind": "figma-context-import-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000013",
+        "revision": 1,
+        "digest": "sha256:22607306c32d66bf015d9bc36fb219160e4344e8edc145f57a0b8c12b0e20474"
+      },
+      "snapshotDigest": "sha256:7c660d7159170000a1a63f32ee326a0218c9f5b28b34efe9e0f1983259cae582"
+    },
+    {
+      "ordinal": 14,
+      "id": "outbound-design-brief-package",
+      "title": "Outbound design brief package",
+      "group": "figma-exchange",
+      "projectionKind": "outbound-design-brief-package-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000014",
+        "revision": 1,
+        "digest": "sha256:d9d4b0d7231bce17818da39aca76a4140c9d11e960b9a5e590ed659b2a14abe9"
+      },
+      "snapshotDigest": "sha256:e66ff0abdfb5eea434da6404783ead3516f988f51e998c09d9d85dd8ae0e81ad"
+    },
+    {
+      "ordinal": 15,
+      "id": "governed-figma-write",
+      "title": "Governed Figma write",
+      "group": "figma-exchange",
+      "projectionKind": "governed-figma-write-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000015",
+        "revision": 1,
+        "digest": "sha256:507b470f36a45438eb72486c4c3a8d7d257b6e296218c9888a3e0477a9d3c1de"
+      },
+      "snapshotDigest": "sha256:0cabf3518edf96939d63a066ca92bbaf0634853e59b16dc2412ee54ce428da56"
+    },
+    {
+      "ordinal": 16,
+      "id": "finalized-figma-snapshot-import",
+      "title": "Finalized Figma snapshot import",
+      "group": "figma-exchange",
+      "projectionKind": "finalized-figma-snapshot-import-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000016",
+        "revision": 1,
+        "digest": "sha256:6ce3f445bcc71ab33a3040ac9b4f07b48883be3080f4c11694bd69776c543c07"
+      },
+      "snapshotDigest": "sha256:79974081eda49f1a5b617b4de184b91158830e4601a9a2f4f62da8ee5afaa73c"
+    },
+    {
+      "ordinal": 17,
+      "id": "design-to-requirement-binding",
+      "title": "Design-to-requirement binding",
+      "group": "governance-assurance",
+      "projectionKind": "design-to-requirement-binding-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000017",
+        "revision": 1,
+        "digest": "sha256:e9bc6146060dba39a2c3e6fc3d22a92b77162adf1b0da9163da9748176b040c8"
+      },
+      "snapshotDigest": "sha256:38183030ed8bc626ef4fafe3b037e882158058fa151cf7bbc7a4d2458d9d6b59"
+    },
+    {
+      "ordinal": 18,
+      "id": "designer-ready-gate",
+      "title": "Designer-ready gate",
+      "group": "governance-assurance",
+      "projectionKind": "designer-ready-gate-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000018",
+        "revision": 1,
+        "digest": "sha256:05e2a6bd434a420d867c368981957a53f2305f5c0ba3fb7caa10d1b6e821f6fb"
+      },
+      "snapshotDigest": "sha256:c60112d7a8324cdaa9682f2782b5a65daf86558a240cea784966b676a41cd149"
+    },
+    {
+      "ordinal": 19,
+      "id": "design-delta",
+      "title": "Design delta",
+      "group": "governance-assurance",
+      "projectionKind": "design-delta-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000019",
+        "revision": 1,
+        "digest": "sha256:699d920bd7b3539d2d42f3cbc2c27e0be43c6634d0cea1273673230a511b0afa"
+      },
+      "snapshotDigest": "sha256:037cdf0dd9f8af680d51c32d3cd500f2c1830770d4411f4e19c721d7c3b15613"
+    },
+    {
+      "ordinal": 20,
+      "id": "design-conflict-resolution",
+      "title": "Design conflict resolution",
+      "group": "governance-assurance",
+      "projectionKind": "design-conflict-resolution-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000020",
+        "revision": 1,
+        "digest": "sha256:de7559966c814eda7c159a85f40b7e623313f719ce6b61eb785840b44a4ae88c"
+      },
+      "snapshotDigest": "sha256:d78da06b9ba7d10a07f940e9681ed6467418a55e7ec4d98b92332384afbaa72b"
+    },
+    {
+      "ordinal": 21,
+      "id": "human-design-approval",
+      "title": "Human design approval",
+      "group": "governance-assurance",
+      "projectionKind": "human-design-approval-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000021",
+        "revision": 1,
+        "digest": "sha256:da7f066b30dc8e189563a9587d4d25f75311306e3ff9727463f69b80ff4ea33a"
+      },
+      "snapshotDigest": "sha256:13ab6828f7666e2627f424e97eb7dc213f0dfa4e3d543ad65fe3d8b8704b4bff"
+    },
+    {
+      "ordinal": 22,
+      "id": "design-baseline",
+      "title": "Design baseline",
+      "group": "governance-assurance",
+      "projectionKind": "design-baseline-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000022",
+        "revision": 1,
+        "digest": "sha256:f996c8b3cb83b6a13d345312a653d316978670e4510ef0a87a529f4a79631427"
+      },
+      "snapshotDigest": "sha256:74a59daaf5ede888d982dddfb089596ca0831cdf8e10e5ca44a59f25b66db8cf"
+    },
+    {
+      "ordinal": 23,
+      "id": "design-drift-detection",
+      "title": "Design drift detection",
+      "group": "governance-assurance",
+      "projectionKind": "design-drift-detection-projection",
+      "state": "attention-required",
+      "candidate": {
+        "recordId": "22000000-0000-4000-8000-000000000023",
+        "revision": 1,
+        "digest": "sha256:3ba133dd50b7c22d5b0bf2b46c244b3b46bfe729613bf0e88d76b204ccf2740f"
+      },
+      "snapshotDigest": "sha256:ff8caf2802047a22c2bc7b0bd3c440e0dad2a0dcc022cd72c5ac67447a84ca53"
+    }
+  ],
+  "counts": {
+    "stageCount": 12,
+    "sourceCount": 23,
+    "attentionRequiredSourceCount": 23,
+    "writesPerformed": 0,
+    "importsPerformed": 0,
+    "implementationEffectsApplied": 0
+  },
+  "authorityBoundary": "loop-catalog-records-deterministic-candidates-and-zero-effects-not-live-figma-provider-approval-baseline-readiness-implementation-or-action-authority",
+  "catalogDigest": "sha256:07caa269d490e583914eccbad3425b3b364a8de5686424d366a3d86666dc3b4e"
+}

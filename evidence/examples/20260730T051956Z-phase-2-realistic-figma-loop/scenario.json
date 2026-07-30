@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase2-realistic-figma-loop-scenario",
+  "id": "phase-2-atlas-evidence-review-design-loop-v1",
+  "actorId": "product-owner",
+  "observedAt": "2026-07-30T05:20:00.000Z",
+  "product": {
+    "schemaVersion": 1,
+    "id": "21000000-0000-4000-8000-000000000001",
+    "kind": "product",
+    "revision": 1,
+    "name": "Atlas Evidence Review",
+    "summary": "A local-first review workspace for a bounded release evidence packet.",
+    "problem": "Reviewers need a traceable experience for examining evidence without confusing provider completion with Product readiness.",
+    "affectedUsers": "Product owners, designers, release engineers, and accountable reviewers",
+    "desiredOutcome": "Demonstrate one exact candidate-only Product-to-Figma-to-Product design loop with independently verifiable boundaries.",
+    "successSignals": [
+      "Every loop stage is bound to an exact deterministic receipt",
+      "Missing permission, stale target, and return conflict states fail closed",
+      "No external write, import, approval, baseline, readiness, or implementation effect is claimed"
+    ],
+    "firstWorkflow": "Inspect a release evidence packet and its bounded design-review state.",
+    "exclusions": [
+      "Live Figma access",
+      "Content transfer",
+      "Approval or Baseline Set authority",
+      "Source-code changes or deployment"
+    ],
+    "profile": "software",
+    "lifecycleState": "active",
+    "createdAt": "2026-07-30T05:20:00.000Z",
+    "updatedAt": "2026-07-30T05:20:00.000Z"
+  },
+  "initiative": {
+    "schemaVersion": 1,
+    "id": "21000000-0000-4000-8000-000000000002",
+    "kind": "initiative",
+    "revision": 1,
+    "productId": "21000000-0000-4000-8000-000000000001",
+    "title": "Review the Atlas evidence experience",
+    "outcome": "A deterministic local artifact exposes the full governed design loop and its unresolved authority boundaries.",
+    "scope": [
+      "Candidate design package and outbound preview",
+      "Candidate return, comparison, review, approval, baseline, drift, and impact evidence",
+      "Product Studio and four-host read-only projection binding"
+    ],
+    "exclusions": [
+      "Live provider or Figma execution",
+      "Human decision substitution",
+      "Implementation or release effects"
+    ],
+    "state": "active",
+    "createdAt": "2026-07-30T05:20:00.000Z",
+    "updatedAt": "2026-07-30T05:20:00.000Z"
+  },
+  "loopStages": [
+    { "ordinal": 1, "id": "product-intent-bound", "direction": "gaep", "state": "candidate-recorded" },
+    { "ordinal": 2, "id": "design-package-bounded", "direction": "gaep-to-figma", "state": "candidate-recorded" },
+    { "ordinal": 3, "id": "outbound-brief-previewed", "direction": "gaep-to-figma", "state": "candidate-recorded" },
+    { "ordinal": 4, "id": "target-capability-observed", "direction": "gaep-to-figma", "state": "candidate-recorded" },
+    { "ordinal": 5, "id": "write-review-held", "direction": "gaep-to-figma", "state": "attention-required" },
+    { "ordinal": 6, "id": "external-write-not-performed", "direction": "boundary", "state": "not-performed" },
+    { "ordinal": 7, "id": "returned-snapshot-fixture-recorded", "direction": "figma-to-gaep", "state": "candidate-recorded" },
+    { "ordinal": 8, "id": "trace-and-delta-compared", "direction": "figma-to-gaep", "state": "candidate-recorded" },
+    { "ordinal": 9, "id": "conflict-resolution-proposed", "direction": "gaep", "state": "attention-required" },
+    { "ordinal": 10, "id": "human-approval-candidate-recorded", "direction": "gaep", "state": "attention-required" },
+    { "ordinal": 11, "id": "baseline-candidate-recorded", "direction": "gaep", "state": "attention-required" },
+    { "ordinal": 12, "id": "drift-and-impact-projected", "direction": "gaep", "state": "candidate-recorded" }
+  ],
+  "metrics": {
+    "personaCount": 2,
+    "designRoleCount": 3,
+    "journeyCount": 1,
+    "touchpointCount": 5,
+    "informationArchitectureNodeCount": 6,
+    "routeCount": 3,
+    "screenCount": 4,
+    "stateCount": 12,
+    "variantCount": 4,
+    "requirementCount": 8,
+    "designSystemCount": 1,
+    "tokenCount": 10,
+    "componentCount": 6,
+    "accessibilityRuleCount": 4,
+    "accessibilityCheckCount": 5,
+    "platformTargetCount": 2,
+    "breakpointCount": 3,
+    "fileCount": 1,
+    "figmaComponentCount": 6,
+    "variableCount": 10,
+    "designBindingCount": 7,
+    "humanReviewedBindingCount": 0,
+    "unboundDesignItemCount": 1,
+    "driftObservationCount": 3,
+    "requirementToDesignCount": 2,
+    "designToImplementationCount": 1,
+    "conformantCount": 1,
+    "driftCount": 1,
+    "unassessedCount": 1,
+    "blockerCount": 0,
+    "highSeverityCount": 1,
+    "remediationCandidateCount": 1,
+    "unresolvedQuestionCount": 3
+  },
+  "failureCases": [
+    {
+      "id": "permission-evidence-absent",
+      "trigger": "The deterministic write-review candidate has no granted permission evidence.",
+      "expectedState": "hold",
+      "recovery": "An accountable human may provide current bounded permission evidence and request a new preview.",
+      "automaticRetry": false,
+      "effectApplied": false
+    },
+    {
+      "id": "target-revision-stale",
+      "trigger": "The exact target version differs from the version bound to the outbound preview.",
+      "expectedState": "hold",
+      "recovery": "Re-read the bounded target, recompute the delta, and require a new human confirmation.",
+      "automaticRetry": false,
+      "effectApplied": false
+    },
+    {
+      "id": "returned-snapshot-conflict",
+      "trigger": "The local returned-snapshot fixture conflicts with the exact outbound design-package candidate.",
+      "expectedState": "hold",
+      "recovery": "Route the exact conflict set to accountable human resolution before any approval or baseline candidate is reconsidered.",
+      "automaticRetry": false,
+      "effectApplied": false
+    }
+  ],
+  "sourcePaths": {
+    "phase1ReferenceReceipt": "evidence/examples/20260728T023854Z-phase-1-realistic-reference/receipt.json",
+    "phase2Conformance": "evidence/ide-conformance/20260730T045105Z-phase-2-change-impact-agent-model-dashboard.json",
+    "phase2Report": "evidence/phase-reports/20260730T050406Z-phase-2-change-impact-agent-model-dashboard.json"
+  },
+  "limitations": [
+    "This is a deterministic local fixture, not real Product research, returned current Figma content, or a production dataset.",
+    "No Figma or provider connection, authentication, permission grant, request, transfer, write, import, usage, cost, or semantic-quality assessment occurs.",
+    "Recorded human-review, approval, and baseline objects remain candidates; accountable authority, enforced separation of duties, effective approval, and an actual Baseline Set are not established.",
+    "Native host and Product Owner acceptance, readiness, security completion, release authorization, and deployment approval remain absent."
+  ],
+  "authorityBoundary": "realistic-phase-2-loop-is-deterministic-candidate-evidence-not-figma-or-provider-execution-product-research-external-completeness-design-validity-approval-baseline-readiness-implementation-release-deployment-or-action-authority"
+}

@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase2-realistic-figma-loop-artifact-manifest",
+  "scenario": {
+    "id": "phase-2-atlas-evidence-review-design-loop-v1",
+    "path": "scenario.json",
+    "sourcePath": "examples/phase-2-realistic-figma-loop/scenario.json",
+    "sourceDigest": "sha256:1534f9905c149e7c20218734968556c51747082ae649d68ca6267940ea06ac4a",
+    "semanticDigest": "sha256:27636fd7e881740882294b9f860958602d27af4dd1c15b69469d656aeed4a156",
+    "product": {
+      "id": "21000000-0000-4000-8000-000000000001",
+      "revision": 1,
+      "digest": "sha256:b1f7a0d365596ab89862a893078fefe813d1b40d21f0c53356931782ab8e0002"
+    },
+    "initiative": {
+      "id": "21000000-0000-4000-8000-000000000002",
+      "revision": 1,
+      "digest": "sha256:30967f01ba1215cca477ce8b59c273da67afc0814d3ee2a392b11e6014649429"
+    }
+  },
+  "receipt": {
+    "path": "receipt.json",
+    "bytes": 5234,
+    "digest": "sha256:f44e4a370357cf7738fbf691a49178cd3da20ff4d01e593e2af1565cfc1b71d7",
+    "compositionDigest": "sha256:ddeb13e922c9f924fd525b73a77268a8aadd29d4740be445d7123cab5ff77dd8"
+  },
+  "inventory": {
+    "fileCount": 10,
+    "byteCount": 130355,
+    "entries": [
+      {
+        "path": "dashboards/change-impact-agent-model.json",
+        "bytes": 5330,
+        "digest": "sha256:0078bd58f8a7beff01aa2ad066e4319ebe50aba134505a9cf24fe675cf1d2912"
+      },
+      {
+        "path": "dashboards/phase2-ux-figma.json",
+        "bytes": 27168,
+        "digest": "sha256:7f596fadf36e99df1474b53a7d078552d6fc3e3e75238508ef6b0c6cabfe2749"
+      },
+      {
+        "path": "failure-recovery.json",
+        "bytes": 2055,
+        "digest": "sha256:d9dfe744a48b634d858aa020374f23c7b19e5ecf9a6b8abf516fd909a96daa6b"
+      },
+      {
+        "path": "host-projections.json",
+        "bytes": 2422,
+        "digest": "sha256:0f8437ef29ed5efb66559e9d4c25e647309974372689bda7efe61568850fa8d2"
+      },
+      {
+        "path": "loop-catalog.json",
+        "bytes": 15132,
+        "digest": "sha256:a8d3e951d28486cd8eb3a624c478c75e5f6edbdfbdf2eecd84c2564cd723ada9"
+      },
+      {
+        "path": "receipt.json",
+        "bytes": 5234,
+        "digest": "sha256:f44e4a370357cf7738fbf691a49178cd3da20ff4d01e593e2af1565cfc1b71d7"
+      },
+      {
+        "path": "scenario.json",
+        "bytes": 7174,
+        "digest": "sha256:1534f9905c149e7c20218734968556c51747082ae649d68ca6267940ea06ac4a"
+      },
+      {
+        "path": "sources/phase1-reference-receipt.json",
+        "bytes": 5790,
+        "digest": "sha256:bda03985ec201ac53ec3f311f5d8bc91e6f4bca6ff8b189e27c4518f35f14389"
+      },
+      {
+        "path": "sources/phase2-conformance.json",
+        "bytes": 51722,
+        "digest": "sha256:fcf00e03cfcc09ced1f9fa1f0c228081893bd197a27fcc778b6475d4b25045e0"
+      },
+      {
+        "path": "sources/phase2-report.json",
+        "bytes": 8328,
+        "digest": "sha256:495cc5b39cf6d4f7f7f161c282c31c919fb80b179de6c7ce2bd2b14b0634bf5e"
+      }
+    ],
+    "inventoryDigest": "sha256:64fd1a5a396a16f472a4b082130efbb6a111176ba88bb5854db6ef796491459b"
+  },
+  "authorityBoundary": "artifact-manifest-is-integrity-evidence-not-live-figma-provider-product-research-approval-baseline-readiness-security-release-or-deployment-authority"
+}
