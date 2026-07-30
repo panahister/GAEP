@@ -22,7 +22,7 @@ const definitions = [
     path: "apps/vscode/dist/gaep-vscode.vsix",
     maximumBytes: 32 * 1024 * 1024,
     requiredHere: true,
-    verification: "exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-bundled-engine-empty-recovery-evidence-workflow-and-accessible-phase-3a-backlog-hierarchy-plus-mvp-slice-definition-plus-prioritization-model-plus-acceptance-criteria-plus-definition-of-ready-plus-definition-of-done-plus-implementation-unit-model-plus-dependency-mapping-plus-technology-profile-plus-boilerplate-registry-plus-boilerplate-selection-binding-plus-boilerplate-compatibility-validation-plus-figma-to-boilerplate-mapping-plus-design-to-code-binding-registry-product-studio-projection",
+    verification: "exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-bundled-engine-empty-recovery-evidence-workflow-and-accessible-phase-3a-backlog-hierarchy-plus-mvp-slice-definition-plus-prioritization-model-plus-acceptance-criteria-plus-definition-of-ready-plus-definition-of-done-plus-implementation-unit-model-plus-dependency-mapping-plus-technology-profile-plus-boilerplate-registry-plus-boilerplate-selection-binding-plus-boilerplate-compatibility-validation-plus-figma-to-boilerplate-mapping-plus-design-to-code-binding-registry-plus-route-screen-component-mapping-product-studio-projection",
   },
   {
     host: "kiro",
@@ -30,7 +30,7 @@ const definitions = [
     path: "apps/kiro/dist/gaep-kiro.vsix",
     maximumBytes: 8 * 1024 * 1024,
     requiredHere: true,
-    verification: "exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-digest-bound-package-local-provider-model-phase-1-phase-2-and-phase-3a-backlog-hierarchy-plus-mvp-slice-definition-plus-prioritization-model-plus-acceptance-criteria-plus-definition-of-ready-plus-definition-of-done-plus-implementation-unit-model-plus-dependency-mapping-plus-technology-profile-plus-boilerplate-registry-plus-boilerplate-selection-binding-plus-boilerplate-compatibility-validation-plus-figma-to-boilerplate-mapping-plus-design-to-code-binding-registry-workflows-with-private-safe-output-and-immutable-store",
+    verification: "exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-digest-bound-package-local-provider-model-phase-1-phase-2-and-phase-3a-backlog-hierarchy-plus-mvp-slice-definition-plus-prioritization-model-plus-acceptance-criteria-plus-definition-of-ready-plus-definition-of-done-plus-implementation-unit-model-plus-dependency-mapping-plus-technology-profile-plus-boilerplate-registry-plus-boilerplate-selection-binding-plus-boilerplate-compatibility-validation-plus-figma-to-boilerplate-mapping-plus-design-to-code-binding-registry-plus-route-screen-component-mapping-workflows-with-private-safe-output-and-immutable-store",
   },
   {
     host: "rider",
@@ -38,7 +38,7 @@ const definitions = [
     path: "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
     maximumBytes: 64 * 1024 * 1024,
     requiredHere: true,
-    verification: "clean-test-instrumentation-build-exact-engine-and-jar-archive-prepared-sandbox-parity-jetbrains-plugininstaller-install-removal-absence-reinstall-native-startup-client-packaged-engine-empty-evidence-workflow-and-phase-3a-backlog-hierarchy-plus-mvp-slice-definition-plus-prioritization-model-plus-acceptance-criteria-plus-definition-of-ready-plus-definition-of-done-plus-implementation-unit-model-plus-dependency-mapping-plus-technology-profile-plus-boilerplate-registry-plus-boilerplate-selection-binding-plus-boilerplate-compatibility-validation-plus-figma-to-boilerplate-mapping-plus-design-to-code-binding-registry-projection",
+    verification: "clean-test-instrumentation-build-exact-engine-and-jar-archive-prepared-sandbox-parity-jetbrains-plugininstaller-install-removal-absence-reinstall-native-startup-client-packaged-engine-empty-evidence-workflow-and-phase-3a-backlog-hierarchy-plus-mvp-slice-definition-plus-prioritization-model-plus-acceptance-criteria-plus-definition-of-ready-plus-definition-of-done-plus-implementation-unit-model-plus-dependency-mapping-plus-technology-profile-plus-boilerplate-registry-plus-boilerplate-selection-binding-plus-boilerplate-compatibility-validation-plus-figma-to-boilerplate-mapping-plus-design-to-code-binding-registry-plus-route-screen-component-mapping-projection",
   },
   {
     host: "visual-studio",
@@ -46,7 +46,7 @@ const definitions = [
     path: "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
     maximumBytes: 128 * 1024 * 1024,
     requiredHere: process.platform === "win32",
-    verification: "cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-730-protocol-controller-checks-with-phase-3a-backlog-hierarchy-plus-mvp-slice-definition-plus-prioritization-model-plus-acceptance-criteria-plus-definition-of-ready-plus-definition-of-done-plus-implementation-unit-model-plus-dependency-mapping-plus-technology-profile-plus-boilerplate-registry-plus-boilerplate-selection-binding-plus-boilerplate-compatibility-validation-plus-figma-to-boilerplate-mapping-plus-design-to-code-binding-registry-and-packaged-engine-empty-evidence-workflow-windows-container-install-pending",
+    verification: "cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-738-protocol-controller-checks-with-phase-3a-backlog-hierarchy-plus-mvp-slice-definition-plus-prioritization-model-plus-acceptance-criteria-plus-definition-of-ready-plus-definition-of-done-plus-implementation-unit-model-plus-dependency-mapping-plus-technology-profile-plus-boilerplate-registry-plus-boilerplate-selection-binding-plus-boilerplate-compatibility-validation-plus-figma-to-boilerplate-mapping-plus-design-to-code-binding-registry-plus-route-screen-component-mapping-and-packaged-engine-empty-evidence-workflow-windows-container-install-pending",
   },
 ]
 

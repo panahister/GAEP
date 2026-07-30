@@ -131,6 +131,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/FigmaToBoilerplateMappingProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/DesignToCodeBindingRegistryModels.cs",
       "apps/visual-studio/Gaep.HostClient/DesignToCodeBindingRegistryProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/RouteScreenComponentMappingModels.cs",
+      "apps/visual-studio/Gaep.HostClient/RouteScreenComponentMappingProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/DesignApplicabilityModels.cs",
       "apps/visual-studio/Gaep.HostClient/DesignApplicabilityProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/DesignPersonaRoleModels.cs",
@@ -201,7 +203,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (730)",
+        "GAEP Visual Studio host-client tests: PASS (738)",
       ],
     }],
   },

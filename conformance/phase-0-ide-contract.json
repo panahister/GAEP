@@ -76,6 +76,7 @@
     { "id": "boilerplate-compatibility-validation", "label": "Exact governed Boilerplate Compatibility Validation candidate with one exact subject per selected binding, complete canonical architecture, build, dependency, deployment, design-system, licensing-policy, packaging, platform, runtime, security-privacy, stack, test, toolchain and version dimension coverage, evidence and exception candidates, deterministic subject, dimension, evidence, validation and assessment receipts, and exact current Implementation Unit Model, Dependency Mapping, Technology Profile, Boilerplate Registry and Boilerplate Selection and Binding bindings, without establishing compatibility truth or completeness, validation decisions, actual asset behavior, test execution, design validity, security, privacy or licensing approval, exception or waiver authority, effective selection or binding, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, write, or action authority" },
     { "id": "figma-to-boilerplate-mapping", "label": "Exact governed Figma-to-Boilerplate Mapping candidate with one mapping subject per current Design-to-Requirement Binding, bounded component, token, layout, responsive-behavior and platform-target mapping kinds, mapped, conflict, unmapped and not-assessed candidate outcomes, exact selected boilerplate target, Implementation Unit and Requirement trace candidates, evidence and attributable review candidates, deterministic subject-catalog, target-catalog, trace, mapping and assessment receipts, and exact current design applicability, design-system/token, responsive/platform, finalized-snapshot, design-to-requirement, design-baseline, Implementation Unit Model, Technology Profile, Boilerplate Registry, Boilerplate Selection and Binding and Boilerplate Compatibility Validation bindings, without connecting to or calling Figma, establishing returned Figma content, design validity, approval or baseline, mapping truth or completeness, effective selection or binding, compatibility truth, retrieving, importing, instantiating, generating or executing assets, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, write, or action authority" },
     { "id": "design-to-code-binding-registry", "label": "Exact governed Design-to-Code Binding Registry candidate with one binding subject per current Figma-to-Boilerplate Mapping subject, bounded component, configuration, layout, module, route, style, symbol, test-hook and token binding kinds, bound, conflict, unbound and not-assessed candidate outcomes, exact Implementation Unit, Requirement and repository, module, path and optional symbol target candidates, evidence and attributable human binding candidates, deterministic subject-catalog, code-target-catalog, trace, binding and assessment receipts, and exact current Design Baseline, Finalized Figma Snapshot Import, Design-to-Requirement Binding, Figma-to-Boilerplate Mapping, Implementation Unit Model, Technology Profile, Boilerplate Selection and Binding and Boilerplate Compatibility Validation bindings, without connecting to or calling Figma, establishing returned Figma content, design validity, approval or baseline, mapping or binding truth or completeness, repository, path or symbol truth, creating or changing code targets, retrieving, importing, instantiating, generating or executing assets, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, write, or action authority" },
+    { "id": "route-screen-component-mapping", "label": "Exact governed Route, Screen, and Component Mapping candidate with one route, screen, state, or component subject per current Information Architecture and Screen and State Inventory source subject, typed route-screen, screen-state, screen-component and component-component relationships, mapped, conflict, unmapped and not-assessed candidate outcomes, exact Requirement, Acceptance Criteria, Implementation Unit, Design-to-Code Binding and optional test-hook trace candidates, evidence and attributable review candidates, deterministic subject-catalog, relationship-catalog, trace, mapping and assessment receipts, and exact current Information Architecture, Screen and State Inventory, Design Requirements, Design Baseline, Design-to-Requirement Binding, Figma-to-Boilerplate Mapping, Design-to-Code Binding Registry, Implementation Unit Model and Acceptance Criteria bindings, without connecting to or calling Figma, establishing returned Figma content, navigation, route, screen, state, component, responsive, platform, requirement, acceptance-criteria, test-coverage, repository, path, symbol or mapping truth or completeness, creating or changing code or design targets, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, write, or action authority" },
     { "id": "design-system-token-contract", "label": "Exact governed Design System and Token Contract candidate projection with bounded system, token, variable, component and requirement-coverage metadata, without system, token, variable or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "accessibility-design-rules", "label": "Exact governed Accessibility Design Rules candidate projection with bounded target, rule, check, evidence-state and requirement-coverage metadata, without accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "responsive-multi-platform-targets", "label": "Exact governed Responsive and Multi-Platform Targets candidate projection with bounded platform-target, breakpoint, behavior, check, evidence-state and requirement-coverage metadata, without responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
@@ -103,7 +104,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T200113Z-phase-3a-design-to-code-binding-registry-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T211403Z-phase-3a-route-screen-component-mapping-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -338,6 +339,10 @@
         { "capabilityId": "design-to-code-binding-registry", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designToCodeBindingRegistry?: {", "engine.designToCodeBindingRegistry!.project(initiative.id)", "id: \"design-to-code-binding-registry\"", "mapping or binding truth or completeness"] }
         ] },
+        { "capabilityId": "route-screen-component-mapping", "state": "implemented", "probes": [
+          { "path": "packages/engine/src/route-screen-component-mapping.ts", "contains": ["class RouteScreenComponentMappingService", "informationArchitecture: InformationArchitectureModel", "acceptanceCriteria: AcceptanceCriteria", "route-screen-component-mapping-projection-is-read-only"] },
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["routeScreenComponentMapping?: {", "engine.routeScreenComponentMapping!.project(initiative.id)", "id: \"route-screen-component-mapping\"", "no route patterns, screen/state/component details"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designSystemTokenContract?: {", "engine.designSystemTokenContract!.project(initiative.id)", "id: \"design-system-token-contract\"", "no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."] }
         ] },
@@ -399,7 +404,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T200113Z-phase-3a-design-to-code-binding-registry-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T211403Z-phase-3a-route-screen-component-mapping-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -670,6 +675,10 @@
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignToCodeBindingRegistry(", "this.request(\"planning.designToCodeBindingRegistry.snapshot\"", "designToCodeBindingRegistryProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignToCodeBindingRegistry", "GAEP governed Design-to-Code Binding Registry candidate", "create or change code targets"] }
         ] },
+        { "capabilityId": "route-screen-component-mapping", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readRouteScreenComponentMapping(", "this.request(\"planning.routeScreenComponentMapping.snapshot\"", "routeScreenComponentMappingProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showRouteScreenComponentMapping", "GAEP governed Route, Screen, and Component Mapping candidate", "create or change code or design targets"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignSystemTokenContract(", "this.request(\"design.systemTokenContract.snapshot\"", "designSystemTokenContractProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignSystemTokenContract", "GAEP governed Design System and Token Contract candidate", "does not establish system, token, variable, or component validity"] }
@@ -748,7 +757,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T200113Z-phase-3a-design-to-code-binding-registry-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T211403Z-phase-3a-route-screen-component-mapping-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -1075,6 +1084,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design-to-Code Binding Registry candidate", "requireDependency(\"boilerplateCompatibilityValidation\"", "create or change code targets"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["DesignToCodeBindingRegistryProjection", "DESIGN_TO_CODE_BINDING_REGISTRY_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] },
+        { "capabilityId": "route-screen-component-mapping", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readRouteScreenComponentMapping(", "portableRequest(\"planning.routeScreenComponentMapping.snapshot\"", "parseRouteScreenComponentMappingEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Route, Screen, and Component Mapping candidate", "requireDependency(\"acceptanceCriteria\"", "navigation or mapping truth"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["RouteScreenComponentMappingProjection", "ROUTE_SCREEN_COMPONENT_MAPPING_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignSystemTokenContract(", "portableRequest(\"design.systemTokenContract.snapshot\"", "parseDesignSystemTokenContractEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design System and Token Contract candidate", "no system, token, variable", "ownership authority"] },
@@ -1170,7 +1184,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T200113Z-phase-3a-design-to-code-binding-registry-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T211403Z-phase-3a-route-screen-component-mapping-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1508,6 +1522,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignToCodeBindingRegistryAsync(", "\"planning.designToCodeBindingRegistry.snapshot\"", "ParseDesignToCodeBindingRegistryResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Design-to-Code Binding Registry candidate", "RequireDependency(\"boilerplateCompatibilityValidation\"", "create or change code targets"] },
           { "path": "apps/visual-studio/Gaep.HostClient/DesignToCodeBindingRegistryProtocol.cs", "contains": ["DesignToCodeBindingRegistryProjection", "DesignToCodeBindingRegistryProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "route-screen-component-mapping", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadRouteScreenComponentMappingAsync(", "\"planning.routeScreenComponentMapping.snapshot\"", "ParseRouteScreenComponentMappingResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Route, Screen, and Component Mapping candidate", "RequireDependency(\"acceptanceCriteria\"", "navigation or mapping truth"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/RouteScreenComponentMappingProtocol.cs", "contains": ["RouteScreenComponentMappingProjection", "RouteScreenComponentMappingProjectionAuthorityBoundary"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignSystemTokenContractAsync(", "\"design.systemTokenContract.snapshot\"", "ParseDesignSystemTokenContractResponse"] },

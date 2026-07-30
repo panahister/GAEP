@@ -10,7 +10,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const contractPath = join(repositoryRoot, "conformance/phase-0-ide-contract.json")
 const packageReportPath = join(
   repositoryRoot,
-  "evidence/local-packages/20260730T200113Z-phase-3a-design-to-code-binding-registry-packages.json",
+  "evidence/local-packages/20260730T211403Z-phase-3a-route-screen-component-mapping-packages.json",
 )
 let temporaryRoot
 
@@ -42,9 +42,9 @@ describe("Phase 0 IDE conformance matrix", () => {
       },
       {
         hosts: 4,
-        capabilities: 90,
-        assessments: 360,
-        implemented: 360,
+        capabilities: 91,
+        assessments: 364,
+        implemented: 364,
         partial: 0,
         notImplemented: 0,
         producedPackages: 3,
