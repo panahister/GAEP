@@ -58,6 +58,7 @@ private val designDeltaId = UUID.fromString("81818181-8181-4181-8181-81818181818
 private val designConflictResolutionId = UUID.fromString("82828282-8282-4282-8282-828282828282")
 private val humanDesignApprovalId = UUID.fromString("83838383-8383-4383-8383-838383838383")
 private val designBaselineId = UUID.fromString("84848484-8484-4484-8484-848484848484")
+private val designDriftDetectionId = UUID.fromString("87878787-8787-4787-8787-878787878787")
 private const val completenessPolicyVersion = "gaep-initiative-classification-completeness-v1"
 private const val subjectCatalogVersion = "gaep-initiative-applicability-subjects-v1"
 private const val subjectCatalogCount = 49
@@ -346,6 +347,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "design.designBaseline.snapshot" -> handleDesignBaseline(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "design.designDriftDetection.snapshot" -> handleDesignDriftDetection(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4720,6 +4726,140 @@ private fun handleDesignBaseline(id: Long, params: JsonObject, workspacePath: St
         }
         workspacePath.endsWith("bad-design-baseline-private") -> {
             value.addProperty("designRationale", "$privateRoot/$privateCredential")
+        }
+    }
+    writeResult(id, value)
+}
+
+private fun handleDesignDriftDetection(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN DRIFT PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-design-drift-binding")) 8 else 7
+    val assessedAt = "2026-07-30T03:30:00.000Z"
+    val candidateDigest = "sha256:${"4".repeat(64)}"
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "design-drift-detection-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "design-drift-detection-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", JsonObject().apply {
+                addProperty("recordId", designDriftDetectionId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", candidateDigest)
+            })
+            addProperty("implementationTargetCount", 5)
+            addProperty("humanReviewedImplementationTargetCount", 4)
+            addProperty("observationCount", 9)
+            addProperty("humanReviewedObservationCount", 8)
+            addProperty("requirementToDesignCount", 4)
+            addProperty("designToImplementationCount", 5)
+            addProperty("conformantCount", 3)
+            addProperty("driftCount", 5)
+            addProperty("unassessedCount", 1)
+            addProperty("blockerCount", 1)
+            addProperty("highSeverityCount", 2)
+            addProperty("remediationCandidateCount", 4)
+            addProperty("expiredRemediationCandidateCount", 1)
+            addProperty("staleBindingCount", 2)
+            addProperty("staleSourceReferenceCount", 3)
+            addProperty("unresolvedQuestionCount", 1)
+            addProperty("candidateResult", "incomplete")
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply { add("One or more exact comparison subjects remain not assessed") })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "design-drift-detection-status-is-observational-and-does-not-establish-an-actual-baseline-comparison-completeness-external-completeness-design-or-implementation-validity-approval-readiness-remediation-effect-or-figma-import-write-implementation-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", designDriftDetectionId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("membershipDigest", "sha256:${"5".repeat(64)}")
+            addProperty("state", "candidate")
+            add("designBaseline", JsonObject().apply {
+                addProperty("recordId", designBaselineId.toString())
+                addProperty("revision", 3)
+                addProperty("digest", "sha256:${"e".repeat(64)}")
+                addProperty("membershipDigest", "sha256:${"f".repeat(64)}")
+                addProperty("baselineLineageId", "85858585-8585-4585-8585-858585858585")
+                addProperty("candidateSetId", "86868686-8686-4686-8686-868686868686")
+                addProperty("candidateSetRevision", 3)
+                addProperty("semanticVersion", "2.0.0")
+                addProperty("designationReceiptDigest", "sha256:${"4".repeat(64)}")
+                addProperty("baselineDesignationState", "not-established")
+            })
+            add("returnedFigmaSnapshot", JsonObject().apply {
+                addProperty("recordId", finalizedFigmaSnapshotImportId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", "sha256:${"5".repeat(64)}")
+                addProperty("membershipDigest", "sha256:${"6".repeat(64)}")
+                addProperty("externalFileIdentityDigest", "sha256:${"7".repeat(64)}")
+                addProperty("returnedExternalVersionDigest", "sha256:${"8".repeat(64)}")
+                addProperty("itemCatalogDigest", "sha256:${"9".repeat(64)}")
+            })
+            add("designRequirements", JsonObject().apply {
+                addProperty("recordId", designRequirementsId.toString())
+                addProperty("revision", 3)
+                addProperty("digest", "sha256:${"a".repeat(64)}")
+                addProperty("membershipDigest", "sha256:${"b".repeat(64)}")
+                addProperty("requirementCatalogDigest", "sha256:${"c".repeat(64)}")
+            })
+            add("designTrace", JsonObject().apply {
+                addProperty("recordId", designToRequirementBindingId.toString())
+                addProperty("revision", 2)
+                addProperty("digest", "sha256:${"d".repeat(64)}")
+                addProperty("membershipDigest", "sha256:${"e".repeat(64)}")
+                addProperty("reconciliationDigest", "sha256:${"f".repeat(64)}")
+            })
+            addProperty("implementationTargetCatalogRevision", 2)
+            addProperty("implementationTargetCatalogDigest", "sha256:${"0".repeat(64)}")
+            addProperty("comparisonPolicyDigest", "sha256:${"1".repeat(64)}")
+            addProperty("comparisonDigest", "sha256:${"2".repeat(64)}")
+            addProperty("implementationTargetCount", 5)
+            addProperty("observationCount", 9)
+            addProperty("remediationCandidateCount", 4)
+            addProperty("candidateResult", "incomplete")
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T03:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-version-axes-counts-classifications-severities-statuses-and-digests-only-not-design-requirement-or-implementation-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions",
+        )
+        addProperty(
+            "authorityBoundary",
+            "design-drift-detection-projection-is-read-only-and-does-not-establish-an-actual-baseline-comparison-completeness-external-completeness-design-or-implementation-validity-approval-readiness-remediation-effect-or-figma-import-write-implementation-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-design-drift-digest") -> {
+            value.getAsJsonObject("status").addProperty("observationCount", 8)
+        }
+        workspacePath.endsWith("bad-design-drift-private") -> {
+            value.addProperty("implementationContent", "$privateRoot/$privateCredential")
         }
     }
     writeResult(id, value)

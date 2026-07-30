@@ -2317,6 +2317,57 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Design Drift Detection projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("design-drift-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDesignDriftDetection(entryId)
+            assertEquals("attention-required", projection.assessmentState)
+            assertEquals("incomplete", projection.candidateResult)
+            assertEquals("held", projection.reviewState)
+            assertEquals(5, projection.implementationTargetCount)
+            assertEquals(9, projection.observationCount)
+            assertEquals(4, projection.requirementToDesignCount)
+            assertEquals(5, projection.designToImplementationCount)
+            assertEquals(5, projection.driftCount)
+            assertEquals(1, projection.blockerCount)
+            assertEquals(4, projection.remediationCandidateCount)
+            assertEquals("not-established", projection.candidate?.designBaseline?.baselineDesignationState)
+            assertEquals(2, projection.candidate?.implementationTargetCatalogRevision)
+
+            val rendered = RiderProductController(client).readDesignDriftDetection(entryId)
+            assertTrue(rendered.contains("GAEP Design Drift Detection candidate"))
+            assertTrue(rendered.contains("4 requirement-to-design · 5 design-to-implementation"))
+            assertTrue(rendered.contains("3 conformant · 5 drift · 1 unassessed"))
+            assertTrue(rendered.contains("4 candidates") || rendered.contains("4 recorded"))
+            assertTrue(rendered.contains("does not establish an actual Baseline Set"))
+            assertTrue(rendered.contains("grant action authority"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("implementationContent="))
+        }
+
+        listOf("bad-design-drift-digest", "bad-design-drift-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDesignDriftDetection(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        Files.createDirectory(temporaryRoot.resolve("bad-design-drift-binding")).let { root ->
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDesignDriftDetection(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `portable design client is bounded private and non-authoritative`() {
         val bundleRoot = Files.createDirectory(temporaryRoot.resolve("portable-bundle"))
         val invalidSourceRoot = Files.createDirectory(temporaryRoot.resolve("source-error"))

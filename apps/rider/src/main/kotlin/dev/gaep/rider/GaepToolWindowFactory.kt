@@ -802,6 +802,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += designBaselineButton
         actions.add(designBaselineButton)
 
+        val designDriftDetectionButton = JButton("Inspect Design Drift…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Design, Requirement, implementation, Source, human-attribution, personal, local-path, secret, credential, permission, and authority content is withheld.",
+                    "GAEP Design Drift Detection",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Design Drift Detection", status, output, buttons) {
+                    controller.readDesignDriftDetection(initiativeId)
+                }
+            }
+        }
+        buttons += designDriftDetectionButton
+        actions.add(designDriftDetectionButton)
+
         addAction("Show phase dashboards") { controller.readPhaseDashboard() }
 
         val phase1SummaryButton = JButton("Show Phase 1 summary…").apply {

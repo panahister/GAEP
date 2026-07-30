@@ -2835,6 +2835,97 @@ data class DesignBaselineProjection(
     val snapshotDigest: String,
 )
 
+data class DesignDriftBaselineView(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val baselineLineageId: UUID,
+    val candidateSetId: UUID,
+    val candidateSetRevision: Long,
+    val semanticVersion: String,
+    val designationReceiptDigest: String,
+    val baselineDesignationState: String,
+)
+
+data class DesignDriftSnapshotView(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val externalFileIdentityDigest: String,
+    val returnedExternalVersionDigest: String,
+    val itemCatalogDigest: String,
+)
+
+data class DesignDriftCatalogView(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val catalogDigest: String,
+)
+
+data class DesignDriftTraceView(
+    val recordId: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val reconciliationDigest: String,
+)
+
+data class DesignDriftDetectionRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val membershipDigest: String,
+    val designBaseline: DesignDriftBaselineView,
+    val returnedFigmaSnapshot: DesignDriftSnapshotView,
+    val designRequirements: DesignDriftCatalogView,
+    val designTrace: DesignDriftTraceView,
+    val implementationTargetCatalogRevision: Long,
+    val implementationTargetCatalogDigest: String,
+    val comparisonPolicyDigest: String,
+    val comparisonDigest: String,
+    val implementationTargetCount: Int,
+    val observationCount: Int,
+    val remediationCandidateCount: Int,
+    val candidateResult: String,
+    val reviewState: String,
+)
+
+data class DesignDriftDetectionProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val candidateResult: String,
+    val reviewState: String,
+    val assessmentState: String,
+    val implementationTargetCount: Int,
+    val humanReviewedImplementationTargetCount: Int,
+    val observationCount: Int,
+    val humanReviewedObservationCount: Int,
+    val requirementToDesignCount: Int,
+    val designToImplementationCount: Int,
+    val conformantCount: Int,
+    val driftCount: Int,
+    val unassessedCount: Int,
+    val blockerCount: Int,
+    val highSeverityCount: Int,
+    val remediationCandidateCount: Int,
+    val expiredRemediationCandidateCount: Int,
+    val staleBindingCount: Int,
+    val staleSourceReferenceCount: Int,
+    val unresolvedQuestionCount: Int,
+    val reasons: List<String>,
+    val candidate: DesignDriftDetectionRecordView?,
+    val snapshotDigest: String,
+)
+
 class GaepHostException(
     val code: Int,
     val kind: String,
@@ -3132,6 +3223,12 @@ internal object PortableDesignProtocol {
         "design-baseline-projection-is-read-only-and-does-not-convert-an-approval-candidate-into-approval-verify-approver-authority-enforce-separation-of-duties-establish-a-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority"
     private const val DESIGN_BASELINE_STATUS_AUTHORITY_BOUNDARY =
         "design-baseline-status-is-observational-and-does-not-convert-an-approval-candidate-into-approval-verify-approver-authority-enforce-separation-of-duties-establish-a-baseline-readiness-phase-entry-or-grant-implementation-write-import-or-action-authority"
+    private const val DESIGN_DRIFT_DETECTION_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-version-axes-counts-classifications-severities-statuses-and-digests-only-not-design-requirement-or-implementation-content-source-content-human-attribution-personal-content-secrets-credentials-or-permissions"
+    private const val DESIGN_DRIFT_DETECTION_PROJECTION_AUTHORITY_BOUNDARY =
+        "design-drift-detection-projection-is-read-only-and-does-not-establish-an-actual-baseline-comparison-completeness-external-completeness-design-or-implementation-validity-approval-readiness-remediation-effect-or-figma-import-write-implementation-or-action-authority"
+    private const val DESIGN_DRIFT_DETECTION_STATUS_AUTHORITY_BOUNDARY =
+        "design-drift-detection-status-is-observational-and-does-not-establish-an-actual-baseline-comparison-completeness-external-completeness-design-or-implementation-validity-approval-readiness-remediation-effect-or-figma-import-write-implementation-or-action-authority"
     private const val MANAGED_PREVIEW_BOUNDARY =
         "managed-readonly-preview-does-not-grant-execution-or-effect-authority"
     private const val MANAGED_RECEIPT_BOUNDARY =
@@ -10307,6 +10404,209 @@ internal object PortableDesignProtocol {
             designationCandidateCount, supersessionCandidateCount, withdrawalCandidateCount,
             restorationCandidateCount, expiredDesignationCount, staleBindingCount, staleSourceReferenceCount,
             unresolvedQuestionCount, approvalDeterminationState, baselineDesignationState, reasons, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseDesignDriftDetectionEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): DesignDriftDetectionProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "design-drift-detection-projection" ||
+            projection.requireString("privacyBoundary") != DESIGN_DRIFT_DETECTION_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != DESIGN_DRIFT_DETECTION_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        data class Reference(val id: UUID, val revision: Long, val digest: String)
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "implementationTargetCount", "humanReviewedImplementationTargetCount", "observationCount",
+                "humanReviewedObservationCount", "requirementToDesignCount", "designToImplementationCount",
+                "conformantCount", "driftCount", "unassessedCount", "blockerCount", "highSeverityCount",
+                "remediationCandidateCount", "expiredRemediationCandidateCount", "staleBindingCount",
+                "staleSourceReferenceCount", "unresolvedQuestionCount", "candidateResult", "reviewState", "state",
+                "reasons", "assessedAt", "authorityBoundary",
+            ),
+            setOf("candidate"),
+        )
+        if (status.requireInt("schemaVersion") != 1 ||
+            status.requireString("kind") != "design-drift-detection-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != DESIGN_DRIFT_DETECTION_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val reference = status.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            Reference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val implementationTargetCount = status.requireBoundedNonNegativeInt("implementationTargetCount", 33_792)
+        val humanReviewedImplementationTargetCount = status.requireBoundedNonNegativeInt("humanReviewedImplementationTargetCount", 33_792)
+        val observationCount = status.requireBoundedNonNegativeInt("observationCount", 67_584)
+        val humanReviewedObservationCount = status.requireBoundedNonNegativeInt("humanReviewedObservationCount", 67_584)
+        val requirementToDesignCount = status.requireBoundedNonNegativeInt("requirementToDesignCount", 67_584)
+        val designToImplementationCount = status.requireBoundedNonNegativeInt("designToImplementationCount", 67_584)
+        val conformantCount = status.requireBoundedNonNegativeInt("conformantCount", 67_584)
+        val driftCount = status.requireBoundedNonNegativeInt("driftCount", 67_584)
+        val unassessedCount = status.requireBoundedNonNegativeInt("unassessedCount", 67_584)
+        val blockerCount = status.requireBoundedNonNegativeInt("blockerCount", 67_584)
+        val highSeverityCount = status.requireBoundedNonNegativeInt("highSeverityCount", 67_584)
+        val remediationCandidateCount = status.requireBoundedNonNegativeInt("remediationCandidateCount", 16_384)
+        val expiredRemediationCandidateCount = status.requireBoundedNonNegativeInt("expiredRemediationCandidateCount", 16_384)
+        val staleBindingCount = status.requireBoundedNonNegativeInt("staleBindingCount", 131_072)
+        val staleSourceReferenceCount = status.requireBoundedNonNegativeInt("staleSourceReferenceCount", 131_072)
+        val unresolvedQuestionCount = status.requireBoundedNonNegativeInt("unresolvedQuestionCount", 512)
+        if (humanReviewedImplementationTargetCount > implementationTargetCount ||
+            humanReviewedObservationCount > observationCount ||
+            requirementToDesignCount + designToImplementationCount != observationCount ||
+            conformantCount + driftCount + unassessedCount != observationCount ||
+            blockerCount + highSeverityCount > driftCount || expiredRemediationCandidateCount > remediationCandidateCount
+        ) throw invalidResponse()
+        val candidateResults = setOf(
+            "blocked", "drift-detected-candidate", "incomplete", "no-drift-observed-candidate", "not-assessed",
+        )
+        val candidateResult = status.requireOneOf("candidateResult", candidateResults)
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val assessmentState = status.requireOneOf("state", setOf("attention-required", "complete-for-human-review"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gapCount = implementationTargetCount - humanReviewedImplementationTargetCount +
+            observationCount - humanReviewedObservationCount + unassessedCount + expiredRemediationCandidateCount +
+            staleBindingCount + staleSourceReferenceCount + unresolvedQuestionCount
+        if ((assessmentState == "complete-for-human-review" &&
+                (reference == null || observationCount == 0 || reasons.isNotEmpty() || gapCount > 0 ||
+                    reviewState != "ready-for-human-review")) ||
+            (assessmentState == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+        val semanticVersionPattern = Regex("^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "membershipDigest", "state", "designBaseline",
+                "returnedFigmaSnapshot", "designRequirements", "designTrace", "implementationTargetCatalogRevision",
+                "implementationTargetCatalogDigest", "comparisonPolicyDigest", "comparisonDigest",
+                "implementationTargetCount", "observationCount", "remediationCandidateCount", "candidateResult",
+                "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate") throw invalidResponse()
+
+            val baselineValue = value.get("designBaseline").requireObject()
+            baselineValue.requireExactKeys(
+                "recordId", "revision", "digest", "membershipDigest", "baselineLineageId", "candidateSetId",
+                "candidateSetRevision", "semanticVersion", "designationReceiptDigest", "baselineDesignationState",
+            )
+            val baselineRevision = baselineValue.requireLong("revision")
+            val candidateSetRevision = baselineValue.requireLong("candidateSetRevision")
+            val semanticVersion = baselineValue.requireString("semanticVersion")
+            if (baselineRevision !in 1..MAX_SAFE_PRODUCT_REVISION || candidateSetRevision !in 1..MAX_SAFE_PRODUCT_REVISION ||
+                !semanticVersionPattern.matches(semanticVersion) ||
+                baselineValue.requireString("baselineDesignationState") != "not-established"
+            ) throw invalidResponse()
+            val baseline = DesignDriftBaselineView(
+                baselineValue.requireNonEmptyUuid("recordId"), baselineRevision, baselineValue.requireDigest("digest"),
+                baselineValue.requireDigest("membershipDigest"), baselineValue.requireNonEmptyUuid("baselineLineageId"),
+                baselineValue.requireNonEmptyUuid("candidateSetId"), candidateSetRevision, semanticVersion,
+                baselineValue.requireDigest("designationReceiptDigest"), "not-established",
+            )
+
+            val snapshotValue = value.get("returnedFigmaSnapshot").requireObject()
+            snapshotValue.requireExactKeys(
+                "recordId", "revision", "digest", "membershipDigest", "externalFileIdentityDigest",
+                "returnedExternalVersionDigest", "itemCatalogDigest",
+            )
+            val snapshotRevision = snapshotValue.requireLong("revision")
+            if (snapshotRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            val snapshot = DesignDriftSnapshotView(
+                snapshotValue.requireNonEmptyUuid("recordId"), snapshotRevision, snapshotValue.requireDigest("digest"),
+                snapshotValue.requireDigest("membershipDigest"), snapshotValue.requireDigest("externalFileIdentityDigest"),
+                snapshotValue.requireDigest("returnedExternalVersionDigest"), snapshotValue.requireDigest("itemCatalogDigest"),
+            )
+
+            val requirementsValue = value.get("designRequirements").requireObject()
+            requirementsValue.requireExactKeys(
+                "recordId", "revision", "digest", "membershipDigest", "requirementCatalogDigest",
+            )
+            val requirementsRevision = requirementsValue.requireLong("revision")
+            if (requirementsRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            val requirements = DesignDriftCatalogView(
+                requirementsValue.requireNonEmptyUuid("recordId"), requirementsRevision,
+                requirementsValue.requireDigest("digest"), requirementsValue.requireDigest("membershipDigest"),
+                requirementsValue.requireDigest("requirementCatalogDigest"),
+            )
+
+            val traceValue = value.get("designTrace").requireObject()
+            traceValue.requireExactKeys("recordId", "revision", "digest", "membershipDigest", "reconciliationDigest")
+            val traceRevision = traceValue.requireLong("revision")
+            if (traceRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            val trace = DesignDriftTraceView(
+                traceValue.requireNonEmptyUuid("recordId"), traceRevision, traceValue.requireDigest("digest"),
+                traceValue.requireDigest("membershipDigest"), traceValue.requireDigest("reconciliationDigest"),
+            )
+
+            val targetCatalogRevision = value.requireLong("implementationTargetCatalogRevision")
+            val recordTargetCount = value.requireBoundedNonNegativeInt("implementationTargetCount", 33_792)
+            val recordObservationCount = value.requireBoundedNonNegativeInt("observationCount", 67_584)
+            val recordRemediationCount = value.requireBoundedNonNegativeInt("remediationCandidateCount", 16_384)
+            val recordCandidateResult = value.requireOneOf("candidateResult", candidateResults - "not-assessed")
+            val recordReviewState = value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+            if (targetCatalogRevision !in 1..MAX_SAFE_PRODUCT_REVISION || recordTargetCount != implementationTargetCount ||
+                recordObservationCount != observationCount || recordRemediationCount != remediationCandidateCount ||
+                recordCandidateResult != candidateResult || recordReviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            DesignDriftDetectionRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("membershipDigest"), baseline, snapshot,
+                requirements, trace, targetCatalogRevision, value.requireDigest("implementationTargetCatalogDigest"),
+                value.requireDigest("comparisonPolicyDigest"), value.requireDigest("comparisonDigest"),
+                recordTargetCount, recordObservationCount, recordRemediationCount, recordCandidateResult, recordReviewState,
+            )
+        }
+        if ((reference == null) != (candidate == null) ||
+            (reference != null && candidate != null &&
+                (reference.id != candidate.id || reference.revision != candidate.revision || reference.digest != candidate.digest)) ||
+            projection.requireInstant("observedAt") != assessedAt
+        ) throw invalidResponse()
+        return DesignDriftDetectionProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, candidateResult, reviewState, assessmentState, implementationTargetCount,
+            humanReviewedImplementationTargetCount, observationCount, humanReviewedObservationCount,
+            requirementToDesignCount, designToImplementationCount, conformantCount, driftCount, unassessedCount,
+            blockerCount, highSeverityCount, remediationCandidateCount, expiredRemediationCandidateCount,
+            staleBindingCount, staleSourceReferenceCount, unresolvedQuestionCount, reasons, candidate, snapshotDigest,
         )
     }
 

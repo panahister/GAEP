@@ -2458,6 +2458,53 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readDesignDriftDetection(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readDesignDriftDetection(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision &&
+                projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Design Drift Detection was read. Refresh the exact records." }
+        return renderDesignDriftDetection(projection)
+    }
+
+    fun renderDesignDriftDetection(projection: DesignDriftDetectionProjection): String = buildString {
+        appendLine("GAEP Design Drift Detection candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate result: ${projection.candidateResult} · ${projection.assessmentState} · review state: ${projection.reviewState}")
+        appendLine("Implementation targets: ${projection.humanReviewedImplementationTargetCount}/${projection.implementationTargetCount} human-reviewed")
+        appendLine("Comparison paths: ${projection.requirementToDesignCount} requirement-to-design · ${projection.designToImplementationCount} design-to-implementation")
+        appendLine("Classifications: ${projection.conformantCount} conformant · ${projection.driftCount} drift · ${projection.unassessedCount} unassessed")
+        appendLine("Severity: ${projection.blockerCount} blocker · ${projection.highSeverityCount} high")
+        appendLine("Remediation candidates: ${projection.remediationCandidateCount} recorded · ${projection.expiredRemediationCandidateCount} expired · effects not applied")
+        appendLine("Candidate gaps: ${projection.staleBindingCount} stale bindings · ${projection.staleSourceReferenceCount} stale Source references · ${projection.unresolvedQuestionCount} unresolved questions")
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Candidate record: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Membership digest: ${record.membershipDigest}")
+            appendLine("Baseline candidate: ${record.designBaseline.recordId}@${record.designBaseline.revision} · ${record.designBaseline.semanticVersion} · designation ${record.designBaseline.baselineDesignationState}")
+            appendLine("Returned design: ${record.returnedFigmaSnapshot.recordId}@${record.returnedFigmaSnapshot.revision} · returned version ${record.returnedFigmaSnapshot.returnedExternalVersionDigest}")
+            appendLine("Design Requirements: ${record.designRequirements.recordId}@${record.designRequirements.revision} · ${record.designRequirements.catalogDigest}")
+            appendLine("Design trace: ${record.designTrace.recordId}@${record.designTrace.revision} · ${record.designTrace.reconciliationDigest}")
+            appendLine("Implementation target catalog: revision ${record.implementationTargetCatalogRevision} · ${record.implementationTargetCatalogDigest}")
+            appendLine("Comparison: policy ${record.comparisonPolicyDigest} · receipt ${record.comparisonDigest}")
+        } ?: appendLine("Candidate record: not recorded")
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: exact candidate identities, version axes, catalog and comparison digests, counts, " +
+                "classifications, severities, review state, and non-effect status only; this view does not establish " +
+                "an actual Baseline Set, drift completeness, external completeness, design or implementation validity, " +
+                "approval, readiness, remediation effect, call Figma, import or write content, change implementation, " +
+                "or grant action authority.",
+        )
+    }
+
     fun renderDesignApplicability(projection: DesignApplicabilityProjection): String = buildString {
         appendLine("GAEP governed Design Applicability candidate")
         appendLine()

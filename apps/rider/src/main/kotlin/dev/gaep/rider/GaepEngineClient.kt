@@ -492,6 +492,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readDesignDriftDetection(initiativeId: UUID): DesignDriftDetectionProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("design.designDriftDetection.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseDesignDriftDetectionEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun classifyInitiative(
         initiativeId: UUID,
         expectedInitiativeRevision: Long,
