@@ -233,6 +233,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadBacklogHierarchyCommand = new AsyncCommand(LoadBacklogHierarchyAsync);
         LoadMvpSliceDefinitionCommand = new AsyncCommand(LoadMvpSliceDefinitionAsync);
         LoadPrioritizationModelCommand = new AsyncCommand(LoadPrioritizationModelAsync);
+        LoadAcceptanceCriteriaCommand = new AsyncCommand(LoadAcceptanceCriteriaAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -392,6 +393,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     [DataMember]
     public IAsyncCommand LoadMvpSliceDefinitionCommand { get; }
     public IAsyncCommand LoadPrioritizationModelCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadAcceptanceCriteriaCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1004,6 +1008,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Prioritization Model candidate",
             (controller, _, token) => controller.ReadPrioritizationModelAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadAcceptanceCriteriaAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Acceptance Criteria candidate",
+            (controller, _, token) => controller.ReadAcceptanceCriteriaAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

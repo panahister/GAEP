@@ -1903,6 +1903,94 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadAcceptanceCriteriaAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var hierarchy = await client.ReadBacklogHierarchyAsync(initiativeId, cancellationToken);
+        var mvp = await client.ReadMvpSliceDefinitionAsync(initiativeId, cancellationToken);
+        var prioritization = await client.ReadPrioritizationModelAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadAcceptanceCriteriaAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Acceptance Criteria was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (hierarchy.Candidate is not { } currentHierarchy || projection.HierarchyRecordId != currentHierarchy.Id ||
+                projection.HierarchyRevision != currentHierarchy.Revision || projection.HierarchyDigest != currentHierarchy.Digest))
+        {
+            throw new ArgumentException("The Backlog Hierarchy changed while Acceptance Criteria was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (mvp.Candidate is not { } currentMvp || projection.MvpSliceDefinitionRecordId != currentMvp.Id ||
+                projection.MvpSliceDefinitionRevision != currentMvp.Revision || projection.MvpSliceDefinitionDigest != currentMvp.Digest))
+        {
+            throw new ArgumentException("The MVP and Vertical Slice Definition changed while Acceptance Criteria was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (prioritization.Candidate is not { } currentPrioritization ||
+                projection.PrioritizationModelRecordId != currentPrioritization.Id ||
+                projection.PrioritizationModelRevision != currentPrioritization.Revision ||
+                projection.PrioritizationModelDigest != currentPrioritization.Digest))
+        {
+            throw new ArgumentException("The Prioritization Model changed while Acceptance Criteria was read. Refresh the exact records.");
+        }
+        return RenderAcceptanceCriteria(projection);
+    }
+
+    public static string RenderAcceptanceCriteria(AcceptanceCriteriaProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Acceptance Criteria candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine(
+                $"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState} · " +
+                $"criterion set: {projection.CriterionSetCompletenessState} · Requirement coverage: {projection.RequirementCoverageState}")
+            .AppendLine(
+                $"Coverage: {projection.SubjectCount} Story/Task subjects · {projection.CoveredSubjectCount} covered · " +
+                $"{projection.UncoveredSubjectCount} uncovered · {projection.CriterionCount} criteria · " +
+                $"{projection.TestableCriterionCount} testable · {projection.UnassessedCriterionCount} unassessed")
+            .AppendLine(
+                $"Traces and methods: {projection.RequirementTraceCount} Requirement traces · " +
+                $"{projection.UncoveredRequirementCount} uncovered Requirements · {projection.VerificationMethodCount} methods")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleHierarchyCount} stale hierarchies · {projection.StaleMvpSliceDefinitionCount} stale MVP definitions · " +
+                $"{projection.StalePrioritizationModelCount} stale prioritization models · {projection.InvalidCriterionCount} invalid criteria");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Acceptance Criteria candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Subject catalog digest: {candidate.SubjectCatalogDigest}")
+                .AppendLine($"Criterion catalog digest: {candidate.CriterionCatalogDigest}")
+                .AppendLine($"Verification-method catalog digest: {candidate.VerificationMethodCatalogDigest}")
+                .AppendLine($"Coverage digest: {candidate.CoverageDigest}")
+                .AppendLine(
+                    $"Candidate coverage: {candidate.SubjectCount} subjects · {candidate.CriterionCount} criteria · " +
+                    $"{candidate.TestableCriterionCount} testable · {candidate.RequirementTraceCount} Requirement traces · " +
+                    $"{candidate.VerificationMethodCount} methods · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Acceptance Criteria candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and subject, criterion, method, coverage, and " +
+                "snapshot digests only; no criterion text, Requirement identities, verification evidence, personal data, " +
+                "criterion validity, completeness, Requirement satisfaction, priority, commitment, approval, ready or done, " +
+                "implementation readiness, assignment, execution, acceptance, implementation authority, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

@@ -74,6 +74,7 @@ internal static class Program
     private static readonly Guid BacklogHierarchyId = Guid.Parse("91919191-9191-4191-8191-919191919191");
     private static readonly Guid MvpSliceDefinitionId = Guid.Parse("92929292-9292-4292-8292-929292929292");
     private static readonly Guid PrioritizationModelId = Guid.Parse("93939393-9393-4393-8393-939393939393");
+    private static readonly Guid AcceptanceCriteriaId = Guid.Parse("94949494-9494-4494-8494-949494949494");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -244,6 +245,12 @@ internal static class Program
         var badPrioritizationSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-prioritization-snapshot-digest");
         var badPrioritizationSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-prioritization-snapshot-private");
         var badPrioritizationMvpBindingRoot = Path.Combine(temporaryRoot, "bad-prioritization-mvp-binding");
+        var badAcceptanceCriteriaSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-acceptance-criteria-snapshot-binding");
+        var badAcceptanceCriteriaSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-acceptance-criteria-snapshot-digest");
+        var badAcceptanceCriteriaSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-acceptance-criteria-snapshot-private");
+        var badAcceptanceCriteriaHierarchyBindingRoot = Path.Combine(temporaryRoot, "bad-acceptance-criteria-hierarchy-binding");
+        var badAcceptanceCriteriaMvpBindingRoot = Path.Combine(temporaryRoot, "bad-acceptance-criteria-mvp-binding");
+        var badAcceptanceCriteriaPrioritizationBindingRoot = Path.Combine(temporaryRoot, "bad-acceptance-criteria-prioritization-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -2115,6 +2122,55 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadPrioritizationModelAsync(InitiativeId),
                 "Prioritization Model workflow rejects substituted Product or current MVP bindings");
+        }
+
+        var acceptanceCriteriaProjection = await client.ReadAcceptanceCriteriaAsync(InitiativeId);
+        Check(acceptanceCriteriaProjection.ProductId == product.Id &&
+              acceptanceCriteriaProjection.ProductRevision == product.Revision &&
+              acceptanceCriteriaProjection.ProductDigest == product.Digest &&
+              acceptanceCriteriaProjection.InitiativeId == resolved.Id &&
+              acceptanceCriteriaProjection.InitiativeRevision == resolved.Revision &&
+              acceptanceCriteriaProjection.InitiativeDigest == resolved.Digest &&
+              acceptanceCriteriaProjection.AssessmentState == "attention-required" &&
+              acceptanceCriteriaProjection.ReviewState == "held" &&
+              acceptanceCriteriaProjection.CriterionSetCompletenessState == "not-assessed" &&
+              acceptanceCriteriaProjection.RequirementCoverageState == "not-assessed" &&
+              acceptanceCriteriaProjection.SubjectCount == 16 &&
+              acceptanceCriteriaProjection.CoveredSubjectCount == 15 &&
+              acceptanceCriteriaProjection.CriterionCount == 28 &&
+              acceptanceCriteriaProjection.TestableCriterionCount == 26 &&
+              acceptanceCriteriaProjection.RequirementTraceCount == 34 &&
+              acceptanceCriteriaProjection.VerificationMethodCount == 5,
+            "Typed Acceptance Criteria projection preserves exact Product, Initiative, assessment, coverage, and privacy-safe metadata");
+        var acceptanceCriteriaOutput = await initiativeController.ReadAcceptanceCriteriaAsync(InitiativeId);
+        Check(acceptanceCriteriaOutput.Contains("GAEP governed Acceptance Criteria candidate", StringComparison.Ordinal) &&
+              acceptanceCriteriaOutput.Contains("16 Story/Task subjects · 15 covered · 1 uncovered · 28 criteria · 26 testable", StringComparison.Ordinal) &&
+              acceptanceCriteriaOutput.Contains("no criterion text", StringComparison.Ordinal) &&
+              !acceptanceCriteriaOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !acceptanceCriteriaOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !acceptanceCriteriaOutput.Contains("criterionText", StringComparison.Ordinal),
+            "Acceptance Criteria workflow renders privacy-safe metadata with explicit no-content and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badAcceptanceCriteriaSnapshotDigestRoot, badAcceptanceCriteriaSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadAcceptanceCriteriaAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Acceptance Criteria projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[]
+                 {
+                     badAcceptanceCriteriaSnapshotBindingRoot,
+                     badAcceptanceCriteriaHierarchyBindingRoot,
+                     badAcceptanceCriteriaMvpBindingRoot,
+                     badAcceptanceCriteriaPrioritizationBindingRoot,
+                 })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadAcceptanceCriteriaAsync(InitiativeId),
+                "Acceptance Criteria workflow rejects substituted Product or current planning dependency bindings");
         }
 
         var designSystemTokenContractProjection = await client.ReadDesignSystemTokenContractAsync(InitiativeId);
@@ -4284,6 +4340,18 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-prioritization-snapshot-private";
         var badPrioritizationMvpBinding =
             Path.GetFileName(workspace) == "bad-prioritization-mvp-binding";
+        var badAcceptanceCriteriaSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-acceptance-criteria-snapshot-binding";
+        var badAcceptanceCriteriaSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-acceptance-criteria-snapshot-digest";
+        var badAcceptanceCriteriaSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-acceptance-criteria-snapshot-private";
+        var badAcceptanceCriteriaHierarchyBinding =
+            Path.GetFileName(workspace) == "bad-acceptance-criteria-hierarchy-binding";
+        var badAcceptanceCriteriaMvpBinding =
+            Path.GetFileName(workspace) == "bad-acceptance-criteria-mvp-binding";
+        var badAcceptanceCriteriaPrioritizationBinding =
+            Path.GetFileName(workspace) == "bad-acceptance-criteria-prioritization-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -4820,6 +4888,20 @@ internal static class Program
                         badPrioritizationSnapshotDigest,
                         badPrioritizationSnapshotPrivate,
                         badPrioritizationMvpBinding);
+                    break;
+                case "planning.acceptanceCriteria.snapshot":
+                    await HandleAcceptanceCriteriaAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badAcceptanceCriteriaSnapshotBinding,
+                        badAcceptanceCriteriaSnapshotDigest,
+                        badAcceptanceCriteriaSnapshotPrivate,
+                        badAcceptanceCriteriaHierarchyBinding,
+                        badAcceptanceCriteriaMvpBinding,
+                        badAcceptanceCriteriaPrioritizationBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -8344,6 +8426,128 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["scoredSubjectCount"] = 4;
         if (includePrivateField) result["dimensionEstimate"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleAcceptanceCriteriaAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeHierarchyBinding,
+        bool forgeMvpBinding,
+        bool forgePrioritizationBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID ACCEPTANCE CRITERIA");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T12:20:00.000Z";
+        var candidateDigest = $"sha256:{new string('1', 64)}";
+        var hierarchyDigest = $"sha256:{new string(forgeHierarchyBinding ? '7' : '8', 64)}";
+        var mvpDigest = $"sha256:{new string(forgeMvpBinding ? '9' : 'a', 64)}";
+        var prioritizationDigest = $"sha256:{new string(forgePrioritizationBinding ? 'b' : 'c', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = AcceptanceCriteriaId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["state"] = "candidate",
+            ["subjectCatalogDigest"] = $"sha256:{new string('2', 64)}",
+            ["criterionCatalogDigest"] = $"sha256:{new string('3', 64)}",
+            ["verificationMethodCatalogDigest"] = $"sha256:{new string('4', 64)}",
+            ["coverageDigest"] = $"sha256:{new string('5', 64)}",
+            ["subjectCount"] = 16,
+            ["criterionCount"] = 28,
+            ["testableCriterionCount"] = 26,
+            ["requirementTraceCount"] = 34,
+            ["verificationMethodCount"] = 5,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T12:19:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "acceptance-criteria-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "acceptance-criteria-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = AcceptanceCriteriaId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                },
+                ["hierarchy"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = BacklogHierarchyId.ToString("D"), ["revision"] = 2, ["digest"] = hierarchyDigest,
+                },
+                ["mvpSliceDefinition"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = MvpSliceDefinitionId.ToString("D"), ["revision"] = 2, ["digest"] = mvpDigest,
+                },
+                ["prioritizationModel"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = PrioritizationModelId.ToString("D"), ["revision"] = 2, ["digest"] = prioritizationDigest,
+                },
+                ["subjectCount"] = 16,
+                ["coveredSubjectCount"] = 15,
+                ["uncoveredSubjectCount"] = 1,
+                ["criterionCount"] = 28,
+                ["testableCriterionCount"] = 26,
+                ["unassessedCriterionCount"] = 2,
+                ["requirementTraceCount"] = 34,
+                ["uncoveredRequirementCount"] = 1,
+                ["verificationMethodCount"] = 5,
+                ["staleBindingCount"] = 0,
+                ["staleHierarchyCount"] = 0,
+                ["staleMvpSliceDefinitionCount"] = 0,
+                ["stalePrioritizationModelCount"] = 0,
+                ["invalidCriterionCount"] = 1,
+                ["unresolvedQuestionCount"] = 2,
+                ["criterionSetCompletenessState"] = "not-assessed",
+                ["requirementCoverageState"] = "not-assessed",
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Acceptance Criteria candidates require review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "acceptance-criteria-status-is-observational-and-does-not-establish-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-implementation-readiness-assignment-execution-acceptance-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-subject-criterion-method-coverage-snapshot-digests-only-not-criterion-text-requirement-identities-verification-evidence-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "acceptance-criteria-projection-is-read-only-and-does-not-establish-criterion-validity-completeness-requirement-satisfaction-priority-commitment-approval-ready-done-implementation-readiness-assignment-execution-acceptance-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["criterionCount"] = 29;
+        if (includePrivateField) result["criterionText"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 
