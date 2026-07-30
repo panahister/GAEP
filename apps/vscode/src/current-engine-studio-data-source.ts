@@ -16,6 +16,7 @@ import type {
   DefinitionOfDoneProjection,
   ImplementationUnitModelProjection,
   DependencyMappingProjection,
+  TechnologyProfileProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -211,6 +212,9 @@ export interface CurrentStudioEngineReader {
   dependencyMapping?: {
     project(initiativeId: string): Promise<DependencyMappingProjection>
   }
+  technologyProfile?: {
+    project(initiativeId: string): Promise<TechnologyProfileProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -388,6 +392,7 @@ interface ObservedStudioState {
   definitionOfDoneProjections: Map<string, DefinitionOfDoneProjection>
   implementationUnitModelProjections: Map<string, ImplementationUnitModelProjection>
   dependencyMappingProjections: Map<string, DependencyMappingProjection>
+  technologyProfileProjections: Map<string, TechnologyProfileProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3812,6 +3817,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     definitionOfDone: definitionOfDoneTable(state),
     implementationUnits: implementationUnitModelTable(state),
     dependencyMappings: dependencyMappingTable(state),
+    technologyProfiles: technologyProfileTable(state),
   }
 }
 
@@ -4307,6 +4313,61 @@ function dependencyMappingTable(state: ObservedStudioState): StudioTableSnapshot
       emptyState: emptySurface(
         "No governed Dependency Mapping candidate",
         "Create the candidate through the governed engine workflow after exact Backlog Hierarchy, MVP and Vertical Slice, and Implementation Unit Model candidates exist. This view does not infer dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function technologyProfileTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.technologyProfileProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        profiles: record.profileCatalogDigest,
+        selections: record.selectionCatalogDigest,
+        compatibilityReceipt: record.compatibilityAssessmentReceiptDigest,
+        assessmentReceipt: record.assessmentReceiptDigest,
+        coverage: `${status.unitProfileCount} unit profiles · ${status.technologyChoiceCount} choices · ${status.exactVersionCandidateCount} exact versions · ${status.rangeVersionCandidateCount} ranges · ${status.unresolvedVersionCount} unresolved versions · ${status.constraintCount} constraints`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        policyGaps: `${status.unsupportedChoiceCount} unsupported · ${status.lifecycleRiskCount} lifecycle risks · ${status.compatibilityConflictCount} compatibility conflicts · ${status.licenseReviewRequiredCount} license reviews · ${status.licenseProhibitedCount} license-prohibited · ${status.securityReviewRequiredCount} security reviews · ${status.securityNonconformantCount} security-nonconformant · ${status.exceptionCandidateCount} exception candidates · ${status.constraintConflictCount} constraint conflicts`,
+        gaps: `${status.unresolvedQuestionCount} questions · ${status.missingProfileCount} missing profiles · ${status.invalidProfileCount} invalid profiles · ${status.missingEvidenceCount} missing evidence · ${status.staleBindingCount} stale bindings · ${status.staleImplementationUnitModelCount} stale Implementation Unit Models · ${status.staleDependencyMappingCount} stale Dependency Mappings`,
+        boundary: "Candidate identities, counts, statuses, and profile, selection, compatibility, assessment, and snapshot digests only; no technology names, versions, constraints, evidence, rationale, unit, architecture, repository, toolchain, license, security-policy, or personal data, technology approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "technology-profile",
+    title: "Governed Technology Profile Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "profiles", label: "Profile catalog digest" },
+      { key: "selections", label: "Selection catalog digest" },
+      { key: "compatibilityReceipt", label: "Compatibility receipt" },
+      { key: "assessmentReceipt", label: "Assessment receipt" },
+      { key: "coverage", label: "Privacy-safe technology coverage" },
+      { key: "assessment", label: "Candidate assessment" },
+      { key: "policyGaps", label: "Candidate policy gaps" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Technology Profile candidate",
+        "Create the candidate through the governed engine workflow after exact Implementation Unit Model and Dependency Mapping candidates exist. This view does not infer technology approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
       ),
     } : {}),
   }
@@ -6154,6 +6215,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       definitionOfDoneProjections: new Map(),
       implementationUnitModelProjections: new Map(),
       dependencyMappingProjections: new Map(),
+      technologyProfileProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -6784,6 +6846,59 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "dependency-mapping-unavailable",
           "Dependency Mapping metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.technologyProfile) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.technologyProfile!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            const units = empty.implementationUnitModelProjections.get(initiative.id)?.candidate
+            const dependencyMapping = empty.dependencyMappingProjections.get(initiative.id)?.candidate
+            const candidate = projection.value.candidate
+            const exactDependencies = !candidate || (
+              units !== undefined && projection.value.status.implementationUnitModel?.recordId === units.id &&
+              projection.value.status.implementationUnitModel.revision === units.revision &&
+              projection.value.status.implementationUnitModel.digest === units.digest &&
+              dependencyMapping !== undefined && projection.value.status.dependencyMapping?.recordId === dependencyMapping.id &&
+              projection.value.status.dependencyMapping.revision === dependencyMapping.revision &&
+              projection.value.status.dependencyMapping.digest === dependencyMapping.digest
+            )
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              exactDependencies && snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.technologyProfileProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Technology Profile projection was unavailable or did not bind exact Product, Initiative, Implementation Unit Model, and Dependency Mapping revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `technology-profile-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Technology Profile metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "technology-profile-unavailable",
+          "Technology Profile metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

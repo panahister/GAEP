@@ -55,6 +55,7 @@ import {
   type DefinitionOfDoneProjection,
   type ImplementationUnitModelProjection,
   type DependencyMappingProjection,
+  type TechnologyProfileProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -2489,6 +2490,80 @@ function dependencyMappingProjection(
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function technologyProfileProjection(
+  units = implementationUnitModelProjection(),
+  dependencyMapping = dependencyMappingProjection(),
+): TechnologyProfileProjection {
+  const exactUnits = units.candidate!
+  const exactDependencyMapping = dependencyMapping.candidate!
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "technology-profile-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "adadadad-adad-4dad-8dad-adadadadadad", revision: 2, digest: `sha256:${"d".repeat(64)}` as const },
+    implementationUnitModel: { recordId: exactUnits.id, revision: exactUnits.revision, digest: exactUnits.digest },
+    dependencyMapping: {
+      recordId: exactDependencyMapping.id, revision: exactDependencyMapping.revision, digest: exactDependencyMapping.digest,
+    },
+    unitProfileCount: 3,
+    technologyChoiceCount: 5,
+    exactVersionCandidateCount: 3,
+    rangeVersionCandidateCount: 1,
+    unresolvedVersionCount: 1,
+    constraintCount: 4,
+    missingProfileCount: 1,
+    invalidProfileCount: 1,
+    missingEvidenceCount: 2,
+    unsupportedChoiceCount: 1,
+    lifecycleRiskCount: 1,
+    compatibilityConflictCount: 1,
+    licenseReviewRequiredCount: 1,
+    licenseProhibitedCount: 0,
+    securityReviewRequiredCount: 1,
+    securityNonconformantCount: 0,
+    exceptionCandidateCount: 1,
+    constraintConflictCount: 1,
+    staleBindingCount: 0,
+    staleImplementationUnitModelCount: 0,
+    staleDependencyMappingCount: 0,
+    unresolvedQuestionCount: 2,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more Technology Profile candidates require human review"],
+    assessedAt: "2026-07-30T16:00:00.000Z",
+    authorityBoundary: "technology-profile-status-is-observational-and-does-not-establish-technology-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-authority-architecture-baseline-designation-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "technology-profile-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      state: "candidate" as const,
+      profileCatalogDigest: `sha256:${"e".repeat(64)}` as const,
+      selectionCatalogDigest: `sha256:${"f".repeat(64)}` as const,
+      compatibilityAssessmentReceiptDigest: `sha256:${"1".repeat(64)}` as const,
+      assessmentReceiptDigest: `sha256:${"2".repeat(64)}` as const,
+      unitProfileCount: 3,
+      technologyChoiceCount: 5,
+      constraintCount: 4,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-30T15:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-profile-selection-compatibility-assessment-snapshot-digests-only-not-technology-names-versions-constraints-evidence-rationale-unit-architecture-repository-toolchain-license-security-policy-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "technology-profile-projection-is-read-only-and-does-not-establish-technology-approval-support-commitment-compatibility-truth-or-completeness-licensing-or-security-approval-exception-waiver-authority-architecture-baseline-designation-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -4284,6 +4359,7 @@ interface HarnessOptions {
   definitionOfDoneProjection?: DefinitionOfDoneProjection
   implementationUnitModelProjection?: ImplementationUnitModelProjection
   dependencyMappingProjection?: DependencyMappingProjection
+  technologyProfileProjection?: TechnologyProfileProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -4474,6 +4550,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.dependencyMappingProjection ? {
       dependencyMapping: {
         project: async () => options.dependencyMappingProjection!,
+      },
+    } : {}),
+    ...(options.technologyProfileProjection ? {
+      technologyProfile: {
+        project: async () => options.technologyProfileProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -5279,6 +5360,54 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private node|private edge|private dependency rationale|private effort estimate|private owner|private module|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects exact privacy-safe Technology Profile metadata without asserting approval or compatibility truth", async () => {
+    const hierarchy = backlogHierarchyProjection()
+    const mvp = mvpSliceDefinitionProjection(hierarchy)
+    const priority = prioritizationModelProjection(mvp)
+    const criteria = acceptanceCriteriaProjection(hierarchy, mvp, priority)
+    const ready = definitionOfReadyProjection(hierarchy, mvp, priority, criteria)
+    const done = definitionOfDoneProjection(hierarchy, mvp, priority, criteria, ready)
+    const units = implementationUnitModelProjection(hierarchy, mvp, priority, criteria, ready, done)
+    const dependencyMapping = dependencyMappingProjection(hierarchy, mvp, priority, criteria, ready, done, units)
+    const projection = technologyProfileProjection(units, dependencyMapping)
+    const { source } = harness({
+      backlogHierarchyProjection: hierarchy,
+      mvpSliceDefinitionProjection: mvp,
+      prioritizationModelProjection: priority,
+      acceptanceCriteriaProjection: criteria,
+      definitionOfReadyProjection: ready,
+      definitionOfDoneProjection: done,
+      implementationUnitModelProjection: units,
+      dependencyMappingProjection: dependencyMapping,
+      technologyProfileProjection: projection,
+    })
+    const snapshot = await source.readSnapshot("delivery")
+
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.kind === "delivery" && snapshot.page.technologyProfiles).toMatchObject({
+      id: "technology-profile",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          profiles: projection.candidate?.profileCatalogDigest,
+          selections: projection.candidate?.selectionCatalogDigest,
+          compatibilityReceipt: projection.candidate?.compatibilityAssessmentReceiptDigest,
+          assessmentReceipt: projection.candidate?.assessmentReceiptDigest,
+          coverage: "3 unit profiles · 5 choices · 3 exact versions · 1 ranges · 1 unresolved versions · 4 constraints",
+          assessment: "attention-required · held",
+          policyGaps: "1 unsupported · 1 lifecycle risks · 1 compatibility conflicts · 1 license reviews · 0 license-prohibited · 1 security reviews · 0 security-nonconformant · 1 exception candidates · 1 constraint conflicts",
+          gaps: "2 questions · 1 missing profiles · 1 invalid profiles · 2 missing evidence · 0 stale bindings · 0 stale Implementation Unit Models · 0 stale Dependency Mappings",
+          boundary: expect.stringContaining("no technology names, versions, constraints, evidence, rationale"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private technology|private version|private constraint|private license|private security policy|private manifest|private toolchain|customer@example\.com|api_key/iu,
     )
   })
 

@@ -610,6 +610,7 @@ class StudioShell {
       ...(page.definitionOfDone ? [page.definitionOfDone] : []),
       ...(page.implementationUnits ? [page.implementationUnits] : []),
       ...(page.dependencyMappings ? [page.dependencyMappings] : []),
+      ...(page.technologyProfiles ? [page.technologyProfiles] : []),
     ]) container.append(this.renderTable(table))
     if (page.transitionPreview) {
       const preview = element("section", "section grouped-section")
