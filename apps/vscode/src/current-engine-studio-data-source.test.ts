@@ -53,6 +53,7 @@ import {
   type AcceptanceCriteriaProjection,
   type DefinitionOfReadyProjection,
   type DefinitionOfDoneProjection,
+  type ImplementationUnitModelProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -2334,6 +2335,82 @@ function definitionOfDoneProjection(
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function implementationUnitModelProjection(
+  hierarchy = backlogHierarchyProjection(),
+  mvp = mvpSliceDefinitionProjection(hierarchy),
+  priority = prioritizationModelProjection(mvp),
+  criteria = acceptanceCriteriaProjection(hierarchy, mvp, priority),
+  ready = definitionOfReadyProjection(hierarchy, mvp, priority, criteria),
+  done = definitionOfDoneProjection(hierarchy, mvp, priority, criteria, ready),
+): ImplementationUnitModelProjection {
+  const exactHierarchy = hierarchy.candidate!
+  const exactMvp = mvp.candidate!
+  const exactCriteria = criteria.candidate!
+  const exactReady = ready.candidate!
+  const exactDone = done.candidate!
+  const status = {
+    schemaVersion: 1 as const,
+    kind: "implementation-unit-model-status" as const,
+    productId: product.id,
+    productRevision: product.revision ?? 1,
+    initiativeId: initiative.id,
+    initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "abababab-abab-4bab-8bab-abababababab", revision: 2, digest: `sha256:${"5".repeat(64)}` as const },
+    hierarchy: { recordId: exactHierarchy.id, revision: exactHierarchy.revision, digest: exactHierarchy.digest },
+    mvpSliceDefinition: { recordId: exactMvp.id, revision: exactMvp.revision, digest: exactMvp.digest },
+    acceptanceCriteria: { recordId: exactCriteria.id, revision: exactCriteria.revision, digest: exactCriteria.digest },
+    definitionOfReady: { recordId: exactReady.id, revision: exactReady.revision, digest: exactReady.digest },
+    definitionOfDone: { recordId: exactDone.id, revision: exactDone.revision, digest: exactDone.digest },
+    unitCount: 3,
+    subjectCount: 4,
+    requirementReferenceCount: 5,
+    repositoryCandidateCount: 3,
+    ownerCandidateCount: 3,
+    dependencyEdgeCount: 2,
+    candidateAssessedBlastRadiusCount: 2,
+    notAssessedBlastRadiusCount: 1,
+    missingSubjectCount: 1,
+    invalidUnitCount: 1,
+    staleBindingCount: 0,
+    staleHierarchyCount: 0,
+    staleMvpSliceDefinitionCount: 0,
+    staleAcceptanceCriteriaCount: 0,
+    staleDefinitionOfReadyCount: 0,
+    staleDefinitionOfDoneCount: 0,
+    unresolvedQuestionCount: 2,
+    reviewState: "held" as const,
+    state: "attention-required" as const,
+    reasons: ["One or more implementation-unit candidate boundaries require human review"],
+    assessedAt: "2026-07-30T15:00:00.000Z",
+    authorityBoundary: "implementation-unit-model-status-is-observational-and-does-not-establish-repository-truth-ownership-appointment-dependency-or-impact-completeness-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    kind: "implementation-unit-model-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId,
+      revision: status.candidate.revision,
+      digest: status.candidate.digest,
+      state: "candidate" as const,
+      membershipDigest: `sha256:${"6".repeat(64)}` as const,
+      placementDigest: `sha256:${"7".repeat(64)}` as const,
+      assessmentReceiptDigest: `sha256:${"8".repeat(64)}` as const,
+      unitCount: 3,
+      subjectCount: 4,
+      requirementReferenceCount: 5,
+      reviewState: "held" as const,
+      updatedAt: "2026-07-30T14:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-membership-placement-assessment-snapshot-digests-only-not-unit-titles-boundaries-subject-or-requirement-identities-repository-keys-module-paths-owner-identities-evidence-rationales-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "implementation-unit-model-projection-is-read-only-and-does-not-establish-repository-truth-ownership-appointment-dependency-or-impact-completeness-implementation-readiness-or-completeness-assignment-execution-approval-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -4127,6 +4204,7 @@ interface HarnessOptions {
   acceptanceCriteriaProjection?: AcceptanceCriteriaProjection
   definitionOfReadyProjection?: DefinitionOfReadyProjection
   definitionOfDoneProjection?: DefinitionOfDoneProjection
+  implementationUnitModelProjection?: ImplementationUnitModelProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -4307,6 +4385,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.definitionOfDoneProjection ? {
       definitionOfDone: {
         project: async () => options.definitionOfDoneProjection!,
+      },
+    } : {}),
+    ...(options.implementationUnitModelProjection ? {
+      implementationUnitModel: {
+        project: async () => options.implementationUnitModelProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -5024,6 +5107,49 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private done rule|private completion rationale|private test evidence|private assessor|customer@example\.com|api_key/iu,
+    )
+  })
+
+  it("projects exact privacy-safe Implementation Unit Model metadata without asserting repository or owner truth", async () => {
+    const hierarchy = backlogHierarchyProjection()
+    const mvp = mvpSliceDefinitionProjection(hierarchy)
+    const priority = prioritizationModelProjection(mvp)
+    const criteria = acceptanceCriteriaProjection(hierarchy, mvp, priority)
+    const ready = definitionOfReadyProjection(hierarchy, mvp, priority, criteria)
+    const done = definitionOfDoneProjection(hierarchy, mvp, priority, criteria, ready)
+    const projection = implementationUnitModelProjection(hierarchy, mvp, priority, criteria, ready, done)
+    const { source } = harness({
+      backlogHierarchyProjection: hierarchy,
+      mvpSliceDefinitionProjection: mvp,
+      prioritizationModelProjection: priority,
+      acceptanceCriteriaProjection: criteria,
+      definitionOfReadyProjection: ready,
+      definitionOfDoneProjection: done,
+      implementationUnitModelProjection: projection,
+    })
+    const snapshot = await source.readSnapshot("delivery")
+
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.kind === "delivery" && snapshot.page.implementationUnits).toMatchObject({
+      id: "implementation-unit-model",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          revision: "2",
+          membership: projection.candidate?.membershipDigest,
+          placement: projection.candidate?.placementDigest,
+          assessmentReceipt: projection.candidate?.assessmentReceiptDigest,
+          coverage: "3 units · 4 subjects · 5 Requirement references · 3 repository candidates · 3 owner candidates",
+          dependencies: "2 dependency edges · 2 blast radii candidate-assessed · 1 not assessed",
+          assessment: "attention-required · held",
+          gaps: "2 questions · 1 missing subjects · 1 invalid units · 0 stale bindings · 0 stale hierarchies · 0 stale MVP definitions · 0 stale Acceptance Criteria · 0 stale Definition of Ready · 0 stale Definition of Done",
+          boundary: expect.stringContaining("no unit titles, boundaries, Story, Task, or Requirement identities"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private unit title|private module path|private owner identity|private impact rationale|customer@example\.com|api_key/iu,
     )
   })
 

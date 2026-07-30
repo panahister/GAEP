@@ -14,6 +14,7 @@ import type {
   AcceptanceCriteriaProjection,
   DefinitionOfReadyProjection,
   DefinitionOfDoneProjection,
+  ImplementationUnitModelProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -203,6 +204,9 @@ export interface CurrentStudioEngineReader {
   definitionOfDone?: {
     project(initiativeId: string): Promise<DefinitionOfDoneProjection>
   }
+  implementationUnitModel?: {
+    project(initiativeId: string): Promise<ImplementationUnitModelProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -378,6 +382,7 @@ interface ObservedStudioState {
   acceptanceCriteriaProjections: Map<string, AcceptanceCriteriaProjection>
   definitionOfReadyProjections: Map<string, DefinitionOfReadyProjection>
   definitionOfDoneProjections: Map<string, DefinitionOfDoneProjection>
+  implementationUnitModelProjections: Map<string, ImplementationUnitModelProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3800,6 +3805,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     acceptanceCriteria: acceptanceCriteriaTable(state),
     definitionOfReady: definitionOfReadyTable(state),
     definitionOfDone: definitionOfDoneTable(state),
+    implementationUnits: implementationUnitModelTable(state),
   }
 }
 
@@ -4189,6 +4195,59 @@ function definitionOfDoneTable(state: ObservedStudioState): StudioTableSnapshot 
       emptyState: emptySurface(
         "No governed Definition of Done candidate",
         "Create the candidate through the governed engine workflow after exact Backlog Hierarchy, MVP and Vertical Slice, Prioritization Model, Acceptance Criteria, and Definition of Ready candidates exist. This view does not infer completion, acceptance, approval, merge, release, deployment, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function implementationUnitModelTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.implementationUnitModelProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        membership: record.membershipDigest,
+        placement: record.placementDigest,
+        assessmentReceipt: record.assessmentReceiptDigest,
+        coverage: `${status.unitCount} units · ${status.subjectCount} subjects · ${status.requirementReferenceCount} Requirement references · ${status.repositoryCandidateCount} repository candidates · ${status.ownerCandidateCount} owner candidates`,
+        dependencies: `${status.dependencyEdgeCount} dependency edges · ${status.candidateAssessedBlastRadiusCount} blast radii candidate-assessed · ${status.notAssessedBlastRadiusCount} not assessed`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        gaps: `${status.unresolvedQuestionCount} questions · ${status.missingSubjectCount} missing subjects · ${status.invalidUnitCount} invalid units · ${status.staleBindingCount} stale bindings · ${status.staleHierarchyCount} stale hierarchies · ${status.staleMvpSliceDefinitionCount} stale MVP definitions · ${status.staleAcceptanceCriteriaCount} stale Acceptance Criteria · ${status.staleDefinitionOfReadyCount} stale Definition of Ready · ${status.staleDefinitionOfDoneCount} stale Definition of Done`,
+        boundary: "Candidate identities, counts, statuses, and membership, placement, assessment-receipt, and snapshot digests only; no unit titles, boundaries, Story, Task, or Requirement identities, repository keys, module paths, owner identities, evidence, rationales, personal data, repository truth, owner appointment, dependency or impact completeness, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "implementation-unit-model",
+    title: "Governed Implementation Unit Model Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "membership", label: "Membership digest" },
+      { key: "placement", label: "Placement digest" },
+      { key: "assessmentReceipt", label: "Assessment receipt" },
+      { key: "coverage", label: "Privacy-safe coverage" },
+      { key: "dependencies", label: "Dependency and impact candidates" },
+      { key: "assessment", label: "Candidate assessment" },
+      { key: "gaps", label: "Candidate gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Implementation Unit Model candidate",
+        "Create the candidate through the governed engine workflow after exact Backlog Hierarchy, MVP and Vertical Slice, Acceptance Criteria, Definition of Ready, and Definition of Done candidates exist. This view does not infer repository truth, owner appointment, dependency or impact completeness, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, or action authority.",
       ),
     } : {}),
   }
@@ -6034,6 +6093,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       acceptanceCriteriaProjections: new Map(),
       definitionOfReadyProjections: new Map(),
       definitionOfDoneProjections: new Map(),
+      implementationUnitModelProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -6550,6 +6610,66 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "definition-of-done-unavailable",
           "Definition of Done metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.implementationUnitModel) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(
+          empty.initiatives.map((initiative) => engine.implementationUnitModel!.project(initiative.id)),
+        )
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { snapshotDigest, ...projectionBody } = projection.value
+            const hierarchy = empty.backlogHierarchyProjections.get(initiative.id)?.candidate
+            const mvp = empty.mvpSliceDefinitionProjections.get(initiative.id)?.candidate
+            const criteria = empty.acceptanceCriteriaProjections.get(initiative.id)?.candidate
+            const ready = empty.definitionOfReadyProjections.get(initiative.id)?.candidate
+            const done = empty.definitionOfDoneProjections.get(initiative.id)?.candidate
+            const candidate = projection.value.candidate
+            const exactDependencies = !candidate || (
+              hierarchy !== undefined && projection.value.status.hierarchy?.recordId === hierarchy.id &&
+              projection.value.status.hierarchy.revision === hierarchy.revision && projection.value.status.hierarchy.digest === hierarchy.digest &&
+              mvp !== undefined && projection.value.status.mvpSliceDefinition?.recordId === mvp.id &&
+              projection.value.status.mvpSliceDefinition.revision === mvp.revision && projection.value.status.mvpSliceDefinition.digest === mvp.digest &&
+              criteria !== undefined && projection.value.status.acceptanceCriteria?.recordId === criteria.id &&
+              projection.value.status.acceptanceCriteria.revision === criteria.revision && projection.value.status.acceptanceCriteria.digest === criteria.digest &&
+              ready !== undefined && projection.value.status.definitionOfReady?.recordId === ready.id &&
+              projection.value.status.definitionOfReady.revision === ready.revision && projection.value.status.definitionOfReady.digest === ready.digest &&
+              done !== undefined && projection.value.status.definitionOfDone?.recordId === done.id &&
+              projection.value.status.definitionOfDone.revision === done.revision && projection.value.status.definitionOfDone.digest === done.digest
+            )
+            if (
+              projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) &&
+              projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id &&
+              projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) &&
+              exactDependencies && snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.implementationUnitModelProjections.set(initiative.id, projection.value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Implementation Unit Model projection was unavailable or did not bind exact Product, Initiative, Backlog Hierarchy, MVP and Slice Definition, Acceptance Criteria, Definition of Ready, and Definition of Done revisions",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `implementation-unit-model-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Implementation Unit Model metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "implementation-unit-model-unavailable",
+          "Implementation Unit Model metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }
