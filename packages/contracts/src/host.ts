@@ -2,6 +2,7 @@ import { z } from "zod"
 
 import { portableSelectionSettingsSchema } from "./agent.js"
 import { businessCapabilityMapInputSchema } from "./business-capability-map.js"
+import { backlogHierarchyInputSchema } from "./backlog-hierarchy.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -597,6 +598,18 @@ export const hostDesignRequirementsReviseParamsSchema = z.object({
   record: designRequirementsInputSchema,
 }).strict()
 
+export const hostBacklogHierarchyCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: backlogHierarchyInputSchema,
+}).strict()
+
+export const hostBacklogHierarchyReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: backlogHierarchyInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -851,6 +864,11 @@ export const hostMethodSchema = z.enum([
   "productStudio.search",
   "productStudio.exportBuild",
   "productStudio.importPreview",
+  "backlog.hierarchy.read",
+  "backlog.hierarchy.create",
+  "backlog.hierarchy.revise",
+  "backlog.hierarchy.assess",
+  "backlog.hierarchy.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1144,6 +1162,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("productStudio.search", hostSearchProductStudioParamsSchema),
   requestVariant("productStudio.exportBuild", hostNoParamsSchema.default({})),
   requestVariant("productStudio.importPreview", hostImportPreviewParamsSchema),
+  requestVariant("backlog.hierarchy.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("backlog.hierarchy.create", hostBacklogHierarchyCreateParamsSchema),
+  requestVariant("backlog.hierarchy.revise", hostBacklogHierarchyReviseParamsSchema),
+  requestVariant("backlog.hierarchy.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("backlog.hierarchy.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

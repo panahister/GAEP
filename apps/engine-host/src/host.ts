@@ -94,6 +94,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "productStudio.search",
   "productStudio.exportBuild",
   "productStudio.importPreview",
+  "backlog.hierarchy.read",
+  "backlog.hierarchy.create",
+  "backlog.hierarchy.revise",
+  "backlog.hierarchy.assess",
+  "backlog.hierarchy.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1252,6 +1257,21 @@ export class EngineHost {
         return this.engine.productStudio.buildPortableExport()
       case "productStudio.importPreview":
         return this.engine.productStudio.previewImportBundle(request.params.bundle)
+      case "backlog.hierarchy.read":
+        return await this.engine.backlogHierarchy.readCurrent(request.params.initiativeId) ?? null
+      case "backlog.hierarchy.create":
+        return this.engine.backlogHierarchy.create(request.params.record, actorId(request.params.actorId))
+      case "backlog.hierarchy.revise":
+        return this.engine.backlogHierarchy.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "backlog.hierarchy.assess":
+        return this.engine.backlogHierarchy.assess(request.params.initiativeId)
+      case "backlog.hierarchy.snapshot":
+        return this.engine.backlogHierarchy.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":
