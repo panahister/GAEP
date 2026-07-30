@@ -22,8 +22,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260730T070603Z-phase-3a-mvp-slice-definition-packages.json",
-  conformance: "evidence/ide-conformance/20260730T070603Z-phase-3a-mvp-slice-definition.json",
+  packages: "evidence/local-packages/20260730T084600Z-phase-3a-prioritization-model-packages.json",
+  conformance: "evidence/ide-conformance/20260730T084600Z-phase-3a-prioritization-model.json",
   example: "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
 }
 const gateDefinitions = [
@@ -203,7 +203,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -230,7 +230,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    mvpSliceDefinition
+    prioritizationModel
+      ? {
+          id: "phase-3a-prioritization-model-closure",
+          state: "not-established",
+          basis: "the exact versioned prioritization candidate lifecycle, deterministic weighted-sum-v1 scoring with normalized value, risk-reduction, dependency-enablement and inverse cost-size dimensions, exact current MVP and Vertical Slice binding, evidence identities, uncertainty, immutable revisions, privacy-safe Product Studio table and four host projections are implemented locally; scores remain advisory candidates and do not establish priority, commitment, approval, readiness, assignment, execution, native-host interaction or Product Owner acceptance",
+        }
+      : mvpSliceDefinition
       ? {
           id: "phase-3a-mvp-slice-definition-closure",
           state: "not-established",
@@ -458,6 +464,9 @@ export async function buildPhase0AcceptanceReport({
   const mvpSliceDefinition = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "mvp-slice-definition" && capability.state === "implemented"))
+  const prioritizationModel = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "prioritization-model" && capability.state === "implemented"))
   const designSystemTokenContract = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-system-token-contract" && capability.state === "implemented"))
@@ -525,6 +534,7 @@ export async function buildPhase0AcceptanceReport({
     designRequirements,
     backlogHierarchy,
     mvpSliceDefinition,
+    prioritizationModel,
     designSystemTokenContract,
     accessibilityDesignRules,
     responsiveMultiPlatformTargets,
@@ -562,8 +572,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: mvpSliceDefinition
+    phase: prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: prioritizationModel
+      ? "phase-3a-prioritization-model-local"
+      : mvpSliceDefinition
       ? "phase-3a-mvp-slice-definition-local"
       : backlogHierarchy
       ? "phase-3a-backlog-hierarchy-local"
@@ -661,7 +673,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: mvpSliceDefinition
+    claimBoundary: prioritizationModel
+      ? "This report binds the exact governed prioritization candidate lifecycle, immutable revision history, deterministic weighted-sum-v1 scoring with normalized value, risk-reduction, dependency-enablement and inverse cost-size dimensions, exact evidence identities and uncertainty, exact current Product, Initiative, MVP and Vertical Slice binding, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Scores are advisory candidate projections only. This report does not establish priority, ordering authority, commitment, approval, acceptance-criteria validity, ready or done state, implementation readiness, assignment, execution, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : mvpSliceDefinition
       ? "This report binds the exact governed MVP and Vertical Slice candidate lifecycle, immutable revision history, complete disposition of every exact current Backlog Hierarchy node as MVP, later or excluded, exact MVP ancestor closure, exact one-time assignment of every MVP Story and Task to ordered Vertical Slices, earlier-only slice dependencies, candidate testability state, exact current Product, Initiative and Backlog Hierarchy binding, bounded scope, slice and gap assessment, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. This report does not establish priority, commitment, scope approval, acceptance-criteria validity, ready or done state, implementation readiness, assignment, execution, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : backlogHierarchy
       ? "This report binds the exact governed Backlog Hierarchy candidate lifecycle, immutable revision history, strict Epic-to-Feature-to-Story-to-Task topology, exact current Product and Initiative binding, exact current Work Item and Change membership, exact Story and Task Requirement traces, bounded topology, trace and gap assessment, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. This report does not duplicate Work Item title, scope, owner or execution authority; establish priority, commitment, ownership, ready or done state, acceptance criteria, implementation readiness, assignment, execution, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."

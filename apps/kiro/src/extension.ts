@@ -1858,7 +1858,7 @@ async function showPrioritizationModel(
       `Updated: ${record.updatedAt}`,
     ] : []),
     "",
-    "Candidate identities, counts, statuses, method, membership, ranking, and snapshot digests only; this does not establish evidence validity, priority, commitment, scope decisions, approval, acceptance-criteria validity, Definition of Ready or Done, implementation readiness, assignment, execution, implementation authority, or action authority.",
+    "Candidate identities, counts, statuses, method, membership, ranking, and snapshot digests only; no dimension estimates, evidence identities, uncertainty, slice content, or personal data; this does not establish evidence validity, priority, commitment, scope decisions, approval, acceptance-criteria validity, Definition of Ready or Done, implementation readiness, assignment, execution, implementation authority, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,
