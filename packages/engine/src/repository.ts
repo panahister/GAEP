@@ -69,6 +69,7 @@ import {
   boilerplateSelectionBindingSchema,
   boilerplateCompatibilityValidationSchema,
   figmaToBoilerplateMappingSchema,
+  designToCodeBindingRegistrySchema,
   businessRuleCatalogSchema,
   businessUnderstandingSchema,
   changeSchema,
@@ -1269,6 +1270,10 @@ export class GaepRepository {
     if (/^figma-to-boilerplate-mappings\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^figma-to-boilerplate-mapping-history\/figma-to-boilerplate-mapping-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
       return this.readJsonUnlocked(path, figmaToBoilerplateMappingSchema)
+    }
+    if (/^design-to-code-binding-registries\/[0-9a-f-]+\.json$/i.test(relativePath) ||
+        /^design-to-code-binding-registry-history\/design-to-code-binding-registry-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
+      return this.readJsonUnlocked(path, designToCodeBindingRegistrySchema)
     }
     if (/^value-stream-models\/[0-9a-f-]+\.json$/i.test(relativePath) ||
         /^value-stream-model-history\/value-stream-model-[0-9a-f-]+-r[1-9][0-9]*\.json$/i.test(relativePath)) {
