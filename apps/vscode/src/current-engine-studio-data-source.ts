@@ -20,6 +20,7 @@ import type {
   BoilerplateRegistryProjection,
   BoilerplateSelectionBindingProjection,
   BoilerplateCompatibilityValidationProjection,
+  FigmaToBoilerplateMappingProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -227,6 +228,9 @@ export interface CurrentStudioEngineReader {
   boilerplateCompatibilityValidation?: {
     project(initiativeId: string): Promise<BoilerplateCompatibilityValidationProjection>
   }
+  figmaToBoilerplateMapping?: {
+    project(initiativeId: string): Promise<FigmaToBoilerplateMappingProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -408,6 +412,7 @@ interface ObservedStudioState {
   boilerplateRegistryProjections: Map<string, BoilerplateRegistryProjection>
   boilerplateSelectionBindingProjections: Map<string, BoilerplateSelectionBindingProjection>
   boilerplateCompatibilityValidationProjections: Map<string, BoilerplateCompatibilityValidationProjection>
+  figmaToBoilerplateMappingProjections: Map<string, FigmaToBoilerplateMappingProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3836,6 +3841,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     boilerplateRegistries: boilerplateRegistryTable(state),
     boilerplateSelectionBindings: boilerplateSelectionBindingTable(state),
     boilerplateCompatibilityValidations: boilerplateCompatibilityValidationTable(state),
+    figmaToBoilerplateMappings: figmaToBoilerplateMappingTable(state),
   }
 }
 
@@ -4557,6 +4563,67 @@ function boilerplateCompatibilityValidationTable(state: ObservedStudioState): St
       emptyState: emptySurface(
         "No governed Boilerplate Compatibility Validation candidate",
         "Create the candidate through the governed engine workflow after exact Implementation Unit Model, Dependency Mapping, Technology Profile, Boilerplate Registry, and Boilerplate Selection and Binding candidates exist. This view does not infer compatibility truth or completeness, validation decision, actual asset behavior, test execution, design validity, security, privacy, or licensing approval, exception or waiver, effective selection or binding, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function figmaToBoilerplateMappingTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.figmaToBoilerplateMappingProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        subjects: record.mappingSubjectCatalogDigest,
+        targets: record.targetCatalogDigest,
+        traceReceipt: record.traceReceiptDigest,
+        mappingReceipt: record.mappingReceiptDigest,
+        assessmentReceipt: record.assessmentReceiptDigest,
+        coverage: `${status.designBindingCount} design bindings · ${status.subjectCount} mapping subjects`,
+        outcomes: `${status.mappedCandidateCount} mapped candidates · ${status.conflictCandidateCount} conflicts · ${status.unmappedCandidateCount} unmapped · ${status.notAssessedCount} not assessed`,
+        kinds: `${status.componentMappingCount} component · ${status.tokenMappingCount} token · ${status.layoutMappingCount} layout · ${status.responsiveBehaviorMappingCount} responsive · ${status.platformTargetMappingCount} platform-target`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        mappingGaps: `${status.missingSubjectCount} missing subjects · ${status.invalidSubjectCount} invalid subjects · ${status.targetGapCount} target gaps · ${status.traceGapCount} trace gaps · ${status.evidenceGapCount} evidence gaps`,
+        staleGaps: `${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+        boundary: "Candidate identities, counts, statuses, and subject, target, trace, mapping, assessment, and snapshot digests only; no Figma content, design-item, binding, unit, profile, registry-entry, validation-subject, requirement, target-locator, evidence, reviewer, personal data, mapping truth or completeness, design validity, approval or baseline, effective selection or compatibility truth, retrieval, import, instantiation, generated code, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "figma-to-boilerplate-mapping",
+    title: "Governed Figma-to-Boilerplate Mapping Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "subjects", label: "Mapping subject catalog digest" },
+      { key: "targets", label: "Target catalog digest" },
+      { key: "traceReceipt", label: "Trace receipt" },
+      { key: "mappingReceipt", label: "Mapping receipt" },
+      { key: "assessmentReceipt", label: "Assessment receipt" },
+      { key: "coverage", label: "Privacy-safe mapping coverage" },
+      { key: "outcomes", label: "Candidate outcomes" },
+      { key: "kinds", label: "Candidate mapping kinds" },
+      { key: "assessment", label: "Candidate assessment" },
+      { key: "mappingGaps", label: "Candidate mapping gaps" },
+      { key: "staleGaps", label: "Candidate freshness gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed Figma-to-Boilerplate Mapping candidate",
+        "Create the candidate through the governed engine workflow after all 11 exact Design, Figma, implementation-unit, technology, registry, selection, and compatibility candidates exist. This view does not connect to Figma, expose returned Figma content, validate or approve design, designate a baseline, establish mapping truth or completeness, make selection or compatibility effective, retrieve, import, instantiate, generate code, establish implementation readiness or completeness, assign, execute, accept, merge, release, deploy, or grant action authority.",
       ),
     } : {}),
   }
@@ -6408,6 +6475,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       boilerplateRegistryProjections: new Map(),
       boilerplateSelectionBindingProjections: new Map(),
       boilerplateCompatibilityValidationProjections: new Map(),
+      figmaToBoilerplateMappingProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -7271,6 +7339,76 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         empty.issues.push(issue(
           "boilerplate-compatibility-validation-unavailable",
           "Boilerplate Compatibility Validation metadata is withheld because the audit chain is invalid or unavailable.",
+          "blocker",
+        ))
+      }
+    }
+    if (route === "delivery" && engine.figmaToBoilerplateMapping) {
+      if (auditSemanticsVerified) {
+        const dependencyReaders = [
+          engine.designApplicability, engine.designSystemTokenContract, engine.responsiveMultiPlatformTargets,
+          engine.finalizedFigmaSnapshotImport, engine.designToRequirementBinding, engine.designBaseline,
+          engine.implementationUnitModel, engine.technologyProfile, engine.boilerplateRegistry,
+          engine.boilerplateSelectionBinding, engine.boilerplateCompatibilityValidation,
+        ]
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const mapping = await engine.figmaToBoilerplateMapping!.project(initiative.id)
+          const dependencies = dependencyReaders.every((reader) => reader !== undefined)
+            ? await Promise.all(dependencyReaders.map((reader) => reader!.project(initiative.id)))
+            : undefined
+          return { mapping, dependencies }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.mapping
+            const { snapshotDigest, ...projectionBody } = value
+            const references = [
+              value.status.designApplicability, value.status.designSystemTokenContract,
+              value.status.responsiveMultiPlatformTargets, value.status.finalizedFigmaSnapshotImport,
+              value.status.designToRequirementBinding, value.status.designBaseline,
+              value.status.implementationUnitModel, value.status.technologyProfile,
+              value.status.boilerplateRegistry, value.status.boilerplateSelectionBinding,
+              value.status.boilerplateCompatibilityValidation,
+            ]
+            const exactDependencies = !value.candidate || (
+              projection.value.dependencies !== undefined &&
+              references.every((reference, dependencyIndex) => {
+                const dependency = projection.value.dependencies?.[dependencyIndex]?.candidate
+                return reference !== undefined && dependency !== undefined &&
+                  reference.recordId === dependency.id && reference.revision === dependency.revision &&
+                  reference.digest === dependency.digest
+              })
+            )
+            if (
+              value.product.id === empty.product?.id &&
+              value.product.revision === (empty.product.revision ?? 1) &&
+              value.product.digest === canonicalDigest(empty.product) &&
+              value.initiative.id === initiative.id &&
+              value.initiative.revision === (initiative.revision ?? 1) &&
+              value.initiative.digest === canonicalDigest(initiative) &&
+              exactDependencies && snapshotDigest === canonicalDigest(projectionBody)
+            ) {
+              empty.figmaToBoilerplateMappingProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio Figma-to-Boilerplate Mapping projection was unavailable or did not bind all 11 exact current governed dependencies",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(
+            `figma-to-boilerplate-mapping-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe Figma-to-Boilerplate Mapping metadata is unavailable.`,
+            "warning",
+            initiative.id,
+          ))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue(
+          "figma-to-boilerplate-mapping-unavailable",
+          "Figma-to-Boilerplate Mapping metadata is withheld because the audit chain is invalid or unavailable.",
           "blocker",
         ))
       }

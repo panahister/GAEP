@@ -59,6 +59,7 @@ import {
   type BoilerplateRegistryProjection,
   type BoilerplateSelectionBindingProjection,
   type BoilerplateCompatibilityValidationProjection,
+  type FigmaToBoilerplateMappingProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -2820,6 +2821,69 @@ function boilerplateCompatibilityValidationProjection(
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function figmaToBoilerplateMappingProjection(
+  designApplicability: DesignApplicabilityProjection,
+  designSystemTokenContract: DesignSystemTokenContractProjection,
+  responsiveMultiPlatformTargets: ResponsiveMultiPlatformTargetsProjection,
+  finalizedFigmaSnapshotImport: FinalizedFigmaSnapshotImportProjection,
+  designToRequirementBinding: DesignToRequirementBindingProjection,
+  designBaseline: DesignBaselineProjection,
+  units: ImplementationUnitModelProjection,
+  technologyProfile: TechnologyProfileProjection,
+  boilerplateRegistry: BoilerplateRegistryProjection,
+  boilerplateSelectionBinding: BoilerplateSelectionBindingProjection,
+  boilerplateCompatibilityValidation: BoilerplateCompatibilityValidationProjection,
+): FigmaToBoilerplateMappingProjection {
+  const exact = (candidate: { id: string; revision: number; digest: string }) => ({
+    recordId: candidate.id, revision: candidate.revision, digest: candidate.digest,
+  })
+  const status = {
+    schemaVersion: 1 as const, kind: "figma-to-boilerplate-mapping-status" as const,
+    productId: product.id, productRevision: product.revision ?? 1,
+    initiativeId: initiative.id, initiativeRevision: initiative.revision ?? 1,
+    candidate: { recordId: "f3f3f3f3-f3f3-43f3-83f3-f3f3f3f3f3f3", revision: 2, digest: `sha256:${"4".repeat(64)}` as const },
+    designApplicability: exact(designApplicability.candidate!),
+    designSystemTokenContract: exact(designSystemTokenContract.candidate!),
+    responsiveMultiPlatformTargets: exact(responsiveMultiPlatformTargets.candidate!),
+    finalizedFigmaSnapshotImport: exact(finalizedFigmaSnapshotImport.candidate!),
+    designToRequirementBinding: exact(designToRequirementBinding.candidate!),
+    designBaseline: exact(designBaseline.candidate!), implementationUnitModel: exact(units.candidate!),
+    technologyProfile: exact(technologyProfile.candidate!), boilerplateRegistry: exact(boilerplateRegistry.candidate!),
+    boilerplateSelectionBinding: exact(boilerplateSelectionBinding.candidate!),
+    boilerplateCompatibilityValidation: exact(boilerplateCompatibilityValidation.candidate!),
+    designBindingCount: 2, subjectCount: 2, mappedCandidateCount: 1, conflictCandidateCount: 1,
+    unmappedCandidateCount: 0, notAssessedCount: 0, componentMappingCount: 1, tokenMappingCount: 1,
+    layoutMappingCount: 0, responsiveBehaviorMappingCount: 0, platformTargetMappingCount: 0,
+    missingSubjectCount: 0, invalidSubjectCount: 1, targetGapCount: 1, traceGapCount: 1,
+    evidenceGapCount: 1, staleBindingCount: 0, staleDependencyCount: 0, invalidCandidateCount: 1,
+    unresolvedQuestionCount: 2, reviewState: "held" as const, state: "attention-required" as const,
+    reasons: ["One or more Figma-to-Boilerplate Mapping subjects require human review"],
+    assessedAt: "2026-07-30T20:00:00.000Z",
+    authorityBoundary: "figma-to-boilerplate-mapping-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-truth-or-completeness-selection-binding-effectiveness-compatibility-truth-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const, kind: "figma-to-boilerplate-mapping-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId, revision: status.candidate.revision, digest: status.candidate.digest,
+      state: "candidate" as const, mappingSubjectCatalogDigest: `sha256:${"5".repeat(64)}` as const,
+      targetCatalogDigest: `sha256:${"6".repeat(64)}` as const,
+      traceReceiptDigest: `sha256:${"7".repeat(64)}` as const,
+      mappingReceiptDigest: `sha256:${"8".repeat(64)}` as const,
+      assessmentReceiptDigest: `sha256:${"9".repeat(64)}` as const,
+      subjectCount: 2, mappedCandidateCount: 1, conflictCandidateCount: 1,
+      unmappedCandidateCount: 0, notAssessedCount: 0, reviewState: "held" as const,
+      updatedAt: "2026-07-30T19:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-subject-target-trace-mapping-assessment-snapshot-digests-only-not-figma-content-design-item-binding-unit-profile-registry-entry-validation-subject-requirement-target-locator-evidence-reviewer-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "figma-to-boilerplate-mapping-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-truth-or-completeness-selection-binding-effectiveness-compatibility-truth-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -4619,6 +4683,7 @@ interface HarnessOptions {
   boilerplateRegistryProjection?: BoilerplateRegistryProjection
   boilerplateSelectionBindingProjection?: BoilerplateSelectionBindingProjection
   boilerplateCompatibilityValidationProjection?: BoilerplateCompatibilityValidationProjection
+  figmaToBoilerplateMappingProjection?: FigmaToBoilerplateMappingProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -4829,6 +4894,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.boilerplateCompatibilityValidationProjection ? {
       boilerplateCompatibilityValidation: {
         project: async () => options.boilerplateCompatibilityValidationProjection!,
+      },
+    } : {}),
+    ...(options.figmaToBoilerplateMappingProjection ? {
+      figmaToBoilerplateMapping: {
+        project: async () => options.figmaToBoilerplateMappingProjection!,
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -5846,6 +5916,82 @@ describe("current-engine Product Studio data source", () => {
     expect(JSON.stringify(snapshot)).not.toMatch(
       /private boilerplate|private locator|private version|private unit|private profile|private entry|private binding|private claim|private assessor|customer@example\.com|api_key/iu,
     )
+  })
+
+  it("projects exact privacy-safe Figma-to-Boilerplate Mapping metadata only across all 11 current dependencies", async () => {
+    const designApplicability = designApplicabilityProjection()
+    const designSystemTokenContract = designSystemTokenContractProjection()
+    const responsiveTargets = responsiveMultiPlatformTargetsProjection()
+    const finalizedSnapshot = finalizedFigmaSnapshotImportProjection()
+    const designBinding = designToRequirementBindingProjection()
+    const designBaseline = designBaselineProjection()
+    const units = implementationUnitModelProjection()
+    const dependencyMapping = dependencyMappingProjection(undefined, undefined, undefined, undefined, undefined, undefined, units)
+    const technologyProfile = technologyProfileProjection(units, dependencyMapping)
+    const boilerplateRegistry = boilerplateRegistryProjection(units, technologyProfile)
+    const selectionBinding = boilerplateSelectionBindingProjection(units, dependencyMapping, technologyProfile, boilerplateRegistry)
+    const compatibilityValidation = boilerplateCompatibilityValidationProjection(
+      units, dependencyMapping, technologyProfile, boilerplateRegistry, selectionBinding,
+    )
+    const projection = figmaToBoilerplateMappingProjection(
+      designApplicability, designSystemTokenContract, responsiveTargets, finalizedSnapshot, designBinding,
+      designBaseline, units, technologyProfile, boilerplateRegistry, selectionBinding, compatibilityValidation,
+    )
+    const options = {
+      designApplicabilityProjection: designApplicability,
+      designSystemTokenContractProjection: designSystemTokenContract,
+      responsiveMultiPlatformTargetsProjection: responsiveTargets,
+      finalizedFigmaSnapshotImportProjection: finalizedSnapshot,
+      designToRequirementBindingProjection: designBinding,
+      designBaselineProjection: designBaseline,
+      implementationUnitModelProjection: units,
+      dependencyMappingProjection: dependencyMapping,
+      technologyProfileProjection: technologyProfile,
+      boilerplateRegistryProjection: boilerplateRegistry,
+      boilerplateSelectionBindingProjection: selectionBinding,
+      boilerplateCompatibilityValidationProjection: compatibilityValidation,
+      figmaToBoilerplateMappingProjection: projection,
+    }
+    const { source } = harness(options)
+    const snapshot = await source.readSnapshot("delivery")
+
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.kind === "delivery" && snapshot.page.figmaToBoilerplateMappings).toMatchObject({
+      id: "figma-to-boilerplate-mapping",
+      rows: [{
+        id: projection.candidate?.id,
+        cells: {
+          initiative: initiative.id, revision: "2",
+          subjects: projection.candidate?.mappingSubjectCatalogDigest,
+          targets: projection.candidate?.targetCatalogDigest,
+          traceReceipt: projection.candidate?.traceReceiptDigest,
+          mappingReceipt: projection.candidate?.mappingReceiptDigest,
+          assessmentReceipt: projection.candidate?.assessmentReceiptDigest,
+          coverage: "2 design bindings · 2 mapping subjects",
+          outcomes: "1 mapped candidates · 1 conflicts · 0 unmapped · 0 not assessed",
+          kinds: "1 component · 1 token · 0 layout · 0 responsive · 0 platform-target",
+          assessment: "attention-required · held",
+          mappingGaps: "0 missing subjects · 1 invalid subjects · 1 target gaps · 1 trace gaps · 1 evidence gaps",
+          staleGaps: "0 stale bindings · 0 stale dependencies · 1 invalid candidates · 2 questions",
+          boundary: expect.stringContaining("no Figma content, design-item, binding, unit, profile"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /private figma|private target|private design item|private requirement|private reviewer|customer@example\.com|api_key/iu,
+    )
+
+    const hostileBody = { ...projection, status: {
+      ...projection.status,
+      designApplicability: { ...projection.status.designApplicability!, digest: `sha256:${"a".repeat(64)}` as const },
+    } }
+    const { snapshotDigest: _oldDigest, ...hostileWithoutDigest } = hostileBody
+    const hostile = { ...hostileWithoutDigest, snapshotDigest: canonicalDigest(hostileWithoutDigest) }
+    const hostileSnapshot = await harness({ ...options, figmaToBoilerplateMappingProjection: hostile }).source.readSnapshot("delivery")
+    expect(hostileSnapshot.page.kind === "delivery" && hostileSnapshot.page.figmaToBoilerplateMappings?.rows).toEqual([])
+    expect(hostileSnapshot.surface.issues).toContainEqual(expect.objectContaining({
+      id: `figma-to-boilerplate-mapping-${initiative.id}-unavailable`, severity: "warning",
+    }))
   })
 
   it("projects privacy-safe governed business, stakeholder, and outcome metadata on their native pages", async () => {

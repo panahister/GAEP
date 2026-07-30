@@ -614,6 +614,7 @@ class StudioShell {
       ...(page.boilerplateRegistries ? [page.boilerplateRegistries] : []),
       ...(page.boilerplateSelectionBindings ? [page.boilerplateSelectionBindings] : []),
       ...(page.boilerplateCompatibilityValidations ? [page.boilerplateCompatibilityValidations] : []),
+      ...(page.figmaToBoilerplateMappings ? [page.figmaToBoilerplateMappings] : []),
     ]) container.append(this.renderTable(table))
     if (page.transitionPreview) {
       const preview = element("section", "section grouped-section")
