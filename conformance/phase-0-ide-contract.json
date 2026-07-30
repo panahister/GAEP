@@ -72,6 +72,7 @@
     { "id": "dependency-mapping", "label": "Exact governed Dependency Mapping candidate over every current Implementation Unit with typed directed acyclic dependency edges, deterministic longest candidate-effort critical path, graph and assessment receipts, and exact current Backlog Hierarchy, MVP and Vertical Slice, and Implementation Unit Model bindings, without establishing dependency truth or completeness, critical-path authority, sequencing commitment, ownership appointment, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, write, or action authority" },
     { "id": "technology-profile", "label": "Exact governed Technology Profile candidate for every current Implementation Unit with bounded technology, runtime, framework, library, toolchain, platform, version and constraint selections; compatibility, provenance, support, licensing, security-policy and lifecycle evidence states; deterministic profile, selection, compatibility and assessment receipts; and exact current Implementation Unit Model and Dependency Mapping bindings, without establishing technology approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, architecture-baseline designation, implementation readiness or completeness, assignment, execution, approval, acceptance, merge, release, deployment, write, or action authority" },
     { "id": "boilerplate-registry", "label": "Exact governed Boilerplate Registry candidate with bounded candidate organizational boilerplates, source and version candidates, applicability, availability, integrity, provenance, support, lifecycle, Technology Profile and architecture compatibility, licensing, security-policy and exception evidence states, deterministic entry, source, compatibility and assessment receipts, and exact current Implementation Unit Model and Technology Profile bindings, without establishing organizational designation, endorsement, approval, support commitment, compatibility truth or completeness, licensing or security approval, exception or waiver authority, selection or binding, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, write, or action authority" },
+    { "id": "boilerplate-selection-binding", "label": "Exact governed Boilerplate Selection and Binding candidate with one evidence-backed selected, not-applicable, deferred, or not-assessed decision per current Implementation Unit, exact Technology Profile and Boilerplate Registry entry and version candidate references, alternatives, conditions, deviations, deterministic unit-decision, selection, binding and assessment receipts, and exact current Implementation Unit Model, Dependency Mapping, Technology Profile and Boilerplate Registry bindings, without establishing organizational designation, endorsement, approval, support commitment, effective selection or binding, compatibility truth, completeness or validation, licensing or security approval, exception or waiver authority, source retrieval, import or instantiation, architecture baseline, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, write, or action authority" },
     { "id": "design-system-token-contract", "label": "Exact governed Design System and Token Contract candidate projection with bounded system, token, variable, component and requirement-coverage metadata, without system, token, variable or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "accessibility-design-rules", "label": "Exact governed Accessibility Design Rules candidate projection with bounded target, rule, check, evidence-state and requirement-coverage metadata, without accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "responsive-multi-platform-targets", "label": "Exact governed Responsive and Multi-Platform Targets candidate projection with bounded platform-target, breakpoint, behavior, check, evidence-state and requirement-coverage metadata, without responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
@@ -99,7 +100,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T155949Z-phase-3a-boilerplate-registry-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T165456Z-phase-3a-boilerplate-selection-binding-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -322,6 +323,9 @@
         { "capabilityId": "boilerplate-registry", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["boilerplateRegistry?: {", "engine.boilerplateRegistry!.project(initiative.id)", "id: \"boilerplate-registry\"", "does not infer organizational designation, endorsement, approval"] }
         ] },
+        { "capabilityId": "boilerplate-selection-binding", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["boilerplateSelectionBinding?: {", "engine.boilerplateSelectionBinding!.project(initiative.id)", "id: \"boilerplate-selection-binding\"", "does not infer organizational designation, endorsement, approval"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designSystemTokenContract?: {", "engine.designSystemTokenContract!.project(initiative.id)", "id: \"design-system-token-contract\"", "no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."] }
         ] },
@@ -383,7 +387,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T155949Z-phase-3a-boilerplate-registry-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T165456Z-phase-3a-boilerplate-selection-binding-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -638,6 +642,10 @@
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readBoilerplateRegistry(", "this.request(\"planning.boilerplateRegistry.snapshot\"", "boilerplateRegistryProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showBoilerplateRegistry", "GAEP governed Boilerplate Registry candidate", "does not establish organizational designation, endorsement, approval"] }
         ] },
+        { "capabilityId": "boilerplate-selection-binding", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readBoilerplateSelectionBinding(", "this.request(\"planning.boilerplateSelectionBinding.snapshot\"", "boilerplateSelectionBindingProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showBoilerplateSelectionBinding", "GAEP governed Boilerplate Selection and Binding candidate", "does not establish organizational designation, endorsement, approval"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignSystemTokenContract(", "this.request(\"design.systemTokenContract.snapshot\"", "designSystemTokenContractProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignSystemTokenContract", "GAEP governed Design System and Token Contract candidate", "does not establish system, token, variable, or component validity"] }
@@ -716,7 +724,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T155949Z-phase-3a-boilerplate-registry-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T165456Z-phase-3a-boilerplate-selection-binding-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -1023,6 +1031,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Boilerplate Registry candidate", "Technology Profile changed", "organizational designation, endorsement, approval"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["BoilerplateRegistryProjection", "BOILERPLATE_REGISTRY_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] },
+        { "capabilityId": "boilerplate-selection-binding", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readBoilerplateSelectionBinding(", "portableRequest(\"planning.boilerplateSelectionBinding.snapshot\"", "parseBoilerplateSelectionBindingEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Boilerplate Selection and Binding candidate", "Boilerplate Registry changed", "organizational designation, endorsement, approval"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["BoilerplateSelectionBindingProjection", "BOILERPLATE_SELECTION_BINDING_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignSystemTokenContract(", "portableRequest(\"design.systemTokenContract.snapshot\"", "parseDesignSystemTokenContractEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design System and Token Contract candidate", "no system, token, variable", "ownership authority"] },
@@ -1118,7 +1131,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260730T155949Z-phase-3a-boilerplate-registry-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260730T165456Z-phase-3a-boilerplate-selection-binding-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1436,6 +1449,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadBoilerplateRegistryAsync(", "\"planning.boilerplateRegistry.snapshot\"", "ParseBoilerplateRegistryResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Boilerplate Registry candidate", "Technology Profile changed", "organizational designation, endorsement, approval"] },
           { "path": "apps/visual-studio/Gaep.HostClient/BoilerplateRegistryProtocol.cs", "contains": ["BoilerplateRegistryProjection", "BoilerplateRegistryProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "boilerplate-selection-binding", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadBoilerplateSelectionBindingAsync(", "\"planning.boilerplateSelectionBinding.snapshot\"", "ParseBoilerplateSelectionBindingResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Boilerplate Selection and Binding candidate", "Boilerplate Registry changed", "organizational designation, endorsement, approval"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/BoilerplateSelectionBindingProtocol.cs", "contains": ["BoilerplateSelectionBindingProjection", "BoilerplateSelectionBindingProjectionAuthorityBoundary"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignSystemTokenContractAsync(", "\"design.systemTokenContract.snapshot\"", "ParseDesignSystemTokenContractResponse"] },
