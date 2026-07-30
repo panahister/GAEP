@@ -754,6 +754,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += figmaToBoilerplateMappingButton
         actions.add(figmaToBoilerplateMappingButton)
 
+        val designToCodeBindingRegistryButton = JButton("Inspect Design-to-Code Binding Registry…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Figma content, design-item, mapping, unit, requirement, repository, module, path, symbol, evidence, reviewer, personal data, local paths, secrets, credentials, design validity, approval or baseline, mapping or binding truth or completeness, code-target mutation, implementation readiness or completeness, assignment, execution, acceptance, merge, release, deployment, and action authority are withheld.",
+                    "GAEP Design-to-Code Binding Registry",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Design-to-Code Binding Registry", status, output, buttons) {
+                    controller.readDesignToCodeBindingRegistry(initiativeId)
+                }
+            }
+        }
+        buttons += designToCodeBindingRegistryButton
+        actions.add(designToCodeBindingRegistryButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

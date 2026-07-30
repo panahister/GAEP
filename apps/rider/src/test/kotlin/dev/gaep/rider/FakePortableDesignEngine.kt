@@ -55,6 +55,7 @@ private val boilerplateRegistryId = UUID.fromString("90909090-9090-4090-8090-909
 private val boilerplateSelectionBindingId = UUID.fromString("a9a9a9a9-a9a9-49a9-89a9-a9a9a9a9a9a9")
 private val boilerplateCompatibilityValidationId = UUID.fromString("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 private val figmaToBoilerplateMappingId = UUID.fromString("abababab-abab-4bab-8bab-abababababab")
+private val designToCodeBindingRegistryId = UUID.fromString("bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -345,6 +346,11 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.figmaToBoilerplateMapping.snapshot" -> handleFigmaToBoilerplateMapping(
+                id,
+                request.getAsJsonObject("params"),
+                workspacePath,
+            )
+            "planning.designToCodeBindingRegistry.snapshot" -> handleDesignToCodeBindingRegistry(
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
@@ -4569,6 +4575,124 @@ private fun handleFigmaToBoilerplateMapping(id: Long, params: JsonObject, worksp
             value.getAsJsonObject("candidate").addProperty("subjectCount", 3)
         workspacePath.endsWith("bad-figma-to-boilerplate-mapping-snapshot-private") ->
             value.addProperty("targetCandidate", "$privateRoot/$privateCredential")
+    }
+    writeResult(id, value)
+}
+
+private fun handleDesignToCodeBindingRegistry(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE DESIGN TO CODE BINDING REGISTRY PARAMS")
+        return
+    }
+    val productRevision = if (workspacePath.endsWith("bad-design-to-code-binding-registry-snapshot-binding")) 8 else 7
+    val assessedAt = "2026-07-30T21:30:00.000Z"
+    val candidateDigest = "sha256:${"c".repeat(64)}"
+    fun reference(recordId: UUID, revision: Int, digest: String) = JsonObject().apply {
+        addProperty("recordId", recordId.toString())
+        addProperty("revision", revision)
+        addProperty("digest", digest)
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "design-to-code-binding-registry-projection")
+        add("product", JsonObject().apply {
+            addProperty("id", productId.toString())
+            addProperty("revision", productRevision)
+            addProperty("digest", canonicalDigest(productRecord()))
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("id", initiativeId.toString())
+            addProperty("revision", initiativeState.get("revision").asLong)
+            addProperty("digest", canonicalDigest(initiativeState))
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("status", JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("kind", "design-to-code-binding-registry-status")
+            addProperty("productId", productId.toString())
+            addProperty("productRevision", productRevision)
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+            add("candidate", reference(designToCodeBindingRegistryId, 2, candidateDigest))
+            add("designBaseline", reference(designBaselineId, 3, "sha256:${"e".repeat(64)}"))
+            add("finalizedFigmaSnapshotImport", reference(finalizedFigmaSnapshotImportId, 2, "sha256:${"c".repeat(64)}"))
+            add("designToRequirementBinding", reference(designToRequirementBindingId, 2, "sha256:${"d".repeat(64)}"))
+            add(
+                "figmaToBoilerplateMapping",
+                reference(
+                    figmaToBoilerplateMappingId,
+                    2,
+                    "sha256:${if (workspacePath.endsWith("bad-design-to-code-binding-registry-dependency-binding")) "b".repeat(64) else "4".repeat(64)}",
+                ),
+            )
+            add("implementationUnitModel", reference(implementationUnitModelId, 2, "sha256:${"5".repeat(64)}"))
+            add("technologyProfile", reference(technologyProfileId, 2, "sha256:${"6".repeat(64)}"))
+            add("boilerplateSelectionBinding", reference(boilerplateSelectionBindingId, 2, "sha256:${"8".repeat(64)}"))
+            add("boilerplateCompatibilityValidation", reference(boilerplateCompatibilityValidationId, 2, "sha256:${"d".repeat(64)}"))
+            addProperty("mappingSubjectCount", 2)
+            addProperty("subjectCount", 2)
+            addProperty("boundCandidateCount", 1)
+            addProperty("conflictCandidateCount", 1)
+            addProperty("unboundCandidateCount", 0)
+            addProperty("notAssessedCount", 0)
+            addProperty("missingSubjectCount", 0)
+            addProperty("invalidSubjectCount", 1)
+            addProperty("targetGapCount", 1)
+            addProperty("traceGapCount", 1)
+            addProperty("evidenceGapCount", 1)
+            addProperty("duplicateTargetCount", 1)
+            addProperty("staleBindingCount", 0)
+            addProperty("staleDependencyCount", 0)
+            addProperty("invalidCandidateCount", 1)
+            addProperty("unresolvedQuestionCount", 2)
+            addProperty("reviewState", "held")
+            addProperty("state", "attention-required")
+            add("reasons", JsonArray().apply {
+                add("One or more Design-to-Code Binding Registry subjects require human review")
+            })
+            addProperty("assessedAt", assessedAt)
+            addProperty(
+                "authorityBoundary",
+                "design-to-code-binding-registry-status-is-observational-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-or-binding-truth-or-completeness-repository-path-or-symbol-truth-create-or-change-code-targets-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+            )
+        })
+        add("candidate", JsonObject().apply {
+            addProperty("id", designToCodeBindingRegistryId.toString())
+            addProperty("revision", 2)
+            addProperty("digest", candidateDigest)
+            addProperty("state", "candidate")
+            addProperty("bindingSubjectCatalogDigest", "sha256:${"d".repeat(64)}")
+            addProperty("codeTargetCatalogDigest", "sha256:${"e".repeat(64)}")
+            addProperty("traceReceiptDigest", "sha256:${"f".repeat(64)}")
+            addProperty("bindingReceiptDigest", "sha256:${"0".repeat(64)}")
+            addProperty("assessmentReceiptDigest", "sha256:${"1".repeat(64)}")
+            addProperty("subjectCount", 2)
+            addProperty("boundCandidateCount", 1)
+            addProperty("conflictCandidateCount", 1)
+            addProperty("unboundCandidateCount", 0)
+            addProperty("notAssessedCount", 0)
+            addProperty("reviewState", "held")
+            addProperty("updatedAt", "2026-07-30T21:29:00.000Z")
+        })
+        addProperty("observedAt", assessedAt)
+        addProperty(
+            "privacyBoundary",
+            "projection-contains-record-identities-counts-statuses-and-subject-target-trace-binding-assessment-snapshot-digests-only-not-figma-content-design-item-mapping-unit-requirement-repository-module-path-symbol-evidence-reviewer-personal-data-secrets-credentials-or-machine-paths",
+        )
+        addProperty(
+            "authorityBoundary",
+            "design-to-code-binding-registry-projection-is-read-only-and-does-not-connect-to-or-call-figma-establish-returned-figma-content-design-validity-approval-or-baseline-mapping-or-binding-truth-or-completeness-repository-path-or-symbol-truth-create-or-change-code-targets-retrieve-import-instantiate-generate-or-execute-assets-establish-implementation-readiness-or-completeness-assignment-execution-acceptance-merge-release-deployment-or-action-authority",
+        )
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    when {
+        workspacePath.endsWith("bad-design-to-code-binding-registry-snapshot-digest") ->
+            value.getAsJsonObject("candidate").addProperty("subjectCount", 3)
+        workspacePath.endsWith("bad-design-to-code-binding-registry-snapshot-private") -> {
+            value.addProperty("repositoryPath", "$privateRoot/$privateCredential")
+            val digestBody = value.deepCopy().also { it.remove("snapshotDigest") }
+            value.addProperty("snapshotDigest", canonicalDigest(digestBody))
+        }
     }
     writeResult(id, value)
 }

@@ -2267,6 +2267,70 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Design to Code Binding Registry projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("design-to-code-binding-registry-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readDesignToCodeBindingRegistry(entryId)
+            assertEquals("attention-required", projection.state)
+            assertEquals("held", projection.reviewState)
+            assertEquals(2, projection.mappingSubjectCount)
+            assertEquals(2, projection.subjectCount)
+            assertEquals(1, projection.boundCandidateCount)
+            assertEquals(1, projection.conflictCandidateCount)
+            assertEquals(1, projection.invalidSubjectCount)
+            assertEquals(1, projection.targetGapCount)
+            assertEquals(1, projection.traceGapCount)
+            assertEquals(1, projection.evidenceGapCount)
+            assertEquals(1, projection.duplicateTargetCount)
+            assertEquals(8, projection.dependencies.size)
+            assertEquals("sha256:${"d".repeat(64)}", projection.candidate?.bindingSubjectCatalogDigest)
+            assertEquals("sha256:${"e".repeat(64)}", projection.candidate?.codeTargetCatalogDigest)
+
+            val rendered = RiderProductController(client).readDesignToCodeBindingRegistry(entryId)
+            assertTrue(rendered.contains("GAEP governed Design-to-Code Binding Registry candidate"))
+            assertTrue(rendered.contains("2 mapping subjects · 2 binding subjects"))
+            assertTrue(rendered.contains("1 bound · 1 conflicts · 0 unbound · 0 not assessed"))
+            assertTrue(rendered.contains("1 target gaps · 1 trace gaps · 1 evidence gaps · 1 duplicate targets"))
+            assertTrue(rendered.contains("no Figma content, design-item, mapping, unit, requirement, repository"))
+            assertTrue(rendered.contains("does not connect to or call Figma"))
+            assertTrue(rendered.contains("create or change code targets"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("repositoryPath"))
+            assertFalse(rendered.contains("symbolCandidate"))
+            assertFalse(rendered.contains("evidenceReferences"))
+            assertFalse(rendered.contains("boundBy"))
+        }
+
+        listOf(
+            "bad-design-to-code-binding-registry-snapshot-digest",
+            "bad-design-to-code-binding-registry-snapshot-private",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readDesignToCodeBindingRegistry(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf(
+            "bad-design-to-code-binding-registry-snapshot-binding",
+            "bad-design-to-code-binding-registry-dependency-binding",
+        ).forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readDesignToCodeBindingRegistry(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

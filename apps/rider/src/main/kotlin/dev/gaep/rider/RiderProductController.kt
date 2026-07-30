@@ -2553,6 +2553,97 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readDesignToCodeBindingRegistry(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val designBaseline = client.readDesignBaseline(initiativeId)
+        val finalizedSnapshot = client.readFinalizedFigmaSnapshotImport(initiativeId)
+        val designBinding = client.readDesignToRequirementBinding(initiativeId)
+        val figmaMapping = client.readFigmaToBoilerplateMapping(initiativeId)
+        val units = client.readImplementationUnitModel(initiativeId)
+        val technologyProfile = client.readTechnologyProfile(initiativeId)
+        val selectionBinding = client.readBoilerplateSelectionBinding(initiativeId)
+        val compatibilityValidation = client.readBoilerplateCompatibilityValidation(initiativeId)
+        val projection = client.readDesignToCodeBindingRegistry(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Design-to-Code Binding Registry was read. Refresh the exact records." }
+        projection.candidate?.let {
+            fun requireDependency(name: String, id: UUID, revision: Long, digest: String) {
+                val reference = requireNotNull(projection.dependencies[name]) {
+                    "The current $name candidate reference is unavailable. Refresh the exact records."
+                }
+                require(reference.recordId == id && reference.revision == revision && reference.digest == digest) {
+                    "The $name candidate changed while Design-to-Code Binding Registry was read. Refresh the exact records."
+                }
+            }
+            designBaseline.candidate!!.let { requireDependency("designBaseline", it.id, it.revision, it.digest) }
+            finalizedSnapshot.candidate!!.let { requireDependency("finalizedFigmaSnapshotImport", it.id, it.revision, it.digest) }
+            designBinding.candidate!!.let { requireDependency("designToRequirementBinding", it.id, it.revision, it.digest) }
+            figmaMapping.candidate!!.let { requireDependency("figmaToBoilerplateMapping", it.id, it.revision, it.digest) }
+            units.candidate!!.let { requireDependency("implementationUnitModel", it.id, it.revision, it.digest) }
+            technologyProfile.candidate!!.let { requireDependency("technologyProfile", it.id, it.revision, it.digest) }
+            selectionBinding.candidate!!.let { requireDependency("boilerplateSelectionBinding", it.id, it.revision, it.digest) }
+            compatibilityValidation.candidate!!.let {
+                requireDependency("boilerplateCompatibilityValidation", it.id, it.revision, it.digest)
+            }
+        }
+        return renderDesignToCodeBindingRegistry(projection)
+    }
+
+    fun renderDesignToCodeBindingRegistry(projection: DesignToCodeBindingRegistryProjection): String = buildString {
+        appendLine("GAEP governed Design-to-Code Binding Registry candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine(
+            "Candidate coverage: ${projection.mappingSubjectCount} mapping subjects · ${projection.subjectCount} binding subjects",
+        )
+        appendLine(
+            "Candidate outcomes: ${projection.boundCandidateCount} bound · ${projection.conflictCandidateCount} conflicts · " +
+                "${projection.unboundCandidateCount} unbound · ${projection.notAssessedCount} not assessed",
+        )
+        appendLine(
+            "Candidate binding gaps: ${projection.missingSubjectCount} missing subjects · ${projection.invalidSubjectCount} invalid subjects · " +
+                "${projection.targetGapCount} target gaps · ${projection.traceGapCount} trace gaps · " +
+                "${projection.evidenceGapCount} evidence gaps · ${projection.duplicateTargetCount} duplicate targets",
+        )
+        appendLine(
+            "Candidate freshness gaps: ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleDependencyCount} stale dependencies · ${projection.invalidCandidateCount} invalid candidates · " +
+                "${projection.unresolvedQuestionCount} questions",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Design-to-Code Binding Registry candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Binding subject catalog digest: ${record.bindingSubjectCatalogDigest}")
+            appendLine("Code target catalog digest: ${record.codeTargetCatalogDigest}")
+            appendLine("Trace receipt digest: ${record.traceReceiptDigest}")
+            appendLine("Binding receipt digest: ${record.bindingReceiptDigest}")
+            appendLine("Assessment receipt digest: ${record.assessmentReceiptDigest}")
+            appendLine(
+                "Candidate coverage: ${record.subjectCount} subjects · ${record.boundCandidateCount} bound · " +
+                    "${record.conflictCandidateCount} conflicts · ${record.unboundCandidateCount} unbound · " +
+                    "${record.notAssessedCount} not assessed · ${record.reviewState}",
+            )
+        }
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and subject, target, trace, binding, assessment, " +
+                "and snapshot digests only; no Figma content, design-item, mapping, unit, requirement, repository, module, " +
+                "path, symbol, evidence, reviewer, or personal data. This inspection does not connect to or call Figma, " +
+                "establish returned Figma content, design validity, approval or baseline, mapping or binding truth or " +
+                "completeness, repository, path, or symbol truth, create or change code targets, retrieve, import, " +
+                "instantiate, generate or execute assets, establish implementation readiness or completeness, assign, " +
+                "execute, accept, merge, release, deploy, or grant action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)
