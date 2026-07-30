@@ -1,0 +1,40 @@
+namespace Gaep.HostClient;
+
+public sealed record PrioritizationModelRecordView(
+    Guid Id,
+    long Revision,
+    string Digest,
+    string MembershipDigest,
+    string MethodDigest,
+    string RankingDigest,
+    int SubjectCount,
+    int ScoredSubjectCount,
+    int EvidenceReferenceCount,
+    string ReviewState);
+
+public sealed record PrioritizationModelProjection(
+    Guid ProductId,
+    long ProductRevision,
+    string ProductDigest,
+    Guid InitiativeId,
+    long InitiativeRevision,
+    string InitiativeDigest,
+    string InitiativeState,
+    string AssessmentState,
+    string ReviewState,
+    IReadOnlyList<string> Reasons,
+    Guid? MvpSliceDefinitionRecordId,
+    long? MvpSliceDefinitionRevision,
+    string? MvpSliceDefinitionDigest,
+    int SubjectCount,
+    int ScoredSubjectCount,
+    int UnassessedSubjectCount,
+    int EvidenceReferenceCount,
+    int TieCount,
+    int StaleBindingCount,
+    int StaleMvpSliceDefinitionCount,
+    int InvalidSubjectCount,
+    int InvalidScoreCount,
+    int UnresolvedQuestionCount,
+    PrioritizationModelRecordView? Candidate,
+    string SnapshotDigest);

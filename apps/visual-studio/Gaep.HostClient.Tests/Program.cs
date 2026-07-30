@@ -73,6 +73,7 @@ internal static class Program
     private static readonly Guid DesignRequirementsId = Guid.Parse("68686868-6868-4868-8868-686868686868");
     private static readonly Guid BacklogHierarchyId = Guid.Parse("91919191-9191-4191-8191-919191919191");
     private static readonly Guid MvpSliceDefinitionId = Guid.Parse("92929292-9292-4292-8292-929292929292");
+    private static readonly Guid PrioritizationModelId = Guid.Parse("93939393-9393-4393-8393-939393939393");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -239,6 +240,10 @@ internal static class Program
         var badMvpSliceSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-mvp-slice-snapshot-digest");
         var badMvpSliceSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-mvp-slice-snapshot-private");
         var badMvpSliceHierarchyBindingRoot = Path.Combine(temporaryRoot, "bad-mvp-slice-hierarchy-binding");
+        var badPrioritizationSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-prioritization-snapshot-binding");
+        var badPrioritizationSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-prioritization-snapshot-digest");
+        var badPrioritizationSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-prioritization-snapshot-private");
+        var badPrioritizationMvpBindingRoot = Path.Combine(temporaryRoot, "bad-prioritization-mvp-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -445,6 +450,10 @@ internal static class Program
         Directory.CreateDirectory(badMvpSliceSnapshotDigestRoot);
         Directory.CreateDirectory(badMvpSliceSnapshotPrivateRoot);
         Directory.CreateDirectory(badMvpSliceHierarchyBindingRoot);
+        Directory.CreateDirectory(badPrioritizationSnapshotBindingRoot);
+        Directory.CreateDirectory(badPrioritizationSnapshotDigestRoot);
+        Directory.CreateDirectory(badPrioritizationSnapshotPrivateRoot);
+        Directory.CreateDirectory(badPrioritizationMvpBindingRoot);
         Directory.CreateDirectory(badDesignSystemTokenContractSnapshotBindingRoot);
         Directory.CreateDirectory(badDesignSystemTokenContractSnapshotDigestRoot);
         Directory.CreateDirectory(badDesignSystemTokenContractSnapshotPrivateRoot);
@@ -2066,6 +2075,46 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadMvpSliceDefinitionAsync(InitiativeId),
                 "MVP and Vertical Slice workflow rejects substituted Product or current Backlog Hierarchy bindings");
+        }
+
+        var prioritizationProjection = await client.ReadPrioritizationModelAsync(InitiativeId);
+        Check(prioritizationProjection.ProductId == product.Id &&
+              prioritizationProjection.ProductRevision == product.Revision &&
+              prioritizationProjection.ProductDigest == product.Digest &&
+              prioritizationProjection.InitiativeId == resolved.Id &&
+              prioritizationProjection.InitiativeRevision == resolved.Revision &&
+              prioritizationProjection.InitiativeDigest == resolved.Digest &&
+              prioritizationProjection.AssessmentState == "attention-required" &&
+              prioritizationProjection.ReviewState == "held" &&
+              prioritizationProjection.SubjectCount == 4 &&
+              prioritizationProjection.ScoredSubjectCount == 3 &&
+              prioritizationProjection.UnassessedSubjectCount == 1 &&
+              prioritizationProjection.EvidenceReferenceCount == 12 &&
+              prioritizationProjection.TieCount == 1,
+            "Typed Prioritization Model projection preserves exact Product, Initiative, assessment, coverage, and privacy-safe metadata");
+        var prioritizationOutput = await initiativeController.ReadPrioritizationModelAsync(InitiativeId);
+        Check(prioritizationOutput.Contains("GAEP governed Prioritization Model candidate", StringComparison.Ordinal) &&
+              prioritizationOutput.Contains("4 slices · 3 scored · 1 unassessed · 12 evidence references", StringComparison.Ordinal) &&
+              prioritizationOutput.Contains("no dimension estimates", StringComparison.Ordinal) &&
+              !prioritizationOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !prioritizationOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !prioritizationOutput.Contains("dimensionEstimate", StringComparison.Ordinal),
+            "Prioritization Model workflow renders privacy-safe metadata with explicit no-content and no-authority boundaries");
+        foreach (var hostileRoot in new[] { badPrioritizationSnapshotDigestRoot, badPrioritizationSnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadPrioritizationModelAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Prioritization Model projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[] { badPrioritizationSnapshotBindingRoot, badPrioritizationMvpBindingRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadPrioritizationModelAsync(InitiativeId),
+                "Prioritization Model workflow rejects substituted Product or current MVP bindings");
         }
 
         var designSystemTokenContractProjection = await client.ReadDesignSystemTokenContractAsync(InitiativeId);
@@ -4227,6 +4276,14 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-mvp-slice-snapshot-private";
         var badMvpSliceHierarchyBinding =
             Path.GetFileName(workspace) == "bad-mvp-slice-hierarchy-binding";
+        var badPrioritizationSnapshotBinding =
+            Path.GetFileName(workspace) == "bad-prioritization-snapshot-binding";
+        var badPrioritizationSnapshotDigest =
+            Path.GetFileName(workspace) == "bad-prioritization-snapshot-digest";
+        var badPrioritizationSnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-prioritization-snapshot-private";
+        var badPrioritizationMvpBinding =
+            Path.GetFileName(workspace) == "bad-prioritization-mvp-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -4751,6 +4808,18 @@ internal static class Program
                         badMvpSliceSnapshotDigest,
                         badMvpSliceSnapshotPrivate,
                         badMvpSliceHierarchyBinding);
+                    break;
+                case "planning.prioritization.snapshot":
+                    await HandlePrioritizationModelAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badPrioritizationSnapshotBinding,
+                        badPrioritizationSnapshotDigest,
+                        badPrioritizationSnapshotPrivate,
+                        badPrioritizationMvpBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -8175,6 +8244,106 @@ internal static class Program
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["taskCount"] = 10;
         if (includePrivateField) result["sliceRationale"] = $"{PrivateRoot}/{PrivateCredential}";
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandlePrioritizationModelAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeMvpBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID PRIORITIZATION");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-30T11:20:00.000Z";
+        var candidateDigest = $"sha256:{new string('c', 64)}";
+        var mvpDigest = $"sha256:{new string(forgeMvpBinding ? '9' : 'a', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = PrioritizationModelId.ToString("D"),
+            ["revision"] = 2,
+            ["digest"] = candidateDigest,
+            ["membershipDigest"] = $"sha256:{new string('d', 64)}",
+            ["methodDigest"] = $"sha256:{new string('e', 64)}",
+            ["rankingDigest"] = $"sha256:{new string('f', 64)}",
+            ["state"] = "candidate",
+            ["subjectCount"] = 4,
+            ["scoredSubjectCount"] = 3,
+            ["evidenceReferenceCount"] = 12,
+            ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-30T11:19:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "prioritization-model-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"),
+                ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)),
+                ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1,
+                ["kind"] = "prioritization-model-status",
+                ["productId"] = ProductId.ToString("D"),
+                ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"),
+                ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = PrioritizationModelId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                },
+                ["mvpSliceDefinition"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = MvpSliceDefinitionId.ToString("D"), ["revision"] = 2, ["digest"] = mvpDigest,
+                },
+                ["subjectCount"] = 4,
+                ["scoredSubjectCount"] = 3,
+                ["unassessedSubjectCount"] = 1,
+                ["evidenceReferenceCount"] = 12,
+                ["tieCount"] = 1,
+                ["staleBindingCount"] = 0,
+                ["staleMvpSliceDefinitionCount"] = 0,
+                ["invalidSubjectCount"] = 1,
+                ["invalidScoreCount"] = 0,
+                ["unresolvedQuestionCount"] = 2,
+                ["reviewState"] = "held",
+                ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Prioritization subjects require review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "prioritization-model-status-is-observational-and-does-not-establish-evidence-validity-priority-commitment-scope-decision-approval-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+            },
+            ["candidate"] = candidate,
+            ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-method-membership-ranking-and-snapshot-digests-only-not-dimension-estimates-evidence-identities-uncertainty-slice-content-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "prioritization-model-projection-is-read-only-and-does-not-establish-evidence-validity-priority-commitment-scope-decision-approval-ready-done-implementation-readiness-assignment-execution-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["scoredSubjectCount"] = 4;
+        if (includePrivateField) result["dimensionEstimate"] = $"{PrivateRoot}/{PrivateCredential}";
         await WriteResultAsync(id, result);
     }
 

@@ -1843,6 +1843,66 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadPrioritizationModelAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var mvp = await client.ReadMvpSliceDefinitionAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadPrioritizationModelAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Prioritization Model was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null &&
+            (mvp.Candidate is not { } currentMvp || projection.MvpSliceDefinitionRecordId != currentMvp.Id ||
+                projection.MvpSliceDefinitionRevision != currentMvp.Revision || projection.MvpSliceDefinitionDigest != currentMvp.Digest))
+        {
+            throw new ArgumentException("The MVP and Vertical Slice Definition changed while Prioritization Model was read. Refresh the exact records.");
+        }
+        return RenderPrioritizationModel(projection);
+    }
+
+    public static string RenderPrioritizationModel(PrioritizationModelProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Prioritization Model candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.AssessmentState} · review state: {projection.ReviewState}")
+            .AppendLine($"Coverage: {projection.SubjectCount} slices · {projection.ScoredSubjectCount} scored · {projection.UnassessedSubjectCount} unassessed · {projection.EvidenceReferenceCount} evidence references · {projection.TieCount} score ties")
+            .AppendLine(
+                $"Candidate gaps: {projection.UnresolvedQuestionCount} questions · {projection.StaleBindingCount} stale bindings · " +
+                $"{projection.StaleMvpSliceDefinitionCount} stale MVP definitions · {projection.InvalidSubjectCount} invalid subjects · " +
+                $"{projection.InvalidScoreCount} invalid scores");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Prioritization Model candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Membership digest: {candidate.MembershipDigest}")
+                .AppendLine($"Method digest: {candidate.MethodDigest}")
+                .AppendLine($"Candidate ranking digest: {candidate.RankingDigest}")
+                .AppendLine($"Candidate coverage: {candidate.SubjectCount} slices · {candidate.ScoredSubjectCount} scored · {candidate.EvidenceReferenceCount} evidence references · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Prioritization Model candidate: not recorded");
+        return output
+            .AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, method, membership, ranking, and snapshot digests only; " +
+                "no dimension estimates, evidence identities, uncertainty, slice content, personal data, evidence validity, priority, " +
+                "commitment, scope decisions, approval, acceptance-criteria validity, ready or done, implementation readiness, " +
+                "assignment, execution, implementation authority, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
