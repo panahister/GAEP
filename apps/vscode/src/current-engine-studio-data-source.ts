@@ -44,6 +44,7 @@ import type {
   ScopedApplyProjection,
   RollbackRecoveryProjection,
   ChangeConflictDetectionProjection,
+  TestGenerationProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -325,6 +326,9 @@ export interface CurrentStudioEngineReader {
   changeConflictDetection?: {
     project(initiativeId: string): Promise<ChangeConflictDetectionProjection>
   }
+  testGeneration?: {
+    project(initiativeId: string): Promise<TestGenerationProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -530,6 +534,7 @@ interface ObservedStudioState {
   scopedApplyProjections: Map<string, ScopedApplyProjection>
   rollbackRecoveryProjections: Map<string, RollbackRecoveryProjection>
   changeConflictDetectionProjections: Map<string, ChangeConflictDetectionProjection>
+  testGenerationProjections: Map<string, TestGenerationProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3982,6 +3987,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     scopedApplies: scopedApplyTable(state.scopedApplyProjections.values()),
     rollbackRecoveries: rollbackRecoveryTable(state.rollbackRecoveryProjections.values()),
     changeConflictDetections: changeConflictDetectionTable(state.changeConflictDetectionProjections.values()),
+    testGenerations: testGenerationTable(state.testGenerationProjections.values()),
   }
 }
 
@@ -5663,6 +5669,30 @@ export function changeConflictDetectionTable(projections: Iterable<ChangeConflic
     { key: "receipts", label: "Deterministic receipts" }, { key: "boundary", label: "Privacy and authority boundary" }], rows, actions: [],
     ...(rows.length === 0 ? { emptyState: emptySurface("No governed Change Conflict Detection candidate",
       "Create the metadata-only candidate through the governed engine after every exact current change, preview, stage, provider/model switch, whole-stage decision, scoped selection and recovery predecessor exists. Refresh Product Studio after a superseding revision. This view cannot inspect or mutate source, resolve or overwrite user edits, execute a provider handoff, establish conflict absence, approve or authorize changes, or accept work.") } : {}) }
+}
+
+export function testGenerationTable(projections: Iterable<TestGenerationProjection>): StudioTableSnapshot {
+  const rows = [...projections].flatMap((projection) => projection.candidate?.targets.map((target) => ({
+    id: target.id, cells: { initiative: projection.initiative.id, target: target.targetKey, sourcePath: target.sourcePathCandidate,
+      testPath: target.testPathCandidate, sourceSymbol: target.sourceSymbolCandidate ?? "not-assessed", testSymbol: target.testSymbolCandidate ?? "not-assessed",
+      kind: target.testKind, framework: target.frameworkCandidate, fixtures: String(target.fixtureCandidateCount), oracles: String(target.oracleCandidateCount),
+      coverage: String(target.coverageTraceCount), risks: String(target.riskTraceCount), state: target.state,
+      assessment: `${projection.status.state} · ${projection.status.definedCount} defined · ${projection.status.gapCount} gaps · ${projection.status.conflictCount} conflicts · ${projection.status.staleBindingCount} stale bindings`,
+      receipts: `${projection.candidate!.dependencyReceiptDigest} · ${projection.candidate!.targetCatalogDigest} · ${projection.candidate!.pathSymbolReceiptDigest} · ${projection.candidate!.fixtureOracleReceiptDigest} · ${projection.candidate!.traceReceiptDigest}`,
+      boundary: "Test Generation plan metadata only. Paths, symbols, frameworks, fixtures, oracles, coverage and risk traces are candidates. This view does not inspect source, create or mutate files, generate or execute tests, establish results, coverage, quality, approval or acceptance, or grant action authority." },
+    state: target.state, actions: [],
+  })) ?? [])
+  return { id: "test-generation", title: "Governed Test Generation", columns: [
+    { key: "initiative", label: "Initiative", identifier: true }, { key: "target", label: "Test target", identifier: true },
+    { key: "sourcePath", label: "Source path candidate" }, { key: "testPath", label: "Expected test path candidate" },
+    { key: "sourceSymbol", label: "Source symbol candidate" }, { key: "testSymbol", label: "Test symbol candidate" },
+    { key: "kind", label: "Test kind" }, { key: "framework", label: "Framework candidate" },
+    { key: "fixtures", label: "Fixture candidates" }, { key: "oracles", label: "Oracle candidates" },
+    { key: "coverage", label: "Coverage traces" }, { key: "risks", label: "Risk traces" }, { key: "state", label: "Candidate state" },
+    { key: "assessment", label: "Fail-closed assessment" }, { key: "receipts", label: "Deterministic receipts" },
+    { key: "boundary", label: "Privacy and authority boundary" }], rows, actions: [],
+    ...(rows.length === 0 ? { emptyState: emptySurface("No governed Test Generation candidate",
+      "Create the metadata-only plan through the governed engine after the exact current acceptance, methodology, inventory, implementation, design trace, backlog trace, controlled generation, preview, stage and conflict-detection predecessors exist. Refresh Product Studio after a superseding revision. This view cannot inspect source, generate or execute tests, mutate files, establish results, coverage, quality, approval or acceptance, or grant action authority.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7584,6 +7614,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       scopedApplyProjections: new Map(),
       rollbackRecoveryProjections: new Map(),
       changeConflictDetectionProjections: new Map(),
+      testGenerationProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -9620,6 +9651,40 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
           empty.issues.push(issue(`change-conflict-detection-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Change Conflict Detection metadata is unavailable.`, "warning", initiative.id))
         })
       } else if (empty.initiatives.length > 0) empty.issues.push(issue("change-conflict-detection-unavailable", "Change Conflict Detection metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+    }
+    if (route === "delivery" && engine.testGeneration) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map((initiative) => engine.testGeneration!.project(initiative.id)))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value
+            const candidates = { acceptanceCriteria: empty.acceptanceCriteriaProjections.get(initiative.id)?.candidate,
+              testMethodology: empty.testMethodologyProjections.get(initiative.id)?.candidate,
+              testInventory: empty.testInventoryProjections.get(initiative.id)?.candidate,
+              implementationUnitModel: empty.implementationUnitModelProjections.get(initiative.id)?.candidate,
+              designToCodeTraceability: empty.designToCodeTraceabilityProjections.get(initiative.id)?.candidate,
+              backlogToCodeTraceability: empty.backlogToCodeTraceabilityProjections.get(initiative.id)?.candidate,
+              controlledDesignToCodeGeneration: empty.controlledDesignToCodeGenerationProjections.get(initiative.id)?.candidate,
+              proposedChangePreview: empty.proposedChangePreviewProjections.get(initiative.id)?.candidate,
+              stagingWorkspace: empty.stagingWorkspaceProjections.get(initiative.id)?.candidate,
+              changeConflictDetection: empty.changeConflictDetectionProjections.get(initiative.id)?.candidate }
+            const { snapshotDigest, ...projectionBody } = value
+            const exactDependencies = value.status.dependencies !== undefined && (Object.keys(candidates) as (keyof typeof candidates)[]).every((key) => {
+              const reference = value.status.dependencies?.[key], candidate = candidates[key]
+              return reference !== undefined && candidate !== undefined && reference.recordId === candidate.id && reference.revision === candidate.revision && reference.digest === candidate.digest
+            })
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id && value.initiative.revision === (initiative.revision ?? 1) &&
+                value.initiative.digest === canonicalDigest(initiative) && exactDependencies && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.testGenerationProjections.set(initiative.id, value); return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Test Generation projection was unavailable or did not bind all exact current acceptance, methodology, inventory, implementation, trace, generation, preview, stage, and conflict predecessors", projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`test-generation-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Test Generation metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) empty.issues.push(issue("test-generation-unavailable", "Test Generation metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
     }
     if (
       (route === "direction" || route === "users-jobs" || route === "outcomes") &&
