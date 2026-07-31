@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-ide-package-report-v1",
+  "packageSet": "phase-0-local",
+  "artifacts": [
+    {
+      "host": "vscode",
+      "packageId": "gaep.gaep-vscode@0.1.0",
+      "artifactPath": "apps/vscode/dist/gaep-vscode.vsix",
+      "status": "produced",
+      "bytes": 1159139,
+      "digest": "sha256:97c2a451fe24bb1cb8c9976cc63c2869b32d80ce668a060c10bb676c589ce9a7",
+      "verification": "exact-local-package-build-bundled-engine-and-accessible-phase-3b-controlled-claude-implementation-product-studio-projection; supported-runtime-authentication-effective-policy-credential-access-administrator-policy-workspace-tool-access-provider-execution-stage-creation-native-install-reinstall-and-interaction-acceptance-remain-pending"
+    },
+    {
+      "host": "kiro",
+      "packageId": "gaep.gaep-kiro@0.1.0",
+      "artifactPath": "apps/kiro/dist/gaep-kiro.vsix",
+      "status": "produced",
+      "bytes": 1110200,
+      "digest": "sha256:49d8b8ae2faa23e3b8e8579be2d65586a0bda089765e1fe3a158e835e5316a86",
+      "verification": "package-build-digest-bound-engine-and-private-safe-phase-3b-controlled-claude-implementation-command-projection; supported-runtime-authentication-effective-policy-credential-access-administrator-policy-workspace-tool-access-provider-execution-stage-creation-native-compatible-host-install-and-interaction-acceptance-remain-pending"
+    },
+    {
+      "host": "rider",
+      "packageId": "dev.gaep.productstudio@0.1.0",
+      "artifactPath": "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
+      "status": "produced",
+      "bytes": 2303645,
+      "digest": "sha256:64fa9706dd347147de9e5cbd24d7c222568d9af4aae9cfd4ef1fda8c2fbf1c7c",
+      "verification": "clean-kotlin-compile-instrumented-plugin-build-structure-check-digest-bound-engine-and-phase-3b-controlled-claude-implementation-projection; supported-runtime-authentication-effective-policy-credential-access-administrator-policy-workspace-tool-access-provider-execution-stage-creation-native-Rider-install-startup-and-interaction-acceptance-remain-pending"
+    },
+    {
+      "host": "visual-studio",
+      "packageId": "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
+      "artifactPath": "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
+      "status": "not-produced-on-this-platform",
+      "verification": "cross-platform-hostclient-build-and-phase-3b-controlled-claude-implementation-protocol-controller-projection; supported-runtime-authentication-effective-policy-credential-access-administrator-policy-workspace-tool-access-provider-execution-stage-creation-Windows-VSIX-container-install-startup-and-interaction-acceptance-remain-pending",
+      "limitation": "Native Visual Studio VSIX container creation and installation require Windows and VsixUtil.exe."
+    }
+  ],
+  "summary": {
+    "expected": 4,
+    "produced": 3,
+    "missingNativePlatformArtifacts": 1
+  },
+  "claimBoundary": "Local package evidence is not release signing, publication, supported-OS acceptance, Product readiness, or release approval."
+}

@@ -10,7 +10,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const contractPath = join(repositoryRoot, "conformance/phase-0-ide-contract.json")
 const packageReportPath = join(
   repositoryRoot,
-  "evidence/local-packages/20260731T134425Z-phase-3b-controlled-codex-implementation-packages.json",
+  "evidence/local-packages/20260731T150650Z-phase-3b-controlled-claude-implementation-packages.json",
 )
 let temporaryRoot
 

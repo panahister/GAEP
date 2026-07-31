@@ -115,7 +115,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T134425Z-phase-3b-controlled-codex-implementation-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T150650Z-phase-3b-controlled-claude-implementation-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -397,7 +397,7 @@
         ] },
         { "capabilityId": "controlled-claude-implementation", "state": "implemented", "probes": [
           { "path": "packages/engine/src/controlled-claude-implementation.ts", "contains": ["class ControlledClaudeImplementationService", "runtimeBoundaryReceiptDigest", "controlled-claude-implementation-projection-is-read-only"] },
-          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["controlledClaudeImplementation?: {", "engine.controlledClaudeImplementation!.project(initiative.id)", "id: \"controlled-claude-implementation\"", "tool-free context-only"] }
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["controlledClaudeImplementation?: {", "engine.controlledClaudeImplementation!.project(initiative.id)", "id: \"controlled-claude-implementation\"", "tool-free, context-only"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designSystemTokenContract?: {", "engine.designSystemTokenContract!.project(initiative.id)", "id: \"design-system-token-contract\"", "no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."] }
@@ -460,7 +460,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T134425Z-phase-3b-controlled-codex-implementation-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T150650Z-phase-3b-controlled-claude-implementation-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -858,7 +858,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T134425Z-phase-3b-controlled-codex-implementation-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T150650Z-phase-3b-controlled-claude-implementation-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -1341,7 +1341,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T134425Z-phase-3b-controlled-codex-implementation-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T150650Z-phase-3b-controlled-claude-implementation-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
