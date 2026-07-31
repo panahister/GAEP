@@ -149,6 +149,9 @@ describe("Low-Level Design engine lifecycle", () => {
     const projection = await service.project(initiative.id, unitId)
     expect(projection.candidate).toMatchObject({ id: revised.id, revision: 2, elementCount: 2, relationCount: 1, decisionCount: 1 })
     expect(projection.snapshotDigest).toMatch(/^sha256:[0-9a-f]{64}$/u)
+    expect(await service.projectAll(initiative.id)).toEqual([
+      expect.objectContaining({ candidate: expect.objectContaining({ id: revised.id, revision: 2 }) }),
+    ])
     expect(JSON.stringify(projection)).not.toContain("checkout.api")
     expect(JSON.stringify(projection)).not.toContain("architecture-lead")
     const event = repository.audits.findLast((entry) => entry.eventType === "low-level-design.revised")

@@ -170,6 +170,13 @@ export class LowLevelDesignService {
     return matches[0]
   }
 
+  async listCurrent(initiativeId: string): Promise<LowLevelDesign[]> {
+    const targetId = this.requireUuid(initiativeId, "Initiative ID")
+    return (await this.listRecords("low-level-designs", currentRecordPattern, lowLevelDesignSchema))
+      .filter((record) => record.initiativeId === targetId)
+      .sort((left, right) => left.implementationUnitId.localeCompare(right.implementationUnitId))
+  }
+
   async readRevision(id: string, revision: number): Promise<LowLevelDesign> {
     if (!Number.isInteger(revision) || revision < 1) throw new Error("Low-Level Design history revision must be a positive integer")
     const recordId = this.requireUuid(id, "Low-Level Design ID")
@@ -281,6 +288,11 @@ export class LowLevelDesignService {
       observedAt: status.assessedAt, privacyBoundary, authorityBoundary: projectionAuthorityBoundary,
     }
     return lowLevelDesignProjectionSchema.parse({ ...projectionWithoutDigest, snapshotDigest: canonicalDigest(projectionWithoutDigest) })
+  }
+
+  async projectAll(initiativeId: string): Promise<LowLevelDesignProjection[]> {
+    const records = await this.listCurrent(initiativeId)
+    return Promise.all(records.map((record) => this.project(initiativeId, record.implementationUnitId)))
   }
 
   async healthIssues(): Promise<WorkspaceHealthIssue[]> {

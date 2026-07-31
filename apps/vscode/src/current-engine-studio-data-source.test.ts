@@ -65,6 +65,7 @@ import {
   type TestMethodologyProjection,
   type TestInventoryProjection,
   type HighLevelDesignProjection,
+  type LowLevelDesignProjection,
   type BusinessRuleCatalogProjection,
   type BusinessUnderstandingProjection,
   type Change,
@@ -3190,6 +3191,61 @@ function highLevelDesignProjection(dependencies: {
   return { ...body, snapshotDigest: canonicalDigest(body) }
 }
 
+function lowLevelDesignProjection(highLevel: HighLevelDesignProjection): LowLevelDesignProjection {
+  const exact = (candidate: { id: string; revision: number; digest: string }) => ({
+    recordId: candidate.id, revision: candidate.revision, digest: candidate.digest,
+  })
+  const status = {
+    schemaVersion: 1 as const, kind: "low-level-design-status" as const,
+    productId: product.id, productRevision: product.revision ?? 1,
+    initiativeId: initiative.id, initiativeRevision: initiative.revision ?? 1,
+    implementationUnitId: "d7d7d7d7-d7d7-47d7-87d7-d7d7d7d7d7d7",
+    candidate: { recordId: "d8d8d8d8-d8d8-48d8-88d8-d8d8d8d8d8d8", revision: 2, digest: `sha256:${"8".repeat(64)}` as const },
+    highLevelDesign: exact(highLevel.candidate!),
+    systemSolutionArchitecture: highLevel.status.systemSolutionArchitecture,
+    boundedContextModel: highLevel.status.boundedContextModel,
+    technologyProfile: highLevel.status.technologyProfile,
+    dependencyMapping: highLevel.status.dependencyMapping,
+    implementationUnitModel: highLevel.status.implementationUnitModel,
+    boilerplateRegistry: highLevel.status.boilerplateRegistry,
+    boilerplateSelectionBinding: highLevel.status.boilerplateSelectionBinding,
+    boilerplateCompatibilityValidation: highLevel.status.boilerplateCompatibilityValidation,
+    designBaseline: highLevel.status.designBaseline,
+    designToCodeBindingRegistry: highLevel.status.designToCodeBindingRegistry,
+    routeScreenComponentMapping: highLevel.status.routeScreenComponentMapping,
+    testMethodology: highLevel.status.testMethodology,
+    testInventory: highLevel.status.testInventory,
+    riskRegister: highLevel.status.riskRegister,
+    securityPrivacyAssessment: highLevel.status.securityPrivacyAssessment,
+    dependencyCount: 16, presentDependencyCount: 16, elementCount: 12, definedElementCount: 10,
+    relationCount: 14, definedRelationCount: 11, decisionCount: 5, selectedDecisionCount: 4,
+    qualityAttributeCount: 5, deploymentViewCount: 3, conflictCount: 1, missingCount: 1,
+    orphanRelationCount: 1, traceGapCount: 2, evidenceGapCount: 1, ownershipGapCount: 1,
+    uncoveredUnitCount: 0, staleBindingCount: 0, staleDependencyCount: 0, invalidCandidateCount: 1,
+    unresolvedQuestionCount: 2, reviewState: "held" as const, state: "attention-required" as const,
+    reasons: ["One or more Low-Level Design candidates require human review"], assessedAt: "2026-07-31T04:00:00.000Z",
+    authorityBoundary: "low-level-design-status-is-observational-and-does-not-establish-design-repository-source-runtime-or-deployment-truth-or-completeness-design-baseline-or-approval-privacy-or-security-approval-owner-appointment-implementation-readiness-acceptance-release-deployment-or-action-authority" as const,
+  }
+  const body = {
+    schemaVersion: 1 as const, kind: "low-level-design-projection" as const,
+    product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+    initiative: { id: initiative.id, revision: initiative.revision ?? 1, digest: canonicalDigest(initiative), state: initiative.state },
+    status,
+    candidate: {
+      id: status.candidate.recordId, revision: status.candidate.revision, digest: status.candidate.digest,
+      state: "candidate" as const, structureReceiptDigest: `sha256:${"9".repeat(64)}` as const,
+      dependencyReceiptDigest: `sha256:${"a".repeat(64)}` as const, traceReceiptDigest: `sha256:${"b".repeat(64)}` as const,
+      coverageReceiptDigest: `sha256:${"c".repeat(64)}` as const, ownershipReceiptDigest: `sha256:${"d".repeat(64)}` as const,
+      assessmentReceiptDigest: `sha256:${"e".repeat(64)}` as const, elementCount: 12, relationCount: 14,
+      decisionCount: 5, reviewState: "held" as const, updatedAt: "2026-07-31T03:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-structure-dependency-trace-coverage-ownership-assessment-snapshot-digests-only-not-design-narratives-modules-classes-components-interfaces-data-contracts-algorithms-state-error-recovery-authorization-observability-test-hooks-technologies-owners-evidence-source-content-personal-data-secrets-credentials-or-machine-paths" as const,
+    authorityBoundary: "low-level-design-projection-is-read-only-and-does-not-establish-design-repository-source-runtime-or-deployment-truth-or-completeness-design-baseline-or-approval-privacy-or-security-approval-owner-appointment-implementation-readiness-acceptance-release-deployment-or-action-authority" as const,
+  }
+  return { ...body, snapshotDigest: canonicalDigest(body) }
+}
+
 function designSystemTokenContractProjection(): DesignSystemTokenContractProjection {
   const status = {
     schemaVersion: 1 as const,
@@ -4995,6 +5051,7 @@ interface HarnessOptions {
   testMethodologyProjection?: TestMethodologyProjection
   testInventoryProjection?: TestInventoryProjection
   highLevelDesignProjection?: HighLevelDesignProjection
+  lowLevelDesignProjection?: LowLevelDesignProjection
   valueStreamModelProjection?: ValueStreamModelProjection
   operatingModelProjection?: OperatingModelProjection
   businessRuleCatalogProjection?: BusinessRuleCatalogProjection
@@ -5235,6 +5292,11 @@ function harness(options: HarnessOptions = {}) {
     ...(options.highLevelDesignProjection ? {
       highLevelDesign: {
         project: async () => options.highLevelDesignProjection!,
+      },
+    } : {}),
+    ...(options.lowLevelDesignProjection ? {
+      lowLevelDesign: {
+        projectAll: async () => [options.lowLevelDesignProjection!],
       },
     } : {}),
     ...(options.valueStreamModelProjection ? {
@@ -6454,6 +6516,7 @@ describe("current-engine Product Studio data source", () => {
       designBinding: designCodeBinding, routeMapping: projection, methodology, inventory,
       risks: riskRegister, securityPrivacy,
     })
+    const lowLevelDesign = lowLevelDesignProjection(highLevelDesign)
     const options = {
       informationArchitectureProjection: informationArchitecture,
       screenStateInventoryProjection: screenInventory,
@@ -6484,6 +6547,7 @@ describe("current-engine Product Studio data source", () => {
       testMethodologyProjection: methodology,
       testInventoryProjection: inventory,
       highLevelDesignProjection: highLevelDesign,
+      lowLevelDesignProjection: lowLevelDesign,
       systemSolutionArchitectureProjection: system,
       boundedContextModelProjection: contexts,
     }
@@ -6588,6 +6652,33 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(JSON.stringify(snapshot.page.kind === "delivery" ? snapshot.page.highLevelDesigns : undefined)).not.toMatch(
       /private architecture|private interface|private data flow|private technology|private owner|customer@example\.com|api_key/iu,
+    )
+    expect(snapshot.page.kind === "delivery" && snapshot.page.lowLevelDesigns).toMatchObject({
+      id: "low-level-design",
+      rows: [{
+        id: lowLevelDesign.candidate?.id,
+        cells: {
+          initiative: initiative.id,
+          implementationUnit: lowLevelDesign.status.implementationUnitId,
+          revision: "2",
+          structureReceipt: lowLevelDesign.candidate?.structureReceiptDigest,
+          dependencyReceipt: lowLevelDesign.candidate?.dependencyReceiptDigest,
+          traceReceipt: lowLevelDesign.candidate?.traceReceiptDigest,
+          coverageReceipt: lowLevelDesign.candidate?.coverageReceiptDigest,
+          ownershipReceipt: lowLevelDesign.candidate?.ownershipReceiptDigest,
+          assessmentReceipt: lowLevelDesign.candidate?.assessmentReceiptDigest,
+          dependencies: "16/16 exact current candidates",
+          structure: "10/12 elements · 11/14 relations · 4/5 decisions",
+          assessment: "attention-required · held",
+          structuralGaps: "1 conflicts · 1 missing · 1 orphan relations",
+          integrityGaps: "2 trace · 1 evidence · 1 ownership · 0 uncovered units",
+          staleGaps: "0 stale bindings · 0 stale dependencies · 1 invalid candidates · 2 questions",
+          boundary: expect.stringContaining("no design narratives, modules, classes, components, interfaces, data contracts"),
+        },
+      }],
+    })
+    expect(JSON.stringify(snapshot.page.kind === "delivery" ? snapshot.page.lowLevelDesigns : undefined)).not.toMatch(
+      /private source|private interface|private data contract|private algorithm|private owner|customer@example\.com|api_key/iu,
     )
 
     const hostileBody = { ...projection, status: {
