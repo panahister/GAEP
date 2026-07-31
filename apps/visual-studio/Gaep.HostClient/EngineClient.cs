@@ -749,6 +749,22 @@ public sealed class EngineClient : IAsyncDisposable
             envelope => PortableDesignProtocol.ParseHighLevelDesignResponse(envelope, initiativeId));
     }
 
+    public async Task<LowLevelDesignProjection> ReadLowLevelDesignAsync(
+        Guid initiativeId,
+        Guid implementationUnitId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        if (implementationUnitId == Guid.Empty) throw new ArgumentException("Implementation Unit ID must not be empty.", nameof(implementationUnitId));
+        using var response = await RequestPortableDesignAsync(
+            "planning.lowLevelDesign.snapshot",
+            new Dictionary<string, object?> { ["initiativeId"] = initiativeId, ["implementationUnitId"] = implementationUnitId },
+            cancellationToken);
+        return ParsePortableDesignResponse(
+            response,
+            envelope => PortableDesignProtocol.ParseLowLevelDesignResponse(envelope, initiativeId, implementationUnitId));
+    }
+
     public async Task<AccessibilityDesignRulesProjection> ReadAccessibilityDesignRulesAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

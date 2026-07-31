@@ -113,6 +113,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     private string status = "GAEP engine has not been contacted";
     private string output = "Set one absolute local workspace folder, then refresh the Product.";
     private string initiativeId = string.Empty;
+    private string implementationUnitId = string.Empty;
     private InitiativeEntryContext? initiativeEntryContext;
     private string? initiativeEntryWorkspace;
     private readonly List<InitiativeApplicabilityDecisionInput> initiativeDraftDecisions = [];
@@ -248,6 +249,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadTestMethodologyCommand = new AsyncCommand(LoadTestMethodologyAsync);
         LoadTestInventoryCommand = new AsyncCommand(LoadTestInventoryAsync);
         LoadHighLevelDesignCommand = new AsyncCommand(LoadHighLevelDesignAsync);
+        LoadLowLevelDesignCommand = new AsyncCommand(LoadLowLevelDesignAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -452,6 +454,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     public IAsyncCommand LoadHighLevelDesignCommand { get; }
 
     [DataMember]
+    public IAsyncCommand LoadLowLevelDesignCommand { get; }
+
+    [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
 
     [DataMember]
@@ -604,6 +609,13 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
     {
         get => initiativeId;
         set => SetProperty(ref initiativeId, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string ImplementationUnitId
+    {
+        get => implementationUnitId;
+        set => SetProperty(ref implementationUnitId, value ?? string.Empty);
     }
 
     [DataMember] public InitiativeClassificationEditorData InitiativeClassification { get; } = new();
@@ -1152,6 +1164,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed High-Level Design candidate",
             (controller, _, token) => controller.ReadHighLevelDesignAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadLowLevelDesignAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Low-Level Design candidate",
+            (controller, _, token) => controller.ReadLowLevelDesignAsync(ParseInitiativeId(InitiativeId), ParseImplementationUnitId(ImplementationUnitId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>
@@ -2120,6 +2138,13 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
             throw new ArgumentException("Initiative ID must be a non-empty UUID.");
         }
         return initiativeId;
+    }
+
+    private static Guid ParseImplementationUnitId(string value)
+    {
+        if (!Guid.TryParseExact(value?.Trim(), "D", out var implementationUnitId) || implementationUnitId == Guid.Empty)
+            throw new ArgumentException("Implementation Unit ID must be a non-empty UUID.");
+        return implementationUnitId;
     }
 
     private static string CurrentActorId() =>
