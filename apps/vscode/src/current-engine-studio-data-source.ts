@@ -39,6 +39,7 @@ import type {
   ControlledDesignToCodeGenerationProjection,
   DesignToCodeTraceabilityProjection,
   BoilerplateConstraintEnforcementProjection,
+  BacklogToCodeTraceabilityProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -305,6 +306,9 @@ export interface CurrentStudioEngineReader {
   boilerplateConstraintEnforcement?: {
     project(initiativeId: string): Promise<BoilerplateConstraintEnforcementProjection>
   }
+  backlogToCodeTraceability?: {
+    project(initiativeId: string): Promise<BacklogToCodeTraceabilityProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -505,6 +509,7 @@ interface ObservedStudioState {
   controlledDesignToCodeGenerationProjections: Map<string, ControlledDesignToCodeGenerationProjection>
   designToCodeTraceabilityProjections: Map<string, DesignToCodeTraceabilityProjection>
   boilerplateConstraintEnforcementProjections: Map<string, BoilerplateConstraintEnforcementProjection>
+  backlogToCodeTraceabilityProjections: Map<string, BacklogToCodeTraceabilityProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3952,6 +3957,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     controlledDesignToCodeGenerations: controlledDesignToCodeGenerationTable(state),
     designToCodeTraceability: designToCodeTraceabilityTable(state.designToCodeTraceabilityProjections.values()),
     boilerplateConstraintEnforcements: boilerplateConstraintEnforcementTable(state.boilerplateConstraintEnforcementProjections.values()),
+    backlogToCodeTraceability: backlogToCodeTraceabilityTable(state.backlogToCodeTraceabilityProjections.values()),
   }
 }
 
@@ -5497,6 +5503,33 @@ export function boilerplateConstraintEnforcementTable(projections: Iterable<Boil
       { key: "receipts", label: "Deterministic receipts" }, { key: "boundary", label: "Privacy and authority boundary" },
     ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Boilerplate Constraint Enforcement candidate",
       "Create the metadata-only policy candidate through the governed engine after every exact current technology, boilerplate, mapping, generation, traceability, preview and staging predecessor exists. Refresh Product Studio after a superseding revision. This view cannot inspect source or generated output, execute enforcement, establish compliance, approve an exception, or accept work.") } : {}) }
+}
+
+export function backlogToCodeTraceabilityTable(projections: Iterable<BacklogToCodeTraceabilityProjection>): StudioTableSnapshot {
+  const rows = [...projections].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    return record.traces.map((trace) => ({ id: trace.id, cells: {
+      initiative: projection.initiative.id, trace: trace.traceKey, candidate: record.id, revision: String(record.revision),
+      backlog: trace.backlogNodeKey,
+      code: `${trace.repositoryCandidate}/${trace.moduleCandidate}/${trace.pathCandidate}${trace.symbolCandidate ? ` · ${trace.symbolCandidate}` : ""}`,
+      tests: trace.testAssetKeys.join(", "), commits: `${trace.commitCandidateCount} bounded candidate(s) · truth not established`,
+      state: trace.traceState,
+      assessment: `${projection.status.state} · ${projection.status.reviewState} · ${projection.status.staleBindingCount} stale · ${projection.status.coverageGapCount} coverage gap · ${projection.status.invalidCandidateCount} invalid`,
+      receipts: `${record.dependencyReceiptDigest} · ${record.traceCatalogDigest} · ${record.commitCandidateReceiptDigest} · ${record.testCoverageReceiptDigest} · ${record.evidenceReceiptDigest}`,
+      boundary: "Candidate trace metadata only. Backlog, change, repository-relative code, symbol, commit and test links are unverified candidates; this view does not inspect source or commits, establish repository/code/commit/test-result/outcome truth, approve or accept work, release, deploy, or grant action authority.",
+    }, state: trace.traceState === "candidate-linked" ? projection.status.state : trace.traceState, actions: [] }))
+  })
+  return { id: "backlog-to-code-traceability", title: "Governed Backlog-to-Code Traceability",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true }, { key: "trace", label: "Trace", identifier: true },
+      { key: "candidate", label: "Candidate" }, { key: "revision", label: "Revision" },
+      { key: "backlog", label: "Backlog item" }, { key: "code", label: "Candidate code location" },
+      { key: "tests", label: "Associated test candidates" }, { key: "commits", label: "Commit reference candidates" },
+      { key: "state", label: "Trace state" }, { key: "assessment", label: "Fail-closed assessment" },
+      { key: "receipts", label: "Deterministic receipts" }, { key: "boundary", label: "Privacy and authority boundary" },
+    ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Backlog-to-Code Traceability candidate",
+      "Create the metadata-only trace candidate through the governed engine after every exact current backlog, changed-unit, preview, generation, design-trace, constraint and test predecessor exists. Refresh Product Studio after a superseding revision. This view cannot inspect source or commits, execute tests, establish implementation or outcome truth, approve, or accept work.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7413,6 +7446,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       controlledDesignToCodeGenerationProjections: new Map(),
       designToCodeTraceabilityProjections: new Map(),
       boilerplateConstraintEnforcementProjections: new Map(),
+      backlogToCodeTraceabilityProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -9243,6 +9277,48 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("boilerplate-constraint-enforcement-unavailable", "Boilerplate Constraint Enforcement metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.backlogToCodeTraceability) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map((initiative) =>
+          engine.backlogToCodeTraceability!.project(initiative.id)))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value
+            const candidates = {
+              backlogHierarchy: empty.backlogHierarchyProjections.get(initiative.id)?.candidate,
+              changedUnitInventory: empty.changedUnitInventoryProjections.get(initiative.id)?.candidate,
+              proposedChangePreview: empty.proposedChangePreviewProjections.get(initiative.id)?.candidate,
+              controlledDesignToCodeGeneration: empty.controlledDesignToCodeGenerationProjections.get(initiative.id)?.candidate,
+              designToCodeTraceability: empty.designToCodeTraceabilityProjections.get(initiative.id)?.candidate,
+              boilerplateConstraintEnforcement: empty.boilerplateConstraintEnforcementProjections.get(initiative.id)?.candidate,
+              testInventory: empty.testInventoryProjections.get(initiative.id)?.candidate,
+            }
+            const { snapshotDigest, ...projectionBody } = value
+            const exactDependencies = value.status.dependencies !== undefined &&
+              (Object.keys(candidates) as (keyof typeof candidates)[]).every((key) => {
+                const reference = value.status.dependencies?.[key]
+                const candidate = candidates[key]
+                return reference !== undefined && candidate !== undefined && reference.recordId === candidate.id &&
+                  reference.revision === candidate.revision && reference.digest === candidate.digest
+              })
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactDependencies && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.backlogToCodeTraceabilityProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Backlog-to-Code Traceability projection was unavailable or did not bind all exact current backlog, change, generation, design-trace, constraint, and test predecessors",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`backlog-to-code-traceability-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Backlog-to-Code Traceability metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("backlog-to-code-traceability-unavailable", "Backlog-to-Code Traceability metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (
