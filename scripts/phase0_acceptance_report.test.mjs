@@ -40,7 +40,7 @@ function passingTestEvidence() {
       id: "canonical-example",
       command: "npm run test:example",
       result: "pass",
-      summary: { tests: 36, passed: 36, failed: 0, skipped: 0 },
+      summary: { tests: 41, passed: 41, failed: 0, skipped: 0 },
       outputDigest,
     },
     {
@@ -71,10 +71,10 @@ test("binds exact Phase 0 package, conformance, provider, host, example, test an
   const report = await buildPhase0AcceptanceReport({ root, recordedAt, sourceCommit, testEvidence: passingTestEvidence() })
   assert.equal(report.verificationResult, "pass")
   assert.equal(report.phase, "phase-3a-delivery-planning")
-  assert.equal(report.evidenceScope, "phase-3a-dashboard-local")
-  assert.match(report.claimBoundary, /five canonical views/u)
-  assert.match(report.claimBoundary, /20 ordered governed source projections/u)
-  assert.match(report.claimBoundary, /visible-metadata-only CSV export/u)
+  assert.equal(report.evidenceScope, "phase-3a-realistic-readiness-example-local")
+  assert.match(report.claimBoundary, /five canonical dashboard views/u)
+  assert.match(report.claimBoundary, /20 current governed candidate projections/u)
+  assert.match(report.claimBoundary, /81 bounded evidence-reference metadata entries/u)
   assert.equal(report.reportingStatus, "current-local-evidence-bound")
   assert.equal(report.phaseGate, "incomplete")
   assert.equal(report.acceptance, "not-established")
@@ -86,7 +86,7 @@ test("binds exact Phase 0 package, conformance, provider, host, example, test an
   assert.equal(report.sources.length, 6)
   assert.equal(report.tests.length, 7)
   assert.equal(report.knownGaps.length, 6)
-  assert.equal(report.knownGaps.at(-1).id, "phase-3a-dashboard-closure")
+  assert.equal(report.knownGaps.at(-1).id, "phase-3a-realistic-readiness-example-closure")
   await verifyPhase0AcceptanceReportObject(report, { root })
 })
 
