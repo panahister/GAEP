@@ -319,6 +319,7 @@ export interface DeliveryPageSnapshot extends StudioPageBase {
   implementationReadinessGates?: StudioTableSnapshot
   changedUnitInventories?: StudioTableSnapshot
   proposedChangePreviews?: StudioTableSnapshot
+  stagingWorkspaces?: StudioTableSnapshot
   transitionPreview?: {
     recordType: "initiative" | "change" | "work-item"
     recordId: string
@@ -1388,7 +1389,7 @@ function isRecordFormPage(page: Record<string, unknown>, route: RecordFormRoute)
 function isDeliveryPage(page: Record<string, unknown>): boolean {
   if (!hasOnlyKeys(page, [
     "kind", "route", "title", "purpose", "source", "actions", "design", "initiatives", "sources",
-    "sourceBaselines", "sourceProvenance", "changes", "workItems", "backlogHierarchy", "mvpSliceDefinitions", "prioritizationModels", "acceptanceCriteria", "definitionOfReady", "definitionOfDone", "implementationUnits", "dependencyMappings", "technologyProfiles", "boilerplateRegistries", "boilerplateSelectionBindings", "boilerplateCompatibilityValidations", "figmaToBoilerplateMappings", "designToCodeBindingRegistries", "routeScreenComponentMappings", "testMethodologies", "testInventories", "highLevelDesigns", "lowLevelDesigns", "implementationReadinessGates", "changedUnitInventories", "proposedChangePreviews", "transitionPreview",
+    "sourceBaselines", "sourceProvenance", "changes", "workItems", "backlogHierarchy", "mvpSliceDefinitions", "prioritizationModels", "acceptanceCriteria", "definitionOfReady", "definitionOfDone", "implementationUnits", "dependencyMappings", "technologyProfiles", "boilerplateRegistries", "boilerplateSelectionBindings", "boilerplateCompatibilityValidations", "figmaToBoilerplateMappings", "designToCodeBindingRegistries", "routeScreenComponentMappings", "testMethodologies", "testInventories", "highLevelDesigns", "lowLevelDesigns", "implementationReadinessGates", "changedUnitInventories", "proposedChangePreviews", "stagingWorkspaces", "transitionPreview",
   ]) || !isPageBase(page, "delivery") || page.kind !== "delivery" || !isTableSnapshot(page.initiatives) ||
     !isTableSnapshot(page.sources) || !isTableSnapshot(page.sourceBaselines) ||
     !isTableSnapshot(page.sourceProvenance) || !isTableSnapshot(page.changes) ||
@@ -1414,7 +1415,8 @@ function isDeliveryPage(page: Record<string, unknown>): boolean {
     (page.lowLevelDesigns !== undefined && !isTableSnapshot(page.lowLevelDesigns)) ||
     (page.implementationReadinessGates !== undefined && !isTableSnapshot(page.implementationReadinessGates)) ||
     (page.changedUnitInventories !== undefined && !isTableSnapshot(page.changedUnitInventories)) ||
-    (page.proposedChangePreviews !== undefined && !isTableSnapshot(page.proposedChangePreviews))) return false
+    (page.proposedChangePreviews !== undefined && !isTableSnapshot(page.proposedChangePreviews)) ||
+    (page.stagingWorkspaces !== undefined && !isTableSnapshot(page.stagingWorkspaces))) return false
   if (page.transitionPreview === undefined) return true
   return isRecord(page.transitionPreview) && hasOnlyKeys(page.transitionPreview, [
     "recordType", "recordId", "currentState", "allowedNextStates",

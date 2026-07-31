@@ -42,9 +42,9 @@ describe("Phase 0 IDE conformance matrix", () => {
       },
       {
         hosts: 4,
-        capabilities: 99,
-        assessments: 396,
-        implemented: 396,
+        capabilities: 100,
+        assessments: 400,
+        implemented: 400,
         partial: 0,
         notImplemented: 0,
         producedPackages: 3,

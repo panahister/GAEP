@@ -3034,6 +3034,31 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Snapshot digest: ${projection.snapshotDigest}")
     }
 
+    fun readStagingWorkspace(initiativeId: UUID): String {
+        val product = client.readProductBinding(); val initiative = client.readInitiative(initiativeId)
+        val projection = client.readStagingWorkspace(initiativeId)
+        require(projection.productId == product.id && projection.productRevision == product.revision && projection.productDigest == product.digest &&
+            projection.initiativeId == initiative.id && projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state) {
+            "Staging Workspace projection does not match exact current Product and Initiative"
+        }
+        return renderStagingWorkspace(projection)
+    }
+
+    fun renderStagingWorkspace(projection: StagingWorkspaceProjection): String = buildString {
+        appendLine("GAEP governed Isolated Staging Workspace candidate"); appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine("Preview coverage: ${projection.stagingUnitCount}/${projection.previewUnitCount} units · ${projection.stagingPathCount}/${projection.previewPathCount} paths")
+        appendLine("Candidate outcomes: ${projection.candidateDefinedCount} defined · ${projection.unavailableCount} unavailable · ${projection.gapCount} gaps · ${projection.conflictCount} conflicts · ${projection.staleCount} stale · ${projection.notAssessedCount} not assessed")
+        appendLine("Safeguard gaps: ${projection.inspectionGapCount} inspection · ${projection.exclusionGapCount} exclusion · ${projection.capacityGapCount} capacity · ${projection.recoveryGapCount} recovery · ${projection.evidenceGapCount} evidence")
+        appendLine("Freshness gaps: ${projection.staleBindingCount} bindings · ${projection.stalePreviewCount} previews · ${projection.invalidCandidateCount} invalid · ${projection.unresolvedQuestionCount} questions")
+        projection.reasons.forEach { appendLine("  - $it") }; appendLine()
+        appendLine("Candidate record: ${projection.candidate?.let { "${it.id}@${it.revision} · candidate · ${it.digest}" } ?: "not recorded"}")
+        projection.candidate?.let { appendLine("Portable identity: gaep-managed-stage/${it.stageKey} · generation ${it.generation}"); appendLine("Lifecycle: actual stage ${it.actualStageExistenceState} · inspection ${it.inspectionState}"); appendLine("Capacity: ${it.candidateFileCount}/${it.maximumFiles} files · ${it.candidateByteCount}/${it.maximumBytes} bytes"); appendLine("Recovery: ${it.recoveryState} · ${it.recoveryCheckpointDigest}"); appendLine("Inspection receipt digest: ${it.inspectionReceiptDigest}"); appendLine("Candidate units: ${it.unitCount}") }
+        appendLine(); appendLine("Portable staging identity, repository-relative candidates, lifecycle, exclusion, capacity, inspection and recovery metadata only; no machine stage paths or file/diff content. This inspection does not establish real stage existence, repository truth, approved scope, mutation, apply/discard, assignment, acceptance, merge, release, deployment, or action authority.")
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+    }
+
     fun renderTestInventory(projection: TestInventoryProjection): String = buildString {
         appendLine("GAEP governed Test Inventory candidate")
         appendLine()

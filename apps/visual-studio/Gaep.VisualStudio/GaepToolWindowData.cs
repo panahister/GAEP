@@ -253,6 +253,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadImplementationReadinessGateCommand = new AsyncCommand(LoadImplementationReadinessGateAsync);
         LoadChangedUnitInventoryCommand = new AsyncCommand(LoadChangedUnitInventoryAsync);
         LoadProposedChangePreviewCommand = new AsyncCommand(LoadProposedChangePreviewAsync);
+        LoadStagingWorkspaceCommand = new AsyncCommand(LoadStagingWorkspaceAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -466,6 +467,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadProposedChangePreviewCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadStagingWorkspaceCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1202,6 +1206,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Proposed Change Preview candidate",
             (controller, _, token) => controller.ReadProposedChangePreviewAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadStagingWorkspaceAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Isolated Staging Workspace candidate",
+            (controller, _, token) => controller.ReadStagingWorkspaceAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

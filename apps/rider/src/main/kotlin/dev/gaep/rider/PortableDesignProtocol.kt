@@ -3250,6 +3250,25 @@ data class ProposedChangePreviewProjection(
     val unresolvedQuestionCount: Int, val candidate: ProposedChangePreviewRecordView?, val snapshotDigest: String,
 )
 
+data class StagingWorkspaceRecordView(
+    val id: UUID, val revision: Long, val digest: String, val stageKey: String, val generation: Int,
+    val actualStageExistenceState: String, val inspectionState: String, val candidateFileCount: Int,
+    val maximumFiles: Int, val candidateByteCount: Long, val maximumBytes: Long, val recoveryState: String,
+    val recoveryCheckpointDigest: String, val inspectionReceiptDigest: String, val unitCount: Int, val reviewState: String,
+)
+
+data class StagingWorkspaceProjection(
+    val productId: UUID, val productRevision: Long, val productDigest: String,
+    val initiativeId: UUID, val initiativeRevision: Long, val initiativeDigest: String, val initiativeState: String,
+    val state: String, val reviewState: String, val reasons: List<String>, val previewUnitCount: Int,
+    val previewPathCount: Int, val stagingUnitCount: Int, val stagingPathCount: Int, val candidateDefinedCount: Int,
+    val unavailableCount: Int, val gapCount: Int, val conflictCount: Int, val staleCount: Int, val notAssessedCount: Int,
+    val orphanUnitCount: Int, val orphanPathCount: Int, val inspectionGapCount: Int, val exclusionGapCount: Int,
+    val capacityGapCount: Int, val recoveryGapCount: Int, val evidenceGapCount: Int, val staleBindingCount: Int,
+    val stalePreviewCount: Int, val invalidCandidateCount: Int, val unresolvedQuestionCount: Int,
+    val candidate: StagingWorkspaceRecordView?, val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -4525,6 +4544,12 @@ internal object PortableDesignProtocol {
         "proposed-change-preview-projection-is-read-only-and-does-not-establish-repository-path-source-target-or-diff-truth-approved-change-scope-or-change-approval-code-mutation-staging-apply-discard-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
     private const val PROPOSED_CHANGE_PREVIEW_STATUS_AUTHORITY_BOUNDARY =
         "proposed-change-preview-status-is-observational-and-does-not-establish-repository-path-source-target-or-diff-truth-approved-change-scope-or-change-approval-code-mutation-staging-apply-discard-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
+    private const val STAGING_WORKSPACE_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-repository-relative-path-candidates-staging-identity-lifecycle-capacity-exclusion-recovery-counts-statuses-and-receipt-digests-only-not-machine-stage-paths-file-or-diff-content-evidence-content-personal-data-secrets-or-credentials"
+    private const val STAGING_WORKSPACE_PROJECTION_AUTHORITY_BOUNDARY =
+        "staging-workspace-projection-is-read-only-and-does-not-establish-real-stage-existence-repository-path-source-target-or-diff-truth-approved-scope-or-change-approval-code-mutation-apply-discard-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
+    private const val STAGING_WORKSPACE_STATUS_AUTHORITY_BOUNDARY =
+        "staging-workspace-status-is-observational-and-does-not-establish-real-stage-existence-repository-path-source-target-or-diff-truth-approved-scope-or-change-approval-code-mutation-apply-discard-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -12341,6 +12366,79 @@ internal object PortableDesignProtocol {
         if (state == "candidate-previewed" && (candidate == null || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || counts.getValue("inventoryUnitCount") != counts.getValue("previewUnitCount") || counts.getValue("inventoryPathCount") != counts.getValue("previewPathCount") || countNames.filterNot { it in setOf("inventoryUnitCount", "inventoryPathCount", "previewUnitCount", "previewPathCount", "candidatePreviewedCount") }.sumOf { counts.getValue(it) } > 0)) throw invalidResponse()
         return ProposedChangePreviewProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState, state, reviewState, reasons,
             counts.getValue("inventoryUnitCount"), counts.getValue("inventoryPathCount"), counts.getValue("previewUnitCount"), counts.getValue("previewPathCount"), counts.getValue("candidatePreviewedCount"), counts.getValue("gapCount"), counts.getValue("conflictCount"), counts.getValue("staleCount"), counts.getValue("notAssessedCount"), counts.getValue("orphanUnitCount"), counts.getValue("orphanPathCount"), counts.getValue("endpointGapCount"), counts.getValue("diffGapCount"), counts.getValue("traceGapCount"), counts.getValue("evidenceGapCount"), counts.getValue("staleBindingCount"), counts.getValue("staleInventoryCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
+    }
+
+    fun parseStagingWorkspaceEnvelope(envelope: JsonObject, expectedInitiativeId: UUID): StagingWorkspaceProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(setOf("schemaVersion", "kind", "product", "initiative", "status", "observedAt", "privacyBoundary", "authorityBoundary", "snapshotDigest"), setOf("candidate"))
+        if (projection.requireInt("schemaVersion") != 1 || projection.requireString("kind") != "staging-workspace-projection" ||
+            projection.requireString("privacyBoundary") != STAGING_WORKSPACE_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != STAGING_WORKSPACE_PROJECTION_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        if (snapshotDigest != canonicalDigest(projection.deepCopy().also { it.remove("snapshotDigest") })) throw invalidResponse()
+        val product = projection.get("product").requireObject().also { it.requireExactKeys("id", "revision", "digest") }
+        val productId = product.requireNonEmptyUuid("id"); val productRevision = product.requireLong("revision"); val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject().also { it.requireExactKeys("id", "revision", "digest", "state") }
+        val initiativeId = initiative.requireNonEmptyUuid("id"); val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || productRevision !in 1..MAX_SAFE_PRODUCT_REVISION || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest"); val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+        val countNames = setOf("previewUnitCount", "previewPathCount", "stagingUnitCount", "stagingPathCount", "candidateDefinedCount", "unavailableCount", "gapCount", "conflictCount", "staleCount", "notAssessedCount", "orphanUnitCount", "orphanPathCount", "inspectionGapCount", "exclusionGapCount", "capacityGapCount", "recoveryGapCount", "evidenceGapCount", "staleBindingCount", "stalePreviewCount", "invalidCandidateCount", "unresolvedQuestionCount")
+        val status = projection.get("status").requireObject()
+        status.requireKeys(setOf("schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision", "reviewState", "state", "reasons", "assessedAt", "authorityBoundary") + countNames, setOf("candidate", "proposedChangePreview"))
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "staging-workspace-status" || status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision || status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision || status.requireString("authorityBoundary") != STAGING_WORKSPACE_STATUS_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val counts = countNames.associateWith { status.requireBoundedNonNegativeInt(it, 65_536) }
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")); val state = status.requireOneOf("state", setOf("attention-required", "candidate-defined"))
+        val reasonsElement = status.get("reasons"); if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 2_048) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }; if (state == "attention-required" && reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+        val candidateReference = status.get("candidate")?.requireObject()?.also { it.requireExactKeys("recordId", "revision", "digest") }
+        val previewReference = status.get("proposedChangePreview")?.requireObject()?.also { it.requireExactKeys("recordId", "revision", "digest") }
+        previewReference?.also { it.requireNonEmptyUuid("recordId"); if (it.requireLong("revision") !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse(); it.requireDigest("digest") }
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject(); value.requireExactKeys("id", "revision", "digest", "state", "stagingIdentity", "lifecycle", "capacity", "exclusionRuleIds", "excludedPathCandidateCount", "recovery", "bindingReceiptDigest", "inventoryReceiptDigest", "lifecycleReceiptDigest", "exclusionReceiptDigest", "capacityReceiptDigest", "recoveryReceiptDigest", "inspectionReceiptDigest", "assessmentReceiptDigest", "reviewState", "updatedAt", "units")
+            val id = value.requireNonEmptyUuid("id"); val revision = value.requireLong("revision"); if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate") throw invalidResponse()
+            val identity = value.get("stagingIdentity").requireObject().also { it.requireExactKeys("namespace", "stageKey", "generation", "scopeDigest") }
+            if (identity.requireString("namespace") != "gaep-managed-stage") throw invalidResponse()
+            val stageKey = portableText(identity.requireString("stageKey"), 1, 128); val generation = identity.requireBoundedNonNegativeInt("generation", 1_000_000)
+            if (generation < 1) throw invalidResponse(); identity.requireDigest("scopeDigest")
+            val lifecycle = value.get("lifecycle").requireObject().also { it.requireExactKeys("definitionState", "provisioningState", "actualStageExistenceState", "inspectionState", "applyState", "discardState", "disposalState") }
+            if (lifecycle.requireString("definitionState") != "candidate-defined" || lifecycle.requireString("provisioningState") != "not-performed" || lifecycle.requireString("actualStageExistenceState") != "not-established" || lifecycle.requireString("applyState") != "not-performed" || lifecycle.requireString("discardState") != "not-performed" || lifecycle.requireString("disposalState") != "not-performed") throw invalidResponse()
+            val inspectionState = lifecycle.requireOneOf("inspectionState", setOf("candidate-complete", "candidate-partial", "unavailable", "not-assessed"))
+            val capacity = value.get("capacity").requireObject().also { it.requireExactKeys("maximumFiles", "maximumBytes", "maximumSingleFileBytes", "maximumPathBytes", "maximumChanges", "candidateFileCount", "candidateByteCount") }
+            val maximumFiles = capacity.requireBoundedNonNegativeInt("maximumFiles", 65_536); val candidateFileCount = capacity.requireBoundedNonNegativeInt("candidateFileCount", 65_536)
+            val maximumBytes = capacity.requireLong("maximumBytes"); val candidateByteCount = capacity.requireLong("candidateByteCount")
+            if (maximumFiles < 1 || maximumBytes !in 1..17_179_869_184L || candidateByteCount !in 0..maximumBytes) throw invalidResponse()
+            capacity.requireLong("maximumSingleFileBytes"); capacity.requireBoundedNonNegativeInt("maximumPathBytes", 16_384); capacity.requireBoundedNonNegativeInt("maximumChanges", 65_536)
+            val exclusionRules = value.get("exclusionRuleIds"); if (exclusionRules == null || !exclusionRules.isJsonArray || exclusionRules.asJsonArray.size() > 512) throw invalidResponse()
+            exclusionRules.asJsonArray.forEach { portableText(it.requireString(), 1, 128) }; value.requireBoundedNonNegativeInt("excludedPathCandidateCount", 65_536)
+            val recovery = value.get("recovery").requireObject().also { it.requireExactKeys("strategy", "journalKey", "replayState", "checkpointDigest") }
+            if (recovery.requireString("strategy") != "write-ahead-journal-candidate") throw invalidResponse()
+            portableText(recovery.requireString("journalKey"), 1, 128); val recoveryState = recovery.requireOneOf("replayState", setOf("candidate-defined", "unavailable", "not-assessed")); val recoveryCheckpoint = recovery.requireDigest("checkpointDigest")
+            val units = value.get("units"); if (units == null || !units.isJsonArray || units.asJsonArray.size() > 65_536) throw invalidResponse()
+            var pathCount = 0
+            units.asJsonArray.forEach { unitElement ->
+                val unit = unitElement.requireObject(); unit.requireExactKeys("implementationUnitId", "implementationUnitKey", "outcome", "paths")
+                unit.requireNonEmptyUuid("implementationUnitId"); portableText(unit.requireString("implementationUnitKey"), 1, 128)
+                unit.requireOneOf("outcome", setOf("candidate-defined", "unavailable", "gap", "conflict", "stale", "not-assessed"))
+                val paths = unit.get("paths"); if (paths == null || !paths.isJsonArray || paths.asJsonArray.size() > 65_536 || pathCount > 65_536 - paths.asJsonArray.size()) throw invalidResponse()
+                pathCount += paths.asJsonArray.size()
+                paths.asJsonArray.forEach { pathElement ->
+                    val path = pathElement.requireObject(); path.requireKeys(setOf("pathCandidate", "changeKind", "inspectionState", "outcome", "previewPathDigest"), setOf("sourcePathCandidate"))
+                    portableText(path.requireString("pathCandidate"), 1, 4_096); path.get("sourcePathCandidate")?.let { portableText(it.requireString(), 1, 4_096) }
+                    path.requireOneOf("changeKind", setOf("add", "delete", "modify", "move", "not-assessed")); path.requireOneOf("inspectionState", setOf("candidate-complete", "candidate-partial", "unavailable", "not-assessed")); path.requireOneOf("outcome", setOf("candidate-defined", "unavailable", "gap", "conflict", "stale", "not-assessed")); path.requireDigest("previewPathDigest")
+                }
+            }
+            if (pathCount != counts.getValue("stagingPathCount")) throw invalidResponse()
+            val record = StagingWorkspaceRecordView(id, revision, value.requireDigest("digest"), stageKey, generation, lifecycle.requireString("actualStageExistenceState"), inspectionState,
+                candidateFileCount, maximumFiles, candidateByteCount, maximumBytes, recoveryState, recoveryCheckpoint, value.requireDigest("inspectionReceiptDigest"), units.asJsonArray.size(), value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")))
+            listOf("bindingReceiptDigest", "inventoryReceiptDigest", "lifecycleReceiptDigest", "exclusionReceiptDigest", "capacityReceiptDigest", "recoveryReceiptDigest", "assessmentReceiptDigest").forEach { value.requireDigest(it) }
+            if (candidateReference == null || candidateReference.requireNonEmptyUuid("recordId") != id || candidateReference.requireLong("revision") != revision || candidateReference.requireDigest("digest") != record.digest || record.reviewState != reviewState || record.unitCount != counts.getValue("stagingUnitCount")) throw invalidResponse()
+            value.requireInstant("updatedAt"); record
+        }
+        if ((candidateReference == null) != (candidate == null) || (previewReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        if (state == "candidate-defined" && (candidate == null || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || counts.getValue("previewUnitCount") != counts.getValue("stagingUnitCount") || counts.getValue("previewPathCount") != counts.getValue("stagingPathCount") || countNames.filterNot { it in setOf("previewUnitCount", "previewPathCount", "stagingUnitCount", "stagingPathCount", "candidateDefinedCount") }.sumOf { counts.getValue(it) } > 0)) throw invalidResponse()
+        return StagingWorkspaceProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState, state, reviewState, reasons,
+            counts.getValue("previewUnitCount"), counts.getValue("previewPathCount"), counts.getValue("stagingUnitCount"), counts.getValue("stagingPathCount"), counts.getValue("candidateDefinedCount"), counts.getValue("unavailableCount"), counts.getValue("gapCount"), counts.getValue("conflictCount"), counts.getValue("staleCount"), counts.getValue("notAssessedCount"), counts.getValue("orphanUnitCount"), counts.getValue("orphanPathCount"), counts.getValue("inspectionGapCount"), counts.getValue("exclusionGapCount"), counts.getValue("capacityGapCount"), counts.getValue("recoveryGapCount"), counts.getValue("evidenceGapCount"), counts.getValue("staleBindingCount"), counts.getValue("stalePreviewCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
     }
 
     fun parseDesignSystemTokenContractEnvelope(

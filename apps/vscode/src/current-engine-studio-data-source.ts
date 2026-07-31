@@ -30,6 +30,7 @@ import type {
   ImplementationReadinessGateProjection,
   ChangedUnitInventoryProjection,
   ProposedChangePreviewProjection,
+  StagingWorkspaceProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -269,6 +270,9 @@ export interface CurrentStudioEngineReader {
   proposedChangePreview?: {
     project(initiativeId: string): Promise<ProposedChangePreviewProjection>
   }
+  stagingWorkspace?: {
+    project(initiativeId: string): Promise<StagingWorkspaceProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -460,6 +464,7 @@ interface ObservedStudioState {
   implementationReadinessGateProjections: Map<string, ImplementationReadinessGateProjection>
   changedUnitInventoryProjections: Map<string, ChangedUnitInventoryProjection>
   proposedChangePreviewProjections: Map<string, ProposedChangePreviewProjection>
+  stagingWorkspaceProjections: Map<string, StagingWorkspaceProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3898,6 +3903,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     implementationReadinessGates: implementationReadinessGateTable(state),
     changedUnitInventories: changedUnitInventoryTable(state),
     proposedChangePreviews: proposedChangePreviewTable(state),
+    stagingWorkspaces: stagingWorkspaceTable(state),
   }
 }
 
@@ -5152,6 +5158,37 @@ function proposedChangePreviewTable(state: ObservedStudioState): StudioTableSnap
       { key: "boundary", label: "Privacy and authority boundary" },
     ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Proposed Change Preview candidate",
       "Create the candidate through the governed engine workflow only after an exact current Changed Unit Inventory exists. This view cannot approve scope, stage, apply, discard, or mutate source.") } : {}) }
+}
+
+function stagingWorkspaceTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.stagingWorkspaceProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{ id: record.id, cells: {
+      initiative: projection.initiative.id, record: record.id, revision: String(record.revision), digest: record.digest,
+      identity: `${record.stagingIdentity.namespace}/${record.stagingIdentity.stageKey} · generation ${record.stagingIdentity.generation}`,
+      coverage: `${status.stagingUnitCount}/${status.previewUnitCount} units · ${status.stagingPathCount}/${status.previewPathCount} paths`,
+      lifecycle: `${record.lifecycle.definitionState} · actual stage ${record.lifecycle.actualStageExistenceState} · inspection ${record.lifecycle.inspectionState}`,
+      safeguards: `${record.exclusionRuleIds.length} exclusion rules · ${record.excludedPathCandidateCount} excluded candidates · ${record.capacity.candidateFileCount}/${record.capacity.maximumFiles} files · ${record.capacity.candidateByteCount}/${record.capacity.maximumBytes} bytes`,
+      recovery: `${record.recovery.strategy} · ${record.recovery.replayState} · ${record.recovery.checkpointDigest}`,
+      gaps: `${status.unavailableCount} unavailable · ${status.gapCount} gaps · ${status.conflictCount} conflicts · ${status.staleCount} stale · ${status.notAssessedCount} not assessed · ${status.inspectionGapCount} inspection · ${status.capacityGapCount} capacity · ${status.recoveryGapCount} recovery`,
+      receipts: `${record.bindingReceiptDigest} · ${record.inventoryReceiptDigest} · ${record.lifecycleReceiptDigest} · ${record.inspectionReceiptDigest}`,
+      assessment: `${status.state} · ${status.reviewState}`,
+      boundary: "Portable staging identity, repository-relative candidates, lifecycle, exclusion, capacity, inspection and recovery metadata only. This view does not expose machine stage paths or file/diff content and does not establish real stage existence, repository truth, approved scope, mutation, apply/discard, assignment, acceptance, merge, release, deployment, or action authority.",
+    }, state: status.state, actions: [] }]
+  })
+  return { id: "staging-workspace", title: "Governed Isolated Staging Workspace Candidates",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true }, { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" }, { key: "digest", label: "Exact digest" },
+      { key: "identity", label: "Portable staging identity" }, { key: "coverage", label: "Preview coverage" },
+      { key: "lifecycle", label: "Candidate lifecycle" }, { key: "safeguards", label: "Exclusion and capacity" },
+      { key: "recovery", label: "Recovery candidate" }, { key: "gaps", label: "Candidate gaps" },
+      { key: "receipts", label: "Deterministic receipts" }, { key: "assessment", label: "Candidate assessment" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Isolated Staging Workspace candidate",
+      "Create the portable candidate through the governed engine workflow only after an exact current Proposed Change Preview exists. This view cannot create a real stage, apply, discard, or mutate source.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7059,6 +7096,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       implementationReadinessGateProjections: new Map(),
       changedUnitInventoryProjections: new Map(),
       proposedChangePreviewProjections: new Map(),
+      stagingWorkspaceProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -8519,6 +8557,42 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("proposed-change-preview-unavailable", "Proposed Change Preview metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.stagingWorkspace) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const [staging, preview] = await Promise.all([
+            engine.stagingWorkspace!.project(initiative.id),
+            engine.proposedChangePreview?.project(initiative.id),
+          ])
+          return { staging, preview }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.staging
+            const preview = projection.value.preview
+            const { snapshotDigest, ...projectionBody } = value
+            const exactPreview = preview?.candidate !== undefined && value.status.proposedChangePreview !== undefined &&
+              value.status.proposedChangePreview.recordId === preview.candidate.id &&
+              value.status.proposedChangePreview.revision === preview.candidate.revision &&
+              value.status.proposedChangePreview.digest === preview.candidate.digest
+            if (value.candidate !== undefined && value.product.id === empty.product?.id &&
+                value.product.revision === (empty.product.revision ?? 1) && value.product.digest === canonicalDigest(empty.product) &&
+                value.initiative.id === initiative.id && value.initiative.revision === (initiative.revision ?? 1) &&
+                value.initiative.digest === canonicalDigest(initiative) && exactPreview && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.stagingWorkspaceProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Staging Workspace projection was unavailable or did not bind the exact current Proposed Change Preview",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`staging-workspace-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Staging Workspace metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("staging-workspace-unavailable", "Staging Workspace metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (

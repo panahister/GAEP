@@ -94,6 +94,7 @@ import { LowLevelDesignService } from "./low-level-design.js"
 import { ImplementationReadinessGateService } from "./implementation-readiness-gate.js"
 import { ChangedUnitInventoryService } from "./changed-unit-inventory.js"
 import { ProposedChangePreviewService } from "./proposed-change-preview.js"
+import { StagingWorkspaceService } from "./staging-workspace.js"
 import { BusinessArchitectureBaselineService } from "./business-architecture-baseline.js"
 import { BusinessRuleCatalogService } from "./business-rule-catalog.js"
 import { BusinessUnderstandingService } from "./business-understanding.js"
@@ -321,6 +322,7 @@ export class GaepEngine {
   readonly implementationReadinessGate: ImplementationReadinessGateService
   readonly changedUnitInventory: ChangedUnitInventoryService
   readonly proposedChangePreview: ProposedChangePreviewService
+  readonly stagingWorkspace: StagingWorkspaceService
   readonly valueStreamModel: ValueStreamModelService
   readonly operatingModel: OperatingModelService
   readonly businessRuleCatalog: BusinessRuleCatalogService
@@ -1045,6 +1047,12 @@ export class GaepEngine {
       (id) => this.readInitiative(id),
       this.changedUnitInventory,
     )
+    this.stagingWorkspace = new StagingWorkspaceService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.proposedChangePreview,
+    )
     this.designDriftDetection = new DesignDriftDetectionService(
       this.repository,
       () => this.readProduct(),
@@ -1150,7 +1158,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [acceptanceCriteriaIssues, definitionOfReadyIssues, definitionOfDoneIssues, implementationUnitModelIssues, dependencyMappingIssues, technologyProfileIssues, boilerplateRegistryIssues, boilerplateSelectionBindingIssues, boilerplateCompatibilityValidationIssues, routeScreenComponentMappingIssues, testMethodologyIssues, testInventoryIssues, highLevelDesignIssues, lowLevelDesignIssues, implementationReadinessGateIssues, changedUnitInventoryIssues, proposedChangePreviewIssues] = await Promise.all([
+      const [acceptanceCriteriaIssues, definitionOfReadyIssues, definitionOfDoneIssues, implementationUnitModelIssues, dependencyMappingIssues, technologyProfileIssues, boilerplateRegistryIssues, boilerplateSelectionBindingIssues, boilerplateCompatibilityValidationIssues, routeScreenComponentMappingIssues, testMethodologyIssues, testInventoryIssues, highLevelDesignIssues, lowLevelDesignIssues, implementationReadinessGateIssues, changedUnitInventoryIssues, proposedChangePreviewIssues, stagingWorkspaceIssues] = await Promise.all([
         this.acceptanceCriteria.healthIssues(),
         this.definitionOfReady.healthIssues(),
         this.definitionOfDone.healthIssues(),
@@ -1168,6 +1176,7 @@ export class GaepEngine {
         this.implementationReadinessGate.healthIssues(),
         this.changedUnitInventory.healthIssues(),
         this.proposedChangePreview.healthIssues(),
+        this.stagingWorkspace.healthIssues(),
       ])
       const [productIssues, backlogHierarchyIssues, mvpSliceDefinitionIssues, prioritizationModelIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues, figmaContextImportIssues, outboundDesignBriefPackageIssues, governedFigmaWriteIssues, finalizedFigmaSnapshotImportIssues, designToRequirementBindingIssues, designerReadyGateIssues, designDeltaIssues, designConflictResolutionIssues, humanDesignApprovalIssues, designBaselineIssues, designDriftDetectionIssues, figmaToBoilerplateMappingIssues, designToCodeBindingRegistryIssues] = await Promise.all([
         this.productStudio.healthIssues(),
@@ -1246,6 +1255,7 @@ export class GaepEngine {
         ...implementationReadinessGateIssues,
         ...changedUnitInventoryIssues,
         ...proposedChangePreviewIssues,
+        ...stagingWorkspaceIssues,
         ...sourceIssues,
         ...businessIssues,
         ...capabilityMapIssues,

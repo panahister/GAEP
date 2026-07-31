@@ -3509,6 +3509,39 @@ public sealed class ProductWorkflowController(EngineClient client)
             .Append("Authority boundary: repository-relative plan and source/target/diff metadata only; no file or diff content. This inspection does not establish repository truth, approved scope, mutation, staging, apply/discard, assignment, acceptance, merge, release, deployment, or action authority.").ToString();
     }
 
+    public async Task<string> ReadStagingWorkspaceAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken); var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadStagingWorkspaceAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision || projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id || projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest || projection.InitiativeState != initiative.State)
+            throw new ArgumentException("The Product or Initiative changed while Staging Workspace was read. Refresh the exact records.");
+        return RenderStagingWorkspace(projection);
+    }
+
+    public static string RenderStagingWorkspace(StagingWorkspaceProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder().AppendLine("GAEP governed Isolated Staging Workspace candidate").AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine($"Preview coverage: {projection.StagingUnitCount}/{projection.PreviewUnitCount} units · {projection.StagingPathCount}/{projection.PreviewPathCount} paths")
+            .AppendLine($"Candidate outcomes: {projection.CandidateDefinedCount} defined · {projection.UnavailableCount} unavailable · {projection.GapCount} gaps · {projection.ConflictCount} conflicts · {projection.StaleCount} stale · {projection.NotAssessedCount} not assessed")
+            .AppendLine($"Safeguard gaps: {projection.InspectionGapCount} inspection · {projection.ExclusionGapCount} exclusion · {projection.CapacityGapCount} capacity · {projection.RecoveryGapCount} recovery · {projection.EvidenceGapCount} evidence")
+            .AppendLine($"Freshness gaps: {projection.StaleBindingCount} bindings · {projection.StalePreviewCount} previews · {projection.InvalidCandidateCount} invalid · {projection.UnresolvedQuestionCount} questions");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate) output.AppendLine($"Staging Workspace candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+            .AppendLine($"Portable identity: gaep-managed-stage/{candidate.StageKey} · generation {candidate.Generation}")
+            .AppendLine($"Lifecycle: actual stage {candidate.ActualStageExistenceState} · inspection {candidate.InspectionState}")
+            .AppendLine($"Capacity: {candidate.CandidateFileCount}/{candidate.MaximumFiles} files · {candidate.CandidateByteCount}/{candidate.MaximumBytes} bytes")
+            .AppendLine($"Recovery: {candidate.RecoveryState} · {candidate.RecoveryCheckpointDigest}")
+            .AppendLine($"Inspection receipt digest: {candidate.InspectionReceiptDigest}").AppendLine($"Candidate units: {candidate.UnitCount}");
+        else output.AppendLine("Staging Workspace candidate: not recorded");
+        return output.AppendLine().AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append("Authority boundary: portable staging identity, repository-relative candidates, lifecycle, exclusion, capacity, inspection and recovery metadata only; no machine stage paths or file/diff content. This inspection does not establish real stage existence, repository truth, approved scope, mutation, apply/discard, assignment, acceptance, merge, release, deployment, or action authority.").ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

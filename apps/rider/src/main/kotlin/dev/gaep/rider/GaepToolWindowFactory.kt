@@ -874,6 +874,15 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += proposedChangePreviewButton
         actions.add(proposedChangePreviewButton)
 
+        val stagingWorkspaceButton = JButton("Inspect Isolated Staging Workspace…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(project, "Inspect Isolated Staging Workspace", "Enter the exact Initiative UUID. Machine stage paths, file and diff content, real stage existence, repository truth, approved scope, mutation, apply/discard, acceptance, merge, release, deployment, and authority are withheld.", "Initiative ID")?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Isolated Staging Workspace", status, output, buttons) { controller.readStagingWorkspace(initiativeId) }
+            }
+        }
+        buttons += stagingWorkspaceButton
+        actions.add(stagingWorkspaceButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

@@ -212,7 +212,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { proposedChangePreview, changedUnitInventory, designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, figmaToBoilerplateMapping, designToCodeBindingRegistry, routeScreenComponentMapping, testMethodology, testInventory, highLevelDesign, lowLevelDesign, implementationReadinessGate, phase3aRealisticReadinessExample, phase3aDashboard, phase3aCodexReadinessWorkflow, phase3aClaudeReadinessWorkflow, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
+function knownGaps(inputs, { stagingWorkspace, proposedChangePreview, changedUnitInventory, designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, figmaToBoilerplateMapping, designToCodeBindingRegistry, routeScreenComponentMapping, testMethodology, testInventory, highLevelDesign, lowLevelDesign, implementationReadinessGate, phase3aRealisticReadinessExample, phase3aDashboard, phase3aCodexReadinessWorkflow, phase3aClaudeReadinessWorkflow, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -239,7 +239,13 @@ function knownGaps(inputs, { proposedChangePreview, changedUnitInventory, design
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    proposedChangePreview
+    stagingWorkspace
+      ? {
+          id: "phase-3b-isolated-staging-workspace-closure",
+          state: "not-established",
+          basis: "the exact immutable Isolated Staging Workspace candidate lifecycle binds the current Proposed Change Preview and its exact units and repository-relative paths; portable staging identity, bounded not-performed lifecycle, exclusions, capacity, recovery and inspection evidence, deterministic receipts, Product Studio and four host projections are implemented locally; actual machine-local stage existence, provisioning, apply or discard, disposal, repository or path truth, approved change scope or approval, mutation, assignment, execution, acceptance, merge, release, deployment, native-host interaction and Product Owner acceptance remain unestablished",
+        }
+      : proposedChangePreview
       ? {
           id: "phase-3b-proposed-change-preview-closure",
           state: "not-established",
@@ -671,6 +677,9 @@ export async function buildPhase0AcceptanceReport({
   const proposedChangePreview = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "proposed-change-preview" && capability.state === "implemented"))
+  const stagingWorkspace = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "staging-workspace" && capability.state === "implemented"))
   const designSystemTokenContract = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-system-token-contract" && capability.state === "implemented"))
@@ -736,6 +745,7 @@ export async function buildPhase0AcceptanceReport({
     host.capabilities.some((capability) =>
       capability.capabilityId === "phase3a-dashboard" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
+    stagingWorkspace,
     proposedChangePreview,
     changedUnitInventory,
     designApplicability,
@@ -805,8 +815,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: proposedChangePreview || changedUnitInventory ? "phase-3b-implementation" : implementationReadinessGate || lowLevelDesign || highLevelDesign || testInventory || testMethodology || routeScreenComponentMapping || designToCodeBindingRegistry || figmaToBoilerplateMapping || boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: proposedChangePreview
+    phase: stagingWorkspace || proposedChangePreview || changedUnitInventory ? "phase-3b-implementation" : implementationReadinessGate || lowLevelDesign || highLevelDesign || testInventory || testMethodology || routeScreenComponentMapping || designToCodeBindingRegistry || figmaToBoilerplateMapping || boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: stagingWorkspace
+      ? "phase-3b-isolated-staging-workspace-local"
+      : proposedChangePreview
       ? "phase-3b-proposed-change-preview-local"
       : changedUnitInventory
       ? "phase-3b-changed-unit-inventory-local"
@@ -952,7 +964,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: proposedChangePreview
+    claimBoundary: stagingWorkspace
+      ? "This report binds the exact governed Isolated Staging Workspace candidate lifecycle, immutable revision history, exact current Product, Initiative and Proposed Change Preview binding, one staging unit and path candidate per exact preview unit and path, portable staging identity and generation, bounded not-performed lifecycle, explicit exclusion and capacity constraints, recovery and inspection evidence metadata, deterministic scope, identity, unit, path, exclusion, recovery, inspection and assessment receipts, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. It does not establish real stage existence, provisioning, apply or discard, disposal, repository, path, source, target or diff truth, approved change scope or change approval, file or diff content, code mutation, assignment, execution, acceptance, merge, release, deployment, native-host interaction, Product Owner acceptance, security completion or action authority."
+      : proposedChangePreview
       ? "This report binds the exact governed pre-apply Proposed Change Preview candidate lifecycle, immutable revision history, exact current Product, Initiative and Changed Unit Inventory binding, one preview unit and path per inventory candidate, repository-relative source and target candidates, endpoint and diff metadata without file or diff content, plan operations, trace and attributable evidence, deterministic dependency, plan, diff, trace, evidence and assessment receipts, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. It does not establish repository, path, source, target or diff truth, approved change scope or change approval, code mutation, staging, apply or discard, assignment, execution, acceptance, merge, release, deployment, native-host interaction, Product Owner acceptance, security completion or action authority."
       : changedUnitInventory
       ? "This report binds the exact governed Changed Unit Inventory candidate lifecycle, immutable revision history, exact current Product and Initiative plus eight governed dependency bindings and the P3A-24 realistic-example receipt, repository-relative path and change-kind candidates, requirement, backlog, design-to-code, route-screen-component, test and risk traces, dependency and blast-radius candidates, attributable evidence and ownership candidates, deterministic dependency, inventory, trace, blast-radius, evidence, ownership and assessment receipts, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. It does not establish repository or path truth, approved change scope or change approval, owner appointment, implementation readiness, code mutation or staging, assignment, execution, acceptance, merge, release, deployment, native-host interaction, Product Owner acceptance, security completion or action authority."
