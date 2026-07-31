@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-3a-delivery-planning",
+  "evidenceScope": "phase-3a-claude-readiness-workflow-local",
+  "recordedAt": "2026-07-31T08:24:20Z",
+  "sourceCommit": "d3c508a82360c72ea9aa7424d104e9d04420829c",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 96,
+    "hostAssessments": 384,
+    "hostAssessmentsImplemented": 384,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:b1199ee4e402524724edf024011495c67611921c09166d2bd19b27cbe36b3016",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 272176,
+      "digest": "sha256:6e8b5fb1edd57a98f694615f80bb063ca221dd52300cfae326a93c22b03f4a62",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260731T081602Z-phase-3a-claude-readiness-workflow-packages.json",
+      "bytes": 4830,
+      "digest": "sha256:7ff35f1544e527bc7078fb3f83a02d08760c0fea6e61c7434ca60cc13b33a6b4",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260731T081602Z-phase-3a-claude-readiness-workflow-host-behavior.json",
+      "bytes": 3576,
+      "digest": "sha256:b6adfd7d2e46a109e06b62f2fd148a69f6ec5d8725689d4341b81f66913d959c",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260731T081602Z-phase-3a-claude-readiness-workflow.json",
+      "bytes": 65215,
+      "digest": "sha256:ecbbfb877a6239e211aeed3abeb8e3390e5d5937d29228f4e2aa6e6dc0b2ebd9",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260731T081205Z-phase-3a-claude-readiness-workflow/receipt.json",
+      "bytes": 6507,
+      "digest": "sha256:4e3c82410bf71944fffcbaf55882b290752bbfe4d0ec9767f2fdd8d3c057b9ab",
+      "kind": "gaep-phase3a-claude-readiness-workflow-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 132,
+        "testsPassed": 1021,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:e4e45d3d49aad851d5c28503f71dad058de8dcaf0703d594bebc8d3e5a5044b3"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:5dd89c0207b07d57f22bde80dfe81b74da1bcd3c72f34a4ff282d6b8feb39a19"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 36,
+        "passed": 36,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:cf18ca1a8d7f94c6eeb3dc91241b7a3d9f9ddda70fb2acb60fd50dac5a9c977d"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:41f361af4d32e96bb80bd5c9d95dcc19b9a21fb9aa2c2153f3bb449aaf6b7e87"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:906a60125135075540afde37465a90f212c2e690cffb45c1f681442c293a17a3"
+    }
+  ],
+  "testsDigest": "sha256:ee8df12ac52d2e2154d1ae5e9a91ecadc64001ebb718bee3bfb5b9c26ad2de3a",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-3a-claude-readiness-workflow-closure",
+      "state": "not-established",
+      "basis": "the exact deterministic Claude Phase 3A readiness workflow binds semantic parity to the sealed Codex scenario, 20 ordered P3A-01 through P3A-20 candidate stages, a fresh isolated tool-free context-only Claude receipt, two exact reopen observations, three fail-closed stale, gap and conflict recovery cases, the Product Studio Implementation Readiness table, four current host projections and zero live requests, credentials, policy bypasses or implementation effects; fixture evidence does not establish a supported Claude runtime, authentication or policy readiness, semantic quality, real Product, artifact or evidence truth, waiver or owner authority, implementation readiness, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion, release or deployment authority"
+    }
+  ],
+  "knownGapsDigest": "sha256:b85f13d9b861af5c7e02c91d5880f6fdcee80d7fad690164e7482ad6a2d22fbe",
+  "claimBoundary": "This report binds the exact deterministic Claude Phase 3A readiness workflow: semantic parity to the sealed Codex scenario, 20 ordered P3A-01 through P3A-20 candidate stages, one freshly verified isolated tool-free context-only Claude receipt with no staging, Tools or write scopes, two exact reopen observations with zero continuity mismatch or mutation, three fail-closed stale, gap and conflict recovery cases, the current Product Studio Implementation Readiness table, four current host projections and zero live provider requests, credential access, administrator-policy bypasses or implementation effects to current package, test, host, conformance and artifact evidence. This report does not establish a supported Claude runtime, authentication or policy readiness, semantic model quality, real Product, backlog, design, boilerplate, test, risk, security, artifact or evidence truth or completeness; approval, waiver or owner authority; implementation readiness, assignment, execution, acceptance, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion, release authorization or deployment approval."
+}
