@@ -42,6 +42,7 @@ import type {
   BacklogToCodeTraceabilityProjection,
   ApplyDiscardFoundationProjection,
   ScopedApplyProjection,
+  RollbackRecoveryProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -317,6 +318,9 @@ export interface CurrentStudioEngineReader {
   scopedApply?: {
     project(initiativeId: string): Promise<ScopedApplyProjection>
   }
+  rollbackRecovery?: {
+    project(initiativeId: string): Promise<RollbackRecoveryProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -520,6 +524,7 @@ interface ObservedStudioState {
   backlogToCodeTraceabilityProjections: Map<string, BacklogToCodeTraceabilityProjection>
   applyDiscardFoundationProjections: Map<string, ApplyDiscardFoundationProjection>
   scopedApplyProjections: Map<string, ScopedApplyProjection>
+  rollbackRecoveryProjections: Map<string, RollbackRecoveryProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3970,6 +3975,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     backlogToCodeTraceability: backlogToCodeTraceabilityTable(state.backlogToCodeTraceabilityProjections.values()),
     applyDiscardFoundations: applyDiscardFoundationTable(state.applyDiscardFoundationProjections.values()),
     scopedApplies: scopedApplyTable(state.scopedApplyProjections.values()),
+    rollbackRecoveries: rollbackRecoveryTable(state.rollbackRecoveryProjections.values()),
   }
 }
 
@@ -5600,6 +5606,36 @@ export function scopedApplyTable(projections: Iterable<ScopedApplyProjection>): 
       { key: "boundary", label: "Privacy and authority boundary" }], rows, actions: [],
     ...(rows.length === 0 ? { emptyState: emptySurface("No governed Scoped Apply candidate",
       "Create the metadata-only subset selection through the governed engine after every exact current change, preview, stage, controlled-plan, backlog-trace and P3B-13 predecessor exists. Refresh Product Studio after a superseding revision. This view cannot create or inspect a real stage, mutate source, execute apply or recovery, establish approval or authorization, or accept work.") } : {}) }
+}
+
+export function rollbackRecoveryTable(projections: Iterable<RollbackRecoveryProjection>): StudioTableSnapshot {
+  const rows = [...projections].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const safeguards = `stale-stage ${record.safeguards.staleStageRejectionState} · scope ${record.safeguards.scopeConfinementState} · checkpoint ${record.safeguards.checkpointIntegrityState} · tamper ${record.safeguards.tamperRejectionState} · atomicity ${record.safeguards.atomicityState} · power-loss ${record.safeguards.powerLossState} · unsupported-effect ${record.safeguards.unsupportedEffectState}`
+    const boundary = "Rollback and recovery candidate metadata only. Checkpoint, path, plan, safeguard and evidence identities are unverified candidates; this view does not inspect or create a real stage or checkpoint, inspect or mutate source, execute rollback, recovery or return to service, establish approval, authorization, outcome or acceptance, or grant action authority."
+    const pointRows = record.rollbackPoints.map((point) => ({ id: point.id, cells: { initiative: projection.initiative.id,
+      stage: record.stageIdentity.stageKey, generation: String(record.stageIdentity.generation), kind: "rollback-point", key: point.rollbackPointKey,
+      subject: point.kind, state: point.state, detail: `${point.completedWorkflowStepCount} completed Workflow step candidates`,
+      receipt: point.checkpointDigest, safeguards, assessment: `${projection.status.state} · ${projection.status.staleBindingCount} stale binding · ${projection.status.coverageGapCount} coverage gap · ${projection.status.tamperSuspectedCount} tamper suspected · ${projection.status.unsupportedEffectCount} unsupported`, boundary }, state: point.state, actions: [] }))
+    const subjectRows = record.subjects.map((subject) => ({ id: subject.id, cells: { initiative: projection.initiative.id,
+      stage: record.stageIdentity.stageKey, generation: String(record.stageIdentity.generation), kind: "recovery-subject", key: subject.subjectKey,
+      subject: subject.pathCandidate, state: subject.scopeState, detail: `plan ${subject.recoveryPlanKey}`,
+      receipt: record.subjectReceiptDigest, safeguards, assessment: `${projection.status.state} · ${projection.status.subjectCount} subjects · ${projection.status.recoveryPlanCount} plans`, boundary }, state: subject.scopeState, actions: [] }))
+    const planRows = record.recoveryPlans.map((plan) => ({ id: `plan:${projection.initiative.id}:${plan.key}`, cells: { initiative: projection.initiative.id,
+      stage: record.stageIdentity.stageKey, generation: String(record.stageIdentity.generation), kind: "recovery-plan", key: plan.key,
+      subject: plan.scope, state: plan.state, detail: `${plan.subjectCount} subjects · ${plan.stepCount} non-executed steps`,
+      receipt: record.planReceiptDigest, safeguards, assessment: `${projection.status.state} · review ${record.reviewState}`, boundary }, state: plan.state, actions: [] }))
+    return [...pointRows, ...subjectRows, ...planRows]
+  })
+  return { id: "rollback-recovery", title: "Governed Rollback and Recovery", columns: [
+    { key: "initiative", label: "Initiative", identifier: true }, { key: "stage", label: "Candidate stage", identifier: true },
+    { key: "generation", label: "Generation" }, { key: "kind", label: "Candidate kind" }, { key: "key", label: "Candidate key" },
+    { key: "subject", label: "Subject" }, { key: "state", label: "Candidate state" }, { key: "detail", label: "Bounded detail" },
+    { key: "receipt", label: "Deterministic receipt" }, { key: "safeguards", label: "Candidate safeguards and limitations" },
+    { key: "assessment", label: "Fail-closed assessment" }, { key: "boundary", label: "Privacy and authority boundary" }], rows, actions: [],
+    ...(rows.length === 0 ? { emptyState: emptySurface("No governed Rollback and Recovery candidate",
+      "Create the metadata-only candidate through the governed engine after the exact current recovery model, stage, whole-stage decision and scoped selection exist. Refresh Product Studio after a superseding revision. This view cannot create or inspect a real stage or checkpoint, mutate source, execute rollback or recovery, return a system to service, establish approval or authorization, or accept work.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7519,6 +7555,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       backlogToCodeTraceabilityProjections: new Map(),
       applyDiscardFoundationProjections: new Map(),
       scopedApplyProjections: new Map(),
+      rollbackRecoveryProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -9473,6 +9510,55 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("scoped-apply-unavailable", "Scoped Apply metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.rollbackRecovery) {
+      if (auditSemanticsVerified && engine.failureRecoveryModel) {
+        const recoveryModelProjections = await Promise.allSettled(empty.initiatives.map((initiative) => engine.failureRecoveryModel!.project(initiative.id)))
+        recoveryModelProjections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative || projection.status !== "fulfilled") return
+          const { snapshotDigest, ...projectionBody } = projection.value
+          if (projection.value.model !== undefined && projection.value.product.id === empty.product?.id &&
+              projection.value.product.revision === (empty.product.revision ?? 1) && projection.value.product.digest === canonicalDigest(empty.product) &&
+              projection.value.initiative.id === initiative.id && projection.value.initiative.revision === (initiative.revision ?? 1) &&
+              projection.value.initiative.digest === canonicalDigest(initiative) && snapshotDigest === canonicalDigest(projectionBody)) {
+            empty.failureRecoveryModelProjections.set(initiative.id, projection.value)
+          }
+        })
+        const projections = await Promise.allSettled(empty.initiatives.map((initiative) => engine.rollbackRecovery!.project(initiative.id)))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value
+            const candidates = {
+              failureRecoveryModel: empty.failureRecoveryModelProjections.get(initiative.id)?.model,
+              stagingWorkspace: empty.stagingWorkspaceProjections.get(initiative.id)?.candidate,
+              applyDiscardFoundation: empty.applyDiscardFoundationProjections.get(initiative.id)?.candidate,
+              scopedApply: empty.scopedApplyProjections.get(initiative.id)?.candidate,
+            }
+            const { snapshotDigest, ...projectionBody } = value
+            const exactDependencies = value.status.dependencies !== undefined &&
+              (Object.keys(candidates) as (keyof typeof candidates)[]).every((key) => {
+                const reference = value.status.dependencies?.[key], candidate = candidates[key]
+                return reference !== undefined && candidate !== undefined && reference.recordId === candidate.id &&
+                  reference.revision === candidate.revision && reference.digest === candidate.digest
+              })
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactDependencies && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.rollbackRecoveryProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Rollback and Recovery projection was unavailable or did not bind all exact current recovery-model, stage, apply/discard, and scoped-apply predecessors",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`rollback-recovery-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Rollback and Recovery metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("rollback-recovery-unavailable", "Rollback and Recovery metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (
