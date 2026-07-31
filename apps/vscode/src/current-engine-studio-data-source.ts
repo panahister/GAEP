@@ -37,6 +37,7 @@ import type {
   ModelSwitchImplementationProjection,
   ApprovedFigmaContextRetrievalProjection,
   ControlledDesignToCodeGenerationProjection,
+  DesignToCodeTraceabilityProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -297,6 +298,9 @@ export interface CurrentStudioEngineReader {
   controlledDesignToCodeGeneration?: {
     project(initiativeId: string): Promise<ControlledDesignToCodeGenerationProjection>
   }
+  designToCodeTraceability?: {
+    project(initiativeId: string): Promise<DesignToCodeTraceabilityProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -495,6 +499,7 @@ interface ObservedStudioState {
   modelSwitchImplementationProjections: Map<string, ModelSwitchImplementationProjection>
   approvedFigmaContextRetrievalProjections: Map<string, ApprovedFigmaContextRetrievalProjection>
   controlledDesignToCodeGenerationProjections: Map<string, ControlledDesignToCodeGenerationProjection>
+  designToCodeTraceabilityProjections: Map<string, DesignToCodeTraceabilityProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3940,6 +3945,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     modelSwitchImplementations: modelSwitchImplementationTable(state),
     approvedFigmaContextRetrievals: approvedFigmaContextRetrievalTable(state),
     controlledDesignToCodeGenerations: controlledDesignToCodeGenerationTable(state),
+    designToCodeTraceability: designToCodeTraceabilityTable(state.designToCodeTraceabilityProjections.values()),
   }
 }
 
@@ -5423,6 +5429,39 @@ function controlledDesignToCodeGenerationTable(state: ObservedStudioState): Stud
       { key: "assessment", label: "Candidate assessment" }, { key: "boundary", label: "Privacy and authority boundary" },
     ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Controlled Design-to-Code Generation plan",
       "Create the offline generation-plan candidate through the governed engine only after every exact current design, target, staging, and provider/model predecessor exists. This view cannot call Figma or a provider, generate code, create a stage, or mutate source.") } : {}) }
+}
+
+export function designToCodeTraceabilityTable(projections: Iterable<DesignToCodeTraceabilityProjection>): StudioTableSnapshot {
+  const rows = [...projections].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    return record.traces.map((trace) => ({ id: trace.id, cells: {
+      initiative: projection.initiative.id, trace: trace.traceKey, candidate: record.id, revision: String(record.revision),
+      design: `${trace.designItemKey} · baseline ${trace.baselineSemanticVersion} · version ${trace.approvedExternalVersionDigest}`,
+      requirements: trace.requirementKeys.join(", "), backlog: trace.backlogNodeKeys.join(", "),
+      acceptance: trace.acceptanceCriterionKeys.join(", "), unit: trace.implementationUnitId,
+      target: trace.generationTargetKey,
+      code: `${trace.repositoryCandidate}/${trace.moduleCandidate}/${trace.pathCandidate}${trace.symbolCandidate ? ` · ${trace.symbolCandidate}` : ""}`,
+      tests: trace.associatedTestAssetKeys.join(", "), evidence: `${trace.evidenceReferenceCount} attributable reference(s)`,
+      state: trace.traceState,
+      gaps: `${projection.status.gapCount} gap · ${projection.status.conflictCount} conflict · ${projection.status.staleTraceCount} stale · ${projection.status.coverageGapCount} coverage · ${projection.status.staleBindingCount} binding`,
+      receipts: `${record.designVersionReceiptDigest} · ${record.traceCatalogDigest} · ${record.coverageReceiptDigest} · ${record.evidenceReceiptDigest}`,
+      boundary: "Candidate trace metadata only. Repository-relative locations and symbols are unverified candidates; this view does not expose design/source content or generated output, execute tests, establish repository/path/symbol/output/result truth, approve or accept work, release, deploy, or grant action authority.",
+    }, state: trace.traceState === "candidate-linked" ? projection.status.state : trace.traceState, actions: [] }))
+  })
+  return { id: "design-to-code-traceability", title: "Governed Design-to-Code Traceability",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true }, { key: "trace", label: "Trace", identifier: true },
+      { key: "candidate", label: "Candidate" }, { key: "revision", label: "Revision" },
+      { key: "design", label: "Approved design item and version" }, { key: "requirements", label: "Requirements" },
+      { key: "backlog", label: "Backlog items" }, { key: "acceptance", label: "Acceptance criteria" },
+      { key: "unit", label: "Implementation unit" }, { key: "target", label: "Controlled generation target" },
+      { key: "code", label: "Candidate code location" }, { key: "tests", label: "Associated tests" },
+      { key: "evidence", label: "Attributable evidence" }, { key: "state", label: "Trace state" },
+      { key: "gaps", label: "Gap, conflict, and stale signals" }, { key: "receipts", label: "Deterministic receipts" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Design-to-Code Traceability candidate",
+      "Create the metadata-only trace candidate through the governed engine after the exact current controlled generation, design, backlog, acceptance, implementation-unit, preview, and test predecessors exist. Refresh Product Studio after a superseding revision. This view cannot access Figma or source content, generate or inspect code, execute tests, approve, or accept work.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7337,6 +7376,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       modelSwitchImplementationProjections: new Map(),
       approvedFigmaContextRetrievalProjections: new Map(),
       controlledDesignToCodeGenerationProjections: new Map(),
+      designToCodeTraceabilityProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -9073,6 +9113,53 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("controlled-design-to-code-generation-unavailable", "Controlled Design-to-Code Generation plan metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.designToCodeTraceability) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map((initiative) =>
+          engine.designToCodeTraceability!.project(initiative.id)))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value
+            const candidates = {
+              controlledDesignToCodeGeneration: empty.controlledDesignToCodeGenerationProjections.get(initiative.id)?.candidate,
+              approvedFigmaContextRetrieval: empty.approvedFigmaContextRetrievalProjections.get(initiative.id)?.candidate,
+              designBaseline: empty.designBaselineProjections.get(initiative.id)?.candidate,
+              designToRequirementBinding: empty.designToRequirementBindingProjections.get(initiative.id)?.candidate,
+              figmaToBoilerplateMapping: empty.figmaToBoilerplateMappingProjections.get(initiative.id)?.candidate,
+              designToCodeBindingRegistry: empty.designToCodeBindingRegistryProjections.get(initiative.id)?.candidate,
+              routeScreenComponentMapping: empty.routeScreenComponentMappingProjections.get(initiative.id)?.candidate,
+              backlogHierarchy: empty.backlogHierarchyProjections.get(initiative.id)?.candidate,
+              acceptanceCriteria: empty.acceptanceCriteriaProjections.get(initiative.id)?.candidate,
+              implementationUnitModel: empty.implementationUnitModelProjections.get(initiative.id)?.candidate,
+              proposedChangePreview: empty.proposedChangePreviewProjections.get(initiative.id)?.candidate,
+              testInventory: empty.testInventoryProjections.get(initiative.id)?.candidate,
+            }
+            const { snapshotDigest, ...projectionBody } = value
+            const exactDependencies = value.status.dependencies !== undefined &&
+              (Object.keys(candidates) as (keyof typeof candidates)[]).every((key) => {
+                const reference = value.status.dependencies?.[key]
+                const candidate = candidates[key]
+                return reference !== undefined && candidate !== undefined && reference.recordId === candidate.id &&
+                  reference.revision === candidate.revision && reference.digest === candidate.digest
+              })
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactDependencies && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.designToCodeTraceabilityProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Design-to-Code Traceability projection was unavailable or did not bind all exact current design, backlog, generation, and test predecessors",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`design-to-code-traceability-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Design-to-Code Traceability metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("design-to-code-traceability-unavailable", "Design-to-Code Traceability metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (
