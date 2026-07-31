@@ -19,6 +19,7 @@ import { designToCodeBindingRegistryInputSchema } from "./design-to-code-binding
 import { routeScreenComponentMappingInputSchema } from "./route-screen-component-mapping.js"
 import { testMethodologyInputSchema } from "./test-methodology.js"
 import { testInventoryInputSchema } from "./test-inventory.js"
+import { highLevelDesignInputSchema } from "./high-level-design.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -818,6 +819,18 @@ export const hostTestInventoryReviseParamsSchema = z.object({
   record: testInventoryInputSchema,
 }).strict()
 
+export const hostHighLevelDesignCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: highLevelDesignInputSchema,
+}).strict()
+
+export const hostHighLevelDesignReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: highLevelDesignInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1520,6 +1533,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.testInventory.revise", hostTestInventoryReviseParamsSchema),
   requestVariant("planning.testInventory.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.testInventory.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.highLevelDesign.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.highLevelDesign.create", hostHighLevelDesignCreateParamsSchema),
+  requestVariant("planning.highLevelDesign.revise", hostHighLevelDesignReviseParamsSchema),
+  requestVariant("planning.highLevelDesign.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.highLevelDesign.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

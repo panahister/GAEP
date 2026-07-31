@@ -179,6 +179,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.testInventory.revise",
   "planning.testInventory.assess",
   "planning.testInventory.snapshot",
+  "planning.highLevelDesign.read",
+  "planning.highLevelDesign.create",
+  "planning.highLevelDesign.revise",
+  "planning.highLevelDesign.assess",
+  "planning.highLevelDesign.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1595,6 +1600,21 @@ export class EngineHost {
         return this.engine.testInventory.assess(request.params.initiativeId)
       case "planning.testInventory.snapshot":
         return this.engine.testInventory.project(request.params.initiativeId)
+      case "planning.highLevelDesign.read":
+        return await this.engine.highLevelDesign.readCurrent(request.params.initiativeId) ?? null
+      case "planning.highLevelDesign.create":
+        return this.engine.highLevelDesign.create(request.params.record, actorId(request.params.actorId))
+      case "planning.highLevelDesign.revise":
+        return this.engine.highLevelDesign.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.highLevelDesign.assess":
+        return this.engine.highLevelDesign.assess(request.params.initiativeId)
+      case "planning.highLevelDesign.snapshot":
+        return this.engine.highLevelDesign.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":
