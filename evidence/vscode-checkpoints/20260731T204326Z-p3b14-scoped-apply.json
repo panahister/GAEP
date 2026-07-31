@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "kind": "vscode-local-implementation-checkpoint",
+  "feature": {
+    "id": "P3B-14",
+    "title": "Scoped Apply",
+    "implementationScope": "shared-contract-engine-and-vscode-product-studio"
+  },
+  "recordedAt": "2026-07-31T20:43:26.000Z",
+  "branch": "codex/gaep-hardwork-completion",
+  "source": {
+    "contractCommit": "40457af",
+    "engineCommit": "abc6ab3",
+    "productStudioCommit": "9a5a198"
+  },
+  "implementation": {
+    "contract": "packages/contracts/src/scoped-apply.ts",
+    "engine": "packages/engine/src/scoped-apply.ts",
+    "productStudioDataSource": "apps/vscode/src/current-engine-studio-data-source.ts",
+    "vscodeProtocol": "apps/vscode/src/studio-protocol.ts",
+    "surface": "Product Studio Delivery route",
+    "lifecycle": [
+      "immutable versioned scoped-apply subset-selection candidate history",
+      "exact current Changed Unit Inventory, Proposed Change Preview, Isolated Staging Workspace, Controlled Codex Implementation, Backlog-to-Code Traceability, and Apply/Discard Foundation predecessor validation",
+      "non-empty selected path set plus explicit excluded path set covering every exact candidate stage path once",
+      "exact candidate stage identity and generation binding with selected paths confined to the candidate write envelope",
+      "whole-stage discard preserved as a separate decision rather than inferred from scoped exclusion",
+      "candidate stale-stage rejection, scope-confinement, atomicity, rollback, and write-ahead recovery controls",
+      "deterministic dependency, stage, selection, exclusion, envelope, recovery, evidence, and assessment receipts",
+      "fail-closed stale-binding, coverage-gap, conflict, out-of-envelope, invalid-candidate, and unresolved-question handling",
+      "bounded privacy-safe Product Studio projection with no effect action"
+    ]
+  },
+  "verification": {
+    "typecheck": { "command": "npm run typecheck", "status": "passed" },
+    "focused": {
+      "command": "npx vitest run packages/contracts/src/scoped-apply.test.ts packages/engine/src/scoped-apply.test.ts apps/vscode/src/scoped-apply-product-studio.test.ts apps/vscode/src/studio-protocol.test.ts apps/vscode/src/studio-accessibility.test.ts apps/vscode/src/current-engine-studio-data-source.test.ts",
+      "status": "passed",
+      "testFilesPassed": 6,
+      "testsPassed": 146,
+      "testsSkipped": 0
+    },
+    "sharedAndVscode": {
+      "command": "npx vitest run packages apps/vscode",
+      "status": "passed",
+      "testFilesPassed": 153,
+      "testsPassed": 1042,
+      "testsSkipped": 1
+    },
+    "vscodePackage": {
+      "command": "npm run package:vscode",
+      "status": "passed",
+      "path": "apps/vscode/dist/gaep-vscode.vsix",
+      "bytes": 1208578,
+      "sha256": "2b42710bf139aea23186d614e03837de978d9893f7c4eb0c946382da64ab00e7",
+      "published": false
+    },
+    "isolatedExtensionHost": {
+      "command": "npm run test:vscode:extension-host",
+      "status": "passed",
+      "normalProfileUsed": false,
+      "checks": [
+        "development activation, contributed commands, four native views, and Product Studio open",
+        "explicit two-root Product context without silent Product-root mutation",
+        "isolated previous-version install, upgrade, reinstall, rollback, uninstall, absence, and final install",
+        "exact VSIX activation, commands, views, Product Studio, bundled-engine empty recovery/evidence workflow, and no workspace mutation"
+      ],
+      "limitation": "The test harness disables workspace trust, so untrusted-host behavior is not established by this receipt."
+    }
+  },
+  "acceptanceBoundary": {
+    "candidateSubsetSelectionMetadataOnly": true,
+    "realStageExistence": "not-established",
+    "repositoryInspection": "not-performed",
+    "sourceInspection": "not-performed",
+    "sourceMutation": "not-performed",
+    "applyExecution": "not-performed",
+    "discardExecution": "not-performed",
+    "recoveryExecution": "not-performed",
+    "approval": "not-established",
+    "authorization": "not-established",
+    "outcomeTruth": "not-established",
+    "nativeVscodeAcceptance": "not-established",
+    "liveProviderValidation": "not-performed",
+    "productOwnerAcceptance": "not-established",
+    "securityReview": "skipped",
+    "releaseAuthorization": "not-granted",
+    "publicationAuthorization": "not-granted",
+    "deploymentAuthorization": "not-granted",
+    "actionAuthority": "not-granted"
+  },
+  "externalEffects": {
+    "credentialAccess": false,
+    "externalProviderCalls": 0,
+    "figmaCalls": 0,
+    "realStageCreation": false,
+    "sourceMutation": false,
+    "externalSystemMutations": 0,
+    "normalProfileExtensionMutation": false,
+    "packagePublished": false,
+    "releaseOrDeploymentPerformed": false
+  }
+}
