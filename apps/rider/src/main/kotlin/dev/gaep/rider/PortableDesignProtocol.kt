@@ -3031,6 +3031,70 @@ data class TestMethodologyProjection(
     val snapshotDigest: String,
 )
 
+data class TestInventoryReference(val recordId: UUID, val revision: Long, val digest: String)
+
+data class TestInventoryRecordView(
+    val id: UUID,
+    val revision: Long,
+    val digest: String,
+    val catalogReceiptDigest: String,
+    val coverageReceiptDigest: String,
+    val traceReceiptDigest: String,
+    val ownershipReceiptDigest: String,
+    val assessmentReceiptDigest: String,
+    val assetCount: Int,
+    val catalogedAssetCount: Int,
+    val conflictAssetCount: Int,
+    val observedAssetCount: Int,
+    val plannedAssetCount: Int,
+    val reviewState: String,
+)
+
+data class TestInventoryProjection(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val state: String,
+    val reviewState: String,
+    val reasons: List<String>,
+    val dependencies: Map<String, TestInventoryReference>,
+    val sourceCriterionCount: Int,
+    val sourceRiskCount: Int,
+    val sourceUnitCount: Int,
+    val sourceMappingSubjectCount: Int,
+    val sourceMethodologyScopeCount: Int,
+    val assetCount: Int,
+    val catalogedAssetCount: Int,
+    val conflictAssetCount: Int,
+    val missingAssetCount: Int,
+    val deferredAssetCount: Int,
+    val notAssessedAssetCount: Int,
+    val observedAssetCount: Int,
+    val plannedAssetCount: Int,
+    val automatedAssetCount: Int,
+    val manualAssetCount: Int,
+    val duplicateIdentityCount: Int,
+    val orphanAssetCount: Int,
+    val uncoveredCriterionCount: Int,
+    val uncoveredRiskCount: Int,
+    val uncoveredUnitCount: Int,
+    val uncoveredMappingSubjectCount: Int,
+    val uncoveredMethodologyScopeCount: Int,
+    val ownershipGapCount: Int,
+    val traceGapCount: Int,
+    val evidenceGapCount: Int,
+    val staleBindingCount: Int,
+    val staleDependencyCount: Int,
+    val invalidCandidateCount: Int,
+    val unresolvedQuestionCount: Int,
+    val candidate: TestInventoryRecordView?,
+    val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -4270,6 +4334,12 @@ internal object PortableDesignProtocol {
         "test-methodology-projection-is-read-only-and-does-not-establish-requirement-or-acceptance-criteria-truth-methodology-validity-or-completeness-environment-availability-test-data-fitness-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority"
     private const val TEST_METHODOLOGY_STATUS_AUTHORITY_BOUNDARY =
         "test-methodology-status-is-observational-and-does-not-establish-requirement-or-acceptance-criteria-truth-methodology-validity-or-completeness-environment-availability-test-data-fitness-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority"
+    private const val TEST_INVENTORY_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-test-catalog-coverage-trace-ownership-assessment-snapshot-digests-only-not-test-titles-paths-code-steps-data-owner-evidence-results-personal-data-secrets-credentials-or-machine-paths"
+    private const val TEST_INVENTORY_PROJECTION_AUTHORITY_BOUNDARY =
+        "test-inventory-projection-is-read-only-and-does-not-establish-requirement-acceptance-criteria-or-risk-truth-inventory-validity-or-completeness-test-asset-existence-environment-availability-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority"
+    private const val TEST_INVENTORY_STATUS_AUTHORITY_BOUNDARY =
+        "test-inventory-status-is-observational-and-does-not-establish-requirement-acceptance-criteria-or-risk-truth-inventory-validity-or-completeness-test-asset-existence-environment-availability-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -11556,6 +11626,170 @@ internal object PortableDesignProtocol {
             environmentCount, dataPolicyCount, evidenceExpectationCount, entryCriterionCount, exitCriterionCount,
             missingScopeCount, extraScopeCount, invalidDecisionCount, environmentGapCount, dataPolicyGapCount,
             ownershipGapCount, traceGapCount, evidenceGapCount, criterionGapCount, staleBindingCount,
+            staleDependencyCount, invalidCandidateCount, unresolvedQuestionCount, candidate, snapshotDigest,
+        )
+    }
+
+    fun parseTestInventoryEnvelope(
+        envelope: JsonObject,
+        expectedInitiativeId: UUID,
+    ): TestInventoryProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "product", "initiative", "status", "observedAt",
+                "privacyBoundary", "authorityBoundary", "snapshotDigest",
+            ),
+            setOf("candidate"),
+        )
+        if (projection.requireInt("schemaVersion") != 1 ||
+            projection.requireString("kind") != "test-inventory-projection" ||
+            projection.requireString("privacyBoundary") != TEST_INVENTORY_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != TEST_INVENTORY_PROJECTION_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        val digestBody = projection.deepCopy().also { it.remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+
+        val product = projection.get("product").requireObject()
+        product.requireExactKeys("id", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("id")
+        val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject()
+        initiative.requireExactKeys("id", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("id")
+        val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+
+        val dependencyNames = listOf(
+            "acceptanceCriteria", "riskRegister", "implementationUnitModel",
+            "routeScreenComponentMapping", "testMethodology",
+        )
+        val status = projection.get("status").requireObject()
+        status.requireKeys(
+            setOf(
+                "schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision",
+                "sourceCriterionCount", "sourceRiskCount", "sourceUnitCount", "sourceMappingSubjectCount",
+                "sourceMethodologyScopeCount", "assetCount", "catalogedAssetCount", "conflictAssetCount",
+                "missingAssetCount", "deferredAssetCount", "notAssessedAssetCount", "observedAssetCount",
+                "plannedAssetCount", "automatedAssetCount", "manualAssetCount", "duplicateIdentityCount",
+                "orphanAssetCount", "uncoveredCriterionCount", "uncoveredRiskCount", "uncoveredUnitCount",
+                "uncoveredMappingSubjectCount", "uncoveredMethodologyScopeCount", "ownershipGapCount",
+                "traceGapCount", "evidenceGapCount", "staleBindingCount", "staleDependencyCount",
+                "invalidCandidateCount", "unresolvedQuestionCount", "reviewState", "state", "reasons",
+                "assessedAt", "authorityBoundary",
+            ),
+            (dependencyNames + "candidate").toSet(),
+        )
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "test-inventory-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != TEST_INVENTORY_STATUS_AUTHORITY_BOUNDARY
+        ) throw invalidResponse()
+        fun reference(name: String): TestInventoryReference? = status.get(name)?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys("recordId", "revision", "digest")
+            val revision = value.requireLong("revision")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            TestInventoryReference(value.requireNonEmptyUuid("recordId"), revision, value.requireDigest("digest"))
+        }
+        val candidateReference = reference("candidate")
+        val dependencies = dependencyNames.mapNotNull { name -> reference(name)?.let { name to it } }.toMap()
+        fun count(name: String, maximum: Int = 65_536) = status.requireBoundedNonNegativeInt(name, maximum)
+        val sourceCriterionCount = count("sourceCriterionCount")
+        val sourceRiskCount = count("sourceRiskCount", 4_096)
+        val sourceUnitCount = count("sourceUnitCount")
+        val sourceMappingSubjectCount = count("sourceMappingSubjectCount")
+        val sourceMethodologyScopeCount = count("sourceMethodologyScopeCount")
+        val assetCount = count("assetCount")
+        val catalogedAssetCount = count("catalogedAssetCount")
+        val conflictAssetCount = count("conflictAssetCount")
+        val missingAssetCount = count("missingAssetCount")
+        val deferredAssetCount = count("deferredAssetCount")
+        val notAssessedAssetCount = count("notAssessedAssetCount")
+        if (catalogedAssetCount + conflictAssetCount + missingAssetCount + deferredAssetCount + notAssessedAssetCount != assetCount) {
+            throw invalidResponse()
+        }
+        val observedAssetCount = count("observedAssetCount")
+        val plannedAssetCount = count("plannedAssetCount")
+        val automatedAssetCount = count("automatedAssetCount")
+        val manualAssetCount = count("manualAssetCount")
+        val duplicateIdentityCount = count("duplicateIdentityCount")
+        val orphanAssetCount = count("orphanAssetCount")
+        val uncoveredCriterionCount = count("uncoveredCriterionCount")
+        val uncoveredRiskCount = count("uncoveredRiskCount", 4_096)
+        val uncoveredUnitCount = count("uncoveredUnitCount")
+        val uncoveredMappingSubjectCount = count("uncoveredMappingSubjectCount")
+        val uncoveredMethodologyScopeCount = count("uncoveredMethodologyScopeCount")
+        val ownershipGapCount = count("ownershipGapCount")
+        val traceGapCount = count("traceGapCount")
+        val evidenceGapCount = count("evidenceGapCount")
+        val staleBindingCount = count("staleBindingCount", 1)
+        val staleDependencyCount = count("staleDependencyCount", 5)
+        val invalidCandidateCount = count("invalidCandidateCount", 1)
+        val unresolvedQuestionCount = count("unresolvedQuestionCount", 512)
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val state = status.requireOneOf("state", setOf("attention-required", "candidate-complete"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 1_024) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        val gaps = conflictAssetCount + missingAssetCount + deferredAssetCount + notAssessedAssetCount +
+            duplicateIdentityCount + orphanAssetCount + uncoveredCriterionCount + uncoveredRiskCount + uncoveredUnitCount +
+            uncoveredMappingSubjectCount + uncoveredMethodologyScopeCount + ownershipGapCount + traceGapCount +
+            evidenceGapCount + staleBindingCount + staleDependencyCount + invalidCandidateCount + unresolvedQuestionCount
+        if ((state == "candidate-complete" &&
+                (gaps > 0 || candidateReference == null || dependencies.size != dependencyNames.size ||
+                    catalogedAssetCount != assetCount || reviewState != "ready-for-human-review" || reasons.isNotEmpty())) ||
+            (state == "attention-required" && reasons.isEmpty())
+        ) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject()
+            value.requireExactKeys(
+                "id", "revision", "digest", "state", "catalogReceiptDigest", "coverageReceiptDigest",
+                "traceReceiptDigest", "ownershipReceiptDigest", "assessmentReceiptDigest", "assetCount",
+                "catalogedAssetCount", "conflictAssetCount", "observedAssetCount", "plannedAssetCount",
+                "reviewState", "updatedAt",
+            )
+            val id = value.requireNonEmptyUuid("id")
+            val revision = value.requireLong("revision")
+            val record = TestInventoryRecordView(
+                id, revision, value.requireDigest("digest"), value.requireDigest("catalogReceiptDigest"),
+                value.requireDigest("coverageReceiptDigest"), value.requireDigest("traceReceiptDigest"),
+                value.requireDigest("ownershipReceiptDigest"), value.requireDigest("assessmentReceiptDigest"),
+                value.requireBoundedNonNegativeInt("assetCount", 65_536),
+                value.requireBoundedNonNegativeInt("catalogedAssetCount", 65_536),
+                value.requireBoundedNonNegativeInt("conflictAssetCount", 65_536),
+                value.requireBoundedNonNegativeInt("observedAssetCount", 65_536),
+                value.requireBoundedNonNegativeInt("plannedAssetCount", 65_536),
+                value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+            )
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" ||
+                candidateReference == null || candidateReference.recordId != id || candidateReference.revision != revision ||
+                candidateReference.digest != record.digest || record.assetCount != assetCount ||
+                record.catalogedAssetCount != catalogedAssetCount || record.conflictAssetCount != conflictAssetCount ||
+                record.observedAssetCount != observedAssetCount || record.plannedAssetCount != plannedAssetCount ||
+                record.reviewState != reviewState
+            ) throw invalidResponse()
+            value.requireInstant("updatedAt")
+            record
+        }
+        if ((candidateReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) {
+            throw invalidResponse()
+        }
+        return TestInventoryProjection(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, state, reviewState, reasons, dependencies, sourceCriterionCount, sourceRiskCount,
+            sourceUnitCount, sourceMappingSubjectCount, sourceMethodologyScopeCount, assetCount, catalogedAssetCount,
+            conflictAssetCount, missingAssetCount, deferredAssetCount, notAssessedAssetCount, observedAssetCount,
+            plannedAssetCount, automatedAssetCount, manualAssetCount, duplicateIdentityCount, orphanAssetCount,
+            uncoveredCriterionCount, uncoveredRiskCount, uncoveredUnitCount, uncoveredMappingSubjectCount,
+            uncoveredMethodologyScopeCount, ownershipGapCount, traceGapCount, evidenceGapCount, staleBindingCount,
             staleDependencyCount, invalidCandidateCount, unresolvedQuestionCount, candidate, snapshotDigest,
         )
     }

@@ -2458,6 +2458,63 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Test Inventory projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("test-inventory-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readTestInventory(entryId)
+            assertEquals("attention-required", projection.state)
+            assertEquals("held", projection.reviewState)
+            assertEquals(12, projection.sourceCriterionCount)
+            assertEquals(9, projection.sourceRiskCount)
+            assertEquals(4, projection.sourceUnitCount)
+            assertEquals(14, projection.sourceMappingSubjectCount)
+            assertEquals(4, projection.sourceMethodologyScopeCount)
+            assertEquals(18, projection.assetCount)
+            assertEquals(14, projection.catalogedAssetCount)
+            assertEquals(2, projection.uncoveredCriterionCount)
+            assertEquals(1, projection.uncoveredRiskCount)
+            assertEquals(1, projection.orphanAssetCount)
+            assertEquals(5, projection.dependencies.size)
+            assertEquals("sha256:${"1".repeat(64)}", projection.candidate?.catalogReceiptDigest)
+            assertEquals("sha256:${"2".repeat(64)}", projection.candidate?.coverageReceiptDigest)
+
+            val rendered = RiderProductController(client).readTestInventory(entryId)
+            assertTrue(rendered.contains("GAEP governed Test Inventory candidate"))
+            assertTrue(rendered.contains("12 Acceptance Criteria · 9 Risks · 4 Implementation Units"))
+            assertTrue(rendered.contains("18 tests · 14 cataloged · 1 conflicts · 1 missing"))
+            assertTrue(rendered.contains("2 criteria · 1 risks · 1 units"))
+            assertTrue(rendered.contains("no test title, path, code, steps, data, owner, evidence, result"))
+            assertTrue(rendered.contains("does not establish test existence"))
+            assertTrue(rendered.contains("test execution or results"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("ownerCandidateIds"))
+            assertFalse(rendered.contains("evidenceReferences"))
+        }
+
+        listOf("bad-test-inventory-snapshot-digest", "bad-test-inventory-snapshot-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readTestInventory(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+        listOf("bad-test-inventory-snapshot-binding", "bad-test-inventory-dependency-binding").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = assertFailsWith<IllegalArgumentException> {
+                    RiderProductController(client).readTestInventory(entryId)
+                }
+                assertFalse(error.message.orEmpty().contains(privateRoot))
+                assertFalse(error.message.orEmpty().contains(privateCredential))
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

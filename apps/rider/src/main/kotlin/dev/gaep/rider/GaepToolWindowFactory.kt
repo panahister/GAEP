@@ -802,6 +802,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += testMethodologyButton
         actions.add(testMethodologyButton)
 
+        val testInventoryButton = JButton("Inspect Test Inventory…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project,
+                    "Initiative ID",
+                    "Enter one exact Initiative UUID. Test titles, paths, code, steps, data, owners, evidence, results, personal data, local paths, secrets, credentials, test existence, inventory validity or completeness, environment availability, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, and action authority are withheld.",
+                    "GAEP Test Inventory",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Test Inventory", status, output, buttons) {
+                    controller.readTestInventory(initiativeId)
+                }
+            }
+        }
+        buttons += testInventoryButton
+        actions.add(testInventoryButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

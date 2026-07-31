@@ -492,6 +492,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readTestInventory(initiativeId: UUID): TestInventoryProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("planning.testInventory.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseTestInventoryEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }

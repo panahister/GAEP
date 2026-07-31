@@ -2846,6 +2846,99 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         )
     }
 
+    fun readTestInventory(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val acceptance = client.readAcceptanceCriteria(initiativeId)
+        val risks = client.readRiskRegister(initiativeId)
+        val units = client.readImplementationUnitModel(initiativeId)
+        val routeMapping = client.readRouteScreenComponentMapping(initiativeId)
+        val methodology = client.readTestMethodology(initiativeId)
+        val projection = client.readTestInventory(initiativeId)
+        require(
+            projection.productId == product.id && projection.productRevision == product.revision &&
+                projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+                projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+                projection.initiativeState == initiative.state
+        ) { "The Product or Initiative changed while Test Inventory was read. Refresh the exact records." }
+        projection.candidate?.let {
+            fun requireDependency(name: String, id: UUID, revision: Long, digest: String) {
+                val reference = requireNotNull(projection.dependencies[name]) {
+                    "The current $name candidate reference is unavailable. Refresh the exact records."
+                }
+                require(reference.recordId == id && reference.revision == revision && reference.digest == digest) {
+                    "The $name candidate changed while Test Inventory was read. Refresh the exact records."
+                }
+            }
+            acceptance.candidate!!.let { requireDependency("acceptanceCriteria", it.id, it.revision, it.digest) }
+            risks.register!!.let { requireDependency("riskRegister", it.id, it.revision, it.digest) }
+            units.candidate!!.let { requireDependency("implementationUnitModel", it.id, it.revision, it.digest) }
+            routeMapping.candidate!!.let { requireDependency("routeScreenComponentMapping", it.id, it.revision, it.digest) }
+            methodology.candidate!!.let { requireDependency("testMethodology", it.id, it.revision, it.digest) }
+        }
+        return renderTestInventory(projection)
+    }
+
+    fun renderTestInventory(projection: TestInventoryProjection): String = buildString {
+        appendLine("GAEP governed Test Inventory candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine(
+            "Source coverage: ${projection.sourceCriterionCount} Acceptance Criteria · ${projection.sourceRiskCount} Risks · " +
+                "${projection.sourceUnitCount} Implementation Units · ${projection.sourceMappingSubjectCount} mapping subjects · " +
+                "${projection.sourceMethodologyScopeCount} methodology scopes",
+        )
+        appendLine(
+            "Candidate inventory: ${projection.assetCount} tests · ${projection.catalogedAssetCount} cataloged · " +
+                "${projection.conflictAssetCount} conflicts · ${projection.missingAssetCount} missing · " +
+                "${projection.deferredAssetCount} deferred · ${projection.notAssessedAssetCount} not assessed",
+        )
+        appendLine(
+            "Candidate asset states: ${projection.observedAssetCount} observed · ${projection.plannedAssetCount} planned · " +
+                "${projection.automatedAssetCount} automated · ${projection.manualAssetCount} manual",
+        )
+        appendLine(
+            "Candidate coverage gaps: ${projection.uncoveredCriterionCount} criteria · ${projection.uncoveredRiskCount} risks · " +
+                "${projection.uncoveredUnitCount} units · ${projection.uncoveredMappingSubjectCount} mapping subjects · " +
+                "${projection.uncoveredMethodologyScopeCount} methodology scopes",
+        )
+        appendLine(
+            "Candidate integrity gaps: ${projection.duplicateIdentityCount} duplicates · ${projection.orphanAssetCount} orphans · " +
+                "${projection.ownershipGapCount} ownership · ${projection.traceGapCount} trace · ${projection.evidenceGapCount} evidence",
+        )
+        appendLine(
+            "Candidate freshness gaps: ${projection.staleBindingCount} stale bindings · " +
+                "${projection.staleDependencyCount} stale dependencies · ${projection.invalidCandidateCount} invalid candidates · " +
+                "${projection.unresolvedQuestionCount} questions",
+        )
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        projection.candidate?.let { record ->
+            appendLine("Test Inventory candidate: ${record.id}@${record.revision} · candidate · ${record.digest}")
+            appendLine("Catalog receipt digest: ${record.catalogReceiptDigest}")
+            appendLine("Coverage receipt digest: ${record.coverageReceiptDigest}")
+            appendLine("Trace receipt digest: ${record.traceReceiptDigest}")
+            appendLine("Ownership receipt digest: ${record.ownershipReceiptDigest}")
+            appendLine("Assessment receipt digest: ${record.assessmentReceiptDigest}")
+            appendLine(
+                "Candidate coverage: ${record.assetCount} tests · ${record.catalogedAssetCount} cataloged · " +
+                    "${record.conflictAssetCount} conflicts · ${record.observedAssetCount} observed · " +
+                    "${record.plannedAssetCount} planned · ${record.reviewState}",
+            )
+        }
+        appendLine()
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+        append(
+            "Authority boundary: candidate identities, counts, statuses, and test catalog, coverage, trace, ownership, " +
+                "assessment, and snapshot digests only; no test title, path, code, steps, data, owner, evidence, result, " +
+                "personal data, secret, credential, or machine path. This inspection does not establish test existence, " +
+                "inventory validity or completeness, environment availability, privacy or security approval, owner appointment, " +
+                "test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, " +
+                "deployment, or action authority.",
+        )
+    }
+
     fun readDesignSystemTokenContract(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)
