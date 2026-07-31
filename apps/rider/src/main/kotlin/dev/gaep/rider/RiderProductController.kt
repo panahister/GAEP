@@ -2983,6 +2983,32 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Snapshot digest: ${projection.snapshotDigest}")
     }
 
+    fun readChangedUnitInventory(initiativeId: UUID): String {
+        val product = client.readProductBinding(); val initiative = client.readInitiative(initiativeId)
+        val projection = client.readChangedUnitInventory(initiativeId)
+        require(projection.productId == product.id && projection.productRevision == product.revision && projection.productDigest == product.digest &&
+            projection.initiativeId == initiative.id && projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state) {
+            "Changed Unit Inventory projection does not match exact current Product and Initiative"
+        }
+        return renderChangedUnitInventory(projection)
+    }
+
+    fun renderChangedUnitInventory(projection: ChangedUnitInventoryProjection): String = buildString {
+        appendLine("GAEP governed Changed Unit Inventory candidate"); appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine("Exact dependencies: ${projection.presentDependencyCount}/${projection.dependencyCount}")
+        appendLine("Inventory coverage: ${projection.inventoryUnitCount}/${projection.sourceUnitCount} units · ${projection.pathCandidateCount} repository-relative paths")
+        appendLine("Candidate outcomes: ${projection.candidateScopedCount} scoped · ${projection.gapCount} gaps · ${projection.conflictCount} conflicts · ${projection.staleCount} stale · ${projection.notAssessedCount} not assessed")
+        appendLine("Trace and integrity gaps: ${projection.traceGapCount} trace · ${projection.evidenceGapCount} evidence · ${projection.ownershipGapCount} ownership · ${projection.blastRadiusGapCount} blast radius")
+        appendLine("Freshness gaps: ${projection.staleBindingCount} bindings · ${projection.staleDependencyCount} dependencies · ${projection.invalidCandidateCount} invalid · ${projection.unresolvedQuestionCount} questions")
+        projection.reasons.forEach { appendLine("  - $it") }; appendLine()
+        appendLine("Candidate record: ${projection.candidate?.let { "${it.id}@${it.revision} · candidate · ${it.digest}" } ?: "not recorded"}")
+        projection.candidate?.let { appendLine("Inventory receipt digest: ${it.inventoryReceiptDigest}"); appendLine("Trace receipt digest: ${it.traceReceiptDigest}"); appendLine("Blast-radius receipt digest: ${it.blastRadiusReceiptDigest}"); appendLine("Candidate units: ${it.unitCount}") }
+        appendLine(); appendLine("Repository-relative candidates, counts, statuses, and receipt digests only. This inspection does not establish repository or path truth, approved scope, code mutation, staging, assignment, acceptance, merge, release, deployment, or action authority.")
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+    }
+
     fun renderTestInventory(projection: TestInventoryProjection): String = buildString {
         appendLine("GAEP governed Test Inventory candidate")
         appendLine()

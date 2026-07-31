@@ -856,6 +856,15 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += implementationReadinessButton
         actions.add(implementationReadinessButton)
 
+        val changedUnitInventoryButton = JButton("Inspect Changed Unit Inventory…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(project, "Inspect Changed Unit Inventory", "Enter the exact Initiative UUID. Repository and path truth, approved scope, mutation, staging, acceptance, merge, release, deployment, and authority are withheld.", "Initiative ID")?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Changed Unit Inventory", status, output, buttons) { controller.readChangedUnitInventory(initiativeId) }
+            }
+        }
+        buttons += changedUnitInventoryButton
+        actions.add(changedUnitInventoryButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

@@ -22,6 +22,7 @@ import { testInventoryInputSchema } from "./test-inventory.js"
 import { highLevelDesignInputSchema } from "./high-level-design.js"
 import { lowLevelDesignInputSchema } from "./low-level-design.js"
 import { implementationReadinessGateInputSchema } from "./implementation-readiness-gate.js"
+import { changedUnitInventoryInputSchema } from "./changed-unit-inventory.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -863,6 +864,18 @@ export const hostImplementationReadinessGateReviseParamsSchema = z.object({
   record: implementationReadinessGateInputSchema,
 }).strict()
 
+export const hostChangedUnitInventoryCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: changedUnitInventoryInputSchema,
+}).strict()
+
+export const hostChangedUnitInventoryReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: changedUnitInventoryInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1583,6 +1596,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.implementationReadinessGate.revise", hostImplementationReadinessGateReviseParamsSchema),
   requestVariant("planning.implementationReadinessGate.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.implementationReadinessGate.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("delivery.changedUnitInventory.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("delivery.changedUnitInventory.create", hostChangedUnitInventoryCreateParamsSchema),
+  requestVariant("delivery.changedUnitInventory.revise", hostChangedUnitInventoryReviseParamsSchema),
+  requestVariant("delivery.changedUnitInventory.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("delivery.changedUnitInventory.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

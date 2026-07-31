@@ -49,6 +49,7 @@ import {
   highLevelDesignProjectionSchema,
   lowLevelDesignProjectionSchema,
   implementationReadinessGateProjectionSchema,
+  changedUnitInventoryProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -125,6 +126,7 @@ import {
   type HighLevelDesignProjection,
   type LowLevelDesignProjection,
   type ImplementationReadinessGateProjection,
+  type ChangedUnitInventoryProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -1122,6 +1124,20 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = implementationReadinessGateProjectionSchema.safeParse(
         await this.request("planning.implementationReadinessGate.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId || snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readChangedUnitInventory(initiativeValue: string): Promise<ChangedUnitInventoryProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = changedUnitInventoryProjectionSchema.safeParse(
+        await this.request("delivery.changedUnitInventory.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

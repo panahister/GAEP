@@ -28,6 +28,7 @@ import type {
   HighLevelDesignProjection,
   LowLevelDesignProjection,
   ImplementationReadinessGateProjection,
+  ChangedUnitInventoryProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -261,6 +262,9 @@ export interface CurrentStudioEngineReader {
   implementationReadinessGate?: {
     project(initiativeId: string): Promise<ImplementationReadinessGateProjection>
   }
+  changedUnitInventory?: {
+    project(initiativeId: string): Promise<ChangedUnitInventoryProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -450,6 +454,7 @@ interface ObservedStudioState {
   highLevelDesignProjections: Map<string, HighLevelDesignProjection>
   lowLevelDesignProjections: Map<string, LowLevelDesignProjection>
   implementationReadinessGateProjections: Map<string, ImplementationReadinessGateProjection>
+  changedUnitInventoryProjections: Map<string, ChangedUnitInventoryProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3886,6 +3891,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     highLevelDesigns: highLevelDesignTable(state),
     lowLevelDesigns: lowLevelDesignTable(state),
     implementationReadinessGates: implementationReadinessGateTable(state),
+    changedUnitInventories: changedUnitInventoryTable(state),
   }
 }
 
@@ -5082,6 +5088,36 @@ function implementationReadinessGateTable(state: ObservedStudioState): StudioTab
       { key: "assessment", label: "Candidate assessment" }, { key: "boundary", label: "Privacy and authority boundary" },
     ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Implementation Readiness Gate candidate",
       "Create the candidate through the governed engine workflow only after all exact current Phase 3A dependencies and one exact LLD per Implementation Unit exist. This view cannot grant implementation readiness or waive a gap.") } : {}) }
+}
+
+function changedUnitInventoryTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.changedUnitInventoryProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    const paths = record.units.reduce((sum, unit) => sum + unit.paths.length, 0)
+    return [{ id: record.id, cells: {
+      initiative: projection.initiative.id, record: record.id, revision: String(record.revision), digest: record.digest,
+      dependencies: `${status.presentDependencyCount}/${status.dependencyCount} exact candidates`,
+      inventory: `${status.inventoryUnitCount}/${status.sourceUnitCount} units · ${paths} path candidates`,
+      outcomes: `${status.candidateScopedCount} candidate-scoped · ${status.gapCount} gaps · ${status.conflictCount} conflicts · ${status.staleCount} stale · ${status.notAssessedCount} not assessed`,
+      traces: `${status.traceGapCount} trace · ${status.evidenceGapCount} evidence · ${status.ownershipGapCount} ownership · ${status.blastRadiusGapCount} blast-radius gaps`,
+      freshness: `${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+      receipts: `${record.inventoryReceiptDigest} · ${record.traceReceiptDigest} · ${record.blastRadiusReceiptDigest}`,
+      assessment: `${status.state} · ${status.reviewState}`,
+      boundary: "Repository-relative candidates and deterministic receipts only. This view does not establish repository or path truth, approved scope, code mutation, staging, assignment, acceptance, merge, release, deployment, or action authority.",
+    }, state: status.state, actions: [] }]
+  })
+  return { id: "changed-unit-inventory", title: "Governed Changed Unit Inventory Candidates",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true }, { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" }, { key: "digest", label: "Exact digest" },
+      { key: "dependencies", label: "Exact dependencies" }, { key: "inventory", label: "Candidate inventory" },
+      { key: "outcomes", label: "Candidate outcomes" }, { key: "traces", label: "Trace gaps" },
+      { key: "freshness", label: "Freshness and integrity" }, { key: "receipts", label: "Deterministic receipts" },
+      { key: "assessment", label: "Candidate assessment" }, { key: "boundary", label: "Privacy and authority boundary" },
+    ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Changed Unit Inventory candidate",
+      "Create the candidate through the governed engine workflow only after the exact current Phase 3A dependencies and realistic-example receipt are available. This view cannot approve change scope or authorize code mutation.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -6987,6 +7023,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       highLevelDesignProjections: new Map(),
       lowLevelDesignProjections: new Map(),
       implementationReadinessGateProjections: new Map(),
+      changedUnitInventoryProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -8367,6 +8404,50 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("implementation-readiness-gate-unavailable", "Implementation Readiness Gate metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.changedUnitInventory) {
+      if (auditSemanticsVerified) {
+        const dependencyReaders = [engine.backlogHierarchy, engine.implementationUnitModel, engine.dependencyMapping,
+          engine.designToCodeBindingRegistry, engine.routeScreenComponentMapping, engine.testInventory,
+          engine.riskRegister, engine.implementationReadinessGate]
+        const dependencyNames = ["backlogHierarchy", "implementationUnitModel", "dependencyMapping",
+          "designToCodeBindingRegistry", "routeScreenComponentMapping", "testInventory", "riskRegister",
+          "implementationReadinessGate"] as const
+        const dependencyKeys = ["candidate", "candidate", "candidate", "candidate", "candidate", "candidate", "register", "candidate"] as const
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const inventory = await engine.changedUnitInventory!.project(initiative.id)
+          const dependencies = dependencyReaders.every((reader) => reader !== undefined)
+            ? await Promise.all(dependencyReaders.map((reader) => reader!.project(initiative.id))) : undefined
+          return { inventory, dependencies }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.inventory
+            const { snapshotDigest, ...projectionBody } = value
+            const exactDependencies = projection.value.dependencies !== undefined && dependencyNames.every((name, dependencyIndex) => {
+              const reference = value.status[name] as { recordId: string; revision: number; digest: string } | undefined
+              const dependencyProjection = projection.value.dependencies?.[dependencyIndex] as Record<string, unknown> | undefined
+              const dependency = dependencyProjection?.[dependencyKeys[dependencyIndex]!] as { id: string; revision: number; digest: string } | undefined
+              return reference !== undefined && dependency !== undefined && reference.recordId === dependency.id && reference.revision === dependency.revision && reference.digest === dependency.digest
+            })
+            if (value.candidate !== undefined && value.status.realisticExample !== undefined &&
+                value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactDependencies && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.changedUnitInventoryProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Changed Unit Inventory projection was unavailable or did not bind all exact current governed dependencies",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`changed-unit-inventory-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Changed Unit Inventory metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("changed-unit-inventory-unavailable", "Changed Unit Inventory metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (

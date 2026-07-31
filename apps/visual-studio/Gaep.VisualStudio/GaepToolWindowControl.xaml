@@ -229,6 +229,10 @@
                 Command="{Binding LoadImplementationReadinessGateCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded per-unit readiness candidate counts, statuses, and receipt digests only; it withholds readiness rationale, evidence and review content, owner details, personal, local-path, secret, and credential content, and does not establish approval, waiver, owner appointment, implementation readiness, assignment, execution, acceptance, release, deployment, or action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadChangedUnitInventoryButton" Content="Inspect governed Changed Unit Inventory"
+                Command="{Binding LoadChangedUnitInventoryCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows repository-relative candidates, counts, statuses, and receipt digests only; it withholds file and evidence content, owner details, personal, local-path, secret, and credential content, and does not establish repository or path truth, approved scope, code mutation, staging, assignment, acceptance, merge, release, deployment, or action authority."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
         <Button x:Name="LoadDesignSystemTokenContractButton" Content="Inspect governed Design System and Token Contract"
                 Command="{Binding LoadDesignSystemTokenContractCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds token values, component content, requirements, Source, design, and personal content, and does not establish system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."

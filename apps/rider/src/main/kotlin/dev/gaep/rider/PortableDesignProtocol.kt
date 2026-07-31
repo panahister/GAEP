@@ -3215,6 +3215,24 @@ data class ImplementationReadinessGateProjection(
     val unresolvedQuestionCount: Int, val candidate: ImplementationReadinessGateRecordView?, val snapshotDigest: String,
 )
 
+data class ChangedUnitInventoryRecordView(
+    val id: UUID, val revision: Long, val digest: String, val dependencyReceiptDigest: String,
+    val inventoryReceiptDigest: String, val traceReceiptDigest: String, val blastRadiusReceiptDigest: String,
+    val evidenceReceiptDigest: String, val ownershipReceiptDigest: String, val assessmentReceiptDigest: String,
+    val unitCount: Int, val reviewState: String,
+)
+
+data class ChangedUnitInventoryProjection(
+    val productId: UUID, val productRevision: Long, val productDigest: String,
+    val initiativeId: UUID, val initiativeRevision: Long, val initiativeDigest: String, val initiativeState: String,
+    val state: String, val reviewState: String, val reasons: List<String>, val dependencyCount: Int,
+    val presentDependencyCount: Int, val sourceUnitCount: Int, val inventoryUnitCount: Int, val pathCandidateCount: Int,
+    val candidateScopedCount: Int, val gapCount: Int, val conflictCount: Int, val staleCount: Int, val notAssessedCount: Int,
+    val orphanUnitCount: Int, val traceGapCount: Int, val evidenceGapCount: Int, val ownershipGapCount: Int,
+    val blastRadiusGapCount: Int, val staleBindingCount: Int, val staleDependencyCount: Int,
+    val invalidCandidateCount: Int, val unresolvedQuestionCount: Int, val candidate: ChangedUnitInventoryRecordView?, val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -4478,6 +4496,12 @@ internal object PortableDesignProtocol {
         "implementation-readiness-gate-projection-is-read-only-and-does-not-establish-artifact-or-evidence-truth-completeness-approval-waiver-owner-appointment-implementation-readiness-assignment-execution-acceptance-release-deployment-or-action-authority"
     private const val IMPLEMENTATION_READINESS_STATUS_AUTHORITY_BOUNDARY =
         "implementation-readiness-gate-status-is-observational-and-does-not-establish-artifact-or-evidence-truth-completeness-approval-waiver-owner-appointment-implementation-readiness-assignment-execution-acceptance-release-deployment-or-action-authority"
+    private const val CHANGED_UNIT_INVENTORY_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-repository-relative-path-candidates-change-kinds-trace-counts-statuses-and-receipt-digests-only-not-file-content-evidence-content-owner-details-personal-data-secrets-credentials-or-machine-paths"
+    private const val CHANGED_UNIT_INVENTORY_PROJECTION_AUTHORITY_BOUNDARY =
+        "changed-unit-inventory-projection-is-read-only-and-does-not-establish-repository-or-path-truth-approved-change-scope-or-change-approval-owner-appointment-implementation-readiness-code-mutation-or-staging-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
+    private const val CHANGED_UNIT_INVENTORY_STATUS_AUTHORITY_BOUNDARY =
+        "changed-unit-inventory-status-is-observational-and-does-not-establish-repository-or-path-truth-approved-change-scope-or-change-approval-owner-appointment-implementation-readiness-code-mutation-or-staging-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -12189,6 +12213,44 @@ internal object PortableDesignProtocol {
         if ((candidateReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
         return ImplementationReadinessGateProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState,
             state, reviewState, reasons, counts.getValue("dependencyCount"), counts.getValue("presentDependencyCount"), counts.getValue("subjectCount"), counts.getValue("satisfiedCount"), counts.getValue("gapCount"), counts.getValue("conflictCount"), counts.getValue("staleCount"), counts.getValue("waivedCandidateCount"), counts.getValue("notAssessedCount"), counts.getValue("evidenceGapCount"), counts.getValue("ownershipGapCount"), counts.getValue("coverageGapCount"), counts.getValue("staleBindingCount"), counts.getValue("staleDependencyCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
+    }
+
+    fun parseChangedUnitInventoryEnvelope(envelope: JsonObject, expectedInitiativeId: UUID): ChangedUnitInventoryProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(setOf("schemaVersion", "kind", "product", "initiative", "status", "observedAt", "privacyBoundary", "authorityBoundary", "snapshotDigest"), setOf("candidate"))
+        if (projection.requireInt("schemaVersion") != 1 || projection.requireString("kind") != "changed-unit-inventory-projection" ||
+            projection.requireString("privacyBoundary") != CHANGED_UNIT_INVENTORY_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != CHANGED_UNIT_INVENTORY_PROJECTION_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        if (snapshotDigest != canonicalDigest(projection.deepCopy().also { it.remove("snapshotDigest") })) throw invalidResponse()
+        val product = projection.get("product").requireObject().also { it.requireExactKeys("id", "revision", "digest") }
+        val productId = product.requireNonEmptyUuid("id"); val productRevision = product.requireLong("revision"); val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject().also { it.requireExactKeys("id", "revision", "digest", "state") }
+        val initiativeId = initiative.requireNonEmptyUuid("id"); val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || productRevision !in 1..MAX_SAFE_PRODUCT_REVISION || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest"); val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+        val dependencyNames = setOf("backlogHierarchy", "implementationUnitModel", "dependencyMapping", "designToCodeBindingRegistry", "routeScreenComponentMapping", "testInventory", "riskRegister", "implementationReadinessGate", "realisticExample")
+        val countNames = setOf("dependencyCount", "presentDependencyCount", "sourceUnitCount", "inventoryUnitCount", "pathCandidateCount", "candidateScopedCount", "gapCount", "conflictCount", "staleCount", "notAssessedCount", "orphanUnitCount", "traceGapCount", "evidenceGapCount", "ownershipGapCount", "blastRadiusGapCount", "staleBindingCount", "staleDependencyCount", "invalidCandidateCount", "unresolvedQuestionCount")
+        val status = projection.get("status").requireObject()
+        status.requireKeys(setOf("schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision", "reviewState", "state", "reasons", "assessedAt", "authorityBoundary") + countNames, dependencyNames + "candidate")
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "changed-unit-inventory-status" || status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision || status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision || status.requireString("authorityBoundary") != CHANGED_UNIT_INVENTORY_STATUS_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val counts = countNames.associateWith { status.requireBoundedNonNegativeInt(it, 65_536) }
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")); val state = status.requireOneOf("state", setOf("attention-required", "candidate-inventoried"))
+        val reasonsElement = status.get("reasons"); if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 2_048) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }; if (state == "attention-required" && reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt"); val candidateReference = status.get("candidate")?.requireObject()?.also { it.requireExactKeys("recordId", "revision", "digest") }
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject(); value.requireExactKeys("id", "revision", "digest", "state", "dependencyReceiptDigest", "inventoryReceiptDigest", "traceReceiptDigest", "blastRadiusReceiptDigest", "evidenceReceiptDigest", "ownershipReceiptDigest", "assessmentReceiptDigest", "reviewState", "updatedAt", "units")
+            val id = value.requireNonEmptyUuid("id"); val revision = value.requireLong("revision"); val units = value.get("units")
+            if (units == null || !units.isJsonArray || units.asJsonArray.size() > 65_536) throw invalidResponse()
+            units.asJsonArray.forEach { unit -> unit.requireObject().also { it.requireExactKeys("implementationUnitId", "implementationUnitKey", "repositoryCandidate", "moduleCandidate", "outcome", "paths") } }
+            val record = ChangedUnitInventoryRecordView(id, revision, value.requireDigest("digest"), value.requireDigest("dependencyReceiptDigest"), value.requireDigest("inventoryReceiptDigest"), value.requireDigest("traceReceiptDigest"), value.requireDigest("blastRadiusReceiptDigest"), value.requireDigest("evidenceReceiptDigest"), value.requireDigest("ownershipReceiptDigest"), value.requireDigest("assessmentReceiptDigest"), units.asJsonArray.size(), value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")))
+            if (value.requireString("state") != "candidate" || candidateReference == null || candidateReference.requireNonEmptyUuid("recordId") != id || candidateReference.requireLong("revision") != revision || candidateReference.requireDigest("digest") != record.digest || record.reviewState != reviewState) throw invalidResponse()
+            value.requireInstant("updatedAt"); record
+        }
+        if ((candidateReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return ChangedUnitInventoryProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState, state, reviewState, reasons,
+            counts.getValue("dependencyCount"), counts.getValue("presentDependencyCount"), counts.getValue("sourceUnitCount"), counts.getValue("inventoryUnitCount"), counts.getValue("pathCandidateCount"), counts.getValue("candidateScopedCount"), counts.getValue("gapCount"), counts.getValue("conflictCount"), counts.getValue("staleCount"), counts.getValue("notAssessedCount"), counts.getValue("orphanUnitCount"), counts.getValue("traceGapCount"), counts.getValue("evidenceGapCount"), counts.getValue("ownershipGapCount"), counts.getValue("blastRadiusGapCount"), counts.getValue("staleBindingCount"), counts.getValue("staleDependencyCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
     }
 
     fun parseDesignSystemTokenContractEnvelope(

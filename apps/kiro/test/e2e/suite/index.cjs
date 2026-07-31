@@ -76,6 +76,7 @@ const commands = [
   "gaepKiro.highLevelDesign.inspect",
   "gaepKiro.lowLevelDesign.inspect",
   "gaepKiro.implementationReadinessGate.inspect",
+  "gaepKiro.changedUnitInventory.inspect",
   "gaepKiro.designSystemTokenContract.inspect",
   "gaepKiro.accessibilityDesignRules.inspect",
   "gaepKiro.responsiveMultiPlatformTargets.inspect",

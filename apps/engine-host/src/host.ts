@@ -197,6 +197,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.implementationReadinessGate.revise",
   "planning.implementationReadinessGate.assess",
   "planning.implementationReadinessGate.snapshot",
+  "delivery.changedUnitInventory.read",
+  "delivery.changedUnitInventory.create",
+  "delivery.changedUnitInventory.revise",
+  "delivery.changedUnitInventory.assess",
+  "delivery.changedUnitInventory.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1714,6 +1719,21 @@ export class EngineHost {
         return this.engine.implementationReadinessGate.assess(request.params.initiativeId)
       case "planning.implementationReadinessGate.snapshot":
         return this.engine.implementationReadinessGate.project(request.params.initiativeId)
+      case "delivery.changedUnitInventory.read":
+        return await this.engine.changedUnitInventory.readCurrent(request.params.initiativeId) ?? null
+      case "delivery.changedUnitInventory.create":
+        return this.engine.changedUnitInventory.create(request.params.record, actorId(request.params.actorId))
+      case "delivery.changedUnitInventory.revise":
+        return this.engine.changedUnitInventory.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "delivery.changedUnitInventory.assess":
+        return this.engine.changedUnitInventory.assess(request.params.initiativeId)
+      case "delivery.changedUnitInventory.snapshot":
+        return this.engine.changedUnitInventory.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":

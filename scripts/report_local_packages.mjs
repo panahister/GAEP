@@ -22,7 +22,7 @@ const definitions = [
     path: "apps/vscode/dist/gaep-vscode.vsix",
     maximumBytes: 32 * 1024 * 1024,
     requiredHere: true,
-    verification: "exact-isolated-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-bundled-engine-empty-recovery-evidence-workflow-and-accessible-phase-3a-five-view-20-source-two-provider-workflow-dashboard-product-studio-projection",
+    verification: "exact-isolated-fixture-package-build-bundled-engine-and-accessible-phase-3b-changed-unit-inventory-product-studio-projection; native-install-reinstall-and-interaction-acceptance-remain-pending",
   },
   {
     host: "kiro",
@@ -30,7 +30,7 @@ const definitions = [
     path: "apps/kiro/dist/gaep-kiro.vsix",
     maximumBytes: 8 * 1024 * 1024,
     requiredHere: true,
-    verification: "exact-isolated-compatible-host-fixture-upgrade-reinstall-rollback-uninstall-absence-final-install-activation-digest-bound-package-local-provider-model-phase-1-phase-2-and-phase-3a-five-view-20-source-two-provider-workflow-dashboard-with-private-safe-output-and-immutable-store",
+    verification: "package-build-digest-bound-engine-and-private-safe-phase-3b-changed-unit-inventory-command-projection; native-compatible-host-install-and-interaction-acceptance-remain-pending",
   },
   {
     host: "rider",
@@ -38,7 +38,7 @@ const definitions = [
     path: "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
     maximumBytes: 64 * 1024 * 1024,
     requiredHere: true,
-    verification: "clean-test-instrumentation-build-exact-engine-and-jar-archive-prepared-sandbox-parity-jetbrains-plugininstaller-install-removal-absence-reinstall-native-startup-client-packaged-engine-empty-evidence-workflow-and-phase-3a-five-view-20-source-two-provider-workflow-dashboard-projection",
+    verification: "clean-kotlin-compile-instrumented-plugin-build-structure-check-digest-bound-engine-and-phase-3b-changed-unit-inventory-projection; native-Rider-install-startup-and-interaction-acceptance-remain-pending",
   },
   {
     host: "visual-studio",
@@ -46,7 +46,7 @@ const definitions = [
     path: "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
     maximumBytes: 128 * 1024 * 1024,
     requiredHere: process.platform === "win32",
-    verification: "cross-platform-shell-contribution-remote-ui-binding-exact-hostclient-embedded-engine-resource-and-769-protocol-controller-checks-with-phase-3a-five-view-20-source-two-provider-workflow-dashboard-and-packaged-engine-empty-evidence-workflow-windows-container-install-pending",
+    verification: "cross-platform-hostclient-build-and-phase-3b-changed-unit-inventory-protocol-controller-projection; Windows-VSIX-container-install-startup-and-interaction-acceptance-remain-pending",
   },
 ]
 

@@ -25,9 +25,9 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260731T101209Z-phase-3a-realistic-readiness-packages.json",
-  conformance: "evidence/ide-conformance/20260731T101209Z-phase-3a-realistic-readiness.json",
-  example: "evidence/examples/20260731T100836Z-phase-3a-realistic-readiness-example/receipt.json",
+  packages: "evidence/local-packages/20260731T105153Z-phase-3b-changed-unit-inventory-packages.json",
+  conformance: "evidence/ide-conformance/20260731T105153Z-phase-3b-changed-unit-inventory.json",
+  example: "evidence/examples/20260731T105500Z-phase-3a-realistic-readiness-example/receipt.json",
 }
 const gateDefinitions = [
   { id: "typecheck", command: ["npm", "run", "typecheck"], parser: parseTypecheck },
@@ -212,7 +212,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, figmaToBoilerplateMapping, designToCodeBindingRegistry, routeScreenComponentMapping, testMethodology, testInventory, highLevelDesign, lowLevelDesign, implementationReadinessGate, phase3aRealisticReadinessExample, phase3aDashboard, phase3aCodexReadinessWorkflow, phase3aClaudeReadinessWorkflow, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
+function knownGaps(inputs, { changedUnitInventory, designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, figmaToBoilerplateMapping, designToCodeBindingRegistry, routeScreenComponentMapping, testMethodology, testInventory, highLevelDesign, lowLevelDesign, implementationReadinessGate, phase3aRealisticReadinessExample, phase3aDashboard, phase3aCodexReadinessWorkflow, phase3aClaudeReadinessWorkflow, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -239,7 +239,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    phase3aRealisticReadinessExample
+    changedUnitInventory
+      ? {
+          id: "phase-3b-changed-unit-inventory-closure",
+          state: "not-established",
+          basis: "the exact versioned Changed Unit Inventory candidate lifecycle binds the current Product and Initiative, backlog, Implementation Unit Model, Dependency Mapping, Design-to-Code Binding Registry, Route Screen Component Mapping, Test Inventory, Risk Register, Implementation Readiness Gate and the P3A-24 realistic-example receipt; repository-relative path and change-kind candidates, requirement, backlog, design, route, test and risk traces, dependency and blast-radius candidates, attributable evidence and ownership candidates, immutable revisions, deterministic receipts, Product Studio and four host projections are implemented locally; repository or path truth, approved change scope, mutation, staging, assignment, acceptance, merge, release, deployment, native-host interaction and Product Owner acceptance remain unestablished",
+        }
+      : phase3aRealisticReadinessExample
       ? {
           id: "phase-3a-realistic-readiness-example-closure",
           state: "not-established",
@@ -653,6 +659,9 @@ export async function buildPhase0AcceptanceReport({
   const implementationReadinessGate = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "implementation-readiness-gate" && capability.state === "implemented"))
+  const changedUnitInventory = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "changed-unit-inventory" && capability.state === "implemented"))
   const designSystemTokenContract = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-system-token-contract" && capability.state === "implemented"))
@@ -718,6 +727,7 @@ export async function buildPhase0AcceptanceReport({
     host.capabilities.some((capability) =>
       capability.capabilityId === "phase3a-dashboard" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
+    changedUnitInventory,
     designApplicability,
     designPersonasRoles,
     userJourneys,
@@ -785,8 +795,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: implementationReadinessGate || lowLevelDesign || highLevelDesign || testInventory || testMethodology || routeScreenComponentMapping || designToCodeBindingRegistry || figmaToBoilerplateMapping || boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: phase3aRealisticReadinessExample
+    phase: changedUnitInventory ? "phase-3b-implementation" : implementationReadinessGate || lowLevelDesign || highLevelDesign || testInventory || testMethodology || routeScreenComponentMapping || designToCodeBindingRegistry || figmaToBoilerplateMapping || boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: changedUnitInventory
+      ? "phase-3b-changed-unit-inventory-local"
+      : phase3aRealisticReadinessExample
       ? "phase-3a-realistic-readiness-example-local"
       : phase3aDashboard
       ? "phase-3a-dashboard-local"
@@ -928,7 +940,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: phase3aRealisticReadinessExample
+    claimBoundary: changedUnitInventory
+      ? "This report binds the exact governed Changed Unit Inventory candidate lifecycle, immutable revision history, exact current Product and Initiative plus eight governed dependency bindings and the P3A-24 realistic-example receipt, repository-relative path and change-kind candidates, requirement, backlog, design-to-code, route-screen-component, test and risk traces, dependency and blast-radius candidates, attributable evidence and ownership candidates, deterministic dependency, inventory, trace, blast-radius, evidence, ownership and assessment receipts, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. It does not establish repository or path truth, approved change scope or change approval, owner appointment, implementation readiness, code mutation or staging, assignment, execution, acceptance, merge, release, deployment, native-host interaction, Product Owner acceptance, security completion or action authority."
+      : phase3aRealisticReadinessExample
       ? "This report binds the exact deterministic realistic Phase 3A readiness example: 20 current governed candidate projections, 81 bounded evidence-reference metadata entries, five canonical dashboard views, two byte-bound sealed offline Codex and Claude provider workflows, two exact reopen observations, three fail-closed stale, gap and conflict recovery cases, exact current Product and Initiative bindings, privacy-safe Product Studio state and four current local host projections to current package, test, host, conformance and artifact evidence. This report does not establish real Product, backlog, design, boilerplate, test, risk, security, artifact, evidence or semantic truth or completeness; priority, approval, waiver or owner authority; implementation readiness, assignment, execution, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion, release authorization or deployment approval."
       : phase3aDashboard
       ? "This report binds the exact derived Phase 3A dashboard contract: five canonical views, 20 ordered governed source projections, explicit unavailable and attention-required state, deterministic count, freshness, gap and conflict signals, two bounded local Codex and Claude workflow-evidence slots, fixed 20-row pagination, visible-metadata-only CSV export, exact current Product and Initiative bindings, privacy-safe Product Studio rendering and all four local host integrations to current package, test, host and conformance evidence. This report does not establish source completeness or truth, priority, readiness, waiver, owner appointment, implementation, live-provider or semantic output quality, native-host interaction, Product Owner acceptance, security completion, release authorization or deployment approval."
