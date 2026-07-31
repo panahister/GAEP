@@ -75,6 +75,7 @@ const testMethodologyId = "96969696-9696-4696-8696-969696969696"
 const testInventoryId = "97979797-9797-4797-8797-979797979797"
 const highLevelDesignId = "98989898-9898-4898-8898-989898989898"
 const lowLevelDesignId = "99999999-9999-4999-8999-999999999999"
+const implementationReadinessGateId = "98989898-9898-4989-8989-989898989898"
 const lowLevelImplementationUnitId = "91919191-9191-4191-8191-919191919191"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
@@ -224,6 +225,8 @@ input.on("line", (line) => {
       return readHighLevelDesign(id, request.params)
     case "planning.lowLevelDesign.snapshot":
       return readLowLevelDesign(id, request.params)
+    case "planning.implementationReadinessGate.snapshot":
+      return readImplementationReadinessGate(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -3578,6 +3581,47 @@ function readLowLevelDesign(id, params) {
   if (workspacePath.endsWith("bad-low-level-design-snapshot-digest")) value.candidate.elementCount = 13
   if (workspacePath.endsWith("bad-low-level-design-snapshot-private")) {
     value.designNarrative = `${privateRoot}/${privateCredential}`
+    value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
+  }
+  return writeResult(id, value)
+}
+
+function readImplementationReadinessGate(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE IMPLEMENTATION READINESS PARAMS")
+  }
+  const candidateDigest = `sha256:${"8".repeat(64)}`
+  const status = {
+    schemaVersion: 1, kind: "implementation-readiness-gate-status", productId, productRevision: 7,
+    initiativeId, initiativeRevision: initiativeState.revision,
+    candidate: { recordId: implementationReadinessGateId, revision: 2, digest: candidateDigest }, lowLevelDesigns: [],
+    dependencyCount: 24, presentDependencyCount: 24, subjectCount: 4, satisfiedCount: 2, gapCount: 1,
+    conflictCount: 0, staleCount: 0, waivedCandidateCount: 1, notAssessedCount: 0,
+    evidenceGapCount: 1, ownershipGapCount: 0, coverageGapCount: 0, staleBindingCount: 0,
+    staleDependencyCount: 0, invalidCandidateCount: 0, unresolvedQuestionCount: 1,
+    reviewState: "held", state: "attention-required",
+    reasons: ["One or more readiness subjects require accountable human review"],
+    assessedAt: "2026-07-31T05:00:00.000Z",
+    authorityBoundary: "implementation-readiness-gate-status-is-observational-and-does-not-establish-artifact-or-evidence-truth-completeness-approval-waiver-owner-appointment-implementation-readiness-assignment-execution-acceptance-release-deployment-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1, kind: "implementation-readiness-gate-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: { id: implementationReadinessGateId, revision: 2, digest: candidateDigest, state: "candidate",
+      dependencyReceiptDigest: `sha256:${"1".repeat(64)}`, coverageReceiptDigest: `sha256:${"2".repeat(64)}`,
+      evidenceReceiptDigest: `sha256:${"3".repeat(64)}`, ownershipReceiptDigest: `sha256:${"4".repeat(64)}`,
+      assessmentReceiptDigest: `sha256:${"5".repeat(64)}`, subjectCount: 4, reviewState: "held", updatedAt: "2026-07-31T04:59:00.000Z" },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-dependency-coverage-evidence-ownership-assessment-digests-only-not-readiness-rationales-evidence-content-review-content-owner-details-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "implementation-readiness-gate-projection-is-read-only-and-does-not-establish-artifact-or-evidence-truth-completeness-approval-waiver-owner-appointment-implementation-readiness-assignment-execution-acceptance-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-implementation-readiness-snapshot-binding")) content.initiative.id = implementationReadinessGateId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-implementation-readiness-snapshot-digest")) value.candidate.subjectCount = 5
+  if (workspacePath.endsWith("bad-implementation-readiness-snapshot-private")) {
+    value.readinessRationale = `${privateRoot}/${privateCredential}`
     value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
   }
   return writeResult(id, value)

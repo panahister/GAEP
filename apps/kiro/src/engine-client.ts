@@ -48,6 +48,7 @@ import {
   testInventoryProjectionSchema,
   highLevelDesignProjectionSchema,
   lowLevelDesignProjectionSchema,
+  implementationReadinessGateProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -122,6 +123,7 @@ import {
   type TestInventoryProjection,
   type HighLevelDesignProjection,
   type LowLevelDesignProjection,
+  type ImplementationReadinessGateProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -1109,6 +1111,20 @@ export class GaepEngineClient {
       if (projection.initiative.id.toLowerCase() !== initiativeId ||
           projection.status.implementationUnitId?.toLowerCase() !== implementationUnitId ||
           snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readImplementationReadinessGate(initiativeValue: string): Promise<ImplementationReadinessGateProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = implementationReadinessGateProjectionSchema.safeParse(
+        await this.request("planning.implementationReadinessGate.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId || snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
       return projection
     })
   }

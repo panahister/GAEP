@@ -49,6 +49,7 @@ import {
   type TestInventoryProjection,
   type HighLevelDesignProjection,
   type LowLevelDesignProjection,
+  type ImplementationReadinessGateProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -190,6 +191,7 @@ const commandIds = {
   testInventory: "gaepKiro.testInventory.inspect",
   highLevelDesign: "gaepKiro.highLevelDesign.inspect",
   lowLevelDesign: "gaepKiro.lowLevelDesign.inspect",
+  implementationReadinessGate: "gaepKiro.implementationReadinessGate.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -348,6 +350,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.testInventory, (input?: unknown) => runUserCommand(() => showTestInventory(pool, input))),
     vscode.commands.registerCommand(commandIds.highLevelDesign, (input?: unknown) => runUserCommand(() => showHighLevelDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.lowLevelDesign, (input?: unknown) => runUserCommand(() => showLowLevelDesign(pool, input))),
+    vscode.commands.registerCommand(commandIds.implementationReadinessGate, (input?: unknown) => runUserCommand(() => showImplementationReadinessGate(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2631,6 +2634,41 @@ async function showLowLevelDesign(
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showImplementationReadinessGate(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<ImplementationReadinessGateProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Implementation Readiness Gate inspection", "Initiative ID")
+  const projection = await client.readImplementationReadinessGate(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Implementation Readiness Gate candidate", "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Exact dependencies: ${status.presentDependencyCount}/${status.dependencyCount}`,
+    `Per-unit subjects: ${status.subjectCount} · ${status.satisfiedCount} satisfied · ${status.gapCount} gaps · ${status.conflictCount} conflicts`,
+    `Candidate exceptions: ${status.waivedCandidateCount} waiver candidates · ${status.notAssessedCount} not assessed · ${status.staleCount} stale`,
+    `Candidate integrity gaps: ${status.evidenceGapCount} evidence · ${status.ownershipGapCount} ownership · ${status.coverageGapCount} coverage`,
+    `Candidate freshness gaps: ${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+    ...status.reasons.map((reason) => `  - ${reason}`), "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [`Dependency receipt digest: ${record.dependencyReceiptDigest}`, `Coverage receipt digest: ${record.coverageReceiptDigest}`,
+      `Evidence receipt digest: ${record.evidenceReceiptDigest}`, `Ownership receipt digest: ${record.ownershipReceiptDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`, `Candidate subjects: ${record.subjectCount} · ${record.reviewState}`, `Updated: ${record.updatedAt}`] : []), "",
+    "Candidate identities, counts, statuses, and receipt digests only; no readiness rationale, evidence or review content, owner details, personal data, secret, credential, or machine path. Automated assessment does not establish artifact or evidence truth, completeness, approval, waiver, owner appointment, implementation readiness, assignment, execution, acceptance, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })
