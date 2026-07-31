@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-codex-readiness-workflow-receipt",
+  "scenario": {
+    "id": "phase-3a-atlas-codex-readiness-workflow-v1",
+    "path": "scenario.json",
+    "sourcePath": "examples/phase-3a-codex-readiness-workflow/scenario.json",
+    "sourceDigest": "sha256:d38a8746a351f9c0011b137735c65d9e7a8580fe7d1a1a4d681a4f1a01370faf",
+    "semanticDigest": "sha256:f4404086e1b5a3c822c764355b99ada861b3a93021120b275884869ff21ac988",
+    "product": {
+      "id": "33000000-0000-4000-8000-000000000001",
+      "revision": 1,
+      "digest": "sha256:97d9dca3f37d6e03af0be8db1581f6f72366681d15d3d09fdd722d6cf40669cb"
+    },
+    "initiative": {
+      "id": "33000000-0000-4000-8000-000000000002",
+      "revision": 1,
+      "digest": "sha256:c8dca5f451f2e159740dc48fb17afca54ede34b99424ee8a8552402868d0f30d"
+    }
+  },
+  "sources": [
+    {
+      "path": "sources/codex-receipt.json",
+      "bytes": 5322,
+      "digest": "sha256:30b0f7ff477581a60b69992c8fb7d19b54eab86c68f7554309a48647d93cd1a2",
+      "semanticDigest": "sha256:a0b5bed8e40efed149961fa21c8745f410840fef3c7f5cef1baceb48609ba96c"
+    },
+    {
+      "path": "sources/phase3a-conformance.json",
+      "bytes": 65235,
+      "digest": "sha256:052cc8cdd8f0f50985ce21311d38463b8580c1a01d8d465d717888d817ff4f90",
+      "semanticDigest": "sha256:16f0b3bfaa980cda75ca2a6904dbcff25f39e80b60ecf177300aaefbeac897f1"
+    },
+    {
+      "path": "sources/phase3a-report.json",
+      "bytes": 8406,
+      "digest": "sha256:88b55c738c41f5696cf8498855636528fc6b7e9094d5e37656696a1c579550ea",
+      "semanticDigest": "sha256:964d4411cd69080addab4773fa6b31c689dbbab6f70469c828c468702275f0ba"
+    },
+    {
+      "path": "apps/vscode/src/current-engine-studio-data-source.ts",
+      "bytes": 632096,
+      "digest": "sha256:c5f2d1156e9a5fe4193674705da782e14e52ca03500336a20396ad68d1912a80",
+      "semanticDigest": "sha256:c5f2d1156e9a5fe4193674705da782e14e52ca03500336a20396ad68d1912a80"
+    }
+  ],
+  "outputs": {
+    "candidate-chain.json": {
+      "path": "candidate-chain.json",
+      "bytes": 10465,
+      "digest": "sha256:bad59703f4f117a50287f4d8c54189f9638639899225ac6233de072ecde85e85",
+      "semanticDigest": "sha256:2524448bc7fb92e5a69c039f75e76a1d2d6adb3ebe05de258add329571f56907"
+    },
+    "reopen-continuity.json": {
+      "path": "reopen-continuity.json",
+      "bytes": 13938,
+      "digest": "sha256:9bd7e49c83bbe490825d28ed4e1de41ddc2047446623baf6caa57d79dd4c496e",
+      "semanticDigest": "sha256:c4e0e6526231931bda398851eed14769e786ad85db2f30d54397aa4c4b6047fc"
+    },
+    "failure-recovery.json": {
+      "path": "failure-recovery.json",
+      "bytes": 3045,
+      "digest": "sha256:6354b33be81fdf9dc0a3652bcf7c26703deb47b02164e7066eeaae20f2c0f7a5",
+      "semanticDigest": "sha256:135ba2fbeaa21fb036e2e1121fa1086300bde884e29bd210ff4e531e8d8bb5a9"
+    },
+    "host-projections.json": {
+      "path": "host-projections.json",
+      "bytes": 2660,
+      "digest": "sha256:889574f5dedd68d2789a43d6f48c7cf0fb201d8e5ee4d2550eaec5995270d0ce",
+      "semanticDigest": "sha256:cba8f7d73b036806c3e4305172e0b121b1a812f955392b9dbf254f48b95bff8d"
+    }
+  },
+  "summary": {
+    "stageCount": 20,
+    "exactCurrentCandidateCount": 20,
+    "implementationReadinessDependencyStageCount": 19,
+    "reopenObservationCount": 2,
+    "continuityMismatchCount": 0,
+    "failureRecoveryCaseCount": 3,
+    "holdCount": 3,
+    "hostProjectionCount": 4,
+    "productStudioProjectionCount": 1,
+    "codexExecutionState": "completed",
+    "codexStagingChangeCount": 0,
+    "liveProviderRequestCount": 0,
+    "implementationEffectsApplied": 0,
+    "hostsAccepted": 0,
+    "providersAccepted": 0,
+    "productOwnerAcceptance": "not-established",
+    "readinessAuthority": "not-established"
+  },
+  "summaryDigest": "sha256:a2d4bbb6e04d036e7ce3345de6494ad6c9cf710876ccadd08c646fab3606cdf9",
+  "authority": {
+    "liveProviderStatus": "not-tested",
+    "productTruth": "not-established",
+    "readinessAuthority": "not-established",
+    "waiverAuthority": "not-granted",
+    "ownershipAppointment": "not-established",
+    "nativeHostAcceptance": "not-established",
+    "productOwnerAcceptance": "not-established",
+    "securityScan": "skipped-by-product-owner",
+    "releaseAuthority": "not-granted",
+    "deploymentAuthority": "not-granted",
+    "actionAuthority": "not-granted",
+    "boundary": "phase-3a-codex-readiness-receipt-is-deterministic-local-candidate-evidence-not-live-provider-product-truth-readiness-waiver-ownership-native-host-product-owner-security-release-deployment-or-action-authority"
+  },
+  "limitations": [
+    "This is a deterministic local fixture and not real Product, backlog, design, boilerplate, test, risk, security, or readiness evidence.",
+    "Codex execution uses the isolated fake app-server contract and makes no live provider request or semantic-quality claim.",
+    "Reopen, recovery, Product Studio, and host projections prove bounded deterministic continuity only and not native-host interaction or acceptance.",
+    "No waiver, owner appointment, implementation readiness, assignment, execution, acceptance, security, release, deployment, or action authority is established."
+  ],
+  "compositionDigest": "sha256:c029d6efa72212ec477440bda22f23f6f48f1437d925201384f70407e097b16c"
+}
