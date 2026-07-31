@@ -11,7 +11,7 @@ import { verifyPhase3aCodexReadinessWorkflowArtifactDirectory } from "./phase3a_
 const repository = fileURLToPath(new URL("..", import.meta.url))
 const scenarioSourcePath = resolve(repository, "examples/phase-3a-claude-readiness-workflow/scenario.json")
 const codexScenarioSourcePath = resolve(repository, "examples/phase-3a-codex-readiness-workflow/scenario.json")
-const codexArtifactDirectory = resolve(repository, "evidence/examples/20260731T092606Z-phase-3a-codex-readiness-workflow")
+const codexArtifactDirectory = resolve(repository, "evidence/examples/20260731T110500Z-phase-3a-codex-readiness-workflow")
 const codexWorkflowReceiptSourcePath = resolve(codexArtifactDirectory, "receipt.json")
 const fileByteLimit = 4 * 1024 * 1024
 const artifactByteLimit = 24 * 1024 * 1024
@@ -131,7 +131,7 @@ function verifyScenario(value) {
     fail("scenario provider boundary differs")
   }
   if (value.parity?.sourceScenarioPath !== "examples/phase-3a-codex-readiness-workflow/scenario.json" ||
-      value.parity?.sourceWorkflowReceiptPath !== "evidence/examples/20260731T092606Z-phase-3a-codex-readiness-workflow/receipt.json" ||
+      value.parity?.sourceWorkflowReceiptPath !== "evidence/examples/20260731T110500Z-phase-3a-codex-readiness-workflow/receipt.json" ||
       value.parity?.expectedStageCount !== 20 || value.parity?.expectedReopenObservationCount !== 2 ||
       value.parity?.expectedFailureRecoveryCaseCount !== 3 || value.parity?.expectedHostProjectionCount !== 4) {
     fail("scenario Codex parity boundary differs")

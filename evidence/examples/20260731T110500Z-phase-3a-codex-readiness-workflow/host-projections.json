@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-codex-readiness-host-projections",
+  "scenario": {
+    "id": "phase-3a-atlas-codex-readiness-workflow-v1",
+    "digest": "sha256:f4404086e1b5a3c822c764355b99ada861b3a93021120b275884869ff21ac988"
+  },
+  "productStudio": {
+    "host": "vscode",
+    "tableId": "implementationReadinessGates",
+    "sourcePath": "apps/vscode/src/current-engine-studio-data-source.ts",
+    "sourceDigest": "sha256:180b2bd25ac87d28a3df2b592a184f4c05cefb8eff23602ecfa499a2b85e6c75",
+    "projectionState": "implemented-local"
+  },
+  "hosts": [
+    {
+      "id": "vscode",
+      "implementationReadinessGate": {
+        "state": "implemented",
+        "sourceProbesVerified": 2
+      },
+      "packageStatus": "produced",
+      "runtimeLevel": "installed-package-bundled-engine-workflow-local",
+      "runtimeSourceSnapshotDigest": "sha256:d5187c2d8a12d9576472166cb75734c820e41489eacc267b7a4f0dd8753bec86",
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "kiro",
+      "implementationReadinessGate": {
+        "state": "implemented",
+        "sourceProbesVerified": 2
+      },
+      "packageStatus": "produced",
+      "runtimeLevel": "compatible-host-packaged-engine-workflow-local",
+      "runtimeSourceSnapshotDigest": "sha256:284693d34b7f3ec4c4ae698a4f46803533b20906ef67b73ae8c8e54786365882",
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "rider",
+      "implementationReadinessGate": {
+        "state": "implemented",
+        "sourceProbesVerified": 3
+      },
+      "packageStatus": "produced",
+      "runtimeLevel": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
+      "runtimeSourceSnapshotDigest": "sha256:60c281aa679bade03c6757132618f5a52d2bf3b7cbad3595efd3c62d9263e675",
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "visual-studio",
+      "implementationReadinessGate": {
+        "state": "implemented",
+        "sourceProbesVerified": 3
+      },
+      "packageStatus": "not-produced-on-this-platform",
+      "runtimeLevel": "cross-platform-packaged-engine-client-workflow-local",
+      "runtimeSourceSnapshotDigest": "sha256:f42d685d6cd892d108cc6e83f192e83d0eab6bce82d15288e7709f97091512fd",
+      "acceptance": "incomplete"
+    }
+  ],
+  "summary": {
+    "productStudioProjectionCount": 1,
+    "hostCount": 4,
+    "implementedHostProjectionCount": 4,
+    "acceptedHostCount": 0
+  },
+  "authorityBoundary": "host-projections-bind-current-local-source-package-and-runtime-evidence-not-native-interaction-live-provider-or-host-acceptance",
+  "hostProjectionDigest": "sha256:d7485df1913429c3477ca9dc1330695143b007b79fb01499cd7407bcba32fc67"
+}
