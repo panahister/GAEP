@@ -259,6 +259,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadProviderSwitchImplementationCommand = new AsyncCommand(LoadProviderSwitchImplementationAsync);
         LoadModelSwitchImplementationCommand = new AsyncCommand(LoadModelSwitchImplementationAsync);
         LoadApprovedFigmaContextRetrievalCommand = new AsyncCommand(LoadApprovedFigmaContextRetrievalAsync);
+        LoadControlledDesignToCodeGenerationCommand = new AsyncCommand(LoadControlledDesignToCodeGenerationAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -490,6 +491,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadApprovedFigmaContextRetrievalCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadControlledDesignToCodeGenerationCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1262,6 +1266,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Approved Figma Context Retrieval candidate",
             (controller, _, token) => controller.ReadApprovedFigmaContextRetrievalAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadControlledDesignToCodeGenerationAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Controlled Design-to-Code Generation plan",
+            (controller, _, token) => controller.ReadControlledDesignToCodeGenerationAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

@@ -603,6 +603,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readControlledDesignToCodeGeneration(initiativeId: UUID): ControlledDesignToCodeGenerationProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("delivery.controlledDesignToCodeGeneration.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseControlledDesignToCodeGenerationEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }

@@ -930,6 +930,15 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += approvedFigmaContextRetrievalButton
         actions.add(approvedFigmaContextRetrievalButton)
 
+        val controlledDesignToCodeGenerationButton = JButton("Inspect Controlled Design-to-Code Generation Plan…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(project, "Inspect Controlled Design-to-Code Generation", "Enter the exact Initiative UUID. Figma/provider access, protected context transfer, code generation or inspection, real stage creation, source mutation, approval, authorization, acceptance, readiness, release, deployment, and authority are withheld.", "Initiative ID")?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Controlled Design-to-Code Generation", status, output, buttons) { controller.readControlledDesignToCodeGeneration(initiativeId) }
+            }
+        }
+        buttons += controlledDesignToCodeGenerationButton
+        actions.add(controlledDesignToCodeGenerationButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

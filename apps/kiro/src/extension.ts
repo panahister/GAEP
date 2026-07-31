@@ -58,6 +58,7 @@ import {
   type ProviderSwitchImplementationProjection,
   type ModelSwitchImplementationProjection,
   type ApprovedFigmaContextRetrievalProjection,
+  type ControlledDesignToCodeGenerationProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -210,6 +211,7 @@ const commandIds = {
   providerSwitchImplementation: "gaepKiro.providerSwitchImplementation.inspect",
   modelSwitchImplementation: "gaepKiro.modelSwitchImplementation.inspect",
   approvedFigmaContextRetrieval: "gaepKiro.approvedFigmaContextRetrieval.inspect",
+  controlledDesignToCodeGeneration: "gaepKiro.controlledDesignToCodeGeneration.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -378,6 +380,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.providerSwitchImplementation, (input?: unknown) => runUserCommand(() => showProviderSwitchImplementation(pool, input))),
     vscode.commands.registerCommand(commandIds.modelSwitchImplementation, (input?: unknown) => runUserCommand(() => showModelSwitchImplementation(pool, input))),
     vscode.commands.registerCommand(commandIds.approvedFigmaContextRetrieval, (input?: unknown) => runUserCommand(() => showApprovedFigmaContextRetrieval(pool, input))),
+    vscode.commands.registerCommand(commandIds.controlledDesignToCodeGeneration, (input?: unknown) => runUserCommand(() => showControlledDesignToCodeGeneration(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2979,6 +2982,43 @@ async function showApprovedFigmaContextRetrieval(
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showControlledDesignToCodeGeneration(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<ControlledDesignToCodeGenerationProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Controlled Design-to-Code Generation inspection", "Initiative ID")
+  const projection = await client.readControlledDesignToCodeGeneration(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Controlled Design-to-Code Generation plan", "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Targets: ${status.targetCount} targets · ${status.implementationUnitCount} units · ${status.pathCount} paths`,
+    `Expected outputs: ${status.expectedTraceCount} trace · ${status.expectedTestOutputCount} test`,
+    `Gaps: ${status.staleBindingCount} stale · ${status.targetGapCount} target · ${status.providerGapCount} provider · ${status.contextGapCount} context · ${status.lifecycleGapCount} lifecycle · ${status.prerequisiteGapCount} prerequisite · ${status.invalidCandidateCount} invalid`,
+    ...status.reasons.map((reason) => `  - ${reason}`), "",
+    ...(record ? [
+      `Generation plan: ${record.id}@${record.revision} · ${record.digest}`,
+      `Provider/model candidate: ${record.selectedProvider} · ${record.selection.agentId} · ${record.selection.modelId}`,
+      `Approved design/version: ${record.designContext.baselineSemanticVersion} · ${record.designContext.contentBoundary}`,
+      `Context stop lines: materialize ${record.designContext.materializationState} · transfer ${record.designContext.transferState}`,
+      `Generation stop lines: Figma ${record.lifecycle.figmaAccessState} · provider ${record.lifecycle.providerExecutionState} · output ${record.lifecycle.generatedOutputState} · inspect ${record.lifecycle.outputInspectionState}`,
+      `Effect stop lines: stage ${record.lifecycle.realStageCreationState} · source mutation ${record.lifecycle.sourceMutationState}`,
+      `Receipts: dependencies ${record.dependencyReceiptDigest} · provider ${record.providerReceiptDigest} · targets ${record.targetCatalogDigest} · expected outputs ${record.expectedOutputReceiptDigest}`,
+    ] : ["Controlled Design-to-Code Generation plan: not recorded"]), "",
+    `Snapshot digest: ${projection.snapshotDigest}`, "",
+    "Authority boundary: privacy-safe offline generation-plan identities, selected provider/model identifiers, counts, states and receipt digests only. This inspection does not call Figma or a live provider, expose protected context, generate or inspect code, create a stage, mutate source, establish approval, authorization, acceptance or readiness, release, deploy, or grant action authority.",
+  ]
+  await showTextDocument(folder, "GAEP Controlled Design-to-Code Generation", lines.join("\n"))
   return projection
 }
 

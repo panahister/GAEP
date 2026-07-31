@@ -36,6 +36,7 @@ import type {
   ProviderSwitchImplementationProjection,
   ModelSwitchImplementationProjection,
   ApprovedFigmaContextRetrievalProjection,
+  ControlledDesignToCodeGenerationProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -293,6 +294,9 @@ export interface CurrentStudioEngineReader {
   approvedFigmaContextRetrieval?: {
     project(initiativeId: string): Promise<ApprovedFigmaContextRetrievalProjection>
   }
+  controlledDesignToCodeGeneration?: {
+    project(initiativeId: string): Promise<ControlledDesignToCodeGenerationProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -490,6 +494,7 @@ interface ObservedStudioState {
   providerSwitchImplementationProjections: Map<string, ProviderSwitchImplementationProjection>
   modelSwitchImplementationProjections: Map<string, ModelSwitchImplementationProjection>
   approvedFigmaContextRetrievalProjections: Map<string, ApprovedFigmaContextRetrievalProjection>
+  controlledDesignToCodeGenerationProjections: Map<string, ControlledDesignToCodeGenerationProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3934,6 +3939,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     providerSwitchImplementations: providerSwitchImplementationTable(state),
     modelSwitchImplementations: modelSwitchImplementationTable(state),
     approvedFigmaContextRetrievals: approvedFigmaContextRetrievalTable(state),
+    controlledDesignToCodeGenerations: controlledDesignToCodeGenerationTable(state),
   }
 }
 
@@ -5385,6 +5391,38 @@ function approvedFigmaContextRetrievalTable(state: ObservedStudioState): StudioT
       { key: "assessment", label: "Candidate assessment" }, { key: "boundary", label: "Privacy and authority boundary" },
     ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Approved Figma Context Retrieval candidate",
       "Create the offline candidate through the governed engine only after all exact current design and P3B implementation predecessors exist. This view cannot connect to Figma, fetch content, generate code, create a stage, or mutate source.") } : {}) }
+}
+
+function controlledDesignToCodeGenerationTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.controlledDesignToCodeGenerationProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{ id: record.id, cells: {
+      initiative: projection.initiative.id, record: record.id, revision: String(record.revision), digest: record.digest,
+      provider: `${record.selectedProvider} · ${record.selection.agentId} · ${record.selection.modelId}`,
+      design: `${record.designContext.baselineSemanticVersion} · ${record.designContext.contentBoundary} · materialize ${record.designContext.materializationState} · transfer ${record.designContext.transferState}`,
+      targets: `${record.targetCount} targets · ${record.implementationUnitCount} units · ${record.pathCount} repository-relative paths`,
+      expected: `${status.expectedTraceCount} expected trace outputs · ${status.expectedTestOutputCount} expected test outputs`,
+      lifecycle: `Figma ${record.lifecycle.figmaAccessState} · provider ${record.lifecycle.providerExecutionState} · output ${record.lifecycle.generatedOutputState} · inspect ${record.lifecycle.outputInspectionState}`,
+      effects: `stage ${record.lifecycle.realStageCreationState} · source mutation ${record.lifecycle.sourceMutationState} · approval ${record.lifecycle.approvalState} · authorization ${record.lifecycle.authorizationState}`,
+      gaps: `${status.staleBindingCount} stale · ${status.targetGapCount} target · ${status.providerGapCount} provider · ${status.contextGapCount} context · ${status.lifecycleGapCount} lifecycle · ${status.prerequisiteGapCount} prerequisite · ${status.invalidCandidateCount} invalid`,
+      receipts: `${record.dependencyReceiptDigest} · ${record.providerReceiptDigest} · ${record.designContextReceiptDigest} · ${record.targetCatalogDigest} · ${record.expectedOutputReceiptDigest}`,
+      assessment: `${status.state} · ${status.reviewState}`,
+      boundary: "Offline privacy-safe generation-plan metadata only. This view does not call Figma or a live provider, expose protected context, generate or inspect code, create a stage, mutate source, establish approval, authorization, acceptance or readiness, release, deploy, or grant action authority.",
+    }, state: status.state, actions: [] }]
+  })
+  return { id: "controlled-design-to-code-generation", title: "Governed Controlled Design-to-Code Generation Plans",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true }, { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" }, { key: "digest", label: "Exact digest" },
+      { key: "provider", label: "Selected provider and model candidate" }, { key: "design", label: "Approved design/version context" },
+      { key: "targets", label: "Constrained generation targets" }, { key: "expected", label: "Expected trace and test outputs" },
+      { key: "lifecycle", label: "Generation stop lines" }, { key: "effects", label: "Effect and authority stop lines" },
+      { key: "gaps", label: "Candidate gaps" }, { key: "receipts", label: "Deterministic receipts" },
+      { key: "assessment", label: "Candidate assessment" }, { key: "boundary", label: "Privacy and authority boundary" },
+    ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Controlled Design-to-Code Generation plan",
+      "Create the offline generation-plan candidate through the governed engine only after every exact current design, target, staging, and provider/model predecessor exists. This view cannot call Figma or a provider, generate code, create a stage, or mutate source.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7298,6 +7336,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       providerSwitchImplementationProjections: new Map(),
       modelSwitchImplementationProjections: new Map(),
       approvedFigmaContextRetrievalProjections: new Map(),
+      controlledDesignToCodeGenerationProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -8983,6 +9022,57 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("approved-figma-context-retrieval-unavailable", "Approved Figma Context Retrieval metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.controlledDesignToCodeGeneration) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map((initiative) =>
+          engine.controlledDesignToCodeGeneration!.project(initiative.id)))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value
+            const candidates = {
+              approvedFigmaContextRetrieval: empty.approvedFigmaContextRetrievalProjections.get(initiative.id)?.candidate,
+              designBaseline: empty.designBaselineProjections.get(initiative.id)?.candidate,
+              designToRequirementBinding: empty.designToRequirementBindingProjections.get(initiative.id)?.candidate,
+              figmaToBoilerplateMapping: empty.figmaToBoilerplateMappingProjections.get(initiative.id)?.candidate,
+              designToCodeBindingRegistry: empty.designToCodeBindingRegistryProjections.get(initiative.id)?.candidate,
+              routeScreenComponentMapping: empty.routeScreenComponentMappingProjections.get(initiative.id)?.candidate,
+              implementationUnitModel: empty.implementationUnitModelProjections.get(initiative.id)?.candidate,
+              technologyProfile: empty.technologyProfileProjections.get(initiative.id)?.candidate,
+              boilerplateSelectionBinding: empty.boilerplateSelectionBindingProjections.get(initiative.id)?.candidate,
+              boilerplateCompatibilityValidation: empty.boilerplateCompatibilityValidationProjections.get(initiative.id)?.candidate,
+              proposedChangePreview: empty.proposedChangePreviewProjections.get(initiative.id)?.candidate,
+              stagingWorkspace: empty.stagingWorkspaceProjections.get(initiative.id)?.candidate,
+              controlledCodexImplementation: empty.controlledCodexImplementationProjections.get(initiative.id)?.candidate,
+              controlledClaudeImplementation: empty.controlledClaudeImplementationProjections.get(initiative.id)?.candidate,
+              providerSwitchImplementation: empty.providerSwitchImplementationProjections.get(initiative.id)?.candidate,
+              modelSwitchImplementation: empty.modelSwitchImplementationProjections.get(initiative.id)?.candidate,
+            }
+            const { snapshotDigest, ...projectionBody } = value
+            const exactDependencies = value.status.dependencies !== undefined &&
+              (Object.keys(candidates) as (keyof typeof candidates)[]).every((key) => {
+                const reference = value.status.dependencies?.[key]
+                const candidate = candidates[key]
+                return reference !== undefined && candidate !== undefined && reference.recordId === candidate.id &&
+                  reference.revision === candidate.revision && reference.digest === candidate.digest
+              })
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactDependencies && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.controlledDesignToCodeGenerationProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Controlled Design-to-Code Generation projection was unavailable or did not bind all exact current design, staging, and provider/model predecessors",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`controlled-design-to-code-generation-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Controlled Design-to-Code Generation plan metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("controlled-design-to-code-generation-unavailable", "Controlled Design-to-Code Generation plan metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (

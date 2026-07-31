@@ -3694,6 +3694,37 @@ public sealed class ProductWorkflowController(EngineClient client)
             .Append("Authority boundary: privacy-safe approved-snapshot/version and bounded generation-context metadata only. This inspection does not connect to Figma, fetch or expose design/source content, materialize or transfer context, generate code, execute a provider, create or change a stage, mutate source, establish approval, baseline or readiness, accept, release, deploy, or grant action authority.").ToString();
     }
 
+    public async Task<string> ReadControlledDesignToCodeGenerationAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken); var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadControlledDesignToCodeGenerationAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision || projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id || projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest || projection.InitiativeState != initiative.State)
+            throw new ArgumentException("The Product or Initiative changed while Controlled Design-to-Code Generation was read. Refresh the exact records.");
+        return RenderControlledDesignToCodeGeneration(projection);
+    }
+
+    public static string RenderControlledDesignToCodeGeneration(ControlledDesignToCodeGenerationProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder().AppendLine("GAEP governed Controlled Design-to-Code Generation plan").AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine($"Targets: {projection.TargetCount} targets · {projection.ImplementationUnitCount} units · {projection.PathCount} paths")
+            .AppendLine($"Expected outputs: {projection.ExpectedTraceCount} trace · {projection.ExpectedTestOutputCount} test")
+            .AppendLine($"Gaps: {projection.StaleBindingCount} stale · {projection.TargetGapCount} target · {projection.ProviderGapCount} provider · {projection.ContextGapCount} context · {projection.LifecycleGapCount} lifecycle · {projection.PrerequisiteGapCount} prerequisite · {projection.InvalidCandidateCount} invalid");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}"); output.AppendLine();
+        if (projection.Candidate is { } candidate) output.AppendLine($"Generation plan: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+            .AppendLine($"Provider/model candidate: {candidate.SelectedProvider} · {candidate.AdapterId}/{candidate.AgentId}/{candidate.ModelId}")
+            .AppendLine($"Approved design/version: {candidate.BaselineSemanticVersion} · {candidate.ContentBoundary} · materialization {candidate.MaterializationState} · transfer {candidate.TransferState}")
+            .AppendLine($"Candidate targets: {candidate.TargetCount} · units {candidate.ImplementationUnitCount} · paths {candidate.PathCount}")
+            .AppendLine($"Generation stop lines: Figma {candidate.FigmaAccessState} · provider {candidate.ProviderExecutionState} · output {candidate.GeneratedOutputState} · inspect {candidate.OutputInspectionState}")
+            .AppendLine($"Effect stop lines: stage {candidate.RealStageCreationState} · source mutation {candidate.SourceMutationState}");
+        else output.AppendLine("Controlled Design-to-Code Generation plan: not recorded");
+        return output.AppendLine().AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append("Authority boundary: privacy-safe offline generation-plan identities, provider/model identifiers, counts, states and receipt digests only. This inspection does not call Figma or a live provider, expose protected context, generate or inspect code, create a stage, mutate source, establish approval, authorization, acceptance or readiness, release, deploy, or grant action authority.").ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

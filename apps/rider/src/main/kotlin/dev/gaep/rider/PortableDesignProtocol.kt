@@ -3362,6 +3362,28 @@ data class ApprovedFigmaContextRetrievalProjection(
     val unresolvedQuestionCount: Int, val candidate: ApprovedFigmaContextRetrievalRecordView?, val snapshotDigest: String,
 )
 
+data class ControlledDesignToCodeGenerationRecordView(
+    val id: UUID, val revision: Long, val digest: String, val selectedProvider: String,
+    val adapterId: String, val agentId: String, val modelId: String, val baselineSemanticVersion: String,
+    val contentBoundary: String, val materializationState: String, val transferState: String,
+    val targetCount: Int, val implementationUnitCount: Int, val pathCount: Int,
+    val figmaAccessState: String, val providerExecutionState: String, val generatedOutputState: String,
+    val outputInspectionState: String, val realStageCreationState: String, val sourceMutationState: String,
+    val reviewState: String,
+)
+
+data class ControlledDesignToCodeGenerationProjection(
+    val productId: UUID, val productRevision: Long, val productDigest: String,
+    val initiativeId: UUID, val initiativeRevision: Long, val initiativeDigest: String, val initiativeState: String,
+    val state: String, val reviewState: String, val reasons: List<String>, val selectedProvider: String?,
+    val targetCount: Int, val implementationUnitCount: Int, val pathCount: Int,
+    val expectedTraceCount: Int, val expectedTestOutputCount: Int,
+    val staleBindingCount: Int, val targetGapCount: Int, val providerGapCount: Int, val contextGapCount: Int,
+    val lifecycleGapCount: Int, val prerequisiteGapCount: Int, val evidenceGapCount: Int,
+    val invalidCandidateCount: Int, val unresolvedQuestionCount: Int,
+    val candidate: ControlledDesignToCodeGenerationRecordView?, val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -4673,6 +4695,12 @@ internal object PortableDesignProtocol {
         "approved-figma-context-retrieval-projection-is-read-only-and-grants-no-figma-access-content-materialization-context-transfer-generation-provider-stage-mutation-approval-authorization-acceptance-release-deployment-or-action-authority"
     private const val APPROVED_FIGMA_CONTEXT_RETRIEVAL_STATUS_AUTHORITY_BOUNDARY =
         "approved-figma-context-retrieval-status-is-observational-and-grants-no-figma-access-content-materialization-context-transfer-generation-provider-stage-mutation-approval-authorization-acceptance-release-deployment-or-action-authority"
+    private const val CONTROLLED_DESIGN_TO_CODE_GENERATION_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-provider-model-identifiers-target-counts-states-and-receipt-digests-only-not-design-content-prompts-provider-output-source-diffs-machine-paths-personal-data-secrets-credentials-or-permissions"
+    private const val CONTROLLED_DESIGN_TO_CODE_GENERATION_PROJECTION_AUTHORITY_BOUNDARY =
+        "controlled-design-to-code-generation-projection-is-read-only-and-grants-no-figma-or-provider-access-context-transfer-generation-output-stage-mutation-approval-authorization-acceptance-release-deployment-or-action-authority"
+    private const val CONTROLLED_DESIGN_TO_CODE_GENERATION_STATUS_AUTHORITY_BOUNDARY =
+        "controlled-design-to-code-generation-status-is-observational-and-grants-no-figma-or-provider-access-context-transfer-generation-output-stage-mutation-approval-authorization-acceptance-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -12875,6 +12903,67 @@ internal object PortableDesignProtocol {
         if (state == "candidate-defined" && (candidate == null || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || countNames.filterNot { it in setOf("snapshotItemCount", "includedItemCount", "requirementBindingCount", "designToCodeBindingCount", "routeSubjectCount", "implementationUnitCount", "pathCount") }.sumOf { counts.getValue(it) } > 0)) throw invalidResponse()
         return ApprovedFigmaContextRetrievalProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState, state, reviewState, reasons,
             counts.getValue("snapshotItemCount"), counts.getValue("includedItemCount"), counts.getValue("requirementBindingCount"), counts.getValue("designToCodeBindingCount"), counts.getValue("routeSubjectCount"), counts.getValue("implementationUnitCount"), counts.getValue("pathCount"), counts.getValue("staleBindingCount"), counts.getValue("snapshotGapCount"), counts.getValue("generationContextGapCount"), counts.getValue("lifecycleGapCount"), counts.getValue("evidenceGapCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
+    }
+
+    fun parseControlledDesignToCodeGenerationEnvelope(envelope: JsonObject, expectedInitiativeId: UUID): ControlledDesignToCodeGenerationProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(setOf("schemaVersion", "kind", "product", "initiative", "status", "observedAt", "privacyBoundary", "authorityBoundary", "snapshotDigest"), setOf("candidate"))
+        if (projection.requireInt("schemaVersion") != 1 || projection.requireString("kind") != "controlled-design-to-code-generation-projection" ||
+            projection.requireString("privacyBoundary") != CONTROLLED_DESIGN_TO_CODE_GENERATION_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != CONTROLLED_DESIGN_TO_CODE_GENERATION_PROJECTION_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        if (snapshotDigest != canonicalDigest(projection.deepCopy().also { it.remove("snapshotDigest") })) throw invalidResponse()
+        val product = projection.get("product").requireObject().also { it.requireExactKeys("id", "revision", "digest") }
+        val productId = product.requireNonEmptyUuid("id"); val productRevision = product.requireLong("revision"); val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject().also { it.requireExactKeys("id", "revision", "digest", "state") }
+        val initiativeId = initiative.requireNonEmptyUuid("id"); val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || productRevision !in 1..MAX_SAFE_PRODUCT_REVISION || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest"); val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+        val countNames = setOf("targetCount", "implementationUnitCount", "pathCount", "expectedTraceCount", "expectedTestOutputCount", "staleBindingCount", "targetGapCount", "providerGapCount", "contextGapCount", "lifecycleGapCount", "prerequisiteGapCount", "evidenceGapCount", "invalidCandidateCount", "unresolvedQuestionCount")
+        val status = projection.get("status").requireObject()
+        status.requireKeys(setOf("schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision", "reviewState", "state", "reasons", "assessedAt", "authorityBoundary") + countNames, setOf("candidate", "dependencies", "selectedProvider"))
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "controlled-design-to-code-generation-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != CONTROLLED_DESIGN_TO_CODE_GENERATION_STATUS_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val counts = countNames.associateWith { status.requireBoundedNonNegativeInt(it, 65_536) }
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")); val state = status.requireOneOf("state", setOf("attention-required", "candidate-defined"))
+        val selectedProvider = status.get("selectedProvider")?.requireString()?.also { if (it !in setOf("codex", "claude")) throw invalidResponse() }
+        val reasonsElement = status.get("reasons"); if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 2_048) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }; if (state == "attention-required" && reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+        val candidateReference = status.get("candidate")?.requireObject()?.also { it.requireExactKeys("recordId", "revision", "digest") }
+        status.get("dependencies")?.requireObject()?.also { dependencies ->
+            dependencies.requireExactKeys("approvedFigmaContextRetrieval", "designBaseline", "designToRequirementBinding", "figmaToBoilerplateMapping", "designToCodeBindingRegistry", "routeScreenComponentMapping", "implementationUnitModel", "technologyProfile", "boilerplateSelectionBinding", "boilerplateCompatibilityValidation", "proposedChangePreview", "stagingWorkspace", "controlledCodexImplementation", "controlledClaudeImplementation", "providerSwitchImplementation", "modelSwitchImplementation")
+            dependencies.entrySet().forEach { (_, element) -> element.requireObject().also { it.requireExactKeys("recordId", "revision", "digest"); it.requireNonEmptyUuid("recordId"); it.requireLong("revision"); it.requireDigest("digest") } }
+        }
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject(); value.requireExactKeys("id", "revision", "digest", "state", "selectedProvider", "selection", "provider", "designContext", "planKey", "targetCount", "implementationUnitCount", "pathCount", "dependencyReceiptDigest", "providerReceiptDigest", "designContextReceiptDigest", "targetCatalogDigest", "expectedOutputReceiptDigest", "lifecycleReceiptDigest", "prerequisiteReceiptDigest", "assessmentReceiptDigest", "lifecycle", "reviewState", "updatedAt")
+            val id = value.requireNonEmptyUuid("id"); val revision = value.requireLong("revision"); if (value.requireString("state") != "candidate") throw invalidResponse()
+            val providerName = value.requireOneOf("selectedProvider", setOf("codex", "claude"))
+            val selection = value.get("selection").requireObject(); val parsedSelection = parseAgentSelection(selection)
+            val provider = value.get("provider").requireObject(); provider.requireKeys(setOf("adapterId", "agentId", "modelId", "capabilityDigest"), setOf("runtimeVersion"))
+            if (provider.requireString("adapterId") != parsedSelection.adapterId || provider.requireString("agentId") != parsedSelection.agentId || provider.requireString("modelId") != parsedSelection.modelId || provider.requireDigest("capabilityDigest") != parsedSelection.capabilityDigest) throw invalidResponse()
+            provider.get("runtimeVersion")?.let { portableText(it.requireString(), 1, 1_024) }
+            val design = value.get("designContext").requireObject(); design.requireExactKeys("approvedSnapshotReceiptDigest", "approvedGenerationContextReceiptDigest", "baselineMembershipDigest", "baselineSemanticVersion", "designBindingCatalogDigest", "routeSubjectCatalogDigest", "contentBoundary", "materializationState", "transferState")
+            listOf("approvedSnapshotReceiptDigest", "approvedGenerationContextReceiptDigest", "baselineMembershipDigest", "designBindingCatalogDigest", "routeSubjectCatalogDigest").forEach { design.requireDigest(it) }
+            if (design.requireString("contentBoundary") != "metadata-and-digests-only" || design.requireString("materializationState") != "not-performed" || design.requireString("transferState") != "not-performed") throw invalidResponse()
+            portableText(design.requireString("baselineSemanticVersion"), 1, 128); portableText(value.requireString("planKey"), 1, 128)
+            val lifecycle = value.get("lifecycle").requireObject().also { it.requireExactKeys("planningState", "figmaAccessState", "contextMaterializationState", "contextTransferState", "providerExecutionState", "generatedOutputState", "outputInspectionState", "realStageCreationState", "sourceMutationState", "approvalState", "authorizationState", "acceptanceState") }
+            if (lifecycle.requireString("planningState") != "candidate-defined" || listOf("figmaAccessState", "contextMaterializationState", "contextTransferState", "providerExecutionState", "outputInspectionState", "realStageCreationState", "sourceMutationState").any { lifecycle.requireString(it) != "not-performed" } || lifecycle.requireString("generatedOutputState") != "not-created" || listOf("approvalState", "authorizationState", "acceptanceState").any { lifecycle.requireString(it) != "not-established" }) throw invalidResponse()
+            val targetCount = value.requireBoundedNonNegativeInt("targetCount", 65_536); val unitCount = value.requireBoundedNonNegativeInt("implementationUnitCount", 65_536); val pathCount = value.requireBoundedNonNegativeInt("pathCount", 65_536)
+            listOf("dependencyReceiptDigest", "providerReceiptDigest", "designContextReceiptDigest", "targetCatalogDigest", "expectedOutputReceiptDigest", "lifecycleReceiptDigest", "prerequisiteReceiptDigest", "assessmentReceiptDigest").forEach { value.requireDigest(it) }
+            val record = ControlledDesignToCodeGenerationRecordView(id, revision, value.requireDigest("digest"), providerName, parsedSelection.adapterId, parsedSelection.agentId, parsedSelection.modelId,
+                design.requireString("baselineSemanticVersion"), design.requireString("contentBoundary"), design.requireString("materializationState"), design.requireString("transferState"), targetCount, unitCount, pathCount,
+                lifecycle.requireString("figmaAccessState"), lifecycle.requireString("providerExecutionState"), lifecycle.requireString("generatedOutputState"), lifecycle.requireString("outputInspectionState"), lifecycle.requireString("realStageCreationState"), lifecycle.requireString("sourceMutationState"), value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")))
+            if (candidateReference == null || candidateReference.requireNonEmptyUuid("recordId") != id || candidateReference.requireLong("revision") != revision || candidateReference.requireDigest("digest") != record.digest || record.reviewState != reviewState || providerName != selectedProvider || targetCount != counts.getValue("targetCount") || unitCount != counts.getValue("implementationUnitCount") || pathCount != counts.getValue("pathCount")) throw invalidResponse()
+            value.requireInstant("updatedAt"); record
+        }
+        if ((candidateReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        if (state == "candidate-defined" && (candidate == null || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || countNames.filterNot { it in setOf("targetCount", "implementationUnitCount", "pathCount", "expectedTraceCount", "expectedTestOutputCount") }.sumOf { counts.getValue(it) } > 0)) throw invalidResponse()
+        return ControlledDesignToCodeGenerationProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState, state, reviewState, reasons, selectedProvider,
+            counts.getValue("targetCount"), counts.getValue("implementationUnitCount"), counts.getValue("pathCount"), counts.getValue("expectedTraceCount"), counts.getValue("expectedTestOutputCount"),
+            counts.getValue("staleBindingCount"), counts.getValue("targetGapCount"), counts.getValue("providerGapCount"), counts.getValue("contextGapCount"), counts.getValue("lifecycleGapCount"), counts.getValue("prerequisiteGapCount"), counts.getValue("evidenceGapCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
     }
 
     fun parseDesignSystemTokenContractEnvelope(

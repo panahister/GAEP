@@ -3202,6 +3202,36 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Snapshot digest: ${projection.snapshotDigest}")
     }
 
+    fun readControlledDesignToCodeGeneration(initiativeId: UUID): String {
+        val product = client.readProductBinding(); val initiative = client.readInitiative(initiativeId)
+        val projection = client.readControlledDesignToCodeGeneration(initiativeId)
+        require(projection.productId == product.id && projection.productRevision == product.revision && projection.productDigest == product.digest &&
+            projection.initiativeId == initiative.id && projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state) {
+            "Controlled Design-to-Code Generation projection does not match exact current Product and Initiative"
+        }
+        return renderControlledDesignToCodeGeneration(projection)
+    }
+
+    fun renderControlledDesignToCodeGeneration(projection: ControlledDesignToCodeGenerationProjection): String = buildString {
+        appendLine("GAEP governed Controlled Design-to-Code Generation plan"); appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine("Targets: ${projection.targetCount} targets · ${projection.implementationUnitCount} units · ${projection.pathCount} paths")
+        appendLine("Expected outputs: ${projection.expectedTraceCount} trace · ${projection.expectedTestOutputCount} test")
+        appendLine("Gaps: ${projection.staleBindingCount} stale · ${projection.targetGapCount} target · ${projection.providerGapCount} provider · ${projection.contextGapCount} context · ${projection.lifecycleGapCount} lifecycle · ${projection.prerequisiteGapCount} prerequisite · ${projection.invalidCandidateCount} invalid")
+        projection.reasons.forEach { appendLine("  - $it") }; appendLine()
+        appendLine("Candidate record: ${projection.candidate?.let { "${it.id}@${it.revision} · candidate · ${it.digest}" } ?: "not recorded"}")
+        projection.candidate?.let {
+            appendLine("Provider/model candidate: ${it.selectedProvider} · ${it.adapterId}/${it.agentId}/${it.modelId}")
+            appendLine("Approved design/version: ${it.baselineSemanticVersion} · ${it.contentBoundary} · materialization ${it.materializationState} · transfer ${it.transferState}")
+            appendLine("Candidate targets: ${it.targetCount} · units ${it.implementationUnitCount} · paths ${it.pathCount}")
+            appendLine("Generation stop lines: Figma ${it.figmaAccessState} · provider ${it.providerExecutionState} · output ${it.generatedOutputState} · inspect ${it.outputInspectionState}")
+            appendLine("Effect stop lines: stage ${it.realStageCreationState} · source mutation ${it.sourceMutationState}")
+        }
+        appendLine(); appendLine("Privacy-safe offline generation-plan identities, provider/model identifiers, counts, states and receipt digests only. This inspection does not call Figma or a live provider, expose protected context, generate or inspect code, create a stage, mutate source, establish approval, authorization, acceptance or readiness, release, deploy, or grant action authority.")
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+    }
+
     fun renderTestInventory(projection: TestInventoryProjection): String = buildString {
         appendLine("GAEP governed Test Inventory candidate")
         appendLine()

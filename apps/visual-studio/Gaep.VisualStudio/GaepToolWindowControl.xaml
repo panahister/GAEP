@@ -261,6 +261,10 @@
                 Command="{Binding LoadApprovedFigmaContextRetrievalCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows privacy-safe approved-snapshot/version and bounded generation-context metadata only; it does not connect to Figma, fetch or expose content, materialize or transfer context, generate code, execute a provider, create or change a stage, mutate source, establish approval, baseline or readiness, accept, release, deploy, or grant action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadControlledDesignToCodeGenerationButton" Content="Inspect governed Controlled Design-to-Code Generation plan"
+                Command="{Binding LoadControlledDesignToCodeGenerationCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows privacy-safe offline generation-plan identities, provider/model identifiers, counts, states and receipt digests only; it does not call Figma or a live provider, expose protected context, generate or inspect code, create a stage, mutate source, establish approval, authorization, acceptance or readiness, release, deploy, or grant action authority."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
         <Button x:Name="LoadDesignSystemTokenContractButton" Content="Inspect governed Design System and Token Contract"
                 Command="{Binding LoadDesignSystemTokenContractCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds token values, component content, requirements, Source, design, and personal content, and does not establish system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."
