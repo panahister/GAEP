@@ -22,8 +22,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260731T062717Z-phase-3a-low-level-design-packages.json",
-  conformance: "evidence/ide-conformance/20260731T062717Z-phase-3a-low-level-design.json",
+  packages: "evidence/local-packages/20260731T071500Z-phase-3a-implementation-readiness-gate-packages.json",
+  conformance: "evidence/ide-conformance/20260731T071500Z-phase-3a-implementation-readiness-gate.json",
   example: "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
 }
 const gateDefinitions = [
