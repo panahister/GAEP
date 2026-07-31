@@ -213,6 +213,7 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "delivery.providerSwitchImplementation.snapshot",
   "delivery.modelSwitchImplementation.snapshot",
   "delivery.approvedFigmaContextRetrieval.snapshot",
+  "delivery.controlledDesignToCodeGeneration.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1772,6 +1773,8 @@ export class EngineHost {
         return this.engine.modelSwitchImplementation.project(request.params.initiativeId)
       case "delivery.approvedFigmaContextRetrieval.snapshot":
         return this.engine.approvedFigmaContextRetrieval.project(request.params.initiativeId)
+      case "delivery.controlledDesignToCodeGeneration.snapshot":
+        return this.engine.controlledDesignToCodeGeneration.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":
