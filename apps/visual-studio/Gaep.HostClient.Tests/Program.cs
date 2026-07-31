@@ -87,6 +87,7 @@ internal static class Program
     private static readonly Guid DesignToCodeBindingRegistryId = Guid.Parse("bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc");
     private static readonly Guid RouteScreenComponentMappingId = Guid.Parse("cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd");
     private static readonly Guid TestMethodologyId = Guid.Parse("dededede-dede-4ede-8ede-dededededede");
+    private static readonly Guid TestInventoryId = Guid.Parse("efefefef-efef-4fef-8fef-efefefefefef");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -333,6 +334,10 @@ internal static class Program
         var badTestMethodologySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-test-methodology-snapshot-digest");
         var badTestMethodologySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-test-methodology-snapshot-private");
         var badTestMethodologyDependencyBindingRoot = Path.Combine(temporaryRoot, "bad-test-methodology-dependency-binding");
+        var badTestInventorySnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-test-inventory-snapshot-binding");
+        var badTestInventorySnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-test-inventory-snapshot-digest");
+        var badTestInventorySnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-test-inventory-snapshot-private");
+        var badTestInventoryDependencyBindingRoot = Path.Combine(temporaryRoot, "bad-test-inventory-dependency-binding");
         var badDesignSystemTokenContractSnapshotBindingRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-binding");
         var badDesignSystemTokenContractSnapshotDigestRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-digest");
         var badDesignSystemTokenContractSnapshotPrivateRoot = Path.Combine(temporaryRoot, "bad-design-system-token-contract-snapshot-private");
@@ -1874,6 +1879,58 @@ internal static class Program
             await ExpectAsync<ArgumentException>(
                 () => new ProductWorkflowController(hostileClient).ReadTestMethodologyAsync(InitiativeId),
                 "Test Methodology workflow rejects substituted Product or exact current dependency bindings");
+        }
+        var testInventoryProjection = await client.ReadTestInventoryAsync(InitiativeId);
+        Check(testInventoryProjection.ProductId == product.Id &&
+              testInventoryProjection.ProductRevision == product.Revision &&
+              testInventoryProjection.ProductDigest == product.Digest &&
+              testInventoryProjection.InitiativeId == resolved.Id &&
+              testInventoryProjection.InitiativeRevision == resolved.Revision &&
+              testInventoryProjection.InitiativeDigest == resolved.Digest &&
+              testInventoryProjection.State == "attention-required" &&
+              testInventoryProjection.ReviewState == "held" &&
+              testInventoryProjection.SourceCriterionCount == 12 &&
+              testInventoryProjection.SourceRiskCount == 9 &&
+              testInventoryProjection.SourceUnitCount == 4 &&
+              testInventoryProjection.SourceMappingSubjectCount == 14 &&
+              testInventoryProjection.SourceMethodologyScopeCount == 4 &&
+              testInventoryProjection.AssetCount == 18 &&
+              testInventoryProjection.CatalogedAssetCount == 14 &&
+              testInventoryProjection.UncoveredCriterionCount == 2 &&
+              testInventoryProjection.UncoveredRiskCount == 1 &&
+              testInventoryProjection.OrphanAssetCount == 1 &&
+              testInventoryProjection.Dependencies.Count == 5 &&
+              testInventoryProjection.Candidate?.CatalogReceiptDigest == $"sha256:{new string('1', 64)}" &&
+              testInventoryProjection.Candidate?.CoverageReceiptDigest == $"sha256:{new string('2', 64)}",
+            "Typed Test Inventory projection preserves exact Product, Initiative, five-dependency, catalog, coverage, trace, ownership, assessment, and privacy-safe metadata");
+        var testInventoryOutput = await initiativeController.ReadTestInventoryAsync(InitiativeId);
+        Check(testInventoryOutput.Contains("GAEP governed Test Inventory candidate", StringComparison.Ordinal) &&
+              testInventoryOutput.Contains("12 Acceptance Criteria · 9 Risks · 4 Implementation Units", StringComparison.Ordinal) &&
+              testInventoryOutput.Contains("18 tests · 14 cataloged · 1 conflicts · 1 missing", StringComparison.Ordinal) &&
+              testInventoryOutput.Contains("2 criteria · 1 risks · 1 units", StringComparison.Ordinal) &&
+              testInventoryOutput.Contains("no test title, path, code, steps, data, owner, evidence, result", StringComparison.Ordinal) &&
+              testInventoryOutput.Contains("does not establish test existence", StringComparison.Ordinal) &&
+              testInventoryOutput.Contains("test execution or results", StringComparison.Ordinal) &&
+              !testInventoryOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !testInventoryOutput.Contains(PrivateCredential, StringComparison.Ordinal) &&
+              !testInventoryOutput.Contains("ownerCandidateIds", StringComparison.Ordinal) &&
+              !testInventoryOutput.Contains("evidenceReferences", StringComparison.Ordinal),
+            "Test Inventory workflow renders privacy-safe metadata with explicit inventory, evidence, execution, acceptance, release, deployment, and action boundaries");
+        foreach (var hostileRoot in new[] { badTestInventorySnapshotDigestRoot, badTestInventorySnapshotPrivateRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            var invalid = await CaptureHostErrorAsync(() => hostileClient.ReadTestInventoryAsync(InitiativeId));
+            Check(invalid.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalid.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalid.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Test Inventory projection rejects hostile digest and private-field drift");
+        }
+        foreach (var hostileRoot in new[] { badTestInventorySnapshotBindingRoot, badTestInventoryDependencyBindingRoot })
+        {
+            await using var hostileClient = new EngineClient(hostileRoot, executable);
+            await ExpectAsync<ArgumentException>(
+                () => new ProductWorkflowController(hostileClient).ReadTestInventoryAsync(InitiativeId),
+                "Test Inventory workflow rejects substituted Product or exact current dependency bindings");
         }
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
@@ -5248,6 +5305,14 @@ internal static class Program
             Path.GetFileName(workspace) == "bad-test-methodology-snapshot-private";
         var badTestMethodologyDependencyBinding =
             Path.GetFileName(workspace) == "bad-test-methodology-dependency-binding";
+        var badTestInventorySnapshotBinding =
+            Path.GetFileName(workspace) == "bad-test-inventory-snapshot-binding";
+        var badTestInventorySnapshotDigest =
+            Path.GetFileName(workspace) == "bad-test-inventory-snapshot-digest";
+        var badTestInventorySnapshotPrivate =
+            Path.GetFileName(workspace) == "bad-test-inventory-snapshot-private";
+        var badTestInventoryDependencyBinding =
+            Path.GetFileName(workspace) == "bad-test-inventory-dependency-binding";
         var badDesignSystemTokenContractSnapshotBinding =
             Path.GetFileName(workspace) == "bad-design-system-token-contract-snapshot-binding";
         var badDesignSystemTokenContractSnapshotDigest =
@@ -5964,6 +6029,18 @@ internal static class Program
                         badTestMethodologySnapshotDigest,
                         badTestMethodologySnapshotPrivate,
                         badTestMethodologyDependencyBinding);
+                    break;
+                case "planning.testInventory.snapshot":
+                    await HandleTestInventoryAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badTestInventorySnapshotBinding,
+                        badTestInventorySnapshotDigest,
+                        badTestInventorySnapshotPrivate,
+                        badTestInventoryDependencyBinding);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -11116,6 +11193,100 @@ internal static class Program
         if (includePrivateField) result["testData"] = $"{PrivateRoot}/{PrivateCredential}";
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["scopeCount"] = 5;
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleTestInventoryAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool forgeProductBinding,
+        bool mutateAfterDigest,
+        bool includePrivateField,
+        bool forgeDependencyBinding)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") ||
+            parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID TEST INVENTORY");
+            return;
+        }
+        var productRevision = forgeProductBinding ? 8 : 7;
+        var assessedAt = "2026-07-31T02:00:00.000Z";
+        var candidateDigest = $"sha256:{new string('9', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        Dictionary<string, object?> Reference(Guid recordId, long revision, char digestCharacter) => new()
+        {
+            ["recordId"] = recordId.ToString("D"), ["revision"] = revision,
+            ["digest"] = $"sha256:{new string(digestCharacter, 64)}",
+        };
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = TestInventoryId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+            ["state"] = "candidate", ["catalogReceiptDigest"] = $"sha256:{new string('1', 64)}",
+            ["coverageReceiptDigest"] = $"sha256:{new string('2', 64)}",
+            ["traceReceiptDigest"] = $"sha256:{new string('3', 64)}",
+            ["ownershipReceiptDigest"] = $"sha256:{new string('4', 64)}",
+            ["assessmentReceiptDigest"] = $"sha256:{new string('5', 64)}",
+            ["assetCount"] = 18, ["catalogedAssetCount"] = 14, ["conflictAssetCount"] = 1,
+            ["observedAssetCount"] = 11, ["plannedAssetCount"] = 5,
+            ["reviewState"] = "held", ["updatedAt"] = "2026-07-31T01:59:00.000Z",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1, ["kind"] = "test-inventory-projection",
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["id"] = ProductId.ToString("D"), ["revision"] = productRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(productRevision))),
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["id"] = InitiativeId.ToString("D"), ["revision"] = initiativeRevision,
+                ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)), ["state"] = "active",
+            },
+            ["status"] = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = 1, ["kind"] = "test-inventory-status",
+                ["productId"] = ProductId.ToString("D"), ["productRevision"] = productRevision,
+                ["initiativeId"] = InitiativeId.ToString("D"), ["initiativeRevision"] = initiativeRevision,
+                ["candidate"] = new Dictionary<string, object?>
+                {
+                    ["recordId"] = TestInventoryId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest,
+                },
+                ["acceptanceCriteria"] = Reference(AcceptanceCriteriaId, 2, '1'),
+                ["riskRegister"] = Reference(RiskRegisterId, 3, 'e'),
+                ["implementationUnitModel"] = Reference(ImplementationUnitModelId, 2, '5'),
+                ["routeScreenComponentMapping"] = Reference(RouteScreenComponentMappingId, 2, '2'),
+                ["testMethodology"] = Reference(TestMethodologyId, 2, forgeDependencyBinding ? '0' : '8'),
+                ["sourceCriterionCount"] = 12, ["sourceRiskCount"] = 9, ["sourceUnitCount"] = 4,
+                ["sourceMappingSubjectCount"] = 14, ["sourceMethodologyScopeCount"] = 4,
+                ["assetCount"] = 18, ["catalogedAssetCount"] = 14, ["conflictAssetCount"] = 1,
+                ["missingAssetCount"] = 1, ["deferredAssetCount"] = 1, ["notAssessedAssetCount"] = 1,
+                ["observedAssetCount"] = 11, ["plannedAssetCount"] = 5,
+                ["automatedAssetCount"] = 10, ["manualAssetCount"] = 4,
+                ["duplicateIdentityCount"] = 1, ["orphanAssetCount"] = 1,
+                ["uncoveredCriterionCount"] = 2, ["uncoveredRiskCount"] = 1, ["uncoveredUnitCount"] = 1,
+                ["uncoveredMappingSubjectCount"] = 2, ["uncoveredMethodologyScopeCount"] = 1,
+                ["ownershipGapCount"] = 1, ["traceGapCount"] = 2, ["evidenceGapCount"] = 1,
+                ["staleBindingCount"] = 0, ["staleDependencyCount"] = 0, ["invalidCandidateCount"] = 1,
+                ["unresolvedQuestionCount"] = 2, ["reviewState"] = "held", ["state"] = "attention-required",
+                ["reasons"] = new[] { "One or more Test Inventory candidates require human review" },
+                ["assessedAt"] = assessedAt,
+                ["authorityBoundary"] =
+                    "test-inventory-status-is-observational-and-does-not-establish-requirement-acceptance-criteria-or-risk-truth-inventory-validity-or-completeness-test-asset-existence-environment-availability-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority",
+            },
+            ["candidate"] = candidate, ["observedAt"] = assessedAt,
+            ["privacyBoundary"] =
+                "projection-contains-record-identities-counts-statuses-and-test-catalog-coverage-trace-ownership-assessment-snapshot-digests-only-not-test-titles-paths-code-steps-data-owner-evidence-results-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] =
+                "test-inventory-projection-is-read-only-and-does-not-establish-requirement-acceptance-criteria-or-risk-truth-inventory-validity-or-completeness-test-asset-existence-environment-availability-privacy-or-security-approval-owner-appointment-test-execution-or-results-evidence-or-coverage-truth-quality-implementation-readiness-acceptance-release-deployment-or-action-authority",
+        };
+        if (includePrivateField) result["testPath"] = $"{PrivateRoot}/{PrivateCredential}";
+        RefreshCanonicalDigest(result, "snapshotDigest");
+        if (mutateAfterDigest) candidate["assetCount"] = 19;
         await WriteResultAsync(id, result);
     }
 

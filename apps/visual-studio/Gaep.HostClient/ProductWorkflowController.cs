@@ -3226,6 +3226,108 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadTestInventoryAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var acceptance = await client.ReadAcceptanceCriteriaAsync(initiativeId, cancellationToken);
+        var risks = await client.ReadRiskRegisterAsync(initiativeId, cancellationToken);
+        var units = await client.ReadImplementationUnitModelAsync(initiativeId, cancellationToken);
+        var routeMapping = await client.ReadRouteScreenComponentMappingAsync(initiativeId, cancellationToken);
+        var methodology = await client.ReadTestMethodologyAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadTestInventoryAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision ||
+            projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id ||
+            projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest ||
+            projection.InitiativeState != initiative.State)
+        {
+            throw new ArgumentException("The Product or Initiative changed while Test Inventory was read. Refresh the exact records.");
+        }
+        if (projection.Candidate is not null)
+        {
+            void RequireDependency(string name, Guid id, long revision, string digest)
+            {
+                if (!projection.Dependencies.TryGetValue(name, out var reference) || reference.RecordId != id ||
+                    reference.Revision != revision || reference.Digest != digest)
+                {
+                    throw new ArgumentException($"The {name} candidate changed while Test Inventory was read. Refresh the exact records.");
+                }
+            }
+            if (acceptance.Candidate is not { } acceptanceCandidate || risks.Register is not { } riskCandidate ||
+                units.Candidate is not { } unitsCandidate || routeMapping.Candidate is not { } routeCandidate ||
+                methodology.Candidate is not { } methodologyCandidate)
+            {
+                throw new ArgumentException("One or more exact current dependency candidates are unavailable. Refresh the exact records.");
+            }
+            RequireDependency("acceptanceCriteria", acceptanceCandidate.Id, acceptanceCandidate.Revision, acceptanceCandidate.Digest);
+            RequireDependency("riskRegister", riskCandidate.Id, riskCandidate.Revision, riskCandidate.Digest);
+            RequireDependency("implementationUnitModel", unitsCandidate.Id, unitsCandidate.Revision, unitsCandidate.Digest);
+            RequireDependency("routeScreenComponentMapping", routeCandidate.Id, routeCandidate.Revision, routeCandidate.Digest);
+            RequireDependency("testMethodology", methodologyCandidate.Id, methodologyCandidate.Revision, methodologyCandidate.Digest);
+        }
+        return RenderTestInventory(projection);
+    }
+
+    public static string RenderTestInventory(TestInventoryProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder()
+            .AppendLine("GAEP governed Test Inventory candidate")
+            .AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine(
+                $"Source coverage: {projection.SourceCriterionCount} Acceptance Criteria · {projection.SourceRiskCount} Risks · " +
+                $"{projection.SourceUnitCount} Implementation Units · {projection.SourceMappingSubjectCount} mapping subjects · " +
+                $"{projection.SourceMethodologyScopeCount} methodology scopes")
+            .AppendLine(
+                $"Candidate inventory: {projection.AssetCount} tests · {projection.CatalogedAssetCount} cataloged · " +
+                $"{projection.ConflictAssetCount} conflicts · {projection.MissingAssetCount} missing · " +
+                $"{projection.DeferredAssetCount} deferred · {projection.NotAssessedAssetCount} not assessed")
+            .AppendLine(
+                $"Candidate asset states: {projection.ObservedAssetCount} observed · {projection.PlannedAssetCount} planned · " +
+                $"{projection.AutomatedAssetCount} automated · {projection.ManualAssetCount} manual")
+            .AppendLine(
+                $"Candidate coverage gaps: {projection.UncoveredCriterionCount} criteria · {projection.UncoveredRiskCount} risks · " +
+                $"{projection.UncoveredUnitCount} units · {projection.UncoveredMappingSubjectCount} mapping subjects · " +
+                $"{projection.UncoveredMethodologyScopeCount} methodology scopes")
+            .AppendLine(
+                $"Candidate integrity gaps: {projection.DuplicateIdentityCount} duplicates · {projection.OrphanAssetCount} orphans · " +
+                $"{projection.OwnershipGapCount} ownership · {projection.TraceGapCount} trace · {projection.EvidenceGapCount} evidence")
+            .AppendLine(
+                $"Candidate freshness gaps: {projection.StaleBindingCount} stale bindings · {projection.StaleDependencyCount} stale dependencies · " +
+                $"{projection.InvalidCandidateCount} invalid candidates · {projection.UnresolvedQuestionCount} questions");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate)
+        {
+            output.AppendLine($"Test Inventory candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+                .AppendLine($"Catalog receipt digest: {candidate.CatalogReceiptDigest}")
+                .AppendLine($"Coverage receipt digest: {candidate.CoverageReceiptDigest}")
+                .AppendLine($"Trace receipt digest: {candidate.TraceReceiptDigest}")
+                .AppendLine($"Ownership receipt digest: {candidate.OwnershipReceiptDigest}")
+                .AppendLine($"Assessment receipt digest: {candidate.AssessmentReceiptDigest}")
+                .AppendLine(
+                    $"Candidate coverage: {candidate.AssetCount} tests · {candidate.CatalogedAssetCount} cataloged · " +
+                    $"{candidate.ConflictAssetCount} conflicts · {candidate.ObservedAssetCount} observed · " +
+                    $"{candidate.PlannedAssetCount} planned · {candidate.ReviewState}");
+        }
+        else output.AppendLine("Test Inventory candidate: not recorded");
+        return output.AppendLine()
+            .AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append(
+                "Authority boundary: candidate identities, counts, statuses, and test catalog, coverage, trace, ownership, " +
+                "assessment, and snapshot digests only; no test title, path, code, steps, data, owner, evidence, result, " +
+                "personal data, secret, credential, or machine path. This inspection does not establish test existence, " +
+                "inventory validity or completeness, environment availability, privacy or security approval, owner appointment, " +
+                "test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, " +
+                "deployment, or action authority.")
+            .ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
