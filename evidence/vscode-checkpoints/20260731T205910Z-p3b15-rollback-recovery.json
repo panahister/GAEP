@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "kind": "vscode-local-implementation-checkpoint",
+  "feature": { "id": "P3B-15", "title": "Rollback and Recovery", "implementationScope": "shared-contract-engine-and-vscode-product-studio" },
+  "recordedAt": "2026-07-31T20:59:10.000Z",
+  "branch": "codex/gaep-hardwork-completion",
+  "source": { "contractCommit": "8c91f91", "engineCommit": "f2015a0", "productStudioCommit": "1cf139e" },
+  "implementation": {
+    "contract": "packages/contracts/src/rollback-recovery.ts",
+    "engine": "packages/engine/src/rollback-recovery.ts",
+    "productStudioDataSource": "apps/vscode/src/current-engine-studio-data-source.ts",
+    "vscodeProtocol": "apps/vscode/src/studio-protocol.ts",
+    "surface": "Product Studio Delivery route",
+    "lifecycle": [
+      "immutable versioned rollback-and-recovery evidence-candidate history",
+      "exact current Failure and Recovery Model, Isolated Staging Workspace, Apply/Discard Foundation, and Scoped Apply predecessor validation",
+      "exact candidate stage identity, generation, scope, checkpoint digest, and dependency-binding receipt continuity",
+      "one recovery subject per exact scoped selected path with repository-relative path and staging digest continuity",
+      "recovery plans exact-bound to declared failure modes and compatible recovery-plan definitions",
+      "ordered non-executed containment, checkpoint verification, reconciliation, restoration-candidate, and revalidation steps",
+      "candidate stale-stage, scope-confinement, checkpoint-integrity, tamper-rejection, and atomicity safeguards",
+      "explicit power-loss and unsupported-effect not-assessed limitations",
+      "deterministic dependency, stage, checkpoint, subject, plan, safeguard, evidence, and assessment receipts",
+      "bounded privacy-safe Product Studio projection with no rollback, recovery, or return-to-service action"
+    ]
+  },
+  "verification": {
+    "typecheck": { "command": "npm run typecheck", "status": "passed" },
+    "focused": {
+      "command": "npx vitest run packages/contracts/src/rollback-recovery.test.ts packages/engine/src/rollback-recovery.test.ts apps/vscode/src/rollback-recovery-product-studio.test.ts apps/vscode/src/studio-protocol.test.ts apps/vscode/src/studio-accessibility.test.ts apps/vscode/src/current-engine-studio-data-source.test.ts",
+      "status": "passed", "testFilesPassed": 6, "testsPassed": 146, "testsSkipped": 0
+    },
+    "sharedAndVscode": { "command": "npx vitest run packages apps/vscode", "status": "passed", "testFilesPassed": 156, "testsPassed": 1048, "testsSkipped": 1 },
+    "vscodePackage": { "command": "npm run package:vscode", "status": "passed", "path": "apps/vscode/dist/gaep-vscode.vsix", "bytes": 1214862,
+      "sha256": "edab8f9414c53172e6c498f7537d25bcb4103d98d74344067eda28d17505f858", "published": false },
+    "isolatedExtensionHost": {
+      "command": "npm run test:vscode:extension-host", "status": "passed", "normalProfileUsed": false,
+      "checks": [
+        "development activation, contributed commands, four native views, and Product Studio open",
+        "explicit two-root Product context without silent Product-root mutation",
+        "isolated previous-version install, upgrade, reinstall, rollback, uninstall, absence, and final install",
+        "exact VSIX activation, commands, views, Product Studio, bundled-engine empty recovery/evidence workflow, and no workspace mutation"
+      ],
+      "limitation": "The test harness disables workspace trust, so untrusted-host behavior is not established by this receipt."
+    }
+  },
+  "acceptanceBoundary": {
+    "candidateRecoveryMetadataOnly": true,
+    "realStageExistence": "not-established",
+    "realCheckpointTruth": "not-established",
+    "repositoryInspection": "not-performed",
+    "sourceInspection": "not-performed",
+    "sourceMutation": "not-performed",
+    "rollbackExecution": "not-performed",
+    "recoveryExecution": "not-performed",
+    "powerLossBehavior": "not-assessed",
+    "unsupportedEffectBehavior": "not-assessed",
+    "recoveryOutcome": "not-established",
+    "returnToService": "not-authorized",
+    "approval": "not-established",
+    "authorization": "not-established",
+    "nativeVscodeAcceptance": "not-established",
+    "liveProviderValidation": "not-performed",
+    "productOwnerAcceptance": "not-established",
+    "securityReview": "skipped",
+    "releaseAuthorization": "not-granted",
+    "publicationAuthorization": "not-granted",
+    "deploymentAuthorization": "not-granted",
+    "actionAuthority": "not-granted"
+  },
+  "externalEffects": {
+    "credentialAccess": false, "externalProviderCalls": 0, "figmaCalls": 0, "realStageCreation": false,
+    "realCheckpointCreation": false, "sourceMutation": false, "rollbackOrRecoveryExecution": false,
+    "externalSystemMutations": 0, "normalProfileExtensionMutation": false, "packagePublished": false, "releaseOrDeploymentPerformed": false
+  }
+}
