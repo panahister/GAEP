@@ -89,6 +89,7 @@
     { "id": "controlled-codex-implementation", "label": "Exact governed Controlled Codex Implementation candidate bound to the exact current Proposed Change Preview, Isolated Staging Workspace and portable Agent Selection, with immutable revisions, exact Codex provider, agent, model and capability identity, one controlled unit and path per preview and staging candidate, bounded resource and tool scopes, deterministic plan and staged-effect receipts, explicit approval and authorization prerequisites, cancellation, resume and recovery states, apply and discard preconditions, attributable evidence, and no elevation into provider execution, real stage creation, approval, authorization, source mutation, apply, discard, recovery, native-host, live-provider or security acceptance, release, deployment, write or action authority" },
     { "id": "controlled-claude-implementation", "label": "Exact governed Controlled Claude Implementation candidate bound to the exact current Proposed Change Preview, Isolated Staging Workspace and portable Agent Selection, with immutable revisions, exact Claude Code provider, agent, model and capability identity, one controlled unit and path per preview and staging candidate, repository-relative resource scopes, zero path tool capabilities, one explicit deny-all tool permission, deterministic context-only plan, runtime-boundary and staged-effect receipts, explicit unsupported-runtime, authentication, effective-policy, credential-access, administrator-policy-bypass, workspace-access, tool-access and resume stop lines, approval and authorization prerequisites, recovery metadata and attributable evidence, and no elevation into provider execution, real stage creation, approval, authorization, source mutation, apply, discard, recovery, native-host, live-provider or security acceptance, release, deployment, write or action authority" },
     { "id": "provider-switch-implementation", "label": "Exact governed Provider Switching During Implementation candidate bound to the exact current Controlled Codex and Controlled Claude Implementation candidates, Product, Initiative, Proposed Change Preview, Isolated Staging Workspace, Agent Selections, plans and recovery receipts, with immutable revisions, explicit switch direction, exact provider, agent, model, unit and path continuity, deterministic binding, provider, continuity and handoff receipts, distinct provider-transition, handoff, stage-ownership, resume, approval, authorization, source-mutation, apply, discard and recovery states, explicit prerequisites and candidate-only handoff metadata, and no elevation into provider execution or transition, handoff recording, stage-ownership transfer, resume, approval, authorization, source mutation, apply, discard, recovery, native-host, live-provider or security acceptance, release, deployment, write or action authority" },
+    { "id": "model-switch-implementation", "label": "Exact governed Model Switching Within One Provider candidate bound to the exact current Provider Switch Implementation, Controlled Codex and Controlled Claude candidates, Product, Initiative, Proposed Change Preview and Isolated Staging Workspace, with one provider and agent, distinct source and target models, exact capability, unit and path continuity, deterministic binding, model, continuity, transition, lifecycle, prerequisite and assessment receipts, explicit target-model availability, capability-refresh, model-transition, context-transfer, handoff, stage-ownership, resume, approval, authorization, source-mutation, apply, discard and recovery stop lines, and no elevation into model availability, capability refresh, provider execution, transition, context transfer, handoff, resume, approval, authorization, mutation, acceptance, release, deployment, write or action authority" },
     { "id": "design-system-token-contract", "label": "Exact governed Design System and Token Contract candidate projection with bounded system, token, variable, component and requirement-coverage metadata, without system, token, variable or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "accessibility-design-rules", "label": "Exact governed Accessibility Design Rules candidate projection with bounded target, rule, check, evidence-state and requirement-coverage metadata, without accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "responsive-multi-platform-targets", "label": "Exact governed Responsive and Multi-Platform Targets candidate projection with bounded platform-target, breakpoint, behavior, check, evidence-state and requirement-coverage metadata, without responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
@@ -116,7 +117,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T160050Z-phase-3b-provider-switch-implementation-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T164639Z-phase-3b-model-switch-implementation-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -469,7 +470,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T160050Z-phase-3b-provider-switch-implementation-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T164639Z-phase-3b-model-switch-implementation-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -875,7 +876,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T160050Z-phase-3b-provider-switch-implementation-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T164639Z-phase-3b-model-switch-implementation-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -1368,7 +1369,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T160050Z-phase-3b-provider-switch-implementation-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T164639Z-phase-3b-model-switch-implementation-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]

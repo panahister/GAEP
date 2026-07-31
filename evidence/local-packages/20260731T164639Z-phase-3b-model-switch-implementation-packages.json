@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-ide-package-report-v1",
+  "packageSet": "phase-0-local",
+  "artifacts": [
+    {
+      "host": "vscode",
+      "packageId": "gaep.gaep-vscode@0.1.0",
+      "artifactPath": "apps/vscode/dist/gaep-vscode.vsix",
+      "status": "produced",
+      "bytes": 1168975,
+      "digest": "sha256:c992717d757c1a5afeec25fd2a1c568a5086f188b6e9df51045a822d3bb4c5af",
+      "verification": "exact-local-package-build-bundled-engine-and-accessible-phase-3b-model-switch-implementation-product-studio-projection; target-model-availability-capability-refresh-supported-runtime-authentication-effective-policy-credential-access-administrator-policy-workspace-tool-access-provider-execution-model-transition-context-transfer-handoff-stage-ownership-transfer-resume-stage-creation-native-install-reinstall-and-interaction-acceptance-remain-pending"
+    },
+    {
+      "host": "kiro",
+      "packageId": "gaep.gaep-kiro@0.1.0",
+      "artifactPath": "apps/kiro/dist/gaep-kiro.vsix",
+      "status": "produced",
+      "bytes": 1119421,
+      "digest": "sha256:ce0deb21f8967742ee977f34515bf47b646fcc89754448d8af3c354e32c6dbaf",
+      "verification": "package-build-digest-bound-engine-and-private-safe-phase-3b-model-switch-implementation-command-projection; target-model-availability-capability-refresh-supported-runtime-authentication-effective-policy-credential-access-administrator-policy-workspace-tool-access-provider-execution-model-transition-context-transfer-handoff-stage-ownership-transfer-resume-stage-creation-native-compatible-host-install-and-interaction-acceptance-remain-pending"
+    },
+    {
+      "host": "rider",
+      "packageId": "dev.gaep.productstudio@0.1.0",
+      "artifactPath": "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
+      "status": "produced",
+      "bytes": 2337345,
+      "digest": "sha256:fbbcb447c8f145e10304199d1cb66c5dbfefdfb4d87d259bedfa181168f5663d",
+      "verification": "clean-kotlin-compile-instrumented-plugin-build-structure-check-digest-bound-engine-and-phase-3b-model-switch-implementation-projection; target-model-availability-capability-refresh-supported-runtime-authentication-effective-policy-credential-access-administrator-policy-workspace-tool-access-provider-execution-model-transition-context-transfer-handoff-stage-ownership-transfer-resume-stage-creation-native-Rider-install-startup-and-interaction-acceptance-remain-pending"
+    },
+    {
+      "host": "visual-studio",
+      "packageId": "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
+      "artifactPath": "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
+      "status": "not-produced-on-this-platform",
+      "verification": "cross-platform-hostclient-build-and-phase-3b-model-switch-implementation-protocol-controller-projection; target-model-availability-capability-refresh-supported-runtime-authentication-effective-policy-credential-access-administrator-policy-workspace-tool-access-provider-execution-model-transition-context-transfer-handoff-stage-ownership-transfer-resume-stage-creation-Windows-VSIX-container-install-startup-and-interaction-acceptance-remain-pending",
+      "limitation": "Native Visual Studio VSIX container creation and installation require Windows and VsixUtil.exe."
+    }
+  ],
+  "summary": {
+    "expected": 4,
+    "produced": 3,
+    "missingNativePlatformArtifacts": 1
+  },
+  "claimBoundary": "Local package evidence is not release signing, publication, supported-OS acceptance, Product readiness, or release approval."
+}
