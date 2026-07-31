@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-realistic-readiness-example-artifact-manifest",
+  "scenario": {
+    "id": "phase-3a-atlas-realistic-readiness-example-v1",
+    "path": "scenario.json",
+    "sourcePath": "examples/phase-3a-realistic-readiness-example/scenario.json",
+    "sourceDigest": "sha256:1439bc54fc29adae0455ce9b04aa357549f27157adf0ed5f123d04bc31ad0e9a",
+    "semanticDigest": "sha256:d71d1686904b4c1ddaad496e76d99a17d10108ffdd08c2632d0494e2925fb5ff",
+    "product": {
+      "recordType": "product",
+      "recordId": "33000000-0000-4000-8000-000000000001",
+      "revision": 1,
+      "digest": "sha256:97d9dca3f37d6e03af0be8db1581f6f72366681d15d3d09fdd722d6cf40669cb"
+    },
+    "initiative": {
+      "recordType": "initiative",
+      "recordId": "33000000-0000-4000-8000-000000000002",
+      "revision": 1,
+      "digest": "sha256:c8dca5f451f2e159740dc48fb17afca54ede34b99424ee8a8552402868d0f30d",
+      "state": "active"
+    }
+  },
+  "receipt": {
+    "path": "receipt.json",
+    "bytes": 6811,
+    "digest": "sha256:4efa14e1192d22e6759f1d94d273792eb0ddf2e91cdd8546313fd5302b7f14a7",
+    "compositionDigest": "sha256:bbaddf6753902ea0c81b4ee78091faed68e0e31c50d3371ef00bd265d3bbb524"
+  },
+  "inventory": {
+    "fileCount": 12,
+    "byteCount": 182468,
+    "entries": [
+      {
+        "path": "dashboard.json",
+        "bytes": 28284,
+        "digest": "sha256:8b606991b518d55fa6da8f63e91b4c0075d54b6a295b5ec1e98b309c40d39718"
+      },
+      {
+        "path": "failure-recovery.json",
+        "bytes": 3799,
+        "digest": "sha256:5a0dd8ac37b0bcd1209e471060bf12b88505b7e4ce9a5b1cbf153a6dabd27d57"
+      },
+      {
+        "path": "host-projections.json",
+        "bytes": 3130,
+        "digest": "sha256:8358ed7f87a4bb388ee50cf38f361e5d4baf81b826d447d76614a1a85687fa8c"
+      },
+      {
+        "path": "readiness-catalog.json",
+        "bytes": 21688,
+        "digest": "sha256:844130e7894f941386594a6559bbd7ab2932a0558fd29925d86721d6fdd3df24"
+      },
+      {
+        "path": "receipt.json",
+        "bytes": 6811,
+        "digest": "sha256:4efa14e1192d22e6759f1d94d273792eb0ddf2e91cdd8546313fd5302b7f14a7"
+      },
+      {
+        "path": "reopen-continuity.json",
+        "bytes": 19201,
+        "digest": "sha256:3b4164b0084b8b0aadcbb8cfb73d4b35dae486d2112ed7e615e65fc86faf68bd"
+      },
+      {
+        "path": "scenario.json",
+        "bytes": 5802,
+        "digest": "sha256:1439bc54fc29adae0455ce9b04aa357549f27157adf0ed5f123d04bc31ad0e9a"
+      },
+      {
+        "path": "sources/claude-receipt.json",
+        "bytes": 6507,
+        "digest": "sha256:c20cf97aabe96666c62bc9afcb69e9bdb020b28b0b32a79c00b67a1a60a80449"
+      },
+      {
+        "path": "sources/codex-candidate-chain.json",
+        "bytes": 10465,
+        "digest": "sha256:bad59703f4f117a50287f4d8c54189f9638639899225ac6233de072ecde85e85"
+      },
+      {
+        "path": "sources/codex-receipt.json",
+        "bytes": 5270,
+        "digest": "sha256:fa59eae2ef68fa0d6b1b55dc3ee61cdd81d8c6829659703a0d63463dd9075f09"
+      },
+      {
+        "path": "sources/phase3a-conformance.json",
+        "bytes": 63677,
+        "digest": "sha256:25d9d4e0f37d7be31d84d3ede55bf6bc7e94d07d1df403fd58239eb3c5840d34"
+      },
+      {
+        "path": "sources/phase3a-report.json",
+        "bytes": 7834,
+        "digest": "sha256:1704e3735df5b6977c6dedfcd7a5f9886e3012d1d7772b758edf133a23c7ed8e"
+      }
+    ],
+    "inventoryDigest": "sha256:2f44a51811b3ec9d0f3dba7522cb8c9307128ce2dd4e41a8a7f55b37a6e6d85f"
+  },
+  "authorityBoundary": "artifact-manifest-is-integrity-evidence-not-product-truth-readiness-implementation-live-provider-native-host-product-owner-security-release-or-deployment-authority"
+}

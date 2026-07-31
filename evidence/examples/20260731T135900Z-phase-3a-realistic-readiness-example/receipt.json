@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-realistic-readiness-example-receipt",
+  "scenario": {
+    "id": "phase-3a-atlas-realistic-readiness-example-v1",
+    "path": "scenario.json",
+    "sourcePath": "examples/phase-3a-realistic-readiness-example/scenario.json",
+    "sourceDigest": "sha256:1439bc54fc29adae0455ce9b04aa357549f27157adf0ed5f123d04bc31ad0e9a",
+    "semanticDigest": "sha256:d71d1686904b4c1ddaad496e76d99a17d10108ffdd08c2632d0494e2925fb5ff",
+    "product": {
+      "recordType": "product",
+      "recordId": "33000000-0000-4000-8000-000000000001",
+      "revision": 1,
+      "digest": "sha256:97d9dca3f37d6e03af0be8db1581f6f72366681d15d3d09fdd722d6cf40669cb"
+    },
+    "initiative": {
+      "recordType": "initiative",
+      "recordId": "33000000-0000-4000-8000-000000000002",
+      "revision": 1,
+      "digest": "sha256:c8dca5f451f2e159740dc48fb17afca54ede34b99424ee8a8552402868d0f30d",
+      "state": "active"
+    }
+  },
+  "sources": [
+    {
+      "path": "sources/codex-receipt.json",
+      "bytes": 5270,
+      "digest": "sha256:fa59eae2ef68fa0d6b1b55dc3ee61cdd81d8c6829659703a0d63463dd9075f09",
+      "semanticDigest": "sha256:0eea33d55736f181ef1a8cd66dc18e8d9e046cbcc89ce0b58c33d65e2104e16d"
+    },
+    {
+      "path": "sources/codex-candidate-chain.json",
+      "bytes": 10465,
+      "digest": "sha256:bad59703f4f117a50287f4d8c54189f9638639899225ac6233de072ecde85e85",
+      "semanticDigest": "sha256:2524448bc7fb92e5a69c039f75e76a1d2d6adb3ebe05de258add329571f56907"
+    },
+    {
+      "path": "sources/claude-receipt.json",
+      "bytes": 6507,
+      "digest": "sha256:c20cf97aabe96666c62bc9afcb69e9bdb020b28b0b32a79c00b67a1a60a80449",
+      "semanticDigest": "sha256:65509136aebad601b782501266cc2882b7d90372927f5cf918db4c6d8b5dfb8c"
+    },
+    {
+      "path": "sources/phase3a-conformance.json",
+      "bytes": 63677,
+      "digest": "sha256:25d9d4e0f37d7be31d84d3ede55bf6bc7e94d07d1df403fd58239eb3c5840d34",
+      "semanticDigest": "sha256:4af019e86ca7a720ff6120f540aaea24fe198d83f5c0ff31c44730f754c8cae0"
+    },
+    {
+      "path": "sources/phase3a-report.json",
+      "bytes": 7834,
+      "digest": "sha256:1704e3735df5b6977c6dedfcd7a5f9886e3012d1d7772b758edf133a23c7ed8e",
+      "semanticDigest": "sha256:cd04c5844be7f8ec2443fa90af5648abfea6f9f8a0d3520326fe7d2cad115b5c"
+    },
+    {
+      "path": "apps/vscode/src/current-engine-studio-data-source.ts",
+      "bytes": 592947,
+      "digest": "sha256:a1ec127d7960faa708ca709df7e0105510f527c16c6c3f14aca994388a09c555",
+      "semanticDigest": "sha256:a1ec127d7960faa708ca709df7e0105510f527c16c6c3f14aca994388a09c555"
+    }
+  ],
+  "outputs": {
+    "readiness-catalog.json": {
+      "path": "readiness-catalog.json",
+      "bytes": 21688,
+      "digest": "sha256:844130e7894f941386594a6559bbd7ab2932a0558fd29925d86721d6fdd3df24",
+      "semanticDigest": "sha256:d5ff9e346be914150320fcfd7e822ebd2adeec1d2c594d3714371867cd70b240"
+    },
+    "dashboard.json": {
+      "path": "dashboard.json",
+      "bytes": 28284,
+      "digest": "sha256:8b606991b518d55fa6da8f63e91b4c0075d54b6a295b5ec1e98b309c40d39718",
+      "semanticDigest": "sha256:5d065e62fff7648bb3736ddd45825169d1c2ad3212dd056c45c2fcd37962c56b"
+    },
+    "reopen-continuity.json": {
+      "path": "reopen-continuity.json",
+      "bytes": 19201,
+      "digest": "sha256:3b4164b0084b8b0aadcbb8cfb73d4b35dae486d2112ed7e615e65fc86faf68bd",
+      "semanticDigest": "sha256:5217ec5921b9559bcb81fa114af6f4988183e0ec17eb96958f2b18ad12a8bdf2"
+    },
+    "failure-recovery.json": {
+      "path": "failure-recovery.json",
+      "bytes": 3799,
+      "digest": "sha256:5a0dd8ac37b0bcd1209e471060bf12b88505b7e4ce9a5b1cbf153a6dabd27d57",
+      "semanticDigest": "sha256:687a37dbf0a97ef3daec588c105193c3c177882edd7345b04e2df47d8560827b"
+    },
+    "host-projections.json": {
+      "path": "host-projections.json",
+      "bytes": 3130,
+      "digest": "sha256:8358ed7f87a4bb388ee50cf38f361e5d4baf81b826d447d76614a1a85687fa8c",
+      "semanticDigest": "sha256:3f2883a239af4b4a0c31b758eb8ea622039418138a0ad5d723a1f11e86885df4"
+    }
+  },
+  "summary": {
+    "sourceCount": 20,
+    "exactCurrentCandidateCount": 20,
+    "evidenceReferenceCount": 81,
+    "gapCount": 0,
+    "conflictCount": 0,
+    "staleCount": 0,
+    "unresolvedCount": 0,
+    "dashboardViewCount": 5,
+    "providerWorkflowEvidenceCount": 2,
+    "candidatePhaseState": "candidate-complete-for-human-review",
+    "reopenObservationCount": 2,
+    "continuityMismatchCount": 0,
+    "failureRecoveryCaseCount": 3,
+    "holdCount": 3,
+    "hostProjectionCount": 4,
+    "productStudioProjectionCount": 1,
+    "liveProviderRequestCount": 0,
+    "implementationEffectsApplied": 0,
+    "hostsAccepted": 0,
+    "providersAccepted": 0,
+    "productOwnerAcceptance": "not-established",
+    "readinessAuthority": "not-established"
+  },
+  "summaryDigest": "sha256:bc2ca1564b2996ef772e71a05950f80ba55c3c38e5e8fec7cb397ba9bd063298",
+  "authority": {
+    "productTruth": "not-established",
+    "sourceCompleteness": "not-established",
+    "priorityAuthority": "not-established",
+    "readinessAuthority": "not-established",
+    "waiverAuthority": "not-granted",
+    "ownershipAppointment": "not-established",
+    "implementationAuthorization": "not-granted",
+    "liveProviderStatus": "not-tested",
+    "nativeHostAcceptance": "not-established",
+    "productOwnerAcceptance": "not-established",
+    "securityScan": "skipped-by-product-owner",
+    "releaseAuthority": "not-granted",
+    "deploymentAuthority": "not-granted",
+    "actionAuthority": "not-granted",
+    "boundary": "phase-3a-realistic-readiness-receipt-is-deterministic-local-candidate-evidence-not-real-product-source-truth-readiness-waiver-ownership-implementation-live-provider-native-host-product-owner-security-release-deployment-or-action-authority"
+  },
+  "limitations": [
+    "This is a deterministic local realistic fixture, not a real Product, repository, source, design, test, risk, security, or production dataset.",
+    "The 20 source candidates and 81 evidence-reference metadata entries demonstrate structural continuity only; truth, completeness, quality, priority, readiness, waiver, and ownership remain accountable human decisions.",
+    "Codex and Claude bindings reference sealed offline deterministic workflows; no live request, authentication, semantic-quality assessment, source-code write, or implementation effect occurs.",
+    "Candidate-complete-for-human-review is not implementation authorization, Product Owner acceptance, native-host acceptance, security completion, release authorization, or deployment approval.",
+    "Reopen, failure recovery, Product Studio, and four-host projections prove bounded deterministic evidence behavior only."
+  ],
+  "compositionDigest": "sha256:bbaddf6753902ea0c81b4ee78091faed68e0e31c50d3371ef00bd265d3bbb524"
+}
