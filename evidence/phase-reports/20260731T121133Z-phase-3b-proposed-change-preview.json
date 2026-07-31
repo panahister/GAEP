@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-3b-implementation",
+  "evidenceScope": "phase-3b-proposed-change-preview-local",
+  "recordedAt": "2026-07-31T12:16:14Z",
+  "sourceCommit": "8a08e8e906b390bbe208af57984c9dcde6900d2b",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 99,
+    "hostAssessments": 396,
+    "hostAssessmentsImplemented": 396,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:bc2ca1564b2996ef772e71a05950f80ba55c3c38e5e8fec7cb397ba9bd063298",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 282591,
+      "digest": "sha256:34191e029af22ef88a770c4f9deb6176af69ece125942c58ab25b96793b9f5d8",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260731T115622Z-phase-3b-proposed-change-preview-packages.json",
+      "bytes": 2499,
+      "digest": "sha256:51d659bc0308ba7768ab136ae9ea353e752f650a67446b0890007a83a82c053d",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260731T115622Z-phase-3b-proposed-change-preview-host-behavior.json",
+      "bytes": 3576,
+      "digest": "sha256:c95bf055ec900f64b2494ab8b45e13c0d0737ee192539f76a822c7d4c188bf99",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260731T115622Z-phase-3b-proposed-change-preview.json",
+      "bytes": 64574,
+      "digest": "sha256:2b47410fbabbe3cc32d1a12d14e87cd7656899448a4971b46c999393a604cdbf",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260731T121024Z-phase-3a-realistic-readiness-example/receipt.json",
+      "bytes": 6811,
+      "digest": "sha256:9eb3c93bf31e2977d04f9c8faae918893b3901f455ff6ccf8fcd3b09afc7ba7f",
+      "kind": "gaep-phase3a-realistic-readiness-example-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 138,
+        "testsPassed": 1039,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:2f46dd27c8894bb07e5e160da06078ea7ae63db34cba45b30dfb2556b19a8a5b"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:46e3ecb137876cd2a27f7b4feb832204d9bdf1410035ba8798cc99a2ed83d0af"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 41,
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:e406e24bf12360020b728a7e028975d2dca791177d18d2a6747a2bc778d0fba5"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:72dfbec08f538bbc26667871101e2b0dcdb805ecf731f313dd159950ddfe8c4e"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:01c3818b5483f35ac55bc37b822c37b22084bdfd78c3a9314f5ba03f0001d81a"
+    }
+  ],
+  "testsDigest": "sha256:b218767c11627ec9f13665ea97dca64403c14f6d20e460117144a13a7751653e",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-3b-proposed-change-preview-closure",
+      "state": "not-established",
+      "basis": "the exact immutable Proposed Change Preview candidate lifecycle binds the current Changed Unit Inventory and its exact units and repository-relative paths; source and target endpoint metadata, diff metadata, plan operations, traces, attributable evidence, deterministic receipts, Product Studio and four host projections are implemented locally; repository, path, source, target or diff truth, approved change scope or approval, file or diff content, mutation, staging, apply or discard, assignment, execution, acceptance, merge, release, deployment, native-host interaction and Product Owner acceptance remain unestablished"
+    }
+  ],
+  "knownGapsDigest": "sha256:356e6125c423fe686e5d5d88e5abed65e7f875706d871779059b0ea8d52fcb55",
+  "claimBoundary": "This report binds the exact governed pre-apply Proposed Change Preview candidate lifecycle, immutable revision history, exact current Product, Initiative and Changed Unit Inventory binding, one preview unit and path per inventory candidate, repository-relative source and target candidates, endpoint and diff metadata without file or diff content, plan operations, trace and attributable evidence, deterministic dependency, plan, diff, trace, evidence and assessment receipts, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. It does not establish repository, path, source, target or diff truth, approved change scope or change approval, code mutation, staging, apply or discard, assignment, execution, acceptance, merge, release, deployment, native-host interaction, Product Owner acceptance, security completion or action authority."
+}
