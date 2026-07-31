@@ -21,6 +21,7 @@ import { testMethodologyInputSchema } from "./test-methodology.js"
 import { testInventoryInputSchema } from "./test-inventory.js"
 import { highLevelDesignInputSchema } from "./high-level-design.js"
 import { lowLevelDesignInputSchema } from "./low-level-design.js"
+import { implementationReadinessGateInputSchema } from "./implementation-readiness-gate.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -849,6 +850,18 @@ export const hostLowLevelDesignReviseParamsSchema = z.object({
   record: lowLevelDesignInputSchema,
 }).strict()
 
+export const hostImplementationReadinessGateCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: implementationReadinessGateInputSchema,
+}).strict()
+
+export const hostImplementationReadinessGateReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: implementationReadinessGateInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1561,6 +1574,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.lowLevelDesign.revise", hostLowLevelDesignReviseParamsSchema),
   requestVariant("planning.lowLevelDesign.assess", hostLowLevelDesignReadParamsSchema),
   requestVariant("planning.lowLevelDesign.snapshot", hostLowLevelDesignReadParamsSchema),
+  requestVariant("planning.implementationReadinessGate.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.implementationReadinessGate.create", hostImplementationReadinessGateCreateParamsSchema),
+  requestVariant("planning.implementationReadinessGate.revise", hostImplementationReadinessGateReviseParamsSchema),
+  requestVariant("planning.implementationReadinessGate.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.implementationReadinessGate.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

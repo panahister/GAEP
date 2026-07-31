@@ -189,6 +189,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.lowLevelDesign.revise",
   "planning.lowLevelDesign.assess",
   "planning.lowLevelDesign.snapshot",
+  "planning.implementationReadinessGate.read",
+  "planning.implementationReadinessGate.create",
+  "planning.implementationReadinessGate.revise",
+  "planning.implementationReadinessGate.assess",
+  "planning.implementationReadinessGate.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1635,6 +1640,21 @@ export class EngineHost {
         return this.engine.lowLevelDesign.assess(request.params.initiativeId, request.params.implementationUnitId)
       case "planning.lowLevelDesign.snapshot":
         return this.engine.lowLevelDesign.project(request.params.initiativeId, request.params.implementationUnitId)
+      case "planning.implementationReadinessGate.read":
+        return await this.engine.implementationReadinessGate.readCurrent(request.params.initiativeId) ?? null
+      case "planning.implementationReadinessGate.create":
+        return this.engine.implementationReadinessGate.create(request.params.record, actorId(request.params.actorId))
+      case "planning.implementationReadinessGate.revise":
+        return this.engine.implementationReadinessGate.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.implementationReadinessGate.assess":
+        return this.engine.implementationReadinessGate.assess(request.params.initiativeId)
+      case "planning.implementationReadinessGate.snapshot":
+        return this.engine.implementationReadinessGate.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":
