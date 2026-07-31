@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-ide-package-report-v1",
+  "packageSet": "phase-0-local",
+  "artifacts": [
+    {
+      "host": "vscode",
+      "packageId": "gaep.gaep-vscode@0.1.0",
+      "artifactPath": "apps/vscode/dist/gaep-vscode.vsix",
+      "status": "produced",
+      "bytes": 1149543,
+      "digest": "sha256:87bd71372d1a9c70d38f87a2e037f14fb9d90a4413e8f291576a2e88adaa0771",
+      "verification": "exact-isolated-fixture-package-build-bundled-engine-and-accessible-phase-3b-isolated-staging-workspace-product-studio-projection; native-install-reinstall-and-interaction-acceptance-remain-pending"
+    },
+    {
+      "host": "kiro",
+      "packageId": "gaep.gaep-kiro@0.1.0",
+      "artifactPath": "apps/kiro/dist/gaep-kiro.vsix",
+      "status": "produced",
+      "bytes": 1100637,
+      "digest": "sha256:39083357fdc7db707d3f6b3a3513f6bd420f23ec51a1e15f9fea72fdc2d08dbb",
+      "verification": "package-build-digest-bound-engine-and-private-safe-phase-3b-isolated-staging-workspace-command-projection; native-compatible-host-install-and-interaction-acceptance-remain-pending"
+    },
+    {
+      "host": "rider",
+      "packageId": "dev.gaep.productstudio@0.1.0",
+      "artifactPath": "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
+      "status": "produced",
+      "bytes": 2272294,
+      "digest": "sha256:1d04ca0e9ede2a589ad317d9ec8828a544a4e661c974bc333a49a90b2c49864f",
+      "verification": "clean-kotlin-compile-instrumented-plugin-build-structure-check-digest-bound-engine-and-phase-3b-isolated-staging-workspace-projection; native-Rider-install-startup-and-interaction-acceptance-remain-pending"
+    },
+    {
+      "host": "visual-studio",
+      "packageId": "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
+      "artifactPath": "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
+      "status": "not-produced-on-this-platform",
+      "verification": "cross-platform-hostclient-build-and-phase-3b-isolated-staging-workspace-protocol-controller-projection; Windows-VSIX-container-install-startup-and-interaction-acceptance-remain-pending",
+      "limitation": "Native Visual Studio VSIX container creation and installation require Windows and VsixUtil.exe."
+    }
+  ],
+  "summary": {
+    "expected": 4,
+    "produced": 3,
+    "missingNativePlatformArtifacts": 1
+  },
+  "claimBoundary": "Local package evidence is not release signing, publication, supported-OS acceptance, Product readiness, or release approval."
+}
