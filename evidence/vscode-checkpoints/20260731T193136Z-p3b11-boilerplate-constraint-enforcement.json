@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "kind": "vscode-local-implementation-checkpoint",
+  "feature": {
+    "id": "P3B-11",
+    "title": "Boilerplate Constraint Enforcement",
+    "implementationScope": "shared-contract-engine-and-vscode-product-studio"
+  },
+  "recordedAt": "2026-07-31T19:31:36.000Z",
+  "branch": "codex/gaep-hardwork-completion",
+  "source": {
+    "coreCommit": "67cd3236",
+    "productStudioCommit": "1db4022b"
+  },
+  "implementation": {
+    "contract": "packages/contracts/src/boilerplate-constraint-enforcement.ts",
+    "engine": "packages/engine/src/boilerplate-constraint-enforcement.ts",
+    "productStudioDataSource": "apps/vscode/src/current-engine-studio-data-source.ts",
+    "vscodeProtocol": "apps/vscode/src/studio-protocol.ts",
+    "surface": "Product Studio Delivery route",
+    "lifecycle": [
+      "immutable versioned enforcement-policy candidate history",
+      "exact twelve-predecessor revision and digest validation",
+      "mandatory stack, architecture, dependency, module, path, route, component, and test rule-kind coverage",
+      "one exact policy target per controlled generation and traceability target",
+      "deterministic dependency, rule-catalog, target-coverage, violation, policy, and assessment receipts",
+      "fail-closed stale-binding, coverage-gap, rule-gap, violation, exception, and not-assessed handling",
+      "bounded privacy-safe Product Studio projection"
+    ]
+  },
+  "verification": {
+    "typecheck": { "command": "npm run typecheck", "status": "passed" },
+    "focused": {
+      "command": "npx vitest run packages/engine/src/boilerplate-constraint-enforcement.test.ts apps/vscode/src/boilerplate-constraint-enforcement-product-studio.test.ts apps/vscode/src/studio-protocol.test.ts apps/vscode/src/studio-accessibility.test.ts",
+      "status": "passed",
+      "testFilesPassed": 4,
+      "testsPassed": 31,
+      "testsSkipped": 0
+    },
+    "sharedAndVscode": {
+      "command": "npx vitest run packages apps/vscode",
+      "status": "passed",
+      "testFilesPassed": 144,
+      "testsPassed": 1024,
+      "testsSkipped": 1
+    },
+    "vscodePackage": {
+      "command": "npm run package:vscode",
+      "status": "passed",
+      "path": "apps/vscode/dist/gaep-vscode.vsix",
+      "bytes": 1193586,
+      "sha256": "1caaf2c8a6a287220cc596fd3bebd3e3e59adee463dbd9e3feaf22aa056fea71",
+      "published": false
+    },
+    "isolatedExtensionHost": {
+      "command": "npm run test:vscode:extension-host",
+      "status": "passed",
+      "normalProfileUsed": false,
+      "checks": [
+        "development activation, contributed commands, four native views, and Product Studio open",
+        "explicit two-root Product context without silent Product-root mutation",
+        "isolated previous-version install, upgrade, reinstall, rollback, uninstall, absence, and final install",
+        "exact VSIX activation, commands, views, Product Studio, bundled-engine empty recovery/evidence workflow, and no workspace mutation"
+      ],
+      "limitation": "The test harness disables workspace trust, so untrusted-host behavior is not established by this receipt."
+    }
+  },
+  "acceptanceBoundary": {
+    "candidatePolicyMetadataOnly": true,
+    "repositoryInspection": "not-performed",
+    "sourceInspection": "not-performed",
+    "generatedOutputInspection": "not-performed",
+    "enforcementExecution": "not-performed",
+    "actualComplianceTruth": "not-established",
+    "exceptionWaiver": "not-established",
+    "nativeVscodeAcceptance": "not-established",
+    "liveProviderValidation": "not-performed",
+    "productOwnerAcceptance": "not-established",
+    "securityReview": "skipped",
+    "releaseAuthorization": "not-granted",
+    "publicationAuthorization": "not-granted",
+    "deploymentAuthorization": "not-granted",
+    "actionAuthority": "not-granted"
+  },
+  "externalEffects": {
+    "credentialAccess": false,
+    "externalProviderCalls": 0,
+    "figmaCalls": 0,
+    "externalSystemMutations": 0,
+    "normalProfileExtensionMutation": false,
+    "packagePublished": false,
+    "releaseOrDeploymentPerformed": false
+  }
+}
