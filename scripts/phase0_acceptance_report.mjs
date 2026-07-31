@@ -27,7 +27,7 @@ const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
   packages: "evidence/local-packages/20260731T125835Z-phase-3b-isolated-staging-workspace-packages.json",
   conformance: "evidence/ide-conformance/20260731T125835Z-phase-3b-isolated-staging-workspace.json",
-  example: "evidence/examples/20260731T121024Z-phase-3a-realistic-readiness-example/receipt.json",
+  example: "evidence/examples/20260731T130238Z-phase-3a-realistic-readiness-example/receipt.json",
 }
 const gateDefinitions = [
   { id: "typecheck", command: ["npm", "run", "typecheck"], parser: parseTypecheck },

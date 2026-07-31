@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-claude-readiness-workflow-receipt",
+  "scenario": {
+    "id": "phase-3a-atlas-claude-readiness-workflow-v1",
+    "path": "scenario.json",
+    "sourcePath": "examples/phase-3a-claude-readiness-workflow/scenario.json",
+    "sourceDigest": "sha256:c1f5edfd1fe4cfaf2e12519d959b2df38ab6606a677dd0080be7dd57fa8a5aa3",
+    "semanticDigest": "sha256:e7b763d7fda5e98f0c1e617b9e4ae301881b31c3ab959d617bff1cdb9d4e2570",
+    "product": {
+      "id": "33000000-0000-4000-8000-000000000001",
+      "revision": 1,
+      "digest": "sha256:97d9dca3f37d6e03af0be8db1581f6f72366681d15d3d09fdd722d6cf40669cb"
+    },
+    "initiative": {
+      "id": "33000000-0000-4000-8000-000000000002",
+      "revision": 1,
+      "digest": "sha256:c8dca5f451f2e159740dc48fb17afca54ede34b99424ee8a8552402868d0f30d"
+    }
+  },
+  "sources": [
+    {
+      "path": "sources/claude-receipt.json",
+      "bytes": 5881,
+      "digest": "sha256:2885c56497459352af2deae02e8db9cf87ff3478972af7eca0c3503c607b3e3f",
+      "semanticDigest": "sha256:7a1a526288ec3ef910cbbfea8fc0e53b8cf57b6788950a4724cc053fecb53ad7"
+    },
+    {
+      "path": "sources/codex-parity-scenario.json",
+      "bytes": 4912,
+      "digest": "sha256:d38a8746a351f9c0011b137735c65d9e7a8580fe7d1a1a4d681a4f1a01370faf",
+      "semanticDigest": "sha256:f4404086e1b5a3c822c764355b99ada861b3a93021120b275884869ff21ac988"
+    },
+    {
+      "path": "sources/codex-workflow-receipt.json",
+      "bytes": 5270,
+      "digest": "sha256:34c488baf0deb0264a393c4d2c576884a5a04e35a9590e0d345f8a63fc1be338",
+      "semanticDigest": "sha256:f6d0b713723aca633971f1f21401b136dd30a0e9fa5bf223b1923588d5dc3bf9"
+    },
+    {
+      "path": "sources/phase3a-conformance.json",
+      "bytes": 65210,
+      "digest": "sha256:ce9562fc604854b14f58a35ce1a20b1f242c356fca7948e139f209dd54c3800d",
+      "semanticDigest": "sha256:6b84ca1ba4abee6afd6d1f4571fb20a0c4093c7fa5ecdeecb969cfd9e1e9a6de"
+    },
+    {
+      "path": "sources/phase3a-report.json",
+      "bytes": 8051,
+      "digest": "sha256:75d1afd1e44dd5c71f738e331fcb66ba6f5ace2a76a71bfeab84e2261ad9defd",
+      "semanticDigest": "sha256:1299909fd1a2f16644d383826bbb2aada182839a8457c5c6416f0fc96f603a9c"
+    },
+    {
+      "path": "apps/vscode/src/current-engine-studio-data-source.ts",
+      "bytes": 586282,
+      "digest": "sha256:e80606ab611327a1ab7e38fb8b1f9694a71fb501abff11fd223317a99b9e6110",
+      "semanticDigest": "sha256:e80606ab611327a1ab7e38fb8b1f9694a71fb501abff11fd223317a99b9e6110"
+    }
+  ],
+  "outputs": {
+    "candidate-chain.json": {
+      "path": "candidate-chain.json",
+      "bytes": 10467,
+      "digest": "sha256:5981a9419dc140d4cf4154f9a66b6b9cf730ad9485addefed0873fbb86667044",
+      "semanticDigest": "sha256:e6111dbdd5bd107aa6a03d2a174864c61e41cff820fa670d752bfb70797681c5"
+    },
+    "reopen-continuity.json": {
+      "path": "reopen-continuity.json",
+      "bytes": 13940,
+      "digest": "sha256:0608851a5ebfa6dd9fccc2652c15ee0fda529453579176346cdd92713bcf7534",
+      "semanticDigest": "sha256:251e213c656ac7ff6fc94504eaac844f3a97f83ddcec15e3648da13cd81bf2d6"
+    },
+    "failure-recovery.json": {
+      "path": "failure-recovery.json",
+      "bytes": 3047,
+      "digest": "sha256:7d73420c237622cba28dedc611dc07d16dd00fb0c1000e1a4d00c7f878c63782",
+      "semanticDigest": "sha256:b0eb4e57bf7d4b18e588c2539a4b99e5ac0a44ee3724b3d414e9ee1b6fa9bd2b"
+    },
+    "host-projections.json": {
+      "path": "host-projections.json",
+      "bytes": 2662,
+      "digest": "sha256:a1a96fba08f92c14d2a3cb2581dd2174a027f66d538a1242071ade8b38ec63b2",
+      "semanticDigest": "sha256:ce7c596db2dfbb220f08a2e34f573293cf8b3d2dba15337ba08ef6c8b211cd25"
+    },
+    "provider-parity.json": {
+      "path": "provider-parity.json",
+      "bytes": 2032,
+      "digest": "sha256:ebd5711d4f16edc4f8a3081ac9a0158034819a863eae52e1deb5f1b1a7e783f9",
+      "semanticDigest": "sha256:21c58e0c030e933e797d85e452d303c23cb8425bf8bb2fcf77b29cddda7c3420"
+    }
+  },
+  "summary": {
+    "stageCount": 20,
+    "exactCurrentCandidateCount": 20,
+    "implementationReadinessDependencyStageCount": 19,
+    "reopenObservationCount": 2,
+    "continuityMismatchCount": 0,
+    "failureRecoveryCaseCount": 3,
+    "holdCount": 3,
+    "hostProjectionCount": 4,
+    "productStudioProjectionCount": 1,
+    "semanticParityMismatchCount": 0,
+    "claudeExecutionState": "completed",
+    "claudeExecutionMode": "claude-context-only",
+    "claudeStagingPresent": false,
+    "claudeToolDefinitionCount": 0,
+    "claudeWriteScopeCount": 0,
+    "liveProviderRequestCount": 0,
+    "implementationEffectsApplied": 0,
+    "hostsAccepted": 0,
+    "providersAccepted": 0,
+    "productOwnerAcceptance": "not-established",
+    "readinessAuthority": "not-established"
+  },
+  "summaryDigest": "sha256:b1199ee4e402524724edf024011495c67611921c09166d2bd19b27cbe36b3016",
+  "authority": {
+    "liveProviderStatus": "not-tested",
+    "productTruth": "not-established",
+    "readinessAuthority": "not-established",
+    "waiverAuthority": "not-granted",
+    "ownershipAppointment": "not-established",
+    "nativeHostAcceptance": "not-established",
+    "productOwnerAcceptance": "not-established",
+    "securityScan": "skipped-by-product-owner",
+    "releaseAuthority": "not-granted",
+    "deploymentAuthority": "not-granted",
+    "actionAuthority": "not-granted",
+    "boundary": "phase-3a-claude-readiness-receipt-is-deterministic-offline-tool-free-parity-evidence-not-live-provider-runtime-authentication-policy-semantic-quality-product-truth-readiness-waiver-ownership-native-host-product-owner-security-release-deployment-or-action-authority"
+  },
+  "limitations": [
+    "This is a deterministic local fixture and not real Product, backlog, design, boilerplate, test, risk, security, or readiness evidence.",
+    "Claude execution uses the isolated fake stream, tool-free context-only contract and makes no live provider request or semantic-quality claim.",
+    "No OAuth, keychain, API key helper, administrator-policy override, authentication bypass, or supported-runtime claim is attempted.",
+    "Reopen, recovery, Product Studio, and host projections prove bounded deterministic continuity and Codex scenario parity only, not native-host interaction or acceptance.",
+    "No waiver, owner appointment, implementation readiness, assignment, execution, acceptance, security, release, deployment, or action authority is established."
+  ],
+  "compositionDigest": "sha256:610f3b701599d46f4de9ba01584958415e67ce6152431cc715449b49dd0d0e3d"
+}
