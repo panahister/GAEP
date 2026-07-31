@@ -3694,6 +3694,64 @@ test("protocol-v2 client validates the exact derived Phase 2 UX/Figma dashboard 
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 client validates the bounded Phase 3A dashboard and rejects hostile responses", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-phase3a-dashboard-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-phase3a-dashboard-catalog",
+    "bad-phase3a-dashboard-digest",
+    "bad-phase3a-dashboard-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath,
+    engineExecutable: process.execPath,
+    engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const [product, initiative] = await Promise.all([
+      client.readProduct(),
+      client.readInitiative(initiativeId),
+    ])
+    const dashboard = await client.readPhase3aDashboard(product, initiative)
+    assert.equal(dashboard.kind, "phase-3a-dashboard")
+    assert.equal(dashboard.sources.length, 20)
+    assert.equal(dashboard.views.length, 5)
+    assert.equal(dashboard.workflows.length, 2)
+    assert.equal(dashboard.phaseStatus.state, "attention-required")
+    assert.equal(dashboard.phaseStatus.unavailableSourceCount, 20)
+    assert.equal(dashboard.phaseStatus.providerWorkflowEvidenceCount, 0)
+    assert.equal(dashboard.phaseStatus.liveProviderAcceptanceCount, 0)
+    assert.equal(dashboard.phaseStatus.nativeHostAcceptanceCount, 0)
+    assert.equal(dashboard.phaseStatus.readinessAuthority, "not-established")
+    assert.equal(dashboard.pagination.total, 20)
+    assert.equal(dashboard.export.format, "csv-visible-metadata-only")
+    const serialized = JSON.stringify(dashboard)
+    assert.equal(serialized.includes("Example Product"), false)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      const [product, initiative] = await Promise.all([
+        hostile.readProduct(),
+        hostile.readInitiative(initiativeId),
+      ])
+      await assert.rejects(
+        () => hostile.readPhase3aDashboard(product, initiative),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"),
+      )
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 client validates the integrated Phase 2 Change, Impact, Agent and Model dashboard", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-phase2-integrated-"))
   const workspace = join(root, "workspace")

@@ -267,6 +267,8 @@ input.on("line", (line) => {
       return readPhase2UxFigmaDashboard(id, request.params)
     case "dashboard.phase2ChangeImpactAgentModel":
       return readPhase2ChangeImpactAgentModelDashboard(id, request.params)
+    case "dashboard.phase3a":
+      return readPhase3aDashboard(id, request.params)
     case "dashboard.phase1Summary":
       return readPhase1Summary(id, request.params)
     case "dashboard.phase1ChangeImpact":
@@ -5333,6 +5335,97 @@ function readPhase2UxFigmaDashboard(id, params) {
   }
   const value = { ...content, snapshotDigest: canonicalDigest(content) }
   if (workspacePath.endsWith("bad-phase2-dashboard-digest")) value.phaseStatus.unavailableSourceCount = 22
+  return writeResult(id, value)
+}
+
+function readPhase3aDashboard(id, params) {
+  const productDigest = canonicalDigest(productRecord())
+  const initiativeDigest = canonicalDigest(initiativeState)
+  if (!exactKeys(params, [
+    "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+    "expectedInitiativeRevision", "expectedInitiativeDigest",
+  ]) || params.expectedProductId !== productId || params.expectedProductRevision !== 7 ||
+      params.expectedProductDigest !== productDigest || params.expectedInitiativeId !== initiativeId ||
+      params.expectedInitiativeRevision !== initiativeState.revision || params.expectedInitiativeDigest !== initiativeDigest) {
+    return writeError(id, -32_602, "PHASE3A_DASHBOARD_PARAMS_INVALID", "PRIVATE PHASE 3A DASHBOARD PARAMS")
+  }
+  const definitions = [
+    ["backlog-hierarchy", "Backlog hierarchy", "backlog-slice", "backlog-hierarchy-projection"],
+    ["mvp-slice-definition", "MVP and slice definition", "backlog-slice", "mvp-slice-definition-projection"],
+    ["prioritization-model", "Prioritization model", "backlog-slice", "prioritization-model-projection"],
+    ["acceptance-criteria", "Acceptance criteria", "readiness-gap", "acceptance-criteria-projection"],
+    ["definition-of-ready", "Definition of Ready", "readiness-gap", "definition-of-ready-projection"],
+    ["definition-of-done", "Definition of Done", "readiness-gap", "definition-of-done-projection"],
+    ["implementation-unit-model", "Implementation Unit model", "readiness-gap", "implementation-unit-model-projection"],
+    ["dependency-mapping", "Dependency mapping", "readiness-gap", "dependency-mapping-projection"],
+    ["technology-profile", "Technology profile", "boilerplate-design-code", "technology-profile-projection"],
+    ["boilerplate-registry", "Boilerplate registry", "boilerplate-design-code", "boilerplate-registry-projection"],
+    ["boilerplate-selection-binding", "Boilerplate selection and binding", "boilerplate-design-code", "boilerplate-selection-binding-projection"],
+    ["boilerplate-compatibility-validation", "Boilerplate compatibility validation", "boilerplate-design-code", "boilerplate-compatibility-validation-projection"],
+    ["figma-to-boilerplate-mapping", "Figma-to-boilerplate mapping", "boilerplate-design-code", "figma-to-boilerplate-mapping-projection"],
+    ["design-to-code-binding-registry", "Design-to-code binding registry", "boilerplate-design-code", "design-to-code-binding-registry-projection"],
+    ["route-screen-component-mapping", "Route, screen, and component mapping", "boilerplate-design-code", "route-screen-component-mapping-projection"],
+    ["test-methodology", "Test methodology", "readiness-gap", "test-methodology-projection"],
+    ["test-inventory", "Test inventory", "readiness-gap", "test-inventory-projection"],
+    ["high-level-design", "High-Level Design", "readiness-gap", "high-level-design-projection"],
+    ["low-level-design", "Low-Level Design", "readiness-gap", "low-level-design-projection"],
+    ["implementation-readiness-gate", "Implementation Readiness Gate", "readiness-gap", "implementation-readiness-gate-projection"],
+  ]
+  const sources = definitions.map(([sourceId, title, group, projectionKind]) => ({
+    id: sourceId, title, group, projectionKind, availability: "unavailable",
+  }))
+  const viewDefinitions = [
+    ["backlog-slice", "Backlog and slice", ["backlog-hierarchy", "mvp-slice-definition", "prioritization-model"]],
+    ["readiness-gap", "Readiness and gaps", ["acceptance-criteria", "definition-of-ready", "definition-of-done", "implementation-unit-model", "dependency-mapping", "boilerplate-compatibility-validation", "test-methodology", "test-inventory", "high-level-design", "low-level-design", "implementation-readiness-gate"]],
+    ["boilerplate-design-code", "Boilerplate and design-to-code", ["technology-profile", "boilerplate-registry", "boilerplate-selection-binding", "boilerplate-compatibility-validation", "figma-to-boilerplate-mapping", "design-to-code-binding-registry", "route-screen-component-mapping"]],
+    ["change-impact", "Change and impact", ["dependency-mapping", "design-to-code-binding-registry", "route-screen-component-mapping", "high-level-design", "low-level-design", "implementation-readiness-gate"]],
+    ["agent-model", "Agent and model", ["implementation-readiness-gate"]],
+  ]
+  const views = viewDefinitions.map(([viewId, title, sourceIds]) => ({
+    id: viewId, title, sourceIds, state: "unavailable", currentSourceCount: 0,
+    attentionRequiredSourceCount: 0, unavailableSourceCount: sourceIds.length,
+    candidateCount: 0, evidenceReferenceCount: 0, gapCount: 0, conflictCount: 0,
+    staleCount: 0, unresolvedCount: 0, workflowEvidenceCount: 0,
+  }))
+  const workflows = ["codex", "claude"].map((provider) => ({
+    provider, availability: "unavailable", executionMode: "offline-deterministic",
+    liveAcceptance: "not-established", semanticQuality: "not-assessed", authority: "not-granted",
+  }))
+  const content = {
+    schemaVersion: 1,
+    kind: "phase-3a-dashboard",
+    viewDefinitionVersion: "gaep-phase-3a-dashboard-v1",
+    phase: { id: "phase-3a-readiness", label: "Phase 3A — Backlog and Implementation Readiness" },
+    product: { recordType: "product", recordId: productId, revision: 7, digest: productDigest },
+    initiative: { recordType: "initiative", recordId: initiativeId, revision: initiativeState.revision, digest: initiativeDigest, state: initiativeState.state },
+    sources,
+    views,
+    workflows,
+    freshness: { state: "unknown", staleCount: 0, unresolvedCount: 0 },
+    phaseStatus: {
+      state: "attention-required", expectedSourceCount: 20, currentSourceCount: 0,
+      attentionRequiredSourceCount: 0, unavailableSourceCount: 20, sourceCatalogDigest: canonicalDigest(sources),
+      providerWorkflowEvidenceCount: 0, liveProviderAcceptanceCount: 0, nativeHostAcceptanceCount: 0,
+      readinessAuthority: "not-established", waiverAuthority: "not-established",
+      ownershipAuthority: "not-established", productOwnerAcceptance: "not-established",
+    },
+    pagination: { offset: 0, limit: 20, total: 20, truncated: false },
+    export: { format: "csv-visible-metadata-only", formulaPrefixesNeutralized: true, hiddenContentExcluded: true },
+    evidenceCues: { freshness: "unknown", confidence: { state: "not-assessed", basis: "no-governed-confidence-or-semantic-quality-evaluation-is-bound" } },
+    observedAt: "2026-07-31T03:10:00.000Z",
+    sourceBoundary: "current-governed-product-initiative-p3a-projections-and-explicit-sealed-local-workflow-evidence-only",
+    privacyBoundary: "dashboard-exposes-identities-counts-states-times-and-digests-not-product-design-source-code-provider-output-personal-content-secrets-credentials-permissions-or-private-paths",
+    limitations: [
+      "Unavailable sources remain explicit and do not establish completeness or not-applicability.",
+      "Workflow evidence slots represent sealed local deterministic evidence only and do not establish live-provider acceptance or semantic quality.",
+      "Native host acceptance, Product Owner acceptance, security acceptance, release, and deployment remain outside this projection.",
+    ],
+    authorityBoundary: "phase-3a-dashboard-is-a-derived-read-only-view-not-completeness-priority-readiness-waiver-ownership-implementation-acceptance-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-phase3a-dashboard-private")) content.privateRoot = `${privateRoot}/${privateCredential}`
+  if (workspacePath.endsWith("bad-phase3a-dashboard-catalog")) content.phaseStatus.sourceCatalogDigest = `sha256:${"0".repeat(64)}`
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-phase3a-dashboard-digest")) value.phaseStatus.unavailableSourceCount = 19
   return writeResult(id, value)
 }
 

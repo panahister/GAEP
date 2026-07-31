@@ -36,6 +36,9 @@
         <Button x:Name="ShowPhase2UxFigmaDashboardButton" Content="Show Phase 2 UX and Figma dashboard"
                 Command="{Binding ShowPhase2UxFigmaDashboardCommand}" MinHeight="28" Margin="0,0,0,6"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="ShowPhase3aDashboardButton" Content="Show Phase 3A backlog and implementation readiness dashboard"
+                Command="{Binding ShowPhase3aDashboardCommand}" MinHeight="28" Margin="0,0,0,6"
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
         <Button x:Name="ShowPhase2ChangeImpactAgentModelDashboardButton" Content="Show Phase 2 Change, Impact, Agent and Model dashboard"
                 Command="{Binding ShowPhase2ChangeImpactAgentModelDashboardCommand}" MinHeight="28" Margin="0,0,0,6"
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
@@ -733,6 +736,7 @@
       <Setter TargetName="RefreshProductButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhaseDashboardButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhase2UxFigmaDashboardButton" Property="IsEnabled" Value="False" />
+      <Setter TargetName="ShowPhase3aDashboardButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhase2ChangeImpactAgentModelDashboardButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhase1SummaryButton" Property="IsEnabled" Value="False" />
       <Setter TargetName="ShowPhase1ChangeImpactButton" Property="IsEnabled" Value="False" />

@@ -141,6 +141,68 @@ data class Phase2UxFigmaDashboard(
     val snapshotDigest: String,
 )
 
+data class Phase3aDashboardSource(
+    val id: String,
+    val title: String,
+    val group: String,
+    val projectionKind: String,
+    val availability: String,
+    val assessmentState: String?,
+    val gapCount: Int,
+    val conflictCount: Int,
+    val staleCount: Int,
+    val unresolvedCount: Int,
+)
+
+data class Phase3aDashboardView(
+    val id: String,
+    val title: String,
+    val state: String,
+    val currentSourceCount: Int,
+    val attentionRequiredSourceCount: Int,
+    val unavailableSourceCount: Int,
+    val candidateCount: Int,
+    val evidenceReferenceCount: Int,
+    val gapCount: Int,
+    val conflictCount: Int,
+    val staleCount: Int,
+    val unresolvedCount: Int,
+    val workflowEvidenceCount: Int,
+)
+
+data class Phase3aDashboardWorkflow(
+    val provider: String,
+    val availability: String,
+    val executionMode: String,
+    val liveAcceptance: String,
+    val semanticQuality: String,
+    val authority: String,
+)
+
+data class Phase3aDashboard(
+    val productId: UUID,
+    val productRevision: Long,
+    val productDigest: String,
+    val initiativeId: UUID,
+    val initiativeRevision: Long,
+    val initiativeDigest: String,
+    val initiativeState: String,
+    val phaseState: String,
+    val currentSourceCount: Int,
+    val attentionRequiredSourceCount: Int,
+    val unavailableSourceCount: Int,
+    val providerWorkflowEvidenceCount: Int,
+    val freshnessState: String,
+    val staleCount: Int,
+    val unresolvedCount: Int,
+    val sources: List<Phase3aDashboardSource>,
+    val views: List<Phase3aDashboardView>,
+    val workflows: List<Phase3aDashboardWorkflow>,
+    val limitations: List<String>,
+    val observedAt: Instant,
+    val snapshotDigest: String,
+)
+
 data class Phase2IntegratedSynchronization(
     val state: String,
     val designDelta: String,
@@ -15119,6 +15181,293 @@ internal object PortableDesignProtocol {
             drift.getValue("observationCount"), drift.getValue("driftCount"), drift.getValue("unassessedCount"),
             drift.getValue("remediationCandidateCount"), freshnessState, staleBindingCount,
             staleSourceReferenceCount, unresolvedQuestionCount, sources, limitations, snapshotDigest,
+        )
+    }
+
+    fun parsePhase3aDashboardEnvelope(
+        envelope: JsonObject,
+        expectedProduct: ProductBinding,
+        expectedInitiative: InitiativeEntryRecord,
+    ): Phase3aDashboard {
+        val dashboard = readResult(envelope).requireObject()
+        dashboard.requireExactKeys(
+            "schemaVersion", "kind", "viewDefinitionVersion", "phase", "product", "initiative", "sources",
+            "views", "workflows", "freshness", "phaseStatus", "pagination", "export", "evidenceCues",
+            "observedAt", "sourceBoundary", "privacyBoundary", "limitations", "authorityBoundary", "snapshotDigest",
+        )
+        if (dashboard.requireInt("schemaVersion") != 1 ||
+            dashboard.requireString("kind") != "phase-3a-dashboard" ||
+            dashboard.requireString("viewDefinitionVersion") != "gaep-phase-3a-dashboard-v1" ||
+            dashboard.requireString("sourceBoundary") !=
+                "current-governed-product-initiative-p3a-projections-and-explicit-sealed-local-workflow-evidence-only" ||
+            dashboard.requireString("privacyBoundary") !=
+                "dashboard-exposes-identities-counts-states-times-and-digests-not-product-design-source-code-provider-output-personal-content-secrets-credentials-permissions-or-private-paths" ||
+            dashboard.requireString("authorityBoundary") !=
+                "phase-3a-dashboard-is-a-derived-read-only-view-not-completeness-priority-readiness-waiver-ownership-implementation-acceptance-release-deployment-or-action-authority"
+        ) throw invalidResponse()
+
+        val phase = dashboard.get("phase").requireObject()
+        phase.requireExactKeys("id", "label")
+        if (phase.requireString("id") != "phase-3a-readiness" ||
+            phase.requireString("label") != "Phase 3A — Backlog and Implementation Readiness"
+        ) throw invalidResponse()
+
+        val product = dashboard.get("product").requireObject()
+        product.requireExactKeys("recordType", "recordId", "revision", "digest")
+        val productId = product.requireNonEmptyUuid("recordId")
+        val productRevision = product.requireLong("revision")
+        val productDigest = product.requireDigest("digest")
+        if (product.requireString("recordType") != "product" || productId != expectedProduct.id ||
+            productRevision != expectedProduct.revision || productDigest != expectedProduct.digest
+        ) throw invalidResponse()
+
+        val initiative = dashboard.get("initiative").requireObject()
+        initiative.requireExactKeys("recordType", "recordId", "revision", "digest", "state")
+        val initiativeId = initiative.requireNonEmptyUuid("recordId")
+        val initiativeRevision = initiative.requireLong("revision")
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("active", "blocked", "cancelled", "completed", "proposed"))
+        if (initiative.requireString("recordType") != "initiative" || initiativeId != expectedInitiative.id ||
+            initiativeRevision != expectedInitiative.revision || initiativeDigest != expectedInitiative.digest ||
+            initiativeState != expectedInitiative.state || expectedInitiative.productId != expectedProduct.id
+        ) throw invalidResponse()
+
+        val definitions = listOf(
+            listOf("backlog-hierarchy", "Backlog hierarchy", "backlog-slice", "backlog-hierarchy-projection"),
+            listOf("mvp-slice-definition", "MVP and slice definition", "backlog-slice", "mvp-slice-definition-projection"),
+            listOf("prioritization-model", "Prioritization model", "backlog-slice", "prioritization-model-projection"),
+            listOf("acceptance-criteria", "Acceptance criteria", "readiness-gap", "acceptance-criteria-projection"),
+            listOf("definition-of-ready", "Definition of Ready", "readiness-gap", "definition-of-ready-projection"),
+            listOf("definition-of-done", "Definition of Done", "readiness-gap", "definition-of-done-projection"),
+            listOf("implementation-unit-model", "Implementation Unit model", "readiness-gap", "implementation-unit-model-projection"),
+            listOf("dependency-mapping", "Dependency mapping", "readiness-gap", "dependency-mapping-projection"),
+            listOf("technology-profile", "Technology profile", "boilerplate-design-code", "technology-profile-projection"),
+            listOf("boilerplate-registry", "Boilerplate registry", "boilerplate-design-code", "boilerplate-registry-projection"),
+            listOf("boilerplate-selection-binding", "Boilerplate selection and binding", "boilerplate-design-code", "boilerplate-selection-binding-projection"),
+            listOf("boilerplate-compatibility-validation", "Boilerplate compatibility validation", "boilerplate-design-code", "boilerplate-compatibility-validation-projection"),
+            listOf("figma-to-boilerplate-mapping", "Figma-to-boilerplate mapping", "boilerplate-design-code", "figma-to-boilerplate-mapping-projection"),
+            listOf("design-to-code-binding-registry", "Design-to-code binding registry", "boilerplate-design-code", "design-to-code-binding-registry-projection"),
+            listOf("route-screen-component-mapping", "Route, screen, and component mapping", "boilerplate-design-code", "route-screen-component-mapping-projection"),
+            listOf("test-methodology", "Test methodology", "readiness-gap", "test-methodology-projection"),
+            listOf("test-inventory", "Test inventory", "readiness-gap", "test-inventory-projection"),
+            listOf("high-level-design", "High-Level Design", "readiness-gap", "high-level-design-projection"),
+            listOf("low-level-design", "Low-Level Design", "readiness-gap", "low-level-design-projection"),
+            listOf("implementation-readiness-gate", "Implementation Readiness Gate", "readiness-gap", "implementation-readiness-gate-projection"),
+        )
+        val sourcesElement = dashboard.get("sources")
+        if (sourcesElement == null || !sourcesElement.isJsonArray || sourcesElement.asJsonArray.size() != definitions.size) {
+            throw invalidResponse()
+        }
+        val sources = sourcesElement.asJsonArray.mapIndexed { index, value ->
+            val source = value.requireObject()
+            source.requireKeys(
+                setOf("id", "title", "group", "projectionKind", "availability"),
+                setOf("binding", "assessment"),
+            )
+            val definition = definitions[index]
+            val availability = source.requireOneOf("availability", setOf("current", "attention-required", "unavailable"))
+            if (source.requireString("id") != definition[0] || source.requireString("title") != definition[1] ||
+                source.requireString("group") != definition[2] || source.requireString("projectionKind") != definition[3]
+            ) throw invalidResponse()
+            if (availability == "unavailable") {
+                if (source.has("binding") || source.has("assessment")) throw invalidResponse()
+                Phase3aDashboardSource(definition[0], definition[1], definition[2], definition[3], availability, null, 0, 0, 0, 0)
+            } else {
+                val binding = source.get("binding").requireObject()
+                binding.requireKeys(setOf("snapshotDigest", "observedAt"), setOf("candidate"))
+                binding.requireDigest("snapshotDigest")
+                binding.requireInstant("observedAt")
+                binding.get("candidate")?.let { candidateValue ->
+                    val candidate = candidateValue.requireObject()
+                    candidate.requireExactKeys("recordId", "revision", "digest")
+                    candidate.requireNonEmptyUuid("recordId")
+                    if (candidate.requireLong("revision") <= 0) throw invalidResponse()
+                    candidate.requireDigest("digest")
+                }
+                val assessment = source.get("assessment").requireObject()
+                assessment.requireKeys(
+                    setOf("state", "reasonCount", "candidateCount", "evidenceReferenceCount", "gapCount", "conflictCount", "staleCount", "unresolvedCount", "attentionRequired"),
+                    setOf("reviewState"),
+                )
+                val state = portableText(assessment.requireString("state"), minimum = 2)
+                assessment.get("reviewState")?.let { portableText(it.requireString(), minimum = 2) }
+                assessment.requireBoundedNonNegativeInt("reasonCount", 10_000_000)
+                assessment.requireBoundedNonNegativeInt("candidateCount", 1)
+                assessment.requireBoundedNonNegativeInt("evidenceReferenceCount", 10_000_000)
+                val gaps = assessment.requireBoundedNonNegativeInt("gapCount", 10_000_000)
+                val conflicts = assessment.requireBoundedNonNegativeInt("conflictCount", 10_000_000)
+                val stale = assessment.requireBoundedNonNegativeInt("staleCount", 10_000_000)
+                val unresolved = assessment.requireBoundedNonNegativeInt("unresolvedCount", 10_000_000)
+                if (assessment.requireBoolean("attentionRequired") != (availability == "attention-required")) throw invalidResponse()
+                Phase3aDashboardSource(
+                    definition[0], definition[1], definition[2], definition[3], availability, state,
+                    gaps, conflicts, stale, unresolved,
+                )
+            }
+        }
+
+        val viewDefinitions = listOf(
+            Triple("backlog-slice", "Backlog and slice", listOf("backlog-hierarchy", "mvp-slice-definition", "prioritization-model")),
+            Triple("readiness-gap", "Readiness and gaps", listOf("acceptance-criteria", "definition-of-ready", "definition-of-done", "implementation-unit-model", "dependency-mapping", "boilerplate-compatibility-validation", "test-methodology", "test-inventory", "high-level-design", "low-level-design", "implementation-readiness-gate")),
+            Triple("boilerplate-design-code", "Boilerplate and design-to-code", listOf("technology-profile", "boilerplate-registry", "boilerplate-selection-binding", "boilerplate-compatibility-validation", "figma-to-boilerplate-mapping", "design-to-code-binding-registry", "route-screen-component-mapping")),
+            Triple("change-impact", "Change and impact", listOf("dependency-mapping", "design-to-code-binding-registry", "route-screen-component-mapping", "high-level-design", "low-level-design", "implementation-readiness-gate")),
+            Triple("agent-model", "Agent and model", listOf("implementation-readiness-gate")),
+        )
+        val viewsElement = dashboard.get("views")
+        if (viewsElement == null || !viewsElement.isJsonArray || viewsElement.asJsonArray.size() != viewDefinitions.size) {
+            throw invalidResponse()
+        }
+        val views = viewsElement.asJsonArray.mapIndexed { index, value ->
+            val view = value.requireObject()
+            view.requireExactKeys(
+                "id", "title", "sourceIds", "state", "currentSourceCount", "attentionRequiredSourceCount",
+                "unavailableSourceCount", "candidateCount", "evidenceReferenceCount", "gapCount", "conflictCount",
+                "staleCount", "unresolvedCount", "workflowEvidenceCount",
+            )
+            val definition = viewDefinitions[index]
+            val sourceIdsElement = view.get("sourceIds")
+            if (sourceIdsElement == null || !sourceIdsElement.isJsonArray ||
+                sourceIdsElement.asJsonArray.map { it.requireString() } != definition.third
+            ) throw invalidResponse()
+            if (view.requireString("id") != definition.first || view.requireString("title") != definition.second) throw invalidResponse()
+            val members = definition.third.map { sourceId -> sources.single { it.id == sourceId } }
+            val current = view.requireBoundedNonNegativeInt("currentSourceCount", 10_000_000)
+            val attention = view.requireBoundedNonNegativeInt("attentionRequiredSourceCount", 10_000_000)
+            val unavailable = view.requireBoundedNonNegativeInt("unavailableSourceCount", 10_000_000)
+            val state = view.requireOneOf("state", setOf("current", "attention-required", "unavailable"))
+            val expectedState = if (unavailable == members.size) "unavailable" else if (attention > 0 || unavailable > 0) "attention-required" else "current"
+            if (current != members.count { it.availability == "current" } ||
+                attention != members.count { it.availability == "attention-required" } ||
+                unavailable != members.count { it.availability == "unavailable" } || state != expectedState
+            ) throw invalidResponse()
+            Phase3aDashboardView(
+                definition.first, definition.second, state, current, attention, unavailable,
+                view.requireBoundedNonNegativeInt("candidateCount", 10_000_000),
+                view.requireBoundedNonNegativeInt("evidenceReferenceCount", 10_000_000),
+                view.requireBoundedNonNegativeInt("gapCount", 10_000_000),
+                view.requireBoundedNonNegativeInt("conflictCount", 10_000_000),
+                view.requireBoundedNonNegativeInt("staleCount", 10_000_000),
+                view.requireBoundedNonNegativeInt("unresolvedCount", 10_000_000),
+                view.requireBoundedNonNegativeInt("workflowEvidenceCount", 2),
+            )
+        }
+
+        val workflowsElement = dashboard.get("workflows")
+        if (workflowsElement == null || !workflowsElement.isJsonArray || workflowsElement.asJsonArray.size() != 2) {
+            throw invalidResponse()
+        }
+        val workflows = workflowsElement.asJsonArray.mapIndexed { index, value ->
+            val workflow = value.requireObject()
+            workflow.requireKeys(
+                setOf("provider", "availability", "executionMode", "liveAcceptance", "semanticQuality", "authority"),
+                setOf("binding"),
+            )
+            val provider = workflow.requireOneOf("provider", setOf("codex", "claude"))
+            if (provider != listOf("codex", "claude")[index]) throw invalidResponse()
+            val availability = workflow.requireOneOf("availability", setOf("sealed-local-deterministic", "unavailable"))
+            if ((availability == "sealed-local-deterministic") != workflow.has("binding")) throw invalidResponse()
+            workflow.get("binding")?.let { bindingValue ->
+                val binding = bindingValue.requireObject()
+                binding.requireExactKeys("product", "initiative", "scenarioId", "receiptDigest", "sourceDigest", "observedAt")
+                listOf("product", "initiative").forEach { key ->
+                    val exact = binding.get(key).requireObject()
+                    exact.requireExactKeys("recordId", "revision", "digest")
+                    val recordId = exact.requireNonEmptyUuid("recordId")
+                    val revision = exact.requireLong("revision")
+                    val digest = exact.requireDigest("digest")
+                    val matches = if (key == "product") {
+                        recordId == productId && revision == productRevision && digest == productDigest
+                    } else {
+                        recordId == initiativeId && revision == initiativeRevision && digest == initiativeDigest
+                    }
+                    if (!matches) throw invalidResponse()
+                }
+                portableText(binding.requireString("scenarioId"), minimum = 2)
+                binding.requireDigest("receiptDigest")
+                binding.requireDigest("sourceDigest")
+                binding.requireInstant("observedAt")
+            }
+            if (workflow.requireString("executionMode") != "offline-deterministic" ||
+                workflow.requireString("liveAcceptance") != "not-established" ||
+                workflow.requireString("semanticQuality") != "not-assessed" ||
+                workflow.requireString("authority") != "not-granted"
+            ) throw invalidResponse()
+            Phase3aDashboardWorkflow(
+                provider, availability, "offline-deterministic", "not-established", "not-assessed", "not-granted",
+            )
+        }
+
+        val freshness = dashboard.get("freshness").requireObject()
+        freshness.requireKeys(setOf("state", "staleCount", "unresolvedCount"), setOf("oldestSourceObservedAt", "newestSourceObservedAt"))
+        val freshnessState = freshness.requireOneOf("state", setOf("current", "attention-required", "unknown"))
+        val staleCount = freshness.requireBoundedNonNegativeInt("staleCount", 10_000_000)
+        val unresolvedCount = freshness.requireBoundedNonNegativeInt("unresolvedCount", 10_000_000)
+        freshness.get("oldestSourceObservedAt")?.let(::parseInstant)
+        freshness.get("newestSourceObservedAt")?.let(::parseInstant)
+
+        val phaseStatus = dashboard.get("phaseStatus").requireObject()
+        phaseStatus.requireExactKeys(
+            "state", "expectedSourceCount", "currentSourceCount", "attentionRequiredSourceCount",
+            "unavailableSourceCount", "sourceCatalogDigest", "providerWorkflowEvidenceCount",
+            "liveProviderAcceptanceCount", "nativeHostAcceptanceCount", "readinessAuthority", "waiverAuthority",
+            "ownershipAuthority", "productOwnerAcceptance",
+        )
+        val phaseState = phaseStatus.requireOneOf("state", setOf("candidate-complete-for-human-review", "attention-required"))
+        val currentSourceCount = phaseStatus.requireBoundedNonNegativeInt("currentSourceCount", 10_000_000)
+        val attentionRequiredSourceCount = phaseStatus.requireBoundedNonNegativeInt("attentionRequiredSourceCount", 10_000_000)
+        val unavailableSourceCount = phaseStatus.requireBoundedNonNegativeInt("unavailableSourceCount", 10_000_000)
+        val providerWorkflowEvidenceCount = phaseStatus.requireBoundedNonNegativeInt("providerWorkflowEvidenceCount", 2)
+        val requiresAttention = attentionRequiredSourceCount > 0 || unavailableSourceCount > 0 || staleCount > 0 || unresolvedCount > 0
+        if (phaseStatus.requireInt("expectedSourceCount") != 20 ||
+            currentSourceCount != sources.count { it.availability == "current" } ||
+            attentionRequiredSourceCount != sources.count { it.availability == "attention-required" } ||
+            unavailableSourceCount != sources.count { it.availability == "unavailable" } ||
+            phaseStatus.requireDigest("sourceCatalogDigest") != canonicalDigest(sourcesElement) ||
+            providerWorkflowEvidenceCount != workflows.count { it.availability == "sealed-local-deterministic" } ||
+            phaseStatus.requireInt("liveProviderAcceptanceCount") != 0 ||
+            phaseStatus.requireInt("nativeHostAcceptanceCount") != 0 ||
+            phaseStatus.requireString("readinessAuthority") != "not-established" ||
+            phaseStatus.requireString("waiverAuthority") != "not-established" ||
+            phaseStatus.requireString("ownershipAuthority") != "not-established" ||
+            phaseStatus.requireString("productOwnerAcceptance") != "not-established" ||
+            (phaseState == "attention-required") != requiresAttention
+        ) throw invalidResponse()
+
+        val pagination = dashboard.get("pagination").requireObject()
+        pagination.requireExactKeys("offset", "limit", "total", "truncated")
+        if (pagination.requireInt("offset") != 0 || pagination.requireInt("limit") != 20 ||
+            pagination.requireInt("total") != 20 || pagination.requireBoolean("truncated")
+        ) throw invalidResponse()
+        val export = dashboard.get("export").requireObject()
+        export.requireExactKeys("format", "formulaPrefixesNeutralized", "hiddenContentExcluded")
+        if (export.requireString("format") != "csv-visible-metadata-only" ||
+            !export.requireBoolean("formulaPrefixesNeutralized") || !export.requireBoolean("hiddenContentExcluded")
+        ) throw invalidResponse()
+        val evidenceCues = dashboard.get("evidenceCues").requireObject()
+        evidenceCues.requireExactKeys("freshness", "confidence")
+        evidenceCues.requireOneOf("freshness", setOf("current", "potentially-stale", "unknown"))
+        val confidence = evidenceCues.get("confidence").requireObject()
+        confidence.requireExactKeys("state", "basis")
+        if (confidence.requireString("state") != "not-assessed" ||
+            confidence.requireString("basis") != "no-governed-confidence-or-semantic-quality-evaluation-is-bound"
+        ) throw invalidResponse()
+
+        val observedAt = dashboard.requireInstant("observedAt")
+        val limitationsElement = dashboard.get("limitations")
+        if (limitationsElement == null || !limitationsElement.isJsonArray || limitationsElement.asJsonArray.size() !in 3..8) {
+            throw invalidResponse()
+        }
+        val limitations = limitationsElement.asJsonArray.map { value ->
+            portableText(value.requireString(), minimum = 4).also { if (it.length > 1_000) throw invalidResponse() }
+        }
+        val snapshotDigest = dashboard.requireDigest("snapshotDigest")
+        val digestBody = dashboard.deepCopy().apply { remove("snapshotDigest") }
+        if (snapshotDigest != canonicalDigest(digestBody)) throw invalidResponse()
+        return Phase3aDashboard(
+            productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest,
+            initiativeState, phaseState, currentSourceCount, attentionRequiredSourceCount, unavailableSourceCount,
+            providerWorkflowEvidenceCount, freshnessState, staleCount, unresolvedCount, sources, views, workflows,
+            limitations, observedAt, snapshotDigest,
         )
     }
 

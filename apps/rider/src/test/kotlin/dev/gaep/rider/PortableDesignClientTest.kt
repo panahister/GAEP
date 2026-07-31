@@ -3504,6 +3504,55 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Phase 3A dashboard is exact accessible private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("phase3a-dashboard-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val product = client.readProductBinding()
+            val initiative = client.readInitiative(entryId)
+            val dashboard = client.readPhase3aDashboard(product, initiative)
+            assertEquals(20, dashboard.sources.size)
+            assertEquals(5, dashboard.views.size)
+            assertEquals(2, dashboard.workflows.size)
+            assertEquals("attention-required", dashboard.phaseState)
+            assertEquals(20, dashboard.unavailableSourceCount)
+            assertEquals(0, dashboard.providerWorkflowEvidenceCount)
+            assertTrue(dashboard.workflows.all { it.availability == "unavailable" })
+
+            val controller = RiderProductController(client)
+            val rendered = controller.readPhase3aDashboard(entryId)
+            assertTrue(rendered.contains("GAEP exact Phase 3A backlog and implementation readiness dashboard"))
+            assertTrue(rendered.contains("20 unavailable · 20 expected"))
+            assertTrue(rendered.contains("Provider workflow evidence: 0/2 sealed local deterministic"))
+            assertTrue(rendered.contains("Views"))
+            assertTrue(rendered.contains("Governed sources"))
+            assertTrue(rendered.contains("grants no completeness, priority, readiness, waiver, ownership"))
+            assertFalse(rendered.contains("Founder Product"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+
+            val tables = controller.readPhase3aDashboardTables(entryId)
+            assertEquals(listOf("phase3a-views", "phase3a-sources", "phase3a-workflows"), tables.map { it.id })
+            assertEquals(20, tables[1].rows.size)
+            assertEquals(2, tables[2].rows.size)
+            assertTrue(tables.all { it.snapshotDigest == dashboard.snapshotDigest })
+            assertTrue(tables.all { it.authorityBoundary.contains("not-completeness-priority-readiness") })
+        }
+
+        listOf("bad-phase3a-dashboard-catalog", "bad-phase3a-dashboard-digest", "bad-phase3a-dashboard-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val product = client.readProductBinding()
+                val initiative = client.readInitiative(entryId)
+                val error = hostError { client.readPhase3aDashboard(product, initiative) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+    }
+
+    @Test
     fun `Phase 2 integrated dashboard is exact accessible private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

@@ -18,6 +18,7 @@ const commands = [
   "gaepKiro.dashboard.phase",
   "gaepKiro.dashboard.phase2UxFigma",
   "gaepKiro.dashboard.phase2ChangeImpactAgentModel",
+  "gaepKiro.dashboard.phase3a",
   "gaepKiro.dashboard.phase1Summary",
   "gaepKiro.dashboard.phase1ChangeImpact",
   "gaepKiro.dashboard.changeImpact",
@@ -210,6 +211,30 @@ async function run() {
     `Phase 2 UX and Figma dashboard must include ${marker}; received ${phase2SourceSummary}`)
   assertPrivateSafe(phase2UxFigmaText, workspace, fixtureProductName)
   await phase2UxFigmaRequest
+
+  const phase3aRequest = vscode.commands.executeCommand(
+    "gaepKiro.dashboard.phase3a",
+    { initiativeId: fixtureInitiativeId },
+  )
+  const phase3aDocument = await waitFor(
+    () => vscode.workspace.textDocuments.find((document) =>
+      document.getText().startsWith("GAEP exact Phase 3A backlog and implementation readiness dashboard\n")),
+    "The installed package-local engine did not return the Phase 3A dashboard",
+    60_000,
+  )
+  const phase3aText = phase3aDocument.getText()
+  for (const marker of [
+    `Initiative: ${fixtureInitiativeId}@1 · proposed`,
+    "Phase state: attention-required",
+    "Sources:",
+    "Provider workflow evidence: 0/2 sealed local deterministic · live acceptance 0 · native-host acceptance 0",
+    "Views",
+    "Governed sources",
+    "Bounded provider workflow evidence",
+    "Boundary: this derived read-only view grants no completeness, priority, readiness, waiver, ownership, implementation, acceptance, release, deployment, or action authority.",
+  ]) assert.ok(phase3aText.includes(marker), `Phase 3A dashboard must include ${marker}`)
+  assertPrivateSafe(phase3aText, workspace, fixtureProductName)
+  await phase3aRequest
 
   const phase2IntegratedRequest = vscode.commands.executeCommand(
     "gaepKiro.dashboard.phase2ChangeImpactAgentModel",

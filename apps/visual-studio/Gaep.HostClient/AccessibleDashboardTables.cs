@@ -271,6 +271,74 @@ public static partial class AccessibleDashboardTables
         });
     }
 
+    public static IReadOnlyList<AccessibleMetadataTable> Phase3a(Phase3aDashboard dashboard)
+    {
+        const string source =
+            "current-governed-product-initiative-p3a-projections-and-explicit-sealed-local-workflow-evidence-only";
+        const string authority =
+            "phase-3a-dashboard-is-a-derived-read-only-view-not-completeness-priority-readiness-waiver-ownership-implementation-acceptance-release-deployment-or-action-authority";
+        return Array.AsReadOnly(new[]
+        {
+            Table(
+                "phase3a-views",
+                "Phase 3A dashboard views",
+                Columns(
+                    ("view", "View"), ("state", "State"), ("sources", "Source coverage"),
+                    ("signals", "Candidate and evidence signals"), ("attention", "Attention signals"),
+                    ("workflows", "Workflow evidence")),
+                dashboard.Views.Select(view => Row(
+                    view.Id,
+                    ("view", view.Title),
+                    ("state", view.State),
+                    ("sources", $"{view.CurrentSourceCount} current · {view.AttentionRequiredSourceCount} attention · {view.UnavailableSourceCount} unavailable"),
+                    ("signals", $"{view.CandidateCount} candidates · {view.EvidenceReferenceCount} evidence references"),
+                    ("attention", $"{view.GapCount} gaps · {view.ConflictCount} conflicts · {view.StaleCount} stale · {view.UnresolvedCount} unresolved"),
+                    ("workflows", $"{view.WorkflowEvidenceCount} sealed local deterministic"))).ToArray(),
+                dashboard.Views.Count,
+                0,
+                dashboard.SnapshotDigest,
+                source,
+                authority),
+            Table(
+                "phase3a-sources",
+                "Phase 3A governed source projections",
+                Columns(
+                    ("source", "Source"), ("group", "Group"), ("availability", "Availability"),
+                    ("assessment", "Assessment"), ("attention", "Attention signals")),
+                dashboard.Sources.Select(item => Row(
+                    item.Id,
+                    ("source", item.Title),
+                    ("group", item.Group),
+                    ("availability", item.Availability),
+                    ("assessment", item.AssessmentState ?? "no state inferred"),
+                    ("attention", $"{item.GapCount} gaps · {item.ConflictCount} conflicts · {item.StaleCount} stale · {item.UnresolvedCount} unresolved"))).ToArray(),
+                20,
+                0,
+                dashboard.SnapshotDigest,
+                source,
+                authority),
+            Table(
+                "phase3a-workflows",
+                "Bounded provider workflow evidence",
+                Columns(
+                    ("provider", "Provider"), ("availability", "Availability"), ("mode", "Execution mode"),
+                    ("live", "Live acceptance"), ("quality", "Semantic quality"), ("authority", "Authority")),
+                dashboard.Workflows.Select(workflow => Row(
+                    workflow.Provider,
+                    ("provider", workflow.Provider),
+                    ("availability", workflow.Availability),
+                    ("mode", workflow.ExecutionMode),
+                    ("live", workflow.LiveAcceptance),
+                    ("quality", workflow.SemanticQuality),
+                    ("authority", workflow.Authority))).ToArray(),
+                2,
+                0,
+                dashboard.SnapshotDigest,
+                source,
+                authority),
+        });
+    }
+
     public static IReadOnlyList<AccessibleMetadataTable> Phase2ChangeImpactAgentModel(
         Phase2ChangeImpactAgentModelDashboard dashboard)
     {

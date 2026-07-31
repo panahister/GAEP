@@ -404,6 +404,9 @@ internal static class Program
         var badPhase2DashboardDigestRoot = Path.Combine(temporaryRoot, "bad-phase2-dashboard-digest");
         var badPhase2DashboardPrivateRoot = Path.Combine(temporaryRoot, "bad-phase2-dashboard-private");
         var badPhase2DashboardCatalogRoot = Path.Combine(temporaryRoot, "bad-phase2-dashboard-catalog");
+        var badPhase3aDashboardDigestRoot = Path.Combine(temporaryRoot, "bad-phase3a-dashboard-digest");
+        var badPhase3aDashboardPrivateRoot = Path.Combine(temporaryRoot, "bad-phase3a-dashboard-private");
+        var badPhase3aDashboardCatalogRoot = Path.Combine(temporaryRoot, "bad-phase3a-dashboard-catalog");
         var badPhase2IntegratedBindingRoot = Path.Combine(temporaryRoot, "bad-phase2-integrated-binding");
         var badPhase2IntegratedDigestRoot = Path.Combine(temporaryRoot, "bad-phase2-integrated-digest");
         var badPhase2IntegratedPrivateRoot = Path.Combine(temporaryRoot, "bad-phase2-integrated-private");
@@ -614,6 +617,9 @@ internal static class Program
         Directory.CreateDirectory(badPhase2DashboardDigestRoot);
         Directory.CreateDirectory(badPhase2DashboardPrivateRoot);
         Directory.CreateDirectory(badPhase2DashboardCatalogRoot);
+        Directory.CreateDirectory(badPhase3aDashboardDigestRoot);
+        Directory.CreateDirectory(badPhase3aDashboardPrivateRoot);
+        Directory.CreateDirectory(badPhase3aDashboardCatalogRoot);
         Directory.CreateDirectory(badPhase2IntegratedBindingRoot);
         Directory.CreateDirectory(badPhase2IntegratedDigestRoot);
         Directory.CreateDirectory(badPhase2IntegratedPrivateRoot);
@@ -3856,6 +3862,41 @@ internal static class Program
                 "Phase 2 dashboard rejects hostile digest and private-field drift");
         }
 
+        var phase3aDashboard = await client.ReadPhase3aDashboardAsync(product, phase2Initiative);
+        Check(phase3aDashboard.Sources.Count == 20 && phase3aDashboard.Views.Count == 5 &&
+              phase3aDashboard.Workflows.Count == 2 && phase3aDashboard.PhaseState == "attention-required" &&
+              phase3aDashboard.UnavailableSourceCount == 20 && phase3aDashboard.ProviderWorkflowEvidenceCount == 0,
+            "Typed Phase 3A dashboard preserves bounded source, view, workflow, and no-acceptance state");
+        var phase3aOutput = await phase2Controller.ReadPhase3aDashboardAsync(InitiativeId);
+        Check(phase3aOutput.Contains("GAEP exact Phase 3A backlog and implementation readiness dashboard", StringComparison.Ordinal) &&
+              phase3aOutput.Contains("20 unavailable · 20 expected", StringComparison.Ordinal) &&
+              phase3aOutput.Contains("Provider workflow evidence: 0/2 sealed local deterministic", StringComparison.Ordinal) &&
+              phase3aOutput.Contains("Views", StringComparison.Ordinal) &&
+              phase3aOutput.Contains("Governed sources", StringComparison.Ordinal) &&
+              phase3aOutput.Contains("grants no completeness, priority, readiness, waiver, ownership", StringComparison.Ordinal) &&
+              !phase3aOutput.Contains("Founder Product", StringComparison.Ordinal) &&
+              !phase3aOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !phase3aOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Phase 3A workflow renders only bounded metadata and explicit no-authority state");
+        var phase3aTables = await phase2Controller.ReadPhase3aDashboardTablesAsync(InitiativeId);
+        Check(phase3aTables.Select(table => table.Id).SequenceEqual(["phase3a-views", "phase3a-sources", "phase3a-workflows"]) &&
+              phase3aTables[1].Rows.Count == 20 && phase3aTables[2].Rows.Count == 2 &&
+              phase3aTables.All(table => table.SnapshotDigest == phase3aDashboard.SnapshotDigest) &&
+              phase3aTables.All(table => table.AuthorityBoundary.Contains("not-completeness-priority-readiness", StringComparison.Ordinal)),
+            "Accessible Phase 3A tables preserve exact rows, digest, and authority boundary");
+        foreach (var hostileRoot in new[] { badPhase3aDashboardCatalogRoot, badPhase3aDashboardDigestRoot, badPhase3aDashboardPrivateRoot })
+        {
+            await using var hostileDashboardClient = new EngineClient(hostileRoot, executable);
+            var hostileProduct = await hostileDashboardClient.ReadProductBindingAsync();
+            var hostileInitiative = await hostileDashboardClient.ReadInitiativeAsync(InitiativeId);
+            var invalidDashboard = await CaptureHostErrorAsync(
+                () => hostileDashboardClient.ReadPhase3aDashboardAsync(hostileProduct, hostileInitiative));
+            Check(invalidDashboard.Kind == "HOST_RESPONSE_INVALID" &&
+                  !invalidDashboard.Message.Contains(PrivateRoot, StringComparison.Ordinal) &&
+                  !invalidDashboard.Message.Contains(PrivateCredential, StringComparison.Ordinal),
+                "Phase 3A dashboard rejects hostile digest, catalog, and private-field drift");
+        }
+
         var phase2Integrated = await client.ReadPhase2ChangeImpactAgentModelDashboardAsync(product, phase2Initiative);
         Check(
             phase2Integrated.Synchronization.State == "attention-required" &&
@@ -5440,6 +5481,9 @@ internal static class Program
         var badPhase2DashboardDigest = Path.GetFileName(workspace) == "bad-phase2-dashboard-digest";
         var badPhase2DashboardPrivate = Path.GetFileName(workspace) == "bad-phase2-dashboard-private";
         var badPhase2DashboardCatalog = Path.GetFileName(workspace) == "bad-phase2-dashboard-catalog";
+        var badPhase3aDashboardDigest = Path.GetFileName(workspace) == "bad-phase3a-dashboard-digest";
+        var badPhase3aDashboardPrivate = Path.GetFileName(workspace) == "bad-phase3a-dashboard-private";
+        var badPhase3aDashboardCatalog = Path.GetFileName(workspace) == "bad-phase3a-dashboard-catalog";
         var badPhase2IntegratedBinding = Path.GetFileName(workspace) == "bad-phase2-integrated-binding";
         var badPhase2IntegratedDigest = Path.GetFileName(workspace) == "bad-phase2-integrated-digest";
         var badPhase2IntegratedPrivate = Path.GetFileName(workspace) == "bad-phase2-integrated-private";
@@ -6308,6 +6352,17 @@ internal static class Program
                         badPhase2DashboardCatalog,
                         badPhase2DashboardDigest,
                         badPhase2DashboardPrivate);
+                    break;
+                case "dashboard.phase3a":
+                    await HandlePhase3aDashboardAsync(
+                        id,
+                        parameters,
+                        initiativeRevision,
+                        initiativeClassification,
+                        initiativeApplicability,
+                        badPhase3aDashboardCatalog,
+                        badPhase3aDashboardDigest,
+                        badPhase3aDashboardPrivate);
                     break;
                 case "dashboard.phase2ChangeImpactAgentModel":
                     await HandlePhase2ChangeImpactAgentModelDashboardAsync(
@@ -14774,6 +14829,164 @@ internal static class Program
         }
         RefreshCanonicalDigest(dashboard, "snapshotDigest");
         if (invalidateDigest) ((Dictionary<string, object?>)dashboard["phaseStatus"]!)["unavailableSourceCount"] = 22;
+        await WriteResultAsync(id, dashboard);
+    }
+
+    private static async Task HandlePhase3aDashboardAsync(
+        long id,
+        JsonElement parameters,
+        long initiativeRevision,
+        Dictionary<string, object?>? classification,
+        Dictionary<string, object?>? applicability,
+        bool invalidateCatalogDigest,
+        bool invalidateDigest,
+        bool includePrivateField)
+    {
+        var productDigest = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7)));
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var initiativeDigest = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord));
+        if (!HasOnlyProperties(
+                parameters,
+                "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+                "expectedInitiativeRevision", "expectedInitiativeDigest") ||
+            parameters.GetProperty("expectedProductId").GetString() != ProductId.ToString("D") ||
+            parameters.GetProperty("expectedProductRevision").GetInt64() != 7 ||
+            parameters.GetProperty("expectedProductDigest").GetString() != productDigest ||
+            parameters.GetProperty("expectedInitiativeId").GetString() != InitiativeId.ToString("D") ||
+            parameters.GetProperty("expectedInitiativeRevision").GetInt64() != initiativeRevision ||
+            parameters.GetProperty("expectedInitiativeDigest").GetString() != initiativeDigest)
+        {
+            await WriteErrorAsync(id, -32_602, "PHASE3A_DASHBOARD_PARAMS_INVALID", "PRIVATE PHASE 3A DASHBOARD PARAMS");
+            return;
+        }
+        var definitions = new[]
+        {
+            ("backlog-hierarchy", "Backlog hierarchy", "backlog-slice", "backlog-hierarchy-projection"),
+            ("mvp-slice-definition", "MVP and slice definition", "backlog-slice", "mvp-slice-definition-projection"),
+            ("prioritization-model", "Prioritization model", "backlog-slice", "prioritization-model-projection"),
+            ("acceptance-criteria", "Acceptance criteria", "readiness-gap", "acceptance-criteria-projection"),
+            ("definition-of-ready", "Definition of Ready", "readiness-gap", "definition-of-ready-projection"),
+            ("definition-of-done", "Definition of Done", "readiness-gap", "definition-of-done-projection"),
+            ("implementation-unit-model", "Implementation Unit model", "readiness-gap", "implementation-unit-model-projection"),
+            ("dependency-mapping", "Dependency mapping", "readiness-gap", "dependency-mapping-projection"),
+            ("technology-profile", "Technology profile", "boilerplate-design-code", "technology-profile-projection"),
+            ("boilerplate-registry", "Boilerplate registry", "boilerplate-design-code", "boilerplate-registry-projection"),
+            ("boilerplate-selection-binding", "Boilerplate selection and binding", "boilerplate-design-code", "boilerplate-selection-binding-projection"),
+            ("boilerplate-compatibility-validation", "Boilerplate compatibility validation", "boilerplate-design-code", "boilerplate-compatibility-validation-projection"),
+            ("figma-to-boilerplate-mapping", "Figma-to-boilerplate mapping", "boilerplate-design-code", "figma-to-boilerplate-mapping-projection"),
+            ("design-to-code-binding-registry", "Design-to-code binding registry", "boilerplate-design-code", "design-to-code-binding-registry-projection"),
+            ("route-screen-component-mapping", "Route, screen, and component mapping", "boilerplate-design-code", "route-screen-component-mapping-projection"),
+            ("test-methodology", "Test methodology", "readiness-gap", "test-methodology-projection"),
+            ("test-inventory", "Test inventory", "readiness-gap", "test-inventory-projection"),
+            ("high-level-design", "High-Level Design", "readiness-gap", "high-level-design-projection"),
+            ("low-level-design", "Low-Level Design", "readiness-gap", "low-level-design-projection"),
+            ("implementation-readiness-gate", "Implementation Readiness Gate", "readiness-gap", "implementation-readiness-gate-projection"),
+        };
+        var sources = definitions.Select(definition => new Dictionary<string, object?>
+        {
+            ["id"] = definition.Item1,
+            ["title"] = definition.Item2,
+            ["group"] = definition.Item3,
+            ["projectionKind"] = definition.Item4,
+            ["availability"] = "unavailable",
+        }).ToArray();
+        var viewDefinitions = new (string Id, string Title, string[] SourceIds)[]
+        {
+            ("backlog-slice", "Backlog and slice", ["backlog-hierarchy", "mvp-slice-definition", "prioritization-model"]),
+            ("readiness-gap", "Readiness and gaps", ["acceptance-criteria", "definition-of-ready", "definition-of-done", "implementation-unit-model", "dependency-mapping", "boilerplate-compatibility-validation", "test-methodology", "test-inventory", "high-level-design", "low-level-design", "implementation-readiness-gate"]),
+            ("boilerplate-design-code", "Boilerplate and design-to-code", ["technology-profile", "boilerplate-registry", "boilerplate-selection-binding", "boilerplate-compatibility-validation", "figma-to-boilerplate-mapping", "design-to-code-binding-registry", "route-screen-component-mapping"]),
+            ("change-impact", "Change and impact", ["dependency-mapping", "design-to-code-binding-registry", "route-screen-component-mapping", "high-level-design", "low-level-design", "implementation-readiness-gate"]),
+            ("agent-model", "Agent and model", ["implementation-readiness-gate"]),
+        };
+        var views = viewDefinitions.Select(definition => new Dictionary<string, object?>
+        {
+            ["id"] = definition.Id,
+            ["title"] = definition.Title,
+            ["sourceIds"] = definition.SourceIds,
+            ["state"] = "unavailable",
+            ["currentSourceCount"] = 0,
+            ["attentionRequiredSourceCount"] = 0,
+            ["unavailableSourceCount"] = definition.SourceIds.Length,
+            ["candidateCount"] = 0,
+            ["evidenceReferenceCount"] = 0,
+            ["gapCount"] = 0,
+            ["conflictCount"] = 0,
+            ["staleCount"] = 0,
+            ["unresolvedCount"] = 0,
+            ["workflowEvidenceCount"] = 0,
+        }).ToArray();
+        var workflows = new[] { "codex", "claude" }.Select(provider => new Dictionary<string, object?>
+        {
+            ["provider"] = provider,
+            ["availability"] = "unavailable",
+            ["executionMode"] = "offline-deterministic",
+            ["liveAcceptance"] = "not-established",
+            ["semanticQuality"] = "not-assessed",
+            ["authority"] = "not-granted",
+        }).ToArray();
+        var dashboard = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "phase-3a-dashboard",
+            ["viewDefinitionVersion"] = "gaep-phase-3a-dashboard-v1",
+            ["phase"] = new Dictionary<string, object?>
+            {
+                ["id"] = "phase-3a-readiness",
+                ["label"] = "Phase 3A — Backlog and Implementation Readiness",
+            },
+            ["product"] = new Dictionary<string, object?>
+            {
+                ["recordType"] = "product", ["recordId"] = ProductId.ToString("D"), ["revision"] = 7, ["digest"] = productDigest,
+            },
+            ["initiative"] = new Dictionary<string, object?>
+            {
+                ["recordType"] = "initiative", ["recordId"] = InitiativeId.ToString("D"),
+                ["revision"] = initiativeRevision, ["digest"] = initiativeDigest, ["state"] = initiativeRecord["state"],
+            },
+            ["sources"] = sources,
+            ["views"] = views,
+            ["workflows"] = workflows,
+            ["freshness"] = new Dictionary<string, object?> { ["state"] = "unknown", ["staleCount"] = 0, ["unresolvedCount"] = 0 },
+            ["phaseStatus"] = new Dictionary<string, object?>
+            {
+                ["state"] = "attention-required", ["expectedSourceCount"] = 20, ["currentSourceCount"] = 0,
+                ["attentionRequiredSourceCount"] = 0, ["unavailableSourceCount"] = 20,
+                ["sourceCatalogDigest"] = CanonicalDigest(JsonSerializer.SerializeToElement(sources)),
+                ["providerWorkflowEvidenceCount"] = 0, ["liveProviderAcceptanceCount"] = 0,
+                ["nativeHostAcceptanceCount"] = 0, ["readinessAuthority"] = "not-established",
+                ["waiverAuthority"] = "not-established", ["ownershipAuthority"] = "not-established",
+                ["productOwnerAcceptance"] = "not-established",
+            },
+            ["pagination"] = new Dictionary<string, object?> { ["offset"] = 0, ["limit"] = 20, ["total"] = 20, ["truncated"] = false },
+            ["export"] = new Dictionary<string, object?>
+            {
+                ["format"] = "csv-visible-metadata-only", ["formulaPrefixesNeutralized"] = true, ["hiddenContentExcluded"] = true,
+            },
+            ["evidenceCues"] = new Dictionary<string, object?>
+            {
+                ["freshness"] = "unknown",
+                ["confidence"] = new Dictionary<string, object?>
+                {
+                    ["state"] = "not-assessed",
+                    ["basis"] = "no-governed-confidence-or-semantic-quality-evaluation-is-bound",
+                },
+            },
+            ["observedAt"] = "2026-07-31T03:10:00.000Z",
+            ["sourceBoundary"] = "current-governed-product-initiative-p3a-projections-and-explicit-sealed-local-workflow-evidence-only",
+            ["privacyBoundary"] = "dashboard-exposes-identities-counts-states-times-and-digests-not-product-design-source-code-provider-output-personal-content-secrets-credentials-permissions-or-private-paths",
+            ["limitations"] = new[]
+            {
+                "Unavailable sources remain explicit and do not establish completeness or not-applicability.",
+                "Workflow evidence slots do not establish live-provider acceptance or semantic quality.",
+                "Native host, Product Owner, security, release, and deployment acceptance remain outside this projection.",
+            },
+            ["authorityBoundary"] = "phase-3a-dashboard-is-a-derived-read-only-view-not-completeness-priority-readiness-waiver-ownership-implementation-acceptance-release-deployment-or-action-authority",
+        };
+        if (includePrivateField) dashboard["sourceRoot"] = $"{PrivateRoot}/{PrivateCredential}";
+        if (invalidateCatalogDigest)
+            ((Dictionary<string, object?>)dashboard["phaseStatus"]!)["sourceCatalogDigest"] = $"sha256:{new string('0', 64)}";
+        RefreshCanonicalDigest(dashboard, "snapshotDigest");
+        if (invalidateDigest) ((Dictionary<string, object?>)dashboard["phaseStatus"]!)["unavailableSourceCount"] = 19;
         await WriteResultAsync(id, dashboard);
     }
 

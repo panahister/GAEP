@@ -4743,6 +4743,20 @@ public sealed class ProductWorkflowController(EngineClient client)
             await client.ReadPhase2ChangeImpactAgentModelDashboardAsync(product, initiative, cancellationToken));
     }
 
+    public async Task<string> ReadPhase3aDashboardAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        if (initiative.ProductId != product.Id)
+        {
+            throw new ArgumentException("The Initiative does not target the exact current Product. Reload the Product and Initiative.");
+        }
+        return RenderPhase3aDashboard(await client.ReadPhase3aDashboardAsync(product, initiative, cancellationToken));
+    }
+
     public async Task<string> ReadPhase1SummaryAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
@@ -4805,6 +4819,21 @@ public sealed class ProductWorkflowController(EngineClient client)
         }
         return AccessibleDashboardTables.Phase2UxFigma(
             await client.ReadPhase2UxFigmaDashboardAsync(product, initiative, cancellationToken));
+    }
+
+    public async Task<IReadOnlyList<AccessibleMetadataTable>> ReadPhase3aDashboardTablesAsync(
+        Guid initiativeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken);
+        var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        if (initiative.ProductId != product.Id)
+        {
+            throw new ArgumentException("The Initiative does not target the exact current Product. Reload the Product and Initiative.");
+        }
+        return AccessibleDashboardTables.Phase3a(
+            await client.ReadPhase3aDashboardAsync(product, initiative, cancellationToken));
     }
 
     public async Task<IReadOnlyList<AccessibleMetadataTable>> ReadPhase2ChangeImpactAgentModelDashboardTablesAsync(
@@ -5442,6 +5471,57 @@ public sealed class ProductWorkflowController(EngineClient client)
             .Append(
                 "Boundary: this derived read-only view is not a second source of truth and grants no completeness, " +
                 "validity, approval, baseline, readiness, phase-entry, Figma, remediation, implementation, release, or action authority.")
+            .ToString();
+    }
+
+    private static string RenderPhase3aDashboard(Phase3aDashboard dashboard)
+    {
+        var output = new StringBuilder()
+            .AppendLine("GAEP exact Phase 3A backlog and implementation readiness dashboard")
+            .AppendLine()
+            .AppendLine($"Initiative: {dashboard.InitiativeId:D}@{dashboard.InitiativeRevision} · {dashboard.InitiativeState}")
+            .AppendLine($"Phase state: {dashboard.PhaseState}")
+            .AppendLine(
+                $"Sources: {dashboard.CurrentSourceCount} current · {dashboard.AttentionRequiredSourceCount} attention-required · " +
+                $"{dashboard.UnavailableSourceCount} unavailable · 20 expected")
+            .AppendLine(
+                $"Provider workflow evidence: {dashboard.ProviderWorkflowEvidenceCount}/2 sealed local deterministic · " +
+                "live acceptance 0 · native-host acceptance 0")
+            .AppendLine($"Freshness: {dashboard.FreshnessState} · {dashboard.StaleCount} stale · {dashboard.UnresolvedCount} unresolved")
+            .AppendLine("Pagination: 1-20 of 20 · truncated false")
+            .AppendLine("Export: csv-visible-metadata-only · formula prefixes neutralized true · hidden content excluded true")
+            .AppendLine($"Snapshot digest: {dashboard.SnapshotDigest}")
+            .AppendLine()
+            .AppendLine("Views");
+        foreach (var view in dashboard.Views)
+        {
+            output.AppendLine(
+                $"{view.Title} · {view.State} · {view.CurrentSourceCount} current/{view.AttentionRequiredSourceCount} attention/" +
+                $"{view.UnavailableSourceCount} unavailable · {view.CandidateCount} candidates · " +
+                $"{view.EvidenceReferenceCount} evidence · {view.GapCount} gaps · {view.ConflictCount} conflicts · " +
+                $"{view.StaleCount} stale · {view.UnresolvedCount} unresolved · {view.WorkflowEvidenceCount} workflows");
+        }
+        output.AppendLine().AppendLine("Governed sources");
+        foreach (var source in dashboard.Sources)
+        {
+            output.AppendLine(
+                $"{source.Title} · {source.Group} · {source.Availability} · {source.AssessmentState ?? "no state inferred"} · " +
+                $"{source.GapCount} gaps · {source.ConflictCount} conflicts · {source.StaleCount} stale · {source.UnresolvedCount} unresolved");
+        }
+        output.AppendLine().AppendLine("Bounded provider workflow evidence");
+        foreach (var workflow in dashboard.Workflows)
+        {
+            output.AppendLine(
+                $"{workflow.Provider} · {workflow.Availability} · {workflow.ExecutionMode} · live {workflow.LiveAcceptance} · " +
+                $"semantic quality {workflow.SemanticQuality} · authority {workflow.Authority}");
+        }
+        output.AppendLine();
+        foreach (var limitation in dashboard.Limitations) output.AppendLine($"Limit: {limitation}");
+        return output
+            .AppendLine()
+            .Append(
+                "Boundary: this derived read-only view grants no completeness, priority, readiness, waiver, ownership, " +
+                "implementation, acceptance, release, deployment, or action authority.")
             .ToString();
     }
 

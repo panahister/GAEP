@@ -788,6 +788,30 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readPhase3aDashboard(
+        product: ProductBinding,
+        initiative: InitiativeEntryRecord,
+    ): Phase3aDashboard {
+        PortableDesignProtocol.validateProductId(product.id)
+        PortableDesignProtocol.validateProductRevision(product.revision)
+        PortableDesignProtocol.validateProductRevision(initiative.revision)
+        require(initiative.productId == product.id) { "Initiative must target the exact current Product" }
+        require(Regex("^sha256:[0-9a-f]{64}$").matches(product.digest) &&
+            Regex("^sha256:[0-9a-f]{64}$").matches(initiative.digest)) { "Exact digests must be SHA-256" }
+        val params = JsonObject().apply {
+            addProperty("expectedProductId", product.id.toString())
+            addProperty("expectedProductRevision", product.revision)
+            addProperty("expectedProductDigest", product.digest)
+            addProperty("expectedInitiativeId", initiative.id.toString())
+            addProperty("expectedInitiativeRevision", initiative.revision)
+            addProperty("expectedInitiativeDigest", initiative.digest)
+        }
+        return portableRequest("dashboard.phase3a", params) { envelope ->
+            PortableDesignProtocol.parsePhase3aDashboardEnvelope(envelope, product, initiative)
+        }
+    }
+
+    @Synchronized
     fun readPhase2ChangeImpactAgentModelDashboard(
         product: ProductBinding,
         initiative: InitiativeEntryRecord,

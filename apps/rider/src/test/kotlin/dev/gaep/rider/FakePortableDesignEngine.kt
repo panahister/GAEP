@@ -481,6 +481,7 @@ fun main(arguments: Array<String>) {
                 request.getAsJsonObject("params"),
                 workspacePath,
             )
+            "dashboard.phase3a" -> handlePhase3aDashboard(id, request.getAsJsonObject("params"), workspacePath)
             "dashboard.phase2ChangeImpactAgentModel" -> handlePhase2ChangeImpactAgentModelDashboard(
                 id,
                 request.getAsJsonObject("params"),
@@ -7533,6 +7534,171 @@ private fun handlePhase2UxFigmaDashboard(id: Long, params: JsonObject, workspace
     val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
     if (workspacePath.endsWith("bad-phase2-dashboard-digest")) {
         value.getAsJsonObject("phaseStatus").addProperty("unavailableSourceCount", 22)
+    }
+    writeResult(id, value)
+}
+
+private fun handlePhase3aDashboard(id: Long, params: JsonObject, workspacePath: String) {
+    val productDigest = canonicalDigest(productRecord())
+    val initiativeRevision = initiativeState.get("revision").asLong
+    val initiativeDigest = canonicalDigest(initiativeState)
+    if (params.keySet() != setOf(
+            "expectedProductId", "expectedProductRevision", "expectedProductDigest", "expectedInitiativeId",
+            "expectedInitiativeRevision", "expectedInitiativeDigest",
+        ) || params.get("expectedProductId").asString != productId.toString() ||
+        params.get("expectedProductRevision").asLong != 7L || params.get("expectedProductDigest").asString != productDigest ||
+        params.get("expectedInitiativeId").asString != initiativeId.toString() ||
+        params.get("expectedInitiativeRevision").asLong != initiativeRevision ||
+        params.get("expectedInitiativeDigest").asString != initiativeDigest
+    ) {
+        writeError(id, -32_602, "PHASE3A_DASHBOARD_PARAMS_INVALID", "PRIVATE PHASE 3A DASHBOARD PARAMS")
+        return
+    }
+    val definitions = listOf(
+        listOf("backlog-hierarchy", "Backlog hierarchy", "backlog-slice", "backlog-hierarchy-projection"),
+        listOf("mvp-slice-definition", "MVP and slice definition", "backlog-slice", "mvp-slice-definition-projection"),
+        listOf("prioritization-model", "Prioritization model", "backlog-slice", "prioritization-model-projection"),
+        listOf("acceptance-criteria", "Acceptance criteria", "readiness-gap", "acceptance-criteria-projection"),
+        listOf("definition-of-ready", "Definition of Ready", "readiness-gap", "definition-of-ready-projection"),
+        listOf("definition-of-done", "Definition of Done", "readiness-gap", "definition-of-done-projection"),
+        listOf("implementation-unit-model", "Implementation Unit model", "readiness-gap", "implementation-unit-model-projection"),
+        listOf("dependency-mapping", "Dependency mapping", "readiness-gap", "dependency-mapping-projection"),
+        listOf("technology-profile", "Technology profile", "boilerplate-design-code", "technology-profile-projection"),
+        listOf("boilerplate-registry", "Boilerplate registry", "boilerplate-design-code", "boilerplate-registry-projection"),
+        listOf("boilerplate-selection-binding", "Boilerplate selection and binding", "boilerplate-design-code", "boilerplate-selection-binding-projection"),
+        listOf("boilerplate-compatibility-validation", "Boilerplate compatibility validation", "boilerplate-design-code", "boilerplate-compatibility-validation-projection"),
+        listOf("figma-to-boilerplate-mapping", "Figma-to-boilerplate mapping", "boilerplate-design-code", "figma-to-boilerplate-mapping-projection"),
+        listOf("design-to-code-binding-registry", "Design-to-code binding registry", "boilerplate-design-code", "design-to-code-binding-registry-projection"),
+        listOf("route-screen-component-mapping", "Route, screen, and component mapping", "boilerplate-design-code", "route-screen-component-mapping-projection"),
+        listOf("test-methodology", "Test methodology", "readiness-gap", "test-methodology-projection"),
+        listOf("test-inventory", "Test inventory", "readiness-gap", "test-inventory-projection"),
+        listOf("high-level-design", "High-Level Design", "readiness-gap", "high-level-design-projection"),
+        listOf("low-level-design", "Low-Level Design", "readiness-gap", "low-level-design-projection"),
+        listOf("implementation-readiness-gate", "Implementation Readiness Gate", "readiness-gap", "implementation-readiness-gate-projection"),
+    )
+    val sources = JsonArray().apply {
+        definitions.forEach { definition ->
+            add(JsonObject().apply {
+                addProperty("id", definition[0])
+                addProperty("title", definition[1])
+                addProperty("group", definition[2])
+                addProperty("projectionKind", definition[3])
+                addProperty("availability", "unavailable")
+            })
+        }
+    }
+    val viewDefinitions = listOf(
+        Triple("backlog-slice", "Backlog and slice", listOf("backlog-hierarchy", "mvp-slice-definition", "prioritization-model")),
+        Triple("readiness-gap", "Readiness and gaps", listOf("acceptance-criteria", "definition-of-ready", "definition-of-done", "implementation-unit-model", "dependency-mapping", "boilerplate-compatibility-validation", "test-methodology", "test-inventory", "high-level-design", "low-level-design", "implementation-readiness-gate")),
+        Triple("boilerplate-design-code", "Boilerplate and design-to-code", listOf("technology-profile", "boilerplate-registry", "boilerplate-selection-binding", "boilerplate-compatibility-validation", "figma-to-boilerplate-mapping", "design-to-code-binding-registry", "route-screen-component-mapping")),
+        Triple("change-impact", "Change and impact", listOf("dependency-mapping", "design-to-code-binding-registry", "route-screen-component-mapping", "high-level-design", "low-level-design", "implementation-readiness-gate")),
+        Triple("agent-model", "Agent and model", listOf("implementation-readiness-gate")),
+    )
+    val views = JsonArray().apply {
+        viewDefinitions.forEach { definition ->
+            add(JsonObject().apply {
+                addProperty("id", definition.first)
+                addProperty("title", definition.second)
+                add("sourceIds", JsonArray().apply { definition.third.forEach { add(it) } })
+                addProperty("state", "unavailable")
+                addProperty("currentSourceCount", 0)
+                addProperty("attentionRequiredSourceCount", 0)
+                addProperty("unavailableSourceCount", definition.third.size)
+                listOf(
+                    "candidateCount", "evidenceReferenceCount", "gapCount", "conflictCount", "staleCount",
+                    "unresolvedCount", "workflowEvidenceCount",
+                ).forEach { addProperty(it, 0) }
+            })
+        }
+    }
+    val workflows = JsonArray().apply {
+        listOf("codex", "claude").forEach { provider ->
+            add(JsonObject().apply {
+                addProperty("provider", provider)
+                addProperty("availability", "unavailable")
+                addProperty("executionMode", "offline-deterministic")
+                addProperty("liveAcceptance", "not-established")
+                addProperty("semanticQuality", "not-assessed")
+                addProperty("authority", "not-granted")
+            })
+        }
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1)
+        addProperty("kind", "phase-3a-dashboard")
+        addProperty("viewDefinitionVersion", "gaep-phase-3a-dashboard-v1")
+        add("phase", JsonObject().apply {
+            addProperty("id", "phase-3a-readiness")
+            addProperty("label", "Phase 3A — Backlog and Implementation Readiness")
+        })
+        add("product", JsonObject().apply {
+            addProperty("recordType", "product")
+            addProperty("recordId", productId.toString())
+            addProperty("revision", 7)
+            addProperty("digest", productDigest)
+        })
+        add("initiative", JsonObject().apply {
+            addProperty("recordType", "initiative")
+            addProperty("recordId", initiativeId.toString())
+            addProperty("revision", initiativeRevision)
+            addProperty("digest", initiativeDigest)
+            addProperty("state", initiativeState.get("state").asString)
+        })
+        add("sources", sources)
+        add("views", views)
+        add("workflows", workflows)
+        add("freshness", JsonObject().apply {
+            addProperty("state", "unknown")
+            addProperty("staleCount", 0)
+            addProperty("unresolvedCount", 0)
+        })
+        add("phaseStatus", JsonObject().apply {
+            addProperty("state", "attention-required")
+            addProperty("expectedSourceCount", 20)
+            addProperty("currentSourceCount", 0)
+            addProperty("attentionRequiredSourceCount", 0)
+            addProperty("unavailableSourceCount", 20)
+            addProperty("sourceCatalogDigest", canonicalDigest(sources))
+            addProperty("providerWorkflowEvidenceCount", 0)
+            addProperty("liveProviderAcceptanceCount", 0)
+            addProperty("nativeHostAcceptanceCount", 0)
+            addProperty("readinessAuthority", "not-established")
+            addProperty("waiverAuthority", "not-established")
+            addProperty("ownershipAuthority", "not-established")
+            addProperty("productOwnerAcceptance", "not-established")
+        })
+        add("pagination", JsonObject().apply {
+            addProperty("offset", 0); addProperty("limit", 20); addProperty("total", 20); addProperty("truncated", false)
+        })
+        add("export", JsonObject().apply {
+            addProperty("format", "csv-visible-metadata-only")
+            addProperty("formulaPrefixesNeutralized", true)
+            addProperty("hiddenContentExcluded", true)
+        })
+        add("evidenceCues", JsonObject().apply {
+            addProperty("freshness", "unknown")
+            add("confidence", JsonObject().apply {
+                addProperty("state", "not-assessed")
+                addProperty("basis", "no-governed-confidence-or-semantic-quality-evaluation-is-bound")
+            })
+        })
+        addProperty("observedAt", "2026-07-31T03:10:00.000Z")
+        addProperty("sourceBoundary", "current-governed-product-initiative-p3a-projections-and-explicit-sealed-local-workflow-evidence-only")
+        addProperty("privacyBoundary", "dashboard-exposes-identities-counts-states-times-and-digests-not-product-design-source-code-provider-output-personal-content-secrets-credentials-permissions-or-private-paths")
+        add("limitations", JsonArray().apply {
+            add("Unavailable sources remain explicit and do not establish completeness or not-applicability.")
+            add("Workflow evidence slots do not establish live-provider acceptance or semantic quality.")
+            add("Native host, Product Owner, security, release, and deployment acceptance remain outside this projection.")
+        })
+        addProperty("authorityBoundary", "phase-3a-dashboard-is-a-derived-read-only-view-not-completeness-priority-readiness-waiver-ownership-implementation-acceptance-release-deployment-or-action-authority")
+    }
+    if (workspacePath.endsWith("bad-phase3a-dashboard-private")) content.addProperty("sourceRoot", "$privateRoot/$privateCredential")
+    if (workspacePath.endsWith("bad-phase3a-dashboard-catalog")) {
+        content.getAsJsonObject("phaseStatus").addProperty("sourceCatalogDigest", "sha256:${"0".repeat(64)}")
+    }
+    val value = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-phase3a-dashboard-digest")) {
+        value.getAsJsonObject("phaseStatus").addProperty("unavailableSourceCount", 19)
     }
     writeResult(id, value)
 }

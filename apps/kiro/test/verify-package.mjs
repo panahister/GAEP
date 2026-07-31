@@ -145,10 +145,11 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
     fail("package identity, host engine, entry point, or extension kind differs")
   }
   const commands = packagedManifest.contributes?.commands
-  if (!Array.isArray(commands) || commands.length !== 87 ||
+  if (!Array.isArray(commands) || commands.length !== 88 ||
       new Set(commands.map((command) => command.command)).size !== commands.length ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase2UxFigma") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase2ChangeImpactAgentModel") ||
+      !commands.some((command) => command.command === "gaepKiro.dashboard.phase3a") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1Summary") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1ChangeImpact") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase1AgentModel") ||
@@ -195,7 +196,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.humanDesignApproval.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designBaseline.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designDriftDetection.inspect")) {
-    fail("package command inventory must contain 87 unique commands including both Phase 2 dashboards, all three Phase 1 dashboards, Backlog Hierarchy, MVP and Vertical Slice Definition, Prioritization Model, Acceptance Criteria, Definition of Ready, Definition of Done, Implementation Unit Model, Dependency Mapping, Technology Profile, Boilerplate Registry, Boilerplate Selection and Binding, Boilerplate Compatibility Validation, Figma-to-Boilerplate Mapping, Design-to-Code Binding Registry, Route, Screen, and Component Mapping, Test Methodology, Test Inventory, High-Level Design, Low-Level Design, Implementation Readiness Gate, and governed Design phase candidates through Design Drift Detection")
+    fail("package command inventory must contain 88 unique commands including the Phase 3A dashboard, both Phase 2 dashboards, all three Phase 1 dashboards, Backlog Hierarchy, MVP and Vertical Slice Definition, Prioritization Model, Acceptance Criteria, Definition of Ready, Definition of Done, Implementation Unit Model, Dependency Mapping, Technology Profile, Boilerplate Registry, Boilerplate Selection and Binding, Boilerplate Compatibility Validation, Figma-to-Boilerplate Mapping, Design-to-Code Binding Registry, Route, Screen, and Component Mapping, Test Methodology, Test Inventory, High-Level Design, Low-Level Design, Implementation Readiness Gate, and governed Design phase candidates through Design Drift Detection")
   }
   const activationCommands = packagedManifest.activationEvents
     .filter((event) => event.startsWith("onCommand:"))

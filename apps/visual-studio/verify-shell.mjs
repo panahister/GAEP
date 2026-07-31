@@ -86,6 +86,7 @@ for (const binding of [
   "ResolveInitiativeApplicabilityCommand",
   "ShowPhaseDashboardCommand",
   "ShowPhase2UxFigmaDashboardCommand",
+  "ShowPhase3aDashboardCommand",
   "ShowPhase2ChangeImpactAgentModelDashboardCommand",
   "LoadChangeImpactCommand",
   "ShowChangeImpactCommand",

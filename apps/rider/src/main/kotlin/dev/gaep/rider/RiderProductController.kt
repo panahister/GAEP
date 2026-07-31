@@ -4216,6 +4216,24 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         return AccessibleDashboardTables.phase2UxFigma(client.readPhase2UxFigmaDashboard(product, initiative))
     }
 
+    fun readPhase3aDashboard(initiativeId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        require(initiative.productId == product.id) {
+            "The Initiative does not target the exact current Product. Reload the Product and Initiative."
+        }
+        return renderPhase3aDashboard(client.readPhase3aDashboard(product, initiative))
+    }
+
+    fun readPhase3aDashboardTables(initiativeId: UUID): List<AccessibleMetadataTable> {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        require(initiative.productId == product.id) {
+            "The Initiative does not target the exact current Product. Reload the Product and Initiative."
+        }
+        return AccessibleDashboardTables.phase3a(client.readPhase3aDashboard(product, initiative))
+    }
+
     fun readPhase2ChangeImpactAgentModelDashboard(initiativeId: UUID): String {
         val product = client.readProductBinding()
         val initiative = client.readInitiative(initiativeId)
@@ -4721,6 +4739,58 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         append(
             "Boundary: this derived read-only view is not a second source of truth and grants no completeness, validity, " +
                 "approval, baseline, readiness, phase-entry, Figma, remediation, implementation, release, or action authority.",
+        )
+    }
+
+    private fun renderPhase3aDashboard(dashboard: Phase3aDashboard): String = buildString {
+        appendLine("GAEP exact Phase 3A backlog and implementation readiness dashboard")
+        appendLine()
+        appendLine("Initiative: ${dashboard.initiativeId}@${dashboard.initiativeRevision} · ${dashboard.initiativeState}")
+        appendLine("Phase state: ${dashboard.phaseState}")
+        appendLine(
+            "Sources: ${dashboard.currentSourceCount} current · ${dashboard.attentionRequiredSourceCount} attention-required · " +
+                "${dashboard.unavailableSourceCount} unavailable · 20 expected",
+        )
+        appendLine(
+            "Provider workflow evidence: ${dashboard.providerWorkflowEvidenceCount}/2 sealed local deterministic · " +
+                "live acceptance 0 · native-host acceptance 0",
+        )
+        appendLine("Freshness: ${dashboard.freshnessState} · ${dashboard.staleCount} stale · ${dashboard.unresolvedCount} unresolved")
+        appendLine("Pagination: 1-20 of 20 · truncated false")
+        appendLine("Export: csv-visible-metadata-only · formula prefixes neutralized true · hidden content excluded true")
+        appendLine("Snapshot digest: ${dashboard.snapshotDigest}")
+        appendLine()
+        appendLine("Views")
+        dashboard.views.forEach { view ->
+            appendLine(
+                "${view.title} · ${view.state} · ${view.currentSourceCount} current/${view.attentionRequiredSourceCount} attention/" +
+                    "${view.unavailableSourceCount} unavailable · ${view.candidateCount} candidates · " +
+                    "${view.evidenceReferenceCount} evidence · ${view.gapCount} gaps · ${view.conflictCount} conflicts · " +
+                    "${view.staleCount} stale · ${view.unresolvedCount} unresolved · ${view.workflowEvidenceCount} workflows",
+            )
+        }
+        appendLine()
+        appendLine("Governed sources")
+        dashboard.sources.forEach { source ->
+            appendLine(
+                "${source.title} · ${source.group} · ${source.availability} · ${source.assessmentState ?: "no state inferred"} · " +
+                    "${source.gapCount} gaps · ${source.conflictCount} conflicts · ${source.staleCount} stale · ${source.unresolvedCount} unresolved",
+            )
+        }
+        appendLine()
+        appendLine("Bounded provider workflow evidence")
+        dashboard.workflows.forEach { workflow ->
+            appendLine(
+                "${workflow.provider} · ${workflow.availability} · ${workflow.executionMode} · live ${workflow.liveAcceptance} · " +
+                    "semantic quality ${workflow.semanticQuality} · authority ${workflow.authority}",
+            )
+        }
+        appendLine()
+        dashboard.limitations.forEach { appendLine("Limit: $it") }
+        appendLine()
+        append(
+            "Boundary: this derived read-only view grants no completeness, priority, readiness, waiver, ownership, " +
+                "implementation, acceptance, release, deployment, or action authority.",
         )
     }
 

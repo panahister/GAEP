@@ -239,6 +239,87 @@ internal object AccessibleDashboardTables {
         )
     }
 
+    fun phase3a(dashboard: Phase3aDashboard): List<AccessibleMetadataTable> {
+        val sourceBoundary =
+            "current-governed-product-initiative-p3a-projections-and-explicit-sealed-local-workflow-evidence-only"
+        val authorityBoundary =
+            "phase-3a-dashboard-is-a-derived-read-only-view-not-completeness-priority-readiness-waiver-ownership-implementation-acceptance-release-deployment-or-action-authority"
+        return listOf(
+            table(
+                id = "phase3a-views",
+                title = "Phase 3A dashboard views",
+                columns = columns(
+                    "view" to "View", "state" to "State", "sources" to "Source coverage",
+                    "signals" to "Candidate and evidence signals", "attention" to "Attention signals",
+                    "workflows" to "Workflow evidence",
+                ),
+                rows = dashboard.views.map { view ->
+                    row(
+                        view.id,
+                        "view" to view.title,
+                        "state" to view.state,
+                        "sources" to "${view.currentSourceCount} current · ${view.attentionRequiredSourceCount} attention · ${view.unavailableSourceCount} unavailable",
+                        "signals" to "${view.candidateCount} candidates · ${view.evidenceReferenceCount} evidence references",
+                        "attention" to "${view.gapCount} gaps · ${view.conflictCount} conflicts · ${view.staleCount} stale · ${view.unresolvedCount} unresolved",
+                        "workflows" to "${view.workflowEvidenceCount} sealed local deterministic",
+                    )
+                },
+                total = dashboard.views.size.toLong(),
+                omitted = 0L,
+                snapshotDigest = dashboard.snapshotDigest,
+                sourceBoundary = sourceBoundary,
+                authorityBoundary = authorityBoundary,
+            ),
+            table(
+                id = "phase3a-sources",
+                title = "Phase 3A governed source projections",
+                columns = columns(
+                    "source" to "Source", "group" to "Group", "availability" to "Availability",
+                    "assessment" to "Assessment", "attention" to "Attention signals",
+                ),
+                rows = dashboard.sources.map { source ->
+                    row(
+                        source.id,
+                        "source" to source.title,
+                        "group" to source.group,
+                        "availability" to source.availability,
+                        "assessment" to (source.assessmentState ?: "no state inferred"),
+                        "attention" to "${source.gapCount} gaps · ${source.conflictCount} conflicts · ${source.staleCount} stale · ${source.unresolvedCount} unresolved",
+                    )
+                },
+                total = 20L,
+                omitted = 0L,
+                snapshotDigest = dashboard.snapshotDigest,
+                sourceBoundary = sourceBoundary,
+                authorityBoundary = authorityBoundary,
+            ),
+            table(
+                id = "phase3a-workflows",
+                title = "Bounded provider workflow evidence",
+                columns = columns(
+                    "provider" to "Provider", "availability" to "Availability", "mode" to "Execution mode",
+                    "live" to "Live acceptance", "quality" to "Semantic quality", "authority" to "Authority",
+                ),
+                rows = dashboard.workflows.map { workflow ->
+                    row(
+                        workflow.provider,
+                        "provider" to workflow.provider,
+                        "availability" to workflow.availability,
+                        "mode" to workflow.executionMode,
+                        "live" to workflow.liveAcceptance,
+                        "quality" to workflow.semanticQuality,
+                        "authority" to workflow.authority,
+                    )
+                },
+                total = 2L,
+                omitted = 0L,
+                snapshotDigest = dashboard.snapshotDigest,
+                sourceBoundary = sourceBoundary,
+                authorityBoundary = authorityBoundary,
+            ),
+        )
+    }
+
     fun phase2ChangeImpactAgentModel(
         dashboard: Phase2ChangeImpactAgentModelDashboard,
     ): List<AccessibleMetadataTable> {

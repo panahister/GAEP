@@ -69,6 +69,7 @@ import {
   type DesignDriftDetectionProjection,
   type Phase2UxFigmaDashboard,
   type Phase2ChangeImpactAgentModelDashboard,
+  type Phase3aDashboard,
   type Phase1SummaryDashboard,
   type Phase1ChangeImpactDashboard,
   type Phase1AgentModelDashboard,
@@ -135,6 +136,7 @@ const commandIds = {
   dashboard: "gaepKiro.dashboard.phase",
   phase2UxFigma: "gaepKiro.dashboard.phase2UxFigma",
   phase2ChangeImpactAgentModel: "gaepKiro.dashboard.phase2ChangeImpactAgentModel",
+  phase3a: "gaepKiro.dashboard.phase3a",
   phase1Summary: "gaepKiro.dashboard.phase1Summary",
   phase1ChangeImpact: "gaepKiro.dashboard.phase1ChangeImpact",
   changeImpact: "gaepKiro.dashboard.changeImpact",
@@ -294,6 +296,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.dashboard, () => runUserCommand(() => showPhaseDashboard(pool))),
     vscode.commands.registerCommand(commandIds.phase2UxFigma, (input?: unknown) => runUserCommand(() => showPhase2UxFigmaDashboard(pool, input))),
     vscode.commands.registerCommand(commandIds.phase2ChangeImpactAgentModel, (input?: unknown) => runUserCommand(() => showPhase2ChangeImpactAgentModelDashboard(pool, input))),
+    vscode.commands.registerCommand(commandIds.phase3a, (input?: unknown) => runUserCommand(() => showPhase3aDashboard(pool, input))),
     vscode.commands.registerCommand(commandIds.phase1Summary, (input?: unknown) => runUserCommand(() => showPhase1Summary(pool, input))),
     vscode.commands.registerCommand(commandIds.phase1ChangeImpact, (input?: unknown) => runUserCommand(() => showPhase1ChangeImpact(pool, input))),
     vscode.commands.registerCommand(commandIds.changeImpact, () => runUserCommand(() => showChangeImpactDashboard(pool))),
@@ -3963,6 +3966,52 @@ async function showPhase2ChangeImpactAgentModelDashboard(
     "",
     "Boundary: these derived read-only views are not a second source of truth and grant no impact completeness, design validity, provider quality, selection, Run launch, approval, baseline, readiness, remediation, Figma, implementation, effect, release, or action authority.",
     "Design content, Product text, Run narrative, provider output, prompts, source bytes, machine paths, credentials, permissions, and sensitive setting values are withheld.",
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return dashboard
+}
+
+async function showPhase3aDashboard(pool: EngineClientPool, input: unknown): Promise<Phase3aDashboard> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for the Phase 3A dashboard", "Initiative ID")
+  const [product, initiative] = await Promise.all([client.readProduct(), client.readInitiative(initiativeId)])
+  const dashboard = await client.readPhase3aDashboard(product, initiative)
+  const lines = [
+    "GAEP exact Phase 3A backlog and implementation readiness dashboard",
+    "",
+    `Initiative: ${dashboard.initiative.recordId}@${dashboard.initiative.revision} · ${dashboard.initiative.state}`,
+    `Phase state: ${dashboard.phaseStatus.state}`,
+    `Sources: ${dashboard.phaseStatus.currentSourceCount} current · ${dashboard.phaseStatus.attentionRequiredSourceCount} attention-required · ${dashboard.phaseStatus.unavailableSourceCount} unavailable · ${dashboard.phaseStatus.expectedSourceCount} expected`,
+    `Provider workflow evidence: ${dashboard.phaseStatus.providerWorkflowEvidenceCount}/2 sealed local deterministic · live acceptance ${dashboard.phaseStatus.liveProviderAcceptanceCount} · native-host acceptance ${dashboard.phaseStatus.nativeHostAcceptanceCount}`,
+    `Freshness: ${dashboard.freshness.state} · ${dashboard.freshness.staleCount} stale · ${dashboard.freshness.unresolvedCount} unresolved`,
+    `Pagination: ${dashboard.pagination.offset + 1}-${dashboard.pagination.total} of ${dashboard.pagination.total} · truncated ${dashboard.pagination.truncated}`,
+    `Export: ${dashboard.export.format} · formula prefixes neutralized ${dashboard.export.formulaPrefixesNeutralized} · hidden content excluded ${dashboard.export.hiddenContentExcluded}`,
+    `Snapshot digest: ${dashboard.snapshotDigest}`,
+    `Source catalog digest: ${dashboard.phaseStatus.sourceCatalogDigest}`,
+    `Source: ${dashboard.sourceBoundary}`,
+    `Privacy: ${dashboard.privacyBoundary}`,
+    "",
+    "Views",
+    ...dashboard.views.map((view) =>
+      `${view.title} · ${view.state} · ${view.currentSourceCount} current/${view.attentionRequiredSourceCount} attention/${view.unavailableSourceCount} unavailable · ${view.candidateCount} candidates · ${view.evidenceReferenceCount} evidence · ${view.gapCount} gaps · ${view.conflictCount} conflicts · ${view.staleCount} stale · ${view.unresolvedCount} unresolved · ${view.workflowEvidenceCount} workflows`),
+    "",
+    "Governed sources",
+    ...dashboard.sources.map((source) =>
+      `${source.title} · ${source.group} · ${source.availability} · ${source.assessment?.state ?? "no state inferred"} · ${source.assessment?.gapCount ?? 0} gaps · ${source.assessment?.conflictCount ?? 0} conflicts · ${source.assessment?.staleCount ?? 0} stale · ${source.assessment?.unresolvedCount ?? 0} unresolved`),
+    "",
+    "Bounded provider workflow evidence",
+    ...dashboard.workflows.map((workflow) =>
+      `${workflow.provider} · ${workflow.availability} · ${workflow.executionMode} · live ${workflow.liveAcceptance} · semantic quality ${workflow.semanticQuality} · authority ${workflow.authority}`),
+    "",
+    ...dashboard.limitations.map((limitation) => `Limit: ${limitation}`),
+    "",
+    "Boundary: this derived read-only view grants no completeness, priority, readiness, waiver, ownership, implementation, acceptance, release, deployment, or action authority.",
+    "Product text, design content, source code, provider output, personal content, secrets, credentials, permissions, and private paths are withheld.",
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
   await vscode.window.showTextDocument(document, { preview: true })

@@ -275,6 +275,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         ResolveInitiativeApplicabilityCommand = new AsyncCommand(ResolveInitiativeApplicabilityAsync);
         ShowPhaseDashboardCommand = new AsyncCommand(ShowPhaseDashboardAsync);
         ShowPhase2UxFigmaDashboardCommand = new AsyncCommand(ShowPhase2UxFigmaDashboardAsync);
+        ShowPhase3aDashboardCommand = new AsyncCommand(ShowPhase3aDashboardAsync);
         ShowPhase2ChangeImpactAgentModelDashboardCommand = new AsyncCommand(ShowPhase2ChangeImpactAgentModelDashboardAsync);
         ShowPhase1SummaryCommand = new AsyncCommand(ShowPhase1SummaryAsync);
         ShowPhase1ChangeImpactCommand = new AsyncCommand(ShowPhase1ChangeImpactAsync);
@@ -529,6 +530,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand ShowPhase2UxFigmaDashboardCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ShowPhase3aDashboardCommand { get; }
 
     [DataMember]
     public IAsyncCommand ShowPhase2ChangeImpactAgentModelDashboardCommand { get; }
@@ -1450,6 +1454,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact Phase 2 UX and Figma dashboard",
             (controller, _, token) => controller.ReadPhase2UxFigmaDashboardAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task ShowPhase3aDashboardAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact Phase 3A backlog and implementation readiness dashboard",
+            (controller, _, token) => controller.ReadPhase3aDashboardAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task ShowPhase2ChangeImpactAgentModelDashboardAsync(
