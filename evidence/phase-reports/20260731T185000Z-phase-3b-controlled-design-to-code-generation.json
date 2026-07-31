@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-3b-implementation",
+  "evidenceScope": "phase-3b-controlled-design-to-code-generation-local",
+  "recordedAt": "2026-07-31T18:51:15Z",
+  "sourceCommit": "e909263e726636cb76b7a82f13aa6864b9d72408",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 106,
+    "hostAssessments": 424,
+    "hostAssessmentsImplemented": 424,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:bc2ca1564b2996ef772e71a05950f80ba55c3c38e5e8fec7cb397ba9bd063298",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 307897,
+      "digest": "sha256:f16e4ce0f4873b4965663125a97d4bdd456a43b0c7fafb3e549d1a39877a36ed",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260731T183635Z-phase-3b-controlled-design-to-code-generation-packages.json",
+      "bytes": 3276,
+      "digest": "sha256:4b50f5c7a19e3c82306eaf3b9fb7ce7111c74f773ec46b508ad7423d6394f9f0",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260731T183635Z-phase-3b-controlled-design-to-code-generation-host-behavior.json",
+      "bytes": 3576,
+      "digest": "sha256:fc513dc40890d420af6f8741151eaf7828e0b99fc97e4ed9bfdaa880276d5db0",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260731T183635Z-phase-3b-controlled-design-to-code-generation.json",
+      "bytes": 69629,
+      "digest": "sha256:d3f23408e049dfabc0dd7d42265bdb634663d4ca5b53e8b7dd8b78c4a204d6ef",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260731T184200Z-phase-3a-realistic-readiness-example/receipt.json",
+      "bytes": 6811,
+      "digest": "sha256:dd31ebfc9e821c7ac0407161e4252c51a5bea9be8f2d80e777052564ce88e78e",
+      "kind": "gaep-phase3a-realistic-readiness-example-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 146,
+        "testsPassed": 1055,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:68a0de59dcbcecc0793437eb6924837bd6c90747ca5f2d3c457fc076b38e846f"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:f93b8192cbf9a35f17b272faa4352f81678874e86fb80f7e685c32f3d9848127"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 41,
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:e62d8c722294e0ce3ecc99a307c4adb6e0e9c61dbabab6c198da4dcb4b670e53"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:cd80e04acaf575a142b90f5e1ed712c3ef22f756378afe162dbaa2149ddbf9f7"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:0ec64bf8b0af59f13ea0a121eb70e18142c7a33435146c8c18c2d7814d8f8215"
+    }
+  ],
+  "testsDigest": "sha256:c2e5c17ecef6b8c0cc182631f9c2330f4facc0747a0c2661cdb0c3c72c2391fc",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-3b-controlled-design-to-code-generation-closure",
+      "state": "not-established",
+      "basis": "the exact immutable Controlled Design-to-Code Generation plan candidate binds the current Product, Initiative, approved Figma context retrieval, design baseline, design-to-requirement, Figma-to-boilerplate, design-to-code, route-screen-component, implementation-unit, technology, boilerplate selection and compatibility, proposed change, isolated staging, controlled Codex and Claude, provider-switch and model-switch candidates; one selected provider and model, exact repository-relative target paths, expected trace and test outputs, deterministic dependency, provider, design-context, target, expected-output, lifecycle, prerequisite and assessment receipts, explicit no-effect generation stop lines, evidence, Product Studio and four host projections are implemented locally; actual Figma access, context materialization or transfer, provider execution, generated output or inspection, stage creation, source mutation, approval, authorization, acceptance, generation readiness, native-host, live-provider, security or Product Owner acceptance, release and deployment remain unestablished"
+    }
+  ],
+  "knownGapsDigest": "sha256:9038b281f98e0a3e9780e5829806a8001e36227da19b3e1358b321e17b9cf202",
+  "claimBoundary": "This report binds the exact governed Controlled Design-to-Code Generation offline plan candidate lifecycle, immutable revision history, exact current Product, Initiative, Approved Figma Context Retrieval, Design Baseline, Design-to-Requirement Binding, Figma-to-Boilerplate Mapping, Design-to-Code Binding Registry, Route Screen Component Mapping, Implementation Unit Model, Technology Profile, Boilerplate Selection and Binding, Boilerplate Compatibility Validation, Proposed Change Preview, Isolated Staging Workspace, Controlled Codex and Claude Implementation, Provider Switch Implementation and Model Switch Implementation bindings, one exact selected provider, agent and model, metadata-and-digests-only design context, exact repository-relative target paths, expected trace keys and test outputs, deterministic dependency, provider, design-context, target, expected-output, lifecycle, prerequisite and assessment receipts, explicit no-effect generation stop lines, evidence, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. It does not establish actual Figma access, protected-context materialization or transfer, provider execution, generated output or inspection, stage creation, source mutation, approval, authorization, acceptance, generation readiness, merge, release, deployment, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion or action authority."
+}
