@@ -247,6 +247,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadRouteScreenComponentMappingCommand = new AsyncCommand(LoadRouteScreenComponentMappingAsync);
         LoadTestMethodologyCommand = new AsyncCommand(LoadTestMethodologyAsync);
         LoadTestInventoryCommand = new AsyncCommand(LoadTestInventoryAsync);
+        LoadHighLevelDesignCommand = new AsyncCommand(LoadHighLevelDesignAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -446,6 +447,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadTestInventoryCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadHighLevelDesignCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1142,6 +1146,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Test Inventory candidate",
             (controller, _, token) => controller.ReadTestInventoryAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadHighLevelDesignAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed High-Level Design candidate",
+            (controller, _, token) => controller.ReadHighLevelDesignAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

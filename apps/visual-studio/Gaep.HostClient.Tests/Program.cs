@@ -88,6 +88,7 @@ internal static class Program
     private static readonly Guid RouteScreenComponentMappingId = Guid.Parse("cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd");
     private static readonly Guid TestMethodologyId = Guid.Parse("dededede-dede-4ede-8ede-dededededede");
     private static readonly Guid TestInventoryId = Guid.Parse("efefefef-efef-4fef-8fef-efefefefefef");
+    private static readonly Guid HighLevelDesignId = Guid.Parse("f0f0f0f0-f0f0-40f0-80f0-f0f0f0f0f0f0");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
     private static readonly Guid ResponsiveMultiPlatformTargetsId = Guid.Parse("71717171-7171-4171-8171-717171717171");
@@ -1932,6 +1933,23 @@ internal static class Program
                 () => new ProductWorkflowController(hostileClient).ReadTestInventoryAsync(InitiativeId),
                 "Test Inventory workflow rejects substituted Product or exact current dependency bindings");
         }
+        var highLevelDesignProjection = await client.ReadHighLevelDesignAsync(InitiativeId);
+        Check(highLevelDesignProjection.ProductId == product.Id && highLevelDesignProjection.InitiativeId == resolved.Id &&
+              highLevelDesignProjection.State == "attention-required" && highLevelDesignProjection.ReviewState == "held" &&
+              highLevelDesignProjection.DependencyCount == 15 && highLevelDesignProjection.PresentDependencyCount == 15 &&
+              highLevelDesignProjection.ElementCount == 8 && highLevelDesignProjection.RelationCount == 11 &&
+              highLevelDesignProjection.DecisionCount == 4 && highLevelDesignProjection.TraceGapCount == 2 &&
+              highLevelDesignProjection.Candidate?.StructureReceiptDigest == $"sha256:{new string('1', 64)}",
+            "Typed High-Level Design projection preserves exact Product, Initiative, structure, dependency, trace, coverage, ownership, assessment, and privacy-safe metadata");
+        var highLevelDesignOutput = await initiativeController.ReadHighLevelDesignAsync(InitiativeId);
+        Check(highLevelDesignOutput.Contains("GAEP governed High-Level Design candidate", StringComparison.Ordinal) &&
+              highLevelDesignOutput.Contains("15/15", StringComparison.Ordinal) &&
+              highLevelDesignOutput.Contains("6/8 elements · 8/11 relations · 3/4 decisions", StringComparison.Ordinal) &&
+              highLevelDesignOutput.Contains("no design narrative, diagram, interface, data flow, technology, owner", StringComparison.Ordinal) &&
+              highLevelDesignOutput.Contains("does not establish architecture", StringComparison.Ordinal) &&
+              !highLevelDesignOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
+              !highLevelDesignOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "High-Level Design workflow renders privacy-safe metadata with explicit architecture, acceptance, release, deployment, and action boundaries");
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
                          executable))
@@ -6041,6 +6059,9 @@ internal static class Program
                         badTestInventorySnapshotDigest,
                         badTestInventorySnapshotPrivate,
                         badTestInventoryDependencyBinding);
+                    break;
+                case "planning.highLevelDesign.snapshot":
+                    await HandleHighLevelDesignAsync(id, parameters, initiativeRevision, initiativeClassification, initiativeApplicability);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -11287,6 +11308,54 @@ internal static class Program
         if (includePrivateField) result["testPath"] = $"{PrivateRoot}/{PrivateCredential}";
         RefreshCanonicalDigest(result, "snapshotDigest");
         if (mutateAfterDigest) candidate["assetCount"] = 19;
+        await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleHighLevelDesignAsync(
+        long id, JsonElement parameters, long initiativeRevision,
+        Dictionary<string, object?>? classification, Dictionary<string, object?>? applicability)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") || parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D"))
+        {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID HIGH LEVEL DESIGN");
+            return;
+        }
+        var assessedAt = "2026-07-31T03:00:00.000Z";
+        var candidateDigest = $"sha256:{new string('8', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?>
+        {
+            ["id"] = HighLevelDesignId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest, ["state"] = "candidate",
+            ["structureReceiptDigest"] = $"sha256:{new string('1', 64)}", ["dependencyReceiptDigest"] = $"sha256:{new string('2', 64)}",
+            ["traceReceiptDigest"] = $"sha256:{new string('3', 64)}", ["coverageReceiptDigest"] = $"sha256:{new string('4', 64)}",
+            ["ownershipReceiptDigest"] = $"sha256:{new string('5', 64)}", ["assessmentReceiptDigest"] = $"sha256:{new string('6', 64)}",
+            ["elementCount"] = 8, ["relationCount"] = 11, ["decisionCount"] = 4, ["reviewState"] = "held",
+            ["updatedAt"] = "2026-07-31T02:59:00.000Z",
+        };
+        var status = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1, ["kind"] = "high-level-design-status", ["productId"] = ProductId.ToString("D"), ["productRevision"] = 7,
+            ["initiativeId"] = InitiativeId.ToString("D"), ["initiativeRevision"] = initiativeRevision,
+            ["candidate"] = new Dictionary<string, object?> { ["recordId"] = HighLevelDesignId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest },
+            ["dependencyCount"] = 15, ["presentDependencyCount"] = 15, ["elementCount"] = 8, ["definedElementCount"] = 6,
+            ["relationCount"] = 11, ["definedRelationCount"] = 8, ["decisionCount"] = 4, ["selectedDecisionCount"] = 3,
+            ["qualityAttributeCount"] = 5, ["deploymentViewCount"] = 3, ["conflictCount"] = 1, ["missingCount"] = 1,
+            ["orphanRelationCount"] = 1, ["traceGapCount"] = 2, ["evidenceGapCount"] = 1, ["ownershipGapCount"] = 1,
+            ["uncoveredUnitCount"] = 1, ["staleBindingCount"] = 0, ["staleDependencyCount"] = 0,
+            ["invalidCandidateCount"] = 1, ["unresolvedQuestionCount"] = 2, ["reviewState"] = "held", ["state"] = "attention-required",
+            ["reasons"] = new[] { "One or more High-Level Design candidates require human review" }, ["assessedAt"] = assessedAt,
+            ["authorityBoundary"] = "high-level-design-status-is-observational-and-does-not-establish-architecture-repository-runtime-or-deployment-truth-or-completeness-architecture-baseline-or-approval-privacy-or-security-approval-owner-appointment-implementation-readiness-acceptance-release-deployment-or-action-authority",
+        };
+        var result = new Dictionary<string, object?>
+        {
+            ["schemaVersion"] = 1, ["kind"] = "high-level-design-projection",
+            ["product"] = new Dictionary<string, object?> { ["id"] = ProductId.ToString("D"), ["revision"] = 7, ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7))) },
+            ["initiative"] = new Dictionary<string, object?> { ["id"] = InitiativeId.ToString("D"), ["revision"] = initiativeRevision, ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)), ["state"] = "active" },
+            ["status"] = status, ["candidate"] = candidate, ["observedAt"] = assessedAt,
+            ["privacyBoundary"] = "projection-contains-record-identities-counts-statuses-and-structure-dependency-trace-coverage-ownership-assessment-snapshot-digests-only-not-design-narratives-diagrams-interfaces-data-flows-technologies-owners-evidence-source-content-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] = "high-level-design-projection-is-read-only-and-does-not-establish-architecture-repository-runtime-or-deployment-truth-or-completeness-architecture-baseline-or-approval-privacy-or-security-approval-owner-appointment-implementation-readiness-acceptance-release-deployment-or-action-authority",
+        };
+        RefreshCanonicalDigest(result, "snapshotDigest");
         await WriteResultAsync(id, result);
     }
 
