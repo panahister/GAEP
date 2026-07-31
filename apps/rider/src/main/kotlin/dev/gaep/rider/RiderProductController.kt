@@ -3059,6 +3059,29 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Snapshot digest: ${projection.snapshotDigest}")
     }
 
+    fun readControlledCodexImplementation(initiativeId: UUID): String {
+        val product = client.readProductBinding(); val initiative = client.readInitiative(initiativeId)
+        val projection = client.readControlledCodexImplementation(initiativeId)
+        require(projection.productId == product.id && projection.productRevision == product.revision && projection.productDigest == product.digest &&
+            projection.initiativeId == initiative.id && projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state) {
+            "Controlled Codex Implementation projection does not match exact current Product and Initiative"
+        }
+        return renderControlledCodexImplementation(projection)
+    }
+
+    fun renderControlledCodexImplementation(projection: ControlledCodexImplementationProjection): String = buildString {
+        appendLine("GAEP governed Controlled Codex Implementation candidate"); appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine("Scope: ${projection.unitCount} units · ${projection.pathCount} paths · ${projection.resourceScopeCount} resource scopes · ${projection.toolPermissionCount} permissions")
+        appendLine("Gaps: ${projection.gapCount} unit · ${projection.staleBindingCount} stale · ${projection.providerGapCount} provider · ${projection.scopeGapCount} scope · ${projection.planGapCount} plan · ${projection.prerequisiteGapCount} prerequisite · ${projection.recoveryGapCount} recovery · ${projection.evidenceGapCount} evidence")
+        projection.reasons.forEach { appendLine("  - $it") }; appendLine()
+        appendLine("Candidate record: ${projection.candidate?.let { "${it.id}@${it.revision} · candidate · ${it.digest}" } ?: "not recorded"}")
+        projection.candidate?.let { appendLine("Provider: ${it.adapterId}/${it.agentId} · ${it.modelId} · ${it.capabilityDigest}"); appendLine("Plan: ${it.planKey}"); appendLine("Lifecycle: provider ${it.providerExecutionState} · real stage ${it.realStageCreationState} · source mutation ${it.sourceMutationState} · apply ${it.applyState} · discard ${it.discardState}"); appendLine("Candidate units: ${it.unitCount} · paths: ${it.pathCount} · prerequisites: ${it.prerequisiteCount}") }
+        appendLine(); appendLine("Privacy-safe record identities, provider identifiers, repository-relative scopes, states, counts, and receipt digests only. This inspection does not call a provider, create a real stage, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.")
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+    }
+
     fun renderTestInventory(projection: TestInventoryProjection): String = buildString {
         appendLine("GAEP governed Test Inventory candidate")
         appendLine()

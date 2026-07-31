@@ -31,6 +31,7 @@ import type {
   ChangedUnitInventoryProjection,
   ProposedChangePreviewProjection,
   StagingWorkspaceProjection,
+  ControlledCodexImplementationProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -273,6 +274,9 @@ export interface CurrentStudioEngineReader {
   stagingWorkspace?: {
     project(initiativeId: string): Promise<StagingWorkspaceProjection>
   }
+  controlledCodexImplementation?: {
+    project(initiativeId: string): Promise<ControlledCodexImplementationProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -465,6 +469,7 @@ interface ObservedStudioState {
   changedUnitInventoryProjections: Map<string, ChangedUnitInventoryProjection>
   proposedChangePreviewProjections: Map<string, ProposedChangePreviewProjection>
   stagingWorkspaceProjections: Map<string, StagingWorkspaceProjection>
+  controlledCodexImplementationProjections: Map<string, ControlledCodexImplementationProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3904,6 +3909,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     changedUnitInventories: changedUnitInventoryTable(state),
     proposedChangePreviews: proposedChangePreviewTable(state),
     stagingWorkspaces: stagingWorkspaceTable(state),
+    controlledCodexImplementations: controlledCodexImplementationTable(state),
   }
 }
 
@@ -5189,6 +5195,38 @@ function stagingWorkspaceTable(state: ObservedStudioState): StudioTableSnapshot 
       { key: "boundary", label: "Privacy and authority boundary" },
     ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Isolated Staging Workspace candidate",
       "Create the portable candidate through the governed engine workflow only after an exact current Proposed Change Preview exists. This view cannot create a real stage, apply, discard, or mutate source.") } : {}) }
+}
+
+function controlledCodexImplementationTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.controlledCodexImplementationProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{ id: record.id, cells: {
+      initiative: projection.initiative.id, record: record.id, revision: String(record.revision), digest: record.digest,
+      provider: `${record.provider.adapterId}/${record.provider.agentId} · ${record.provider.modelId} · ${record.provider.capabilityDigest}`,
+      plan: `${record.plan.strategy} · ${record.plan.planKey} · workflow r${record.plan.workflowPlan.revision}`,
+      scope: `${record.unitCount} units · ${record.pathCount} paths · ${record.resourceScopes.length} resource scopes · ${record.permissions.length} tool permissions`,
+      lifecycle: `${record.lifecycle.planningState} · provider ${record.lifecycle.providerExecutionState} · real stage ${record.lifecycle.realStageCreationState} · source mutation ${record.lifecycle.sourceMutationState} · apply ${record.lifecycle.applyState} · discard ${record.lifecycle.discardState}`,
+      prerequisites: `${record.prerequisiteCount} required · approval ${record.lifecycle.approvalState} · authorization ${record.lifecycle.authorizationState}`,
+      recovery: `${record.lifecycle.cancellationState} cancellation · ${record.lifecycle.resumeState} resume · ${record.lifecycle.recoveryState} recovery`,
+      gaps: `${status.gapCount} unit · ${status.staleBindingCount} stale · ${status.providerGapCount} provider · ${status.scopeGapCount} scope · ${status.planGapCount} plan · ${status.prerequisiteGapCount} prerequisite · ${status.recoveryGapCount} recovery · ${status.evidenceGapCount} evidence`,
+      receipts: `${record.bindingReceiptDigest} · ${record.providerReceiptDigest} · ${record.scopeReceiptDigest} · ${record.planReceiptDigest} · ${record.stagedEffectReceiptDigest}`,
+      assessment: `${status.state} · ${status.reviewState}`,
+      boundary: "Privacy-safe candidate metadata only. This view does not expose prompts, source or diff content, provider output, machine paths, personal data, secrets, or credentials and grants no execution, stage, approval, authorization, mutation, apply/discard, recovery, acceptance, release, deployment, or action authority.",
+    }, state: status.state, actions: [] }]
+  })
+  return { id: "controlled-codex-implementation", title: "Governed Controlled Codex Implementation Candidates",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true }, { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" }, { key: "digest", label: "Exact digest" },
+      { key: "provider", label: "Exact Codex identity" }, { key: "plan", label: "Plan candidate" },
+      { key: "scope", label: "Bounded scope" }, { key: "lifecycle", label: "Distinct lifecycle states" },
+      { key: "prerequisites", label: "Approval prerequisites" }, { key: "recovery", label: "Recovery state" },
+      { key: "gaps", label: "Candidate gaps" }, { key: "receipts", label: "Deterministic receipts" },
+      { key: "assessment", label: "Candidate assessment" }, { key: "boundary", label: "Privacy and authority boundary" },
+    ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Controlled Codex Implementation candidate",
+      "Create the candidate through the governed engine only after exact current Proposed Change Preview, Staging Workspace, and Codex selection records exist. This view cannot call a provider, create a stage, approve, apply, discard, or mutate source.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7097,6 +7135,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       changedUnitInventoryProjections: new Map(),
       proposedChangePreviewProjections: new Map(),
       stagingWorkspaceProjections: new Map(),
+      controlledCodexImplementationProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -8593,6 +8632,41 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("staging-workspace-unavailable", "Staging Workspace metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.controlledCodexImplementation) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const [controlled, staging] = await Promise.all([
+            engine.controlledCodexImplementation!.project(initiative.id),
+            engine.stagingWorkspace?.project(initiative.id),
+          ])
+          return { controlled, staging }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.controlled
+            const staging = projection.value.staging
+            const { snapshotDigest, ...projectionBody } = value
+            const exactStaging = staging?.candidate !== undefined && value.status.stagingWorkspace !== undefined &&
+              value.status.stagingWorkspace.recordId === staging.candidate.id && value.status.stagingWorkspace.revision === staging.candidate.revision &&
+              value.status.stagingWorkspace.digest === staging.candidate.digest
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactStaging && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.controlledCodexImplementationProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Controlled Codex Implementation projection was unavailable or did not bind the exact current Staging Workspace",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`controlled-codex-implementation-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Controlled Codex Implementation metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("controlled-codex-implementation-unavailable", "Controlled Codex Implementation metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (

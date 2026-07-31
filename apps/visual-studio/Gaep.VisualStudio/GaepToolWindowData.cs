@@ -254,6 +254,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadChangedUnitInventoryCommand = new AsyncCommand(LoadChangedUnitInventoryAsync);
         LoadProposedChangePreviewCommand = new AsyncCommand(LoadProposedChangePreviewAsync);
         LoadStagingWorkspaceCommand = new AsyncCommand(LoadStagingWorkspaceAsync);
+        LoadControlledCodexImplementationCommand = new AsyncCommand(LoadControlledCodexImplementationAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -470,6 +471,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadStagingWorkspaceCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadControlledCodexImplementationCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1212,6 +1216,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Isolated Staging Workspace candidate",
             (controller, _, token) => controller.ReadStagingWorkspaceAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadControlledCodexImplementationAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Controlled Codex Implementation candidate",
+            (controller, _, token) => controller.ReadControlledCodexImplementationAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

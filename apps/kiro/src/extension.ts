@@ -53,6 +53,7 @@ import {
   type ChangedUnitInventoryProjection,
   type ProposedChangePreviewProjection,
   type StagingWorkspaceProjection,
+  type ControlledCodexImplementationProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -200,6 +201,7 @@ const commandIds = {
   changedUnitInventory: "gaepKiro.changedUnitInventory.inspect",
   proposedChangePreview: "gaepKiro.proposedChangePreview.inspect",
   stagingWorkspace: "gaepKiro.stagingWorkspace.inspect",
+  controlledCodexImplementation: "gaepKiro.controlledCodexImplementation.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -363,6 +365,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.changedUnitInventory, (input?: unknown) => runUserCommand(() => showChangedUnitInventory(pool, input))),
     vscode.commands.registerCommand(commandIds.proposedChangePreview, (input?: unknown) => runUserCommand(() => showProposedChangePreview(pool, input))),
     vscode.commands.registerCommand(commandIds.stagingWorkspace, (input?: unknown) => runUserCommand(() => showStagingWorkspace(pool, input))),
+    vscode.commands.registerCommand(commandIds.controlledCodexImplementation, (input?: unknown) => runUserCommand(() => showControlledCodexImplementation(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2783,6 +2786,40 @@ async function showStagingWorkspace(
       `Recovery: ${record.recovery.strategy} · ${record.recovery.replayState} · ${record.recovery.checkpointDigest}`,
       `Inspection receipt digest: ${record.inspectionReceiptDigest}`, `Candidate units: ${record.units.length}`, `Updated: ${record.updatedAt}`] : []), "",
     "Portable staging identity, repository-relative candidates, lifecycle, exclusion, capacity, inspection and recovery metadata only; no machine stage paths or file/diff content. This inspection does not establish real stage existence, repository truth, approved scope, mutation, apply/discard, assignment, acceptance, merge, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showControlledCodexImplementation(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<ControlledCodexImplementationProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Controlled Codex Implementation inspection", "Initiative ID")
+  const projection = await client.readControlledCodexImplementation(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Controlled Codex Implementation candidate", "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Scope: ${status.unitCount} units · ${status.pathCount} paths · ${status.resourceScopeCount} resource scopes · ${status.toolPermissionCount} permissions`,
+    `Gaps: ${status.gapCount} unit · ${status.staleBindingCount} stale · ${status.providerGapCount} provider · ${status.scopeGapCount} scope · ${status.planGapCount} plan · ${status.prerequisiteGapCount} prerequisite · ${status.recoveryGapCount} recovery · ${status.evidenceGapCount} evidence`,
+    ...status.reasons.map((reason) => `  - ${reason}`), "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [`Provider: ${record.provider.adapterId}/${record.provider.agentId} · ${record.provider.modelId} · ${record.provider.capabilityDigest}`,
+      `Plan: ${record.plan.strategy} · ${record.plan.planKey} · ${record.plan.planReceiptDigest}`,
+      `Lifecycle: provider ${record.lifecycle.providerExecutionState} · real stage ${record.lifecycle.realStageCreationState} · source mutation ${record.lifecycle.sourceMutationState} · apply ${record.lifecycle.applyState} · discard ${record.lifecycle.discardState}`,
+      `Recovery: cancellation ${record.lifecycle.cancellationState} · resume ${record.lifecycle.resumeState} · recovery ${record.lifecycle.recoveryState}`,
+      `Candidate units: ${record.unitCount} · paths: ${record.pathCount} · prerequisites: ${record.prerequisiteCount}`, `Updated: ${record.updatedAt}`] : []), "",
+    "Privacy-safe record identities, provider identifiers, repository-relative scopes, states, counts, and receipt digests only. This inspection does not call a provider, create a real stage, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })

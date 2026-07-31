@@ -883,6 +883,15 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += stagingWorkspaceButton
         actions.add(stagingWorkspaceButton)
 
+        val controlledCodexImplementationButton = JButton("Inspect Controlled Codex Implementation…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(project, "Inspect Controlled Codex Implementation", "Enter the exact Initiative UUID. Provider execution, real stage creation, approval, authorization, source mutation, apply/discard, recovery, acceptance, release, deployment, and authority are withheld.", "Initiative ID")?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Controlled Codex Implementation", status, output, buttons) { controller.readControlledCodexImplementation(initiativeId) }
+            }
+        }
+        buttons += controlledCodexImplementationButton
+        actions.add(controlledCodexImplementationButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

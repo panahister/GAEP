@@ -93,7 +93,7 @@ function validateContract(contract) {
   requireCondition(contract?.schemaVersion === 1 && contract.kind === "gaep-phase-0-ide-conformance-contract-v1" &&
     contract.phase === "phase-0-local" && typeof contract.claimBoundary === "string" && contract.claimBoundary.length > 0,
   "IDE conformance contract identity is invalid")
-  requireCondition(Array.isArray(contract.capabilities) && contract.capabilities.length > 0 && contract.capabilities.length <= 100,
+  requireCondition(Array.isArray(contract.capabilities) && contract.capabilities.length > 0 && contract.capabilities.length <= 256,
     "IDE conformance capabilities are missing or unbounded")
   const capabilityIds = contract.capabilities.map((capability) => capability?.id)
   requireCondition(capabilityIds.every((id) => typeof id === "string" && /^[a-z][a-z0-9-]{2,63}$/u.test(id)) &&
