@@ -90,6 +90,7 @@ internal static class Program
     private static readonly Guid TestInventoryId = Guid.Parse("efefefef-efef-4fef-8fef-efefefefefef");
     private static readonly Guid HighLevelDesignId = Guid.Parse("f0f0f0f0-f0f0-40f0-80f0-f0f0f0f0f0f0");
     private static readonly Guid LowLevelDesignId = Guid.Parse("f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1");
+    private static readonly Guid ImplementationReadinessGateId = Guid.Parse("e1e1e1e1-e1e1-41e1-81e1-e1e1e1e1e1e1");
     private static readonly Guid LowLevelImplementationUnitId = Guid.Parse("f2f2f2f2-f2f2-42f2-82f2-f2f2f2f2f2f2");
     private static readonly Guid DesignSystemTokenContractId = Guid.Parse("69696969-6969-4969-8969-696969696969");
     private static readonly Guid AccessibilityDesignRulesId = Guid.Parse("70707070-7070-4070-8070-707070707070");
@@ -1971,6 +1972,16 @@ internal static class Program
               !lowLevelDesignOutput.Contains(PrivateRoot, StringComparison.Ordinal) &&
               !lowLevelDesignOutput.Contains(PrivateCredential, StringComparison.Ordinal),
             "Low-Level Design workflow renders privacy-safe metadata with explicit design, acceptance, release, deployment, and action boundaries");
+        var implementationReadinessProjection = await client.ReadImplementationReadinessGateAsync(InitiativeId);
+        Check(implementationReadinessProjection.ProductId == product.Id && implementationReadinessProjection.InitiativeId == resolved.Id && implementationReadinessProjection.State == "attention-required" &&
+              implementationReadinessProjection.DependencyCount == 24 && implementationReadinessProjection.PresentDependencyCount == 24 && implementationReadinessProjection.SubjectCount == 4 &&
+              implementationReadinessProjection.GapCount == 1 && implementationReadinessProjection.WaivedCandidateCount == 1 && implementationReadinessProjection.Candidate?.DependencyReceiptDigest == $"sha256:{new string('1', 64)}",
+            "Typed Implementation Readiness Gate projection preserves exact context, per-unit counts, receipts, and non-authoritative assessment metadata");
+        var implementationReadinessOutput = await initiativeController.ReadImplementationReadinessGateAsync(InitiativeId);
+        Check(implementationReadinessOutput.Contains("GAEP governed Implementation Readiness Gate candidate", StringComparison.Ordinal) && implementationReadinessOutput.Contains("24/24", StringComparison.Ordinal) &&
+              implementationReadinessOutput.Contains("1 waiver candidates", StringComparison.Ordinal) && implementationReadinessOutput.Contains("does not establish artifact or evidence truth", StringComparison.Ordinal) &&
+              !implementationReadinessOutput.Contains(PrivateRoot, StringComparison.Ordinal) && !implementationReadinessOutput.Contains(PrivateCredential, StringComparison.Ordinal),
+            "Implementation Readiness Gate workflow renders privacy-safe metadata without granting readiness, waiver, or action authority");
         await using (var hostileClient = new EngineClient(
                          badBusinessArchitectureBaselineSnapshotBindingRoot,
                          executable))
@@ -6086,6 +6097,9 @@ internal static class Program
                     break;
                 case "planning.lowLevelDesign.snapshot":
                     await HandleLowLevelDesignAsync(id, parameters, initiativeRevision, initiativeClassification, initiativeApplicability);
+                    break;
+                case "planning.implementationReadinessGate.snapshot":
+                    await HandleImplementationReadinessGateAsync(id, parameters, initiativeRevision, initiativeClassification, initiativeApplicability);
                     break;
                 case "design.systemTokenContract.snapshot":
                     await HandleDesignSystemTokenContractAsync(
@@ -11431,6 +11445,33 @@ internal static class Program
         };
         RefreshCanonicalDigest(result, "snapshotDigest");
         await WriteResultAsync(id, result);
+    }
+
+    private static async Task HandleImplementationReadinessGateAsync(long id, JsonElement parameters, long initiativeRevision,
+        Dictionary<string, object?>? classification, Dictionary<string, object?>? applicability)
+    {
+        if (!HasOnlyProperties(parameters, "initiativeId") || parameters.GetProperty("initiativeId").GetString() != InitiativeId.ToString("D")) {
+            await WriteErrorAsync(id, -32_602, "INVALID_PARAMS", "PRIVATE INVALID IMPLEMENTATION READINESS"); return;
+        }
+        var assessedAt = "2026-07-31T05:00:00.000Z"; var candidateDigest = $"sha256:{new string('7', 64)}";
+        var initiativeRecord = InitiativeRecord(initiativeRevision, classification, applicability);
+        var candidate = new Dictionary<string, object?> { ["id"] = ImplementationReadinessGateId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest, ["state"] = "candidate",
+            ["dependencyReceiptDigest"] = $"sha256:{new string('1', 64)}", ["coverageReceiptDigest"] = $"sha256:{new string('2', 64)}", ["evidenceReceiptDigest"] = $"sha256:{new string('3', 64)}",
+            ["ownershipReceiptDigest"] = $"sha256:{new string('4', 64)}", ["assessmentReceiptDigest"] = $"sha256:{new string('5', 64)}", ["subjectCount"] = 4, ["reviewState"] = "held", ["updatedAt"] = "2026-07-31T04:59:00.000Z" };
+        var status = new Dictionary<string, object?> { ["schemaVersion"] = 1, ["kind"] = "implementation-readiness-gate-status", ["productId"] = ProductId.ToString("D"), ["productRevision"] = 7,
+            ["initiativeId"] = InitiativeId.ToString("D"), ["initiativeRevision"] = initiativeRevision, ["candidate"] = new Dictionary<string, object?> { ["recordId"] = ImplementationReadinessGateId.ToString("D"), ["revision"] = 2, ["digest"] = candidateDigest }, ["lowLevelDesigns"] = Array.Empty<object>(),
+            ["dependencyCount"] = 24, ["presentDependencyCount"] = 24, ["subjectCount"] = 4, ["satisfiedCount"] = 2, ["gapCount"] = 1, ["conflictCount"] = 0, ["staleCount"] = 0,
+            ["waivedCandidateCount"] = 1, ["notAssessedCount"] = 0, ["evidenceGapCount"] = 1, ["ownershipGapCount"] = 0, ["coverageGapCount"] = 0, ["staleBindingCount"] = 0,
+            ["staleDependencyCount"] = 0, ["invalidCandidateCount"] = 0, ["unresolvedQuestionCount"] = 1, ["reviewState"] = "held", ["state"] = "attention-required",
+            ["reasons"] = new[] { "One or more readiness subjects require accountable human review" }, ["assessedAt"] = assessedAt,
+            ["authorityBoundary"] = "implementation-readiness-gate-status-is-observational-and-does-not-establish-artifact-or-evidence-truth-completeness-approval-waiver-owner-appointment-implementation-readiness-assignment-execution-acceptance-release-deployment-or-action-authority" };
+        var result = new Dictionary<string, object?> { ["schemaVersion"] = 1, ["kind"] = "implementation-readiness-gate-projection",
+            ["product"] = new Dictionary<string, object?> { ["id"] = ProductId.ToString("D"), ["revision"] = 7, ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(ProductRecord(7))) },
+            ["initiative"] = new Dictionary<string, object?> { ["id"] = InitiativeId.ToString("D"), ["revision"] = initiativeRevision, ["digest"] = CanonicalDigest(JsonSerializer.SerializeToElement(initiativeRecord)), ["state"] = "active" },
+            ["status"] = status, ["candidate"] = candidate, ["observedAt"] = assessedAt,
+            ["privacyBoundary"] = "projection-contains-record-identities-counts-statuses-and-dependency-coverage-evidence-ownership-assessment-digests-only-not-readiness-rationales-evidence-content-review-content-owner-details-personal-data-secrets-credentials-or-machine-paths",
+            ["authorityBoundary"] = "implementation-readiness-gate-projection-is-read-only-and-does-not-establish-artifact-or-evidence-truth-completeness-approval-waiver-owner-appointment-implementation-readiness-assignment-execution-acceptance-release-deployment-or-action-authority" };
+        RefreshCanonicalDigest(result, "snapshotDigest"); await WriteResultAsync(id, result);
     }
 
     private static async Task HandleDesignSystemTokenContractAsync(

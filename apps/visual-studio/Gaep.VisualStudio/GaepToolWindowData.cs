@@ -250,6 +250,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadTestInventoryCommand = new AsyncCommand(LoadTestInventoryAsync);
         LoadHighLevelDesignCommand = new AsyncCommand(LoadHighLevelDesignAsync);
         LoadLowLevelDesignCommand = new AsyncCommand(LoadLowLevelDesignAsync);
+        LoadImplementationReadinessGateCommand = new AsyncCommand(LoadImplementationReadinessGateAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -455,6 +456,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadLowLevelDesignCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadImplementationReadinessGateCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1170,6 +1174,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Low-Level Design candidate",
             (controller, _, token) => controller.ReadLowLevelDesignAsync(ParseInitiativeId(InitiativeId), ParseImplementationUnitId(ImplementationUnitId), token),
+            cancellationToken);
+
+    private Task LoadImplementationReadinessGateAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Implementation Readiness Gate candidate",
+            (controller, _, token) => controller.ReadImplementationReadinessGateAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

@@ -3414,6 +3414,38 @@ public sealed class ProductWorkflowController(EngineClient client)
             .ToString();
     }
 
+    public async Task<string> ReadImplementationReadinessGateAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken); var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadImplementationReadinessGateAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision || projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id || projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest || projection.InitiativeState != initiative.State)
+            throw new ArgumentException("The Product or Initiative changed while Implementation Readiness Gate was read. Refresh the exact records.");
+        return RenderImplementationReadinessGate(projection);
+    }
+
+    public static string RenderImplementationReadinessGate(ImplementationReadinessGateProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder().AppendLine("GAEP governed Implementation Readiness Gate candidate").AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine($"Exact dependencies: {projection.PresentDependencyCount}/{projection.DependencyCount}")
+            .AppendLine($"Per-unit subjects: {projection.SubjectCount} · {projection.SatisfiedCount} satisfied · {projection.GapCount} gaps · {projection.ConflictCount} conflicts")
+            .AppendLine($"Candidate exceptions: {projection.WaivedCandidateCount} waiver candidates · {projection.NotAssessedCount} not assessed · {projection.StaleCount} stale")
+            .AppendLine($"Candidate integrity gaps: {projection.EvidenceGapCount} evidence · {projection.OwnershipGapCount} ownership · {projection.CoverageGapCount} coverage")
+            .AppendLine($"Candidate freshness gaps: {projection.StaleBindingCount} stale bindings · {projection.StaleDependencyCount} stale dependencies · {projection.InvalidCandidateCount} invalid candidates · {projection.UnresolvedQuestionCount} questions");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate) output.AppendLine($"Implementation Readiness Gate candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+            .AppendLine($"Dependency receipt digest: {candidate.DependencyReceiptDigest}").AppendLine($"Coverage receipt digest: {candidate.CoverageReceiptDigest}")
+            .AppendLine($"Evidence receipt digest: {candidate.EvidenceReceiptDigest}").AppendLine($"Ownership receipt digest: {candidate.OwnershipReceiptDigest}")
+            .AppendLine($"Assessment receipt digest: {candidate.AssessmentReceiptDigest}");
+        else output.AppendLine("Implementation Readiness Gate candidate: not recorded");
+        return output.AppendLine().AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append("Authority boundary: candidate identities, counts, statuses, and receipt digests only; no readiness rationale, evidence or review content, owner details, personal data, secret, credential, or machine path. Automated assessment does not establish artifact or evidence truth, completeness, approval, waiver, owner appointment, implementation readiness, assignment, execution, acceptance, release, deployment, or action authority.").ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)
