@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "vscode-local-implementation-checkpoint",
+  "feature": { "id": "P3B-17", "title": "Test Generation", "implementationScope": "shared-contract-engine-and-vscode-product-studio" },
+  "recordedAt": "2026-07-31T21:36:08.000Z",
+  "branch": "codex/gaep-hardwork-completion",
+  "source": { "contractCommit": "cfdb8f4", "engineCommit": "7dca31a", "productStudioCommit": "8784262" },
+  "implementation": {
+    "contract": "packages/contracts/src/test-generation.ts",
+    "engine": "packages/engine/src/test-generation.ts",
+    "productStudioDataSource": "apps/vscode/src/current-engine-studio-data-source.ts",
+    "vscodeProtocol": "apps/vscode/src/studio-protocol.ts",
+    "surface": "Product Studio Delivery route",
+    "lifecycle": [
+      "immutable versioned Test Generation plan history",
+      "exact ten-predecessor current revision and digest validation across acceptance, methodology, inventory, implementation, design/backlog traces, controlled generation, preview, stage, and conflict detection",
+      "one bounded test target per exact change-conflict subject",
+      "exact implementation-unit, acceptance-criterion, requirement, methodology-scope, test-inventory, generation-target, design-trace, backlog-trace, repository-relative source-path, and expected-output continuity",
+      "repository-relative test path and source/test symbol candidates with test kind, framework, fixture, oracle, coverage, risk, and attributable evidence metadata",
+      "deterministic dependency, target-catalog, path-symbol, fixture-oracle, trace, evidence, and assessment receipts",
+      "fail-closed unavailable, gap, conflict, stale, not-assessed, forged, traversal, secret-shaped, and stale-predecessor handling",
+      "bounded privacy-safe Product Studio projection with no source inspection, generation, execution, mutation, apply, or acceptance action"
+    ]
+  },
+  "verification": {
+    "typecheck": { "command": "npm run typecheck", "status": "passed" },
+    "focused": { "command": "npx vitest run packages/contracts/src/test-generation.test.ts packages/engine/src/test-generation.test.ts apps/vscode/src/test-generation-product-studio.test.ts apps/vscode/src/studio-protocol.test.ts apps/vscode/src/studio-accessibility.test.ts apps/vscode/src/current-engine-studio-data-source.test.ts", "status": "passed", "testFilesPassed": 6, "testsPassed": 146, "testsSkipped": 0 },
+    "sharedAndVscode": { "command": "npx vitest run packages apps/vscode --maxWorkers=4", "status": "passed", "testFilesPassed": 162, "testsPassed": 1060, "testsSkipped": 1 },
+    "vscodePackage": { "command": "npm run package:vscode", "status": "passed", "path": "apps/vscode/dist/gaep-vscode.vsix", "bytes": 1223561,
+      "sha256": "266e1b3fc06a4e91b8173c6cf784bc86a41d9f3f75cb149b1979dd533353cc3e", "published": false },
+    "isolatedExtensionHost": { "command": "npm run test:vscode:extension-host", "status": "passed", "normalProfileUsed": false,
+      "checks": ["development activation, contributed commands, four native views, and Product Studio open", "explicit two-root Product context without silent Product-root mutation", "isolated previous-version install, upgrade, reinstall, rollback, uninstall, absence, and final install", "exact VSIX activation, commands, views, Product Studio, bundled-engine empty recovery/evidence workflow, and no workspace mutation"],
+      "limitation": "The test harness disables workspace trust, so untrusted-host behavior is not established by this receipt." }
+  },
+  "acceptanceBoundary": {
+    "candidateTestPlanMetadataOnly": true,
+    "repositoryInspection": "not-performed",
+    "sourceInspection": "not-performed",
+    "testAssetTruth": "not-established",
+    "testGeneration": "not-performed",
+    "sourceMutation": "not-performed",
+    "testExecution": "not-performed",
+    "testResultTruth": "not-established",
+    "coverageTruth": "not-established",
+    "qualityTruth": "not-established",
+    "approval": "not-established",
+    "nativeVscodeAcceptance": "not-established",
+    "liveProviderValidation": "not-performed",
+    "productOwnerAcceptance": "not-established",
+    "securityReview": "skipped",
+    "releaseAuthorization": "not-granted",
+    "publicationAuthorization": "not-granted",
+    "deploymentAuthorization": "not-granted",
+    "actionAuthority": "not-granted"
+  },
+  "externalEffects": { "credentialAccess": false, "externalProviderCalls": 0, "figmaCalls": 0, "sourceInspection": false, "testGeneration": false,
+    "testExecutionAsProductTruth": false, "sourceMutation": false, "externalSystemMutations": 0, "normalProfileExtensionMutation": false,
+    "packagePublished": false, "releaseOrDeploymentPerformed": false },
+  "conformanceBoundary": "This scoped VS Code checkpoint does not refresh, weaken, or reinterpret the historical full four-host conformance checkpoint."
+}
