@@ -40,6 +40,7 @@ import type {
   DesignToCodeTraceabilityProjection,
   BoilerplateConstraintEnforcementProjection,
   BacklogToCodeTraceabilityProjection,
+  ApplyDiscardFoundationProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -309,6 +310,9 @@ export interface CurrentStudioEngineReader {
   backlogToCodeTraceability?: {
     project(initiativeId: string): Promise<BacklogToCodeTraceabilityProjection>
   }
+  applyDiscardFoundation?: {
+    project(initiativeId: string): Promise<ApplyDiscardFoundationProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -510,6 +514,7 @@ interface ObservedStudioState {
   designToCodeTraceabilityProjections: Map<string, DesignToCodeTraceabilityProjection>
   boilerplateConstraintEnforcementProjections: Map<string, BoilerplateConstraintEnforcementProjection>
   backlogToCodeTraceabilityProjections: Map<string, BacklogToCodeTraceabilityProjection>
+  applyDiscardFoundationProjections: Map<string, ApplyDiscardFoundationProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3958,6 +3963,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     designToCodeTraceability: designToCodeTraceabilityTable(state.designToCodeTraceabilityProjections.values()),
     boilerplateConstraintEnforcements: boilerplateConstraintEnforcementTable(state.boilerplateConstraintEnforcementProjections.values()),
     backlogToCodeTraceability: backlogToCodeTraceabilityTable(state.backlogToCodeTraceabilityProjections.values()),
+    applyDiscardFoundations: applyDiscardFoundationTable(state.applyDiscardFoundationProjections.values()),
   }
 }
 
@@ -5530,6 +5536,31 @@ export function backlogToCodeTraceabilityTable(projections: Iterable<BacklogToCo
       { key: "receipts", label: "Deterministic receipts" }, { key: "boundary", label: "Privacy and authority boundary" },
     ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Backlog-to-Code Traceability candidate",
       "Create the metadata-only trace candidate through the governed engine after every exact current backlog, changed-unit, preview, generation, design-trace, constraint and test predecessor exists. Refresh Product Studio after a superseding revision. This view cannot inspect source or commits, execute tests, establish implementation or outcome truth, approve, or accept work.") } : {}) }
+}
+
+export function applyDiscardFoundationTable(projections: Iterable<ApplyDiscardFoundationProjection>): StudioTableSnapshot {
+  const rows = [...projections].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    return record.paths.map((path) => ({ id: path.id, cells: {
+      initiative: projection.initiative.id, stage: record.stageIdentity.stageKey, generation: String(record.stageIdentity.generation),
+      decision: record.decision, decisionPath: path.decisionPathKey, backlogTrace: path.backlogTraceKey,
+      path: path.pathCandidate, disposition: path.disposition, scope: path.scopeState,
+      assessment: `${projection.status.state} · ${projection.status.reviewState} · ${projection.status.staleBindingCount} stale binding · ${projection.status.coverageGapCount} coverage gap · ${projection.status.invalidCandidateCount} invalid`,
+      receipts: `${record.dependencyReceiptDigest} · ${record.stageReceiptDigest} · ${record.decisionReceiptDigest} · ${record.scopeReceiptDigest} · ${record.recoveryReceiptDigest} · ${record.evidenceReceiptDigest}`,
+      boundary: "Whole-stage decision candidate metadata only. Stage identity, repository-relative paths, apply/discard/keep-pending disposition, recovery controls and evidence links are unverified candidates; this view does not inspect or create a real stage, inspect or mutate source, execute apply/discard/recovery, establish approval, authorization, outcome or acceptance, or grant action authority.",
+    }, state: path.scopeState === "candidate-exact" ? projection.status.state : path.scopeState, actions: [] }))
+  })
+  return { id: "apply-discard-foundation", title: "Governed Apply/Discard Foundation",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true }, { key: "stage", label: "Candidate stage", identifier: true },
+      { key: "generation", label: "Generation" }, { key: "decision", label: "Whole-stage decision candidate" },
+      { key: "decisionPath", label: "Decision path" }, { key: "backlogTrace", label: "Backlog trace" },
+      { key: "path", label: "Repository-relative path candidate" }, { key: "disposition", label: "Candidate disposition" },
+      { key: "scope", label: "Scope state" }, { key: "assessment", label: "Fail-closed assessment" },
+      { key: "receipts", label: "Deterministic receipts" }, { key: "boundary", label: "Privacy and authority boundary" },
+    ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Apply/Discard Foundation candidate",
+      "Create the metadata-only whole-stage decision candidate through the governed engine after every exact current change, preview, staging, controlled-provider and backlog-trace predecessor exists. Refresh Product Studio after a superseding revision. This view cannot create or inspect a real stage, mutate source, execute apply, discard or recovery, establish approval or authorization, or accept work.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7447,6 +7478,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       designToCodeTraceabilityProjections: new Map(),
       boilerplateConstraintEnforcementProjections: new Map(),
       backlogToCodeTraceabilityProjections: new Map(),
+      applyDiscardFoundationProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -9319,6 +9351,47 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("backlog-to-code-traceability-unavailable", "Backlog-to-Code Traceability metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.applyDiscardFoundation) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map((initiative) =>
+          engine.applyDiscardFoundation!.project(initiative.id)))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value
+            const candidates = {
+              changedUnitInventory: empty.changedUnitInventoryProjections.get(initiative.id)?.candidate,
+              proposedChangePreview: empty.proposedChangePreviewProjections.get(initiative.id)?.candidate,
+              stagingWorkspace: empty.stagingWorkspaceProjections.get(initiative.id)?.candidate,
+              controlledCodexImplementation: empty.controlledCodexImplementationProjections.get(initiative.id)?.candidate,
+              controlledClaudeImplementation: empty.controlledClaudeImplementationProjections.get(initiative.id)?.candidate,
+              backlogToCodeTraceability: empty.backlogToCodeTraceabilityProjections.get(initiative.id)?.candidate,
+            }
+            const { snapshotDigest, ...projectionBody } = value
+            const exactDependencies = value.status.dependencies !== undefined &&
+              (Object.keys(candidates) as (keyof typeof candidates)[]).every((key) => {
+                const reference = value.status.dependencies?.[key]
+                const candidate = candidates[key]
+                return reference !== undefined && candidate !== undefined && reference.recordId === candidate.id &&
+                  reference.revision === candidate.revision && reference.digest === candidate.digest
+              })
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactDependencies && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.applyDiscardFoundationProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Apply/Discard Foundation projection was unavailable or did not bind all exact current change, preview, staging, controlled-provider, and backlog-trace predecessors",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`apply-discard-foundation-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Apply/Discard Foundation metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("apply-discard-foundation-unavailable", "Apply/Discard Foundation metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (
