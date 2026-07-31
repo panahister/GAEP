@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-3a-delivery-planning",
+  "evidenceScope": "phase-3a-test-inventory-local",
+  "recordedAt": "2026-07-31T00:15:32Z",
+  "sourceCommit": "c42b53b0ab7ac6e948042abdd02f64fc542adf74",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 93,
+    "hostAssessments": 372,
+    "hostAssessmentsImplemented": 372,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:c60c30fc4552eecd3cf737e73c69f23813ff5222e3a57d42cfd88b1a43687345",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 262503,
+      "digest": "sha256:20afd8de4e4989d3dad8093a19fc50a8db819f39c6c52c1568a92ccb652c0f43",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260731T000549Z-phase-3a-test-inventory-packages.json",
+      "bytes": 4522,
+      "digest": "sha256:6693fe6cdc54374a2a47f7bf440531cc90ef80e91057841451b890b2e3293956",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260731T000549Z-phase-3a-test-inventory-host-behavior.json",
+      "bytes": 3576,
+      "digest": "sha256:67aa26b6512bbccd2c880470dd20994d205359af4abc4a909c97cefa663dfca8",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260731T000549Z-phase-3a-test-inventory.json",
+      "bytes": 63152,
+      "digest": "sha256:573d6355940c242d69e8b2e59dc4d48eca268dc5f0effcb7858f20206028d235",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
+      "bytes": 5234,
+      "digest": "sha256:f44e4a370357cf7738fbf691a49178cd3da20ff4d01e593e2af1565cfc1b71d7",
+      "kind": "gaep-phase2-realistic-figma-loop-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 126,
+        "testsPassed": 1008,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:834296c233c9f66ae2bdf67207fda335f4944845cce5fcd6ca19d4e26ec4ecc7"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:71ea967b7603f2c6aaaca6eedf3065ac57b787623eeb994f81344c37a82c788f"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 26,
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:8576186f74ba22d29dad5920016d555c6163fac151c99cde4d79a33554b5af67"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:afc836b1f73399b59cfaa3042fd561eaa9d3603acee038a0b6baff1e7c04a0f3"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:700e17a07435cc5473f89af61c333b72613700a6e1959252b9b9b9abaa477361"
+    }
+  ],
+  "testsDigest": "sha256:c47b5ab234e685347cffe5f8d814788e35870465d609a49dc0d37c121878874a",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-3a-test-inventory-closure",
+      "state": "not-established",
+      "basis": "the exact versioned Test Inventory candidate lifecycle, immutable test identities, bounded test kinds, exact Acceptance Criteria, Risk, Implementation Unit, Route, Screen and Component Mapping and Test Methodology scope trace candidates, environment, platform, evidence-expectation, existence, automation and ownership candidates, deterministic catalog, coverage, trace, ownership and assessment receipts, immutable revisions, privacy-safe Product Studio table and four host projections are implemented locally; candidates do not establish Requirement, Acceptance Criteria or Risk truth, inventory validity or completeness, test-asset existence, environment availability, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, native-host interaction or Product Owner acceptance"
+    }
+  ],
+  "knownGapsDigest": "sha256:af5eb4b6c4ac7eb6c80137f4d3e870e601412cde9221023cd16ef86957f74317",
+  "claimBoundary": "This report binds the exact governed Test Inventory candidate lifecycle, immutable revision history and test identities, bounded unit, integration, contract, end-to-end, accessibility, security, performance, recovery, visual and manual test kinds, exact Acceptance Criteria, Risk, Implementation Unit, Route, Screen and Component Mapping and Test Methodology scope trace candidates, environment, platform, evidence-expectation, existence, automation and owner candidates, deterministic catalog, coverage, trace, ownership and assessment receipts, exact current Product and Initiative bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Test Inventories remain governed candidates only. This report does not establish Requirement, Acceptance Criteria or Risk truth, inventory validity or completeness, test-asset existence, environment availability, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+}
