@@ -80,6 +80,7 @@
     { "id": "test-methodology", "label": "Exact governed Test Methodology candidate with one exact scope per current Implementation Unit, bounded methodology, level, representation, automation, environment, platform, test-data policy, entry, exit, evidence-expectation and owner candidates, deterministic scope, methodology, environment, data-policy, ownership, trace and assessment receipts, and exact current Acceptance Criteria, Definition of Ready, Definition of Done, Implementation Unit Model, Dependency Mapping, Security and Privacy Threat Assessment and Route, Screen, and Component Mapping bindings, without establishing Requirement or Acceptance Criteria truth, methodology validity or completeness, environment availability, test-data fitness, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, write, or action authority" },
     { "id": "test-inventory", "label": "Exact governed Test Inventory candidate with immutable test identities and bounded unit, integration, contract, end-to-end, accessibility, security, performance, recovery, visual and manual test kinds; exact Acceptance Criteria, Risk, Implementation Unit, Route, Screen and Component Mapping and Test Methodology scope traces; environment, platform, evidence-expectation, existence, automation, ownership and assessment candidates; deterministic catalog, coverage, trace, ownership and assessment receipts; without establishing Requirement, Acceptance Criteria or Risk truth, inventory validity or completeness, test-asset existence, environment availability, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, write, or action authority" },
     { "id": "high-level-design", "label": "Exact governed High-Level Design candidate with bounded elements, relations, decisions, quality attributes and deployment views; exact current architecture, context, technology, dependency, implementation-unit, boilerplate, design, test, risk and security/privacy dependency bindings; deterministic structure, dependency, trace, coverage, ownership and assessment receipts; without establishing architecture, repository, runtime or deployment truth or completeness, architecture baseline or approval, privacy or security approval, owner appointment, implementation readiness, acceptance, release, deployment, write or action authority" },
+    { "id": "low-level-design", "label": "Exact governed Low-Level Design candidate per Implementation Unit with bounded modules, classes, components, interfaces, data contracts, algorithms, states, error recovery, authorization, observability and test hooks; exact current High-Level Design plus architecture, context, technology, dependency, implementation-unit, boilerplate, design, test, risk and security/privacy dependency bindings; deterministic structure, dependency, trace, coverage, ownership and assessment receipts; without establishing design, repository, source, runtime or deployment truth or completeness, design baseline or approval, privacy or security approval, owner appointment, implementation readiness, acceptance, release, deployment, write or action authority" },
     { "id": "design-system-token-contract", "label": "Exact governed Design System and Token Contract candidate projection with bounded system, token, variable, component and requirement-coverage metadata, without system, token, variable or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "accessibility-design-rules", "label": "Exact governed Accessibility Design Rules candidate projection with bounded target, rule, check, evidence-state and requirement-coverage metadata, without accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "responsive-multi-platform-targets", "label": "Exact governed Responsive and Multi-Platform Targets candidate projection with bounded platform-target, breakpoint, behavior, check, evidence-state and requirement-coverage metadata, without responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
@@ -107,7 +108,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T004546Z-phase-3a-high-level-design-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T062717Z-phase-3a-low-level-design-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -358,6 +359,10 @@
           { "path": "packages/engine/src/high-level-design.ts", "contains": ["class HighLevelDesignService", "dependencyNames", "high-level-design-projection-is-read-only"] },
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["highLevelDesign?: {", "engine.highLevelDesign!.project(initiative.id)", "id: \"high-level-design\"", "no design narratives, diagrams, interfaces, data flows, technologies, owners"] }
         ] },
+        { "capabilityId": "low-level-design", "state": "implemented", "probes": [
+          { "path": "packages/engine/src/low-level-design.ts", "contains": ["class LowLevelDesignService", "highLevelDesign: HighLevelDesign", "low-level-design-projection-is-read-only"] },
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["lowLevelDesign?: {", "engine.lowLevelDesign!.projectAll(initiative.id)", "id: \"low-level-design\"", "no design narratives, modules, classes, components, interfaces"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designSystemTokenContract?: {", "engine.designSystemTokenContract!.project(initiative.id)", "id: \"design-system-token-contract\"", "no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."] }
         ] },
@@ -419,7 +424,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T004546Z-phase-3a-high-level-design-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T062717Z-phase-3a-low-level-design-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -706,6 +711,10 @@
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readHighLevelDesign(", "this.request(\"planning.highLevelDesign.snapshot\"", "highLevelDesignProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showHighLevelDesign", "GAEP governed High-Level Design candidate", "does not establish architecture"] }
         ] },
+        { "capabilityId": "low-level-design", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readLowLevelDesign(", "this.request(\"planning.lowLevelDesign.snapshot\"", "lowLevelDesignProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showLowLevelDesign", "GAEP governed Low-Level Design candidate", "does not establish design"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignSystemTokenContract(", "this.request(\"design.systemTokenContract.snapshot\"", "designSystemTokenContractProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showDesignSystemTokenContract", "GAEP governed Design System and Token Contract candidate", "does not establish system, token, variable, or component validity"] }
@@ -784,7 +793,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T004546Z-phase-3a-high-level-design-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T062717Z-phase-3a-low-level-design-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -1131,6 +1140,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed High-Level Design candidate", "Exact dependencies:", "does not establish architecture"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["HighLevelDesignProjection", "HIGH_LEVEL_DESIGN_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] },
+        { "capabilityId": "low-level-design", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readLowLevelDesign(", "portableRequest(\"planning.lowLevelDesign.snapshot\"", "parseLowLevelDesignEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Low-Level Design candidate", "Implementation Unit:", "does not establish design"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["LowLevelDesignProjection", "LOW_LEVEL_DESIGN_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignSystemTokenContract(", "portableRequest(\"design.systemTokenContract.snapshot\"", "parseDesignSystemTokenContractEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Design System and Token Contract candidate", "no system, token, variable", "ownership authority"] },
@@ -1226,7 +1240,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T004546Z-phase-3a-high-level-design-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T062717Z-phase-3a-low-level-design-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1584,6 +1598,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadHighLevelDesignAsync(", "\"planning.highLevelDesign.snapshot\"", "ParseHighLevelDesignResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed High-Level Design candidate", "Exact dependencies:", "does not establish architecture"] },
           { "path": "apps/visual-studio/Gaep.HostClient/HighLevelDesignProtocol.cs", "contains": ["HighLevelDesignProjection", "HighLevelDesignProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "low-level-design", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadLowLevelDesignAsync(", "\"planning.lowLevelDesign.snapshot\"", "ParseLowLevelDesignResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Low-Level Design candidate", "Implementation Unit:", "does not establish design"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/LowLevelDesignProtocol.cs", "contains": ["LowLevelDesignProjection", "LowLevelDesignProjectionAuthorityBoundary"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignSystemTokenContractAsync(", "\"design.systemTokenContract.snapshot\"", "ParseDesignSystemTokenContractResponse"] },

@@ -135,6 +135,8 @@ const definitions = {
       "apps/visual-studio/Gaep.HostClient/RouteScreenComponentMappingProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/TestMethodologyModels.cs",
       "apps/visual-studio/Gaep.HostClient/TestMethodologyProtocol.cs",
+      "apps/visual-studio/Gaep.HostClient/LowLevelDesignModels.cs",
+      "apps/visual-studio/Gaep.HostClient/LowLevelDesignProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/DesignApplicabilityModels.cs",
       "apps/visual-studio/Gaep.HostClient/DesignApplicabilityProtocol.cs",
       "apps/visual-studio/Gaep.HostClient/DesignPersonaRoleModels.cs",
@@ -205,7 +207,7 @@ const definitions = {
       requiredMarkers: [
         "GAEP Visual Studio shell compile and generated-contribution verification: PASS",
         "GAEP Visual Studio packaged HostClient engine resource: PASS",
-        "GAEP Visual Studio host-client tests: PASS (756)",
+        "GAEP Visual Studio host-client tests: PASS (758)",
       ],
     }],
   },

@@ -22,8 +22,8 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260731T004546Z-phase-3a-high-level-design-packages.json",
-  conformance: "evidence/ide-conformance/20260731T004546Z-phase-3a-high-level-design.json",
+  packages: "evidence/local-packages/20260731T062717Z-phase-3a-low-level-design-packages.json",
+  conformance: "evidence/ide-conformance/20260731T062717Z-phase-3a-low-level-design.json",
   example: "evidence/examples/20260730T051956Z-phase-2-realistic-figma-loop/receipt.json",
 }
 const gateDefinitions = [
@@ -203,7 +203,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, figmaToBoilerplateMapping, designToCodeBindingRegistry, routeScreenComponentMapping, testMethodology, testInventory, highLevelDesign, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, figmaToBoilerplateMapping, designToCodeBindingRegistry, routeScreenComponentMapping, testMethodology, testInventory, highLevelDesign, lowLevelDesign, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -230,7 +230,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    highLevelDesign
+    lowLevelDesign
+      ? {
+          id: "phase-3a-low-level-design-closure",
+          state: "not-established",
+          basis: "the exact versioned Low-Level Design candidate lifecycle per Implementation Unit, bounded modules, classes, components, interfaces, data contracts, algorithms, states, error recovery, authorization, observability and test hooks, exact current High-Level Design plus all 15 prior dependencies, deterministic structure, dependency, trace, coverage, ownership and assessment receipts, immutable revisions, privacy-safe Product Studio table and four host projections are implemented locally; candidates do not establish design, repository, source, runtime or deployment truth or completeness, design baseline or approval, privacy or security approval, owner appointment, implementation readiness, acceptance, release, deployment, native-host interaction or Product Owner acceptance",
+        }
+      : highLevelDesign
       ? {
           id: "phase-3a-high-level-design-closure",
           state: "not-established",
@@ -602,6 +608,9 @@ export async function buildPhase0AcceptanceReport({
   const highLevelDesign = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "high-level-design" && capability.state === "implemented"))
+  const lowLevelDesign = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "low-level-design" && capability.state === "implemented"))
   const designSystemTokenContract = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-system-token-contract" && capability.state === "implemented"))
@@ -685,6 +694,7 @@ export async function buildPhase0AcceptanceReport({
     testMethodology,
     testInventory,
     highLevelDesign,
+    lowLevelDesign,
     designSystemTokenContract,
     accessibilityDesignRules,
     responsiveMultiPlatformTargets,
@@ -722,8 +732,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: highLevelDesign || testInventory || testMethodology || routeScreenComponentMapping || designToCodeBindingRegistry || figmaToBoilerplateMapping || boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: highLevelDesign
+    phase: lowLevelDesign || highLevelDesign || testInventory || testMethodology || routeScreenComponentMapping || designToCodeBindingRegistry || figmaToBoilerplateMapping || boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: lowLevelDesign
+      ? "phase-3a-low-level-design-local"
+      : highLevelDesign
       ? "phase-3a-high-level-design-local"
       : testInventory
       ? "phase-3a-test-inventory-local"
@@ -853,7 +865,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: highLevelDesign
+    claimBoundary: lowLevelDesign
+      ? "This report binds the exact governed Low-Level Design candidate lifecycle per Implementation Unit, immutable revision history, bounded modules, classes, components, interfaces, data contracts, algorithms, states, error recovery, authorization, observability and test hooks, exact current High-Level Design plus all 15 prior architecture, context, technology, dependency, implementation-unit, boilerplate, design, test, risk and security/privacy dependency bindings, deterministic structure, dependency, trace, coverage, ownership and assessment receipts, exact current Product and Initiative bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Low-Level Designs remain governed candidates only. This report does not establish design, repository, source, runtime or deployment truth or completeness, design baseline or approval, privacy or security approval, owner appointment, implementation readiness, acceptance, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
+      : highLevelDesign
       ? "This report binds the exact governed High-Level Design candidate lifecycle, immutable revision history, bounded elements, relations, decisions, quality attributes and deployment views, all 15 exact current architecture, context, technology, dependency, implementation-unit, boilerplate, design, test, risk and security/privacy dependency bindings, deterministic structure, dependency, trace, coverage, ownership and assessment receipts, exact current Product and Initiative bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. High-Level Designs remain governed candidates only. This report does not establish architecture, repository, runtime or deployment truth or completeness, architecture baseline or approval, privacy or security approval, owner appointment, implementation readiness, acceptance, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
       : testInventory
       ? "This report binds the exact governed Test Inventory candidate lifecycle, immutable revision history and test identities, bounded unit, integration, contract, end-to-end, accessibility, security, performance, recovery, visual and manual test kinds, exact Acceptance Criteria, Risk, Implementation Unit, Route, Screen and Component Mapping and Test Methodology scope trace candidates, environment, platform, evidence-expectation, existence, automation and owner candidates, deterministic catalog, coverage, trace, ownership and assessment receipts, exact current Product and Initiative bindings, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. Test Inventories remain governed candidates only. This report does not establish Requirement, Acceptance Criteria or Risk truth, inventory validity or completeness, test-asset existence, environment availability, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, implementation, write or action authority; prove native-host or Product Owner acceptance, Product readiness, security approval, release authorization or deployment approval."
