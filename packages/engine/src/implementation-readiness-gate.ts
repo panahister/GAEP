@@ -229,6 +229,8 @@ export class ImplementationReadinessGateService {
     return implementationReadinessGateStatusSchema.parse({
       schemaVersion: 1, kind: "implementation-readiness-gate-status", productId: product.id, productRevision: revisionOf(product),
       initiativeId: initiative.id, initiativeRevision: revisionOf(initiative), ...(candidate ? { candidate: exactReference(candidate) } : {}),
+      ...(candidate ? this.dependencyReferences(candidate) : {}),
+      lowLevelDesigns: candidate?.subjects.map((subject) => ({ implementationUnitId: subject.implementationUnitId, reference: subject.lowLevelDesign })) ?? [],
       dependencyCount: dependencyNames.length + units.length, presentDependencyCount: presentDependencyCount + lowLevels.length,
       subjectCount: subjects.length, satisfiedCount, gapCount, conflictCount, staleCount, waivedCandidateCount, notAssessedCount,
       evidenceGapCount, ownershipGapCount, coverageGapCount, staleBindingCount, staleDependencyCount, invalidCandidateCount,

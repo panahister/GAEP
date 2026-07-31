@@ -27,6 +27,7 @@ import type {
   TestInventoryProjection,
   HighLevelDesignProjection,
   LowLevelDesignProjection,
+  ImplementationReadinessGateProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -255,6 +256,9 @@ export interface CurrentStudioEngineReader {
   lowLevelDesign?: {
     projectAll(initiativeId: string): Promise<LowLevelDesignProjection[]>
   }
+  implementationReadinessGate?: {
+    project(initiativeId: string): Promise<ImplementationReadinessGateProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -443,6 +447,7 @@ interface ObservedStudioState {
   testInventoryProjections: Map<string, TestInventoryProjection>
   highLevelDesignProjections: Map<string, HighLevelDesignProjection>
   lowLevelDesignProjections: Map<string, LowLevelDesignProjection>
+  implementationReadinessGateProjections: Map<string, ImplementationReadinessGateProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3878,6 +3883,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     testInventories: testInventoryTable(state),
     highLevelDesigns: highLevelDesignTable(state),
     lowLevelDesigns: lowLevelDesignTable(state),
+    implementationReadinessGates: implementationReadinessGateTable(state),
   }
 }
 
@@ -5041,6 +5047,39 @@ function lowLevelDesignTable(state: ObservedStudioState): StudioTableSnapshot {
       ),
     } : {}),
   }
+}
+
+function implementationReadinessGateTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.implementationReadinessGateProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{ id: record.id, cells: {
+      initiative: projection.initiative.id, record: record.id, revision: String(record.revision), digest: record.digest,
+      dependencyReceipt: record.dependencyReceiptDigest, coverageReceipt: record.coverageReceiptDigest,
+      evidenceReceipt: record.evidenceReceiptDigest, ownershipReceipt: record.ownershipReceiptDigest,
+      assessmentReceipt: record.assessmentReceiptDigest,
+      dependencies: `${status.presentDependencyCount}/${status.dependencyCount} exact current candidates`,
+      subjects: `${status.subjectCount} units · ${status.satisfiedCount} satisfied · ${status.gapCount} gaps · ${status.conflictCount} conflicts`,
+      candidateExceptions: `${status.waivedCandidateCount} waiver candidates · ${status.notAssessedCount} not assessed · ${status.staleCount} stale`,
+      integrityGaps: `${status.evidenceGapCount} evidence · ${status.ownershipGapCount} ownership · ${status.coverageGapCount} coverage`,
+      staleGaps: `${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+      assessment: `${status.state} · ${status.reviewState}`,
+      boundary: "Candidate identities, counts, statuses, and dependency, coverage, evidence, ownership, assessment, and snapshot digests only; no readiness rationales, evidence or review content, owner details, personal data, secrets, credentials, or machine paths. Automated assessment does not establish artifact or evidence truth, completeness, approval, waiver, owner appointment, implementation readiness, assignment, execution, acceptance, release, deployment, or action authority.",
+    }, state: status.state, actions: [] }]
+  })
+  return { id: "implementation-readiness-gate", title: "Governed Implementation Readiness Gate Candidates",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true }, { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" }, { key: "digest", label: "Exact digest" },
+      { key: "dependencyReceipt", label: "Dependency receipt" }, { key: "coverageReceipt", label: "Coverage receipt" },
+      { key: "evidenceReceipt", label: "Evidence receipt" }, { key: "ownershipReceipt", label: "Ownership receipt" },
+      { key: "assessmentReceipt", label: "Assessment receipt" }, { key: "dependencies", label: "Exact dependencies" },
+      { key: "subjects", label: "Per-unit assessment" }, { key: "candidateExceptions", label: "Candidate exceptions" },
+      { key: "integrityGaps", label: "Candidate integrity gaps" }, { key: "staleGaps", label: "Candidate freshness gaps" },
+      { key: "assessment", label: "Candidate assessment" }, { key: "boundary", label: "Privacy and authority boundary" },
+    ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Implementation Readiness Gate candidate",
+      "Create the candidate through the governed engine workflow only after all exact current Phase 3A dependencies and one exact LLD per Implementation Unit exist. This view cannot grant implementation readiness or waive a gap.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -6896,6 +6935,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       testInventoryProjections: new Map(),
       highLevelDesignProjections: new Map(),
       lowLevelDesignProjections: new Map(),
+      implementationReadinessGateProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -8222,6 +8262,60 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("low-level-design-unavailable",
           "Low-Level Design metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.implementationReadinessGate) {
+      if (auditSemanticsVerified) {
+        const dependencyReaders = [engine.backlogHierarchy, engine.mvpSliceDefinition, engine.prioritizationModel,
+          engine.acceptanceCriteria, engine.definitionOfReady, engine.definitionOfDone, engine.implementationUnitModel,
+          engine.dependencyMapping, engine.technologyProfile, engine.boilerplateRegistry, engine.boilerplateSelectionBinding,
+          engine.boilerplateCompatibilityValidation, engine.designBaseline, engine.designToCodeBindingRegistry,
+          engine.routeScreenComponentMapping, engine.testMethodology, engine.testInventory, engine.highLevelDesign,
+          engine.riskRegister, engine.securityPrivacyAssessment]
+        const dependencyNames = ["backlogHierarchy", "mvpSliceDefinition", "prioritizationModel", "acceptanceCriteria",
+          "definitionOfReady", "definitionOfDone", "implementationUnitModel", "dependencyMapping", "technologyProfile",
+          "boilerplateRegistry", "boilerplateSelectionBinding", "boilerplateCompatibilityValidation", "designBaseline",
+          "designToCodeBindingRegistry", "routeScreenComponentMapping", "testMethodology", "testInventory", "highLevelDesign",
+          "riskRegister", "securityPrivacyAssessment"] as const
+        const dependencyKeys = ["candidate", "candidate", "candidate", "candidate", "candidate", "candidate", "candidate",
+          "candidate", "candidate", "candidate", "candidate", "candidate", "candidate", "candidate", "candidate", "candidate",
+          "candidate", "candidate", "register", "assessment"] as const
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const readiness = await engine.implementationReadinessGate!.project(initiative.id)
+          const dependencies = dependencyReaders.every((reader) => reader !== undefined)
+            ? await Promise.all(dependencyReaders.map((reader) => reader!.project(initiative.id))) : undefined
+          const lowLevels = engine.lowLevelDesign ? await engine.lowLevelDesign.projectAll(initiative.id) : undefined
+          return { readiness, dependencies, lowLevels }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.readiness
+            const { snapshotDigest, ...projectionBody } = value
+            const exactDependencies = projection.value.dependencies !== undefined && dependencyNames.every((name, dependencyIndex) => {
+              const reference = value.status[name] as { recordId: string; revision: number; digest: string } | undefined
+              const dependencyProjection = projection.value.dependencies?.[dependencyIndex] as Record<string, unknown> | undefined
+              const dependency = dependencyProjection?.[dependencyKeys[dependencyIndex]!] as { id: string; revision: number; digest: string } | undefined
+              return reference !== undefined && dependency !== undefined && reference.recordId === dependency.id && reference.revision === dependency.revision && reference.digest === dependency.digest
+            })
+            const exactLowLevels = projection.value.lowLevels !== undefined && value.status.lowLevelDesigns.length === projection.value.lowLevels.length &&
+              value.status.lowLevelDesigns.every((binding) => projection.value.lowLevels!.some((lowLevel) => lowLevel.status.implementationUnitId === binding.implementationUnitId &&
+                lowLevel.candidate?.id === binding.reference.recordId && lowLevel.candidate.revision === binding.reference.revision && lowLevel.candidate.digest === binding.reference.digest))
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactDependencies && exactLowLevels && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.implementationReadinessGateProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Implementation Readiness Gate projection was unavailable or did not bind all exact current governed dependencies",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`implementation-readiness-gate-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Implementation Readiness Gate metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("implementation-readiness-gate-unavailable", "Implementation Readiness Gate metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (

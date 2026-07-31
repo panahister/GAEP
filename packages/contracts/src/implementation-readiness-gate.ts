@@ -157,6 +157,18 @@ const statusAuthorityBoundary = "implementation-readiness-gate-status-is-observa
 export const implementationReadinessGateStatusSchema = z.object({
   schemaVersion: z.literal(1), kind: z.literal("implementation-readiness-gate-status"), productId: z.string().uuid(), productRevision: z.number().int().positive(),
   initiativeId: z.string().uuid(), initiativeRevision: z.number().int().positive(), candidate: exactReferenceSchema.optional(),
+  backlogHierarchy: exactBacklogHierarchyReferenceSchema.optional(), mvpSliceDefinition: exactMvpSliceDefinitionReferenceSchema.optional(),
+  prioritizationModel: exactPrioritizationModelReferenceSchema.optional(), acceptanceCriteria: exactAcceptanceCriteriaReferenceSchema.optional(),
+  definitionOfReady: exactDefinitionOfReadyReferenceSchema.optional(), definitionOfDone: exactDefinitionOfDoneReferenceSchema.optional(),
+  implementationUnitModel: exactImplementationUnitModelReferenceSchema.optional(), dependencyMapping: exactDependencyMappingReferenceSchema.optional(),
+  technologyProfile: exactTechnologyProfileReferenceSchema.optional(), boilerplateRegistry: exactBoilerplateRegistryReferenceSchema.optional(),
+  boilerplateSelectionBinding: exactBoilerplateSelectionBindingReferenceSchema.optional(),
+  boilerplateCompatibilityValidation: exactBoilerplateCompatibilityValidationReferenceSchema.optional(), designBaseline: exactDesignBaselineReferenceSchema.optional(),
+  designToCodeBindingRegistry: exactDesignToCodeBindingRegistryReferenceSchema.optional(), routeScreenComponentMapping: exactRouteScreenComponentMappingReferenceSchema.optional(),
+  testMethodology: exactTestMethodologyReferenceSchema.optional(), testInventory: exactTestInventoryReferenceSchema.optional(),
+  highLevelDesign: exactHighLevelDesignReferenceSchema.optional(), riskRegister: exactRiskRegisterReferenceSchema.optional(),
+  securityPrivacyAssessment: exactSecurityPrivacyAssessmentReferenceSchema.optional(),
+  lowLevelDesigns: z.array(z.object({ implementationUnitId: z.string().uuid(), reference: exactLowLevelDesignReferenceSchema }).strict()).max(65_536),
   dependencyCount: z.number().int().nonnegative(), presentDependencyCount: z.number().int().nonnegative(), subjectCount: z.number().int().nonnegative(),
   satisfiedCount: z.number().int().nonnegative(), gapCount: z.number().int().nonnegative(), conflictCount: z.number().int().nonnegative(),
   staleCount: z.number().int().nonnegative(), waivedCandidateCount: z.number().int().nonnegative(), notAssessedCount: z.number().int().nonnegative(),
@@ -167,7 +179,7 @@ export const implementationReadinessGateStatusSchema = z.object({
   authorityBoundary: z.literal(statusAuthorityBoundary),
 }).strict().superRefine((status, context) => {
   const gaps = status.dependencyCount - status.presentDependencyCount + status.gapCount + status.conflictCount + status.staleCount + status.notAssessedCount + status.evidenceGapCount + status.ownershipGapCount + status.coverageGapCount + status.staleBindingCount + status.staleDependencyCount + status.invalidCandidateCount + status.unresolvedQuestionCount
-  if (status.state === "candidate-assessed" && (gaps > 0 || !status.candidate || status.reviewState !== "ready-for-human-review" || status.reasons.length > 0)) context.addIssue({ code: "custom", path: ["state"], message: "Candidate-assessed readiness requires exact dependencies, complete per-unit assessment, evidence, ownership candidates, and human-review candidacy" })
+  if (status.state === "candidate-assessed" && (gaps > 0 || !status.candidate || status.reviewState !== "ready-for-human-review" || status.reasons.length > 0 || status.lowLevelDesigns.length !== status.subjectCount)) context.addIssue({ code: "custom", path: ["state"], message: "Candidate-assessed readiness requires exact dependencies, complete per-unit assessment, evidence, ownership candidates, and human-review candidacy" })
   if (status.state === "attention-required" && status.reasons.length === 0) context.addIssue({ code: "custom", path: ["reasons"], message: "Attention-required readiness must expose reasons" })
 })
 
