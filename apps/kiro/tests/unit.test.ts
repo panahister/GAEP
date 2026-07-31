@@ -2605,6 +2605,49 @@ test("protocol-v2 Test Inventory projection is exact, private-safe, and non-auth
   await rm(root, { recursive: true, force: true })
 })
 
+test("protocol-v2 High-Level Design projection is exact, private-safe, and non-authorizing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gaep-kiro-high-level-design-"))
+  const workspace = join(root, "workspace")
+  const hostileRoots = [
+    "bad-high-level-design-snapshot-binding", "bad-high-level-design-snapshot-digest", "bad-high-level-design-snapshot-private",
+  ].map((name) => join(root, name))
+  await Promise.all([workspace, ...hostileRoots].map((path) => mkdir(path)))
+  const createClient = (workspacePath: string) => GaepEngineClient.create({
+    workspacePath, engineExecutable: process.execPath, engineArgumentsPrefix: [fakeEngine],
+  })
+  const client = await createClient(workspace)
+  try {
+    const projection = await client.readHighLevelDesign(initiativeId)
+    assert.equal(projection.status.state, "attention-required")
+    assert.equal(projection.status.reviewState, "held")
+    assert.equal(projection.status.dependencyCount, 15)
+    assert.equal(projection.status.elementCount, 8)
+    assert.equal(projection.status.relationCount, 11)
+    assert.equal(projection.status.decisionCount, 4)
+    assert.equal(projection.status.traceGapCount, 2)
+    assert.equal(projection.candidate?.structureReceiptDigest, `sha256:${"1".repeat(64)}`)
+    const serialized = JSON.stringify(projection)
+    assert.equal(serialized.includes(privateRoot), false)
+    assert.equal(serialized.includes(privateCredential), false)
+    assert.equal(serialized.includes('"designNarrative":'), false)
+    assert.equal(serialized.includes('"elements":'), false)
+    assert.equal(serialized.includes('"relations":'), false)
+    assert.equal(serialized.includes('"decisions":'), false)
+  } finally {
+    await client.dispose()
+  }
+  for (const workspacePath of hostileRoots) {
+    const hostile = await createClient(workspacePath)
+    try {
+      await assert.rejects(() => hostile.readHighLevelDesign(initiativeId),
+        (error) => safeHostError(error, "HOST_RESPONSE_INVALID"))
+    } finally {
+      await hostile.dispose()
+    }
+  }
+  await rm(root, { recursive: true, force: true })
+})
+
 test("protocol-v2 Design System and Token Contract projection is exact, private-safe, and non-authorizing", async () => {
   const root = await mkdtemp(join(tmpdir(), "gaep-kiro-design-system-token-contract-"))
   const workspace = join(root, "workspace")

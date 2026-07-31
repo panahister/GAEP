@@ -46,6 +46,7 @@ import {
   routeScreenComponentMappingProjectionSchema,
   testMethodologyProjectionSchema,
   testInventoryProjectionSchema,
+  highLevelDesignProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -118,6 +119,7 @@ import {
   type RouteScreenComponentMappingProjection,
   type TestMethodologyProjection,
   type TestInventoryProjection,
+  type HighLevelDesignProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -1067,6 +1069,21 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = testInventoryProjectionSchema.safeParse(
         await this.request("planning.testInventory.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId ||
+          snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readHighLevelDesign(initiativeValue: string): Promise<HighLevelDesignProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = highLevelDesignProjectionSchema.safeParse(
+        await this.request("planning.highLevelDesign.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

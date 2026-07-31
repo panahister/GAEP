@@ -47,6 +47,7 @@ import {
   type RouteScreenComponentMappingProjection,
   type TestMethodologyProjection,
   type TestInventoryProjection,
+  type HighLevelDesignProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -186,6 +187,7 @@ const commandIds = {
   routeScreenComponentMapping: "gaepKiro.routeScreenComponentMapping.inspect",
   testMethodology: "gaepKiro.testMethodology.inspect",
   testInventory: "gaepKiro.testInventory.inspect",
+  highLevelDesign: "gaepKiro.highLevelDesign.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -342,6 +344,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.routeScreenComponentMapping, (input?: unknown) => runUserCommand(() => showRouteScreenComponentMapping(pool, input))),
     vscode.commands.registerCommand(commandIds.testMethodology, (input?: unknown) => runUserCommand(() => showTestMethodology(pool, input))),
     vscode.commands.registerCommand(commandIds.testInventory, (input?: unknown) => runUserCommand(() => showTestInventory(pool, input))),
+    vscode.commands.registerCommand(commandIds.highLevelDesign, (input?: unknown) => runUserCommand(() => showHighLevelDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2527,6 +2530,51 @@ async function showTestInventory(
     ] : []),
     "",
     "Candidate identities, counts, statuses, and test catalog, coverage, trace, ownership, assessment, and snapshot digests only; no test title, path, code, steps, data, owner, evidence, result, personal data, secret, credential, or machine path. This inspection does not establish test existence, inventory validity or completeness, environment availability, privacy or security approval, owner appointment, test execution or results, evidence or coverage truth, quality, implementation readiness, acceptance, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showHighLevelDesign(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<HighLevelDesignProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for High-Level Design inspection", "Initiative ID")
+  const projection = await client.readHighLevelDesign(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed High-Level Design candidate", "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Exact dependencies: ${status.presentDependencyCount}/${status.dependencyCount}`,
+    `Candidate structure: ${status.definedElementCount}/${status.elementCount} elements · ${status.definedRelationCount}/${status.relationCount} relations · ${status.selectedDecisionCount}/${status.decisionCount} decisions`,
+    `Candidate views: ${status.qualityAttributeCount} quality attributes · ${status.deploymentViewCount} deployment views`,
+    `Candidate structural gaps: ${status.conflictCount} conflicts · ${status.missingCount} missing · ${status.orphanRelationCount} orphan relations`,
+    `Candidate integrity gaps: ${status.traceGapCount} trace · ${status.evidenceGapCount} evidence · ${status.ownershipGapCount} ownership · ${status.uncoveredUnitCount} uncovered units`,
+    `Candidate freshness gaps: ${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+    ...status.reasons.map((reason) => `  - ${reason}`), "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Structure receipt digest: ${record.structureReceiptDigest}`,
+      `Dependency receipt digest: ${record.dependencyReceiptDigest}`,
+      `Trace receipt digest: ${record.traceReceiptDigest}`,
+      `Coverage receipt digest: ${record.coverageReceiptDigest}`,
+      `Ownership receipt digest: ${record.ownershipReceiptDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`,
+      `Candidate coverage: ${record.elementCount} elements · ${record.relationCount} relations · ${record.decisionCount} decisions · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []), "",
+    "Candidate identities, counts, statuses, and structure, dependency, trace, coverage, ownership, assessment, and snapshot digests only; no design narrative, diagram, interface, data flow, technology, owner, evidence source content, personal data, secret, credential, or machine path. This inspection does not establish architecture, repository, runtime, or deployment truth or completeness, architecture approval, privacy or security approval, owner appointment, implementation readiness, acceptance, release, deployment, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

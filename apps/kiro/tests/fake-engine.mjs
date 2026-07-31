@@ -73,6 +73,7 @@ const designToCodeBindingRegistryId = "94949494-9494-4494-8494-949494949494"
 const routeScreenComponentMappingId = "95959595-9595-4595-8595-959595959595"
 const testMethodologyId = "96969696-9696-4696-8696-969696969696"
 const testInventoryId = "97979797-9797-4797-8797-979797979797"
+const highLevelDesignId = "98989898-9898-4898-8898-989898989898"
 const designSystemTokenContractId = "62626262-6262-4262-8262-626262626262"
 const accessibilityDesignRulesId = "63636363-6363-4363-8363-636363636363"
 const responsiveMultiPlatformTargetsId = "64646464-6464-4464-8464-646464646464"
@@ -217,6 +218,8 @@ input.on("line", (line) => {
       return readTestMethodology(id, request.params)
     case "planning.testInventory.snapshot":
       return readTestInventory(id, request.params)
+    case "planning.highLevelDesign.snapshot":
+      return readHighLevelDesign(id, request.params)
     case "design.systemTokenContract.snapshot":
       return readDesignSystemTokenContract(id, request.params)
     case "design.accessibilityRules.snapshot":
@@ -3478,6 +3481,52 @@ function readTestInventory(id, params) {
   if (workspacePath.endsWith("bad-test-inventory-snapshot-digest")) value.candidate.assetCount = 19
   if (workspacePath.endsWith("bad-test-inventory-snapshot-private")) {
     value.testPath = `${privateRoot}/${privateCredential}`
+    value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
+  }
+  return writeResult(id, value)
+}
+
+function readHighLevelDesign(id, params) {
+  if (!exactKeys(params, ["initiativeId"]) || params.initiativeId !== initiativeId) {
+    return writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE HIGH LEVEL DESIGN PARAMS")
+  }
+  const candidateDigest = `sha256:${"8".repeat(64)}`
+  const status = {
+    schemaVersion: 1, kind: "high-level-design-status", productId, productRevision: 7,
+    initiativeId, initiativeRevision: initiativeState.revision,
+    candidate: { recordId: highLevelDesignId, revision: 2, digest: candidateDigest },
+    dependencyCount: 15, presentDependencyCount: 15, elementCount: 8, definedElementCount: 6,
+    relationCount: 11, definedRelationCount: 8, decisionCount: 4, selectedDecisionCount: 3,
+    qualityAttributeCount: 5, deploymentViewCount: 3, conflictCount: 1, missingCount: 1,
+    orphanRelationCount: 1, traceGapCount: 2, evidenceGapCount: 1, ownershipGapCount: 1,
+    uncoveredUnitCount: 1, staleBindingCount: 0, staleDependencyCount: 0, invalidCandidateCount: 1,
+    unresolvedQuestionCount: 2, reviewState: "held", state: "attention-required",
+    reasons: ["One or more High-Level Design candidates require human review"],
+    assessedAt: "2026-07-31T03:00:00.000Z",
+    authorityBoundary: "high-level-design-status-is-observational-and-does-not-establish-architecture-repository-runtime-or-deployment-truth-or-completeness-architecture-baseline-or-approval-privacy-or-security-approval-owner-appointment-implementation-readiness-acceptance-release-deployment-or-action-authority",
+  }
+  const content = {
+    schemaVersion: 1, kind: "high-level-design-projection",
+    product: { id: productId, revision: 7, digest: canonicalDigest(productRecord()) },
+    initiative: { id: initiativeId, revision: initiativeState.revision, digest: canonicalDigest(initiativeState), state: initiativeState.state },
+    status,
+    candidate: {
+      id: highLevelDesignId, revision: 2, digest: candidateDigest, state: "candidate",
+      structureReceiptDigest: `sha256:${"1".repeat(64)}`, dependencyReceiptDigest: `sha256:${"2".repeat(64)}`,
+      traceReceiptDigest: `sha256:${"3".repeat(64)}`, coverageReceiptDigest: `sha256:${"4".repeat(64)}`,
+      ownershipReceiptDigest: `sha256:${"5".repeat(64)}`, assessmentReceiptDigest: `sha256:${"6".repeat(64)}`,
+      elementCount: 8, relationCount: 11, decisionCount: 4, reviewState: "held",
+      updatedAt: "2026-07-31T02:59:00.000Z",
+    },
+    observedAt: status.assessedAt,
+    privacyBoundary: "projection-contains-record-identities-counts-statuses-and-structure-dependency-trace-coverage-ownership-assessment-snapshot-digests-only-not-design-narratives-diagrams-interfaces-data-flows-technologies-owners-evidence-source-content-personal-data-secrets-credentials-or-machine-paths",
+    authorityBoundary: "high-level-design-projection-is-read-only-and-does-not-establish-architecture-repository-runtime-or-deployment-truth-or-completeness-architecture-baseline-or-approval-privacy-or-security-approval-owner-appointment-implementation-readiness-acceptance-release-deployment-or-action-authority",
+  }
+  if (workspacePath.endsWith("bad-high-level-design-snapshot-binding")) content.initiative.id = highLevelDesignId
+  const value = { ...content, snapshotDigest: canonicalDigest(content) }
+  if (workspacePath.endsWith("bad-high-level-design-snapshot-digest")) value.candidate.elementCount = 9
+  if (workspacePath.endsWith("bad-high-level-design-snapshot-private")) {
+    value.designNarrative = `${privateRoot}/${privateCredential}`
     value.snapshotDigest = canonicalDigest(Object.fromEntries(Object.entries(value).filter(([key]) => key !== "snapshotDigest")))
   }
   return writeResult(id, value)
