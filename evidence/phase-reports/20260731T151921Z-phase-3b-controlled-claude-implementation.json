@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-3b-implementation",
+  "evidenceScope": "phase-3b-controlled-claude-implementation-local",
+  "recordedAt": "2026-07-31T15:24:17Z",
+  "sourceCommit": "21cb591d2d19585c6660d5f4f3b143c12e8a6180",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 102,
+    "hostAssessments": 408,
+    "hostAssessmentsImplemented": 408,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:bc2ca1564b2996ef772e71a05950f80ba55c3c38e5e8fec7cb397ba9bd063298",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 293060,
+      "digest": "sha256:f466110b4a6a2db1dbf54c585bb6b95093ad8107ace29423021d6c1515ab61ab",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260731T150650Z-phase-3b-controlled-claude-implementation-packages.json",
+      "bytes": 3104,
+      "digest": "sha256:138a0e598f618544cbe45e0ec00beb781110bb437e9a7e415161668e2627df38",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260731T150650Z-phase-3b-controlled-claude-implementation-host-behavior.json",
+      "bytes": 3576,
+      "digest": "sha256:09d324ec0ce42ceea1f5af085166dace2710350adc710c2b1fcc2bafcbc0c30d",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260731T150650Z-phase-3b-controlled-claude-implementation.json",
+      "bytes": 67001,
+      "digest": "sha256:71db7d395b1236e195134e0148835caca67ed65ae4a690cf85cd1979b6a5acd7",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260731T151700Z-phase-3a-realistic-readiness-example/receipt.json",
+      "bytes": 6811,
+      "digest": "sha256:b85bb881f66dc79ddf109d2f645ebe5ca2e61ee7188e877def7e3b65ffb6bb62",
+      "kind": "gaep-phase3a-realistic-readiness-example-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 142,
+        "testsPassed": 1047,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:2b6724b217efd63f0cf50a0d7e33d1026f681a4d99712842b06e310beaa3512b"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:901ea17bc8bbc33bf2aac93d5e0562c8017f48324ee5b08d21b538ef5fa7f2e2"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 41,
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:e94f0038331b2d1a18790f7541511d2205b69286cc30e5af1a845419f2ce9621"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:04a1f54a147ea66b268347ff26b4a40506630f209f84cb4cfa2e5beba34275fb"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:0be8fee9513940d8e97bb77039d5f0f0f73af4d299043a3699a7cec6563a3912"
+    }
+  ],
+  "testsDigest": "sha256:aa48ab732a3719dff60839c211b276519b7344ede184642efbb6cd2e35d8c419",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-3b-controlled-claude-implementation-closure",
+      "state": "not-established",
+      "basis": "the exact immutable Controlled Claude Implementation candidate binds the current Product, Initiative, Proposed Change Preview, Isolated Staging Workspace and portable Claude Agent Selection; exact Claude Code provider identity, one-for-one unit and path plans, repository-relative scopes, zero path tool capabilities, one explicit deny-all permission, deterministic context-only plan, runtime-boundary and staged-effect receipts, approval and authorization prerequisites, recovery metadata, evidence, Product Studio and four host projections are implemented locally; supported runtime, authentication, effective policy, credential access, administrator-policy bypass, workspace and tool access, resume capability, actual provider execution, real stage creation, approval, authorization, source mutation, apply, discard, recovery execution, native-host, live-provider, security or Product Owner acceptance, release and deployment remain unestablished"
+    }
+  ],
+  "knownGapsDigest": "sha256:81eb4baff8e3c7c6e25aaa63a4e14847ad9848dce0714903094e313c0ea2c6d5",
+  "claimBoundary": "This report binds the exact governed Controlled Claude Implementation candidate lifecycle, immutable revision history, exact current Product, Initiative, Proposed Change Preview, Isolated Staging Workspace and portable Claude Agent Selection bindings, exact Claude Code provider, agent, model and capability identity, one controlled unit and path per exact preview and staging candidate, repository-relative resource scopes, zero path tool capabilities, one explicit deny-all tool permission, deterministic context-only plan, runtime-boundary and staged-effect receipts, explicit approval and authorization prerequisites, recovery metadata, evidence, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. It does not establish a supported Claude runtime, authentication, effective administrator policy, credential access, administrator-policy bypass, workspace or tool access, resume capability, actual provider execution, real stage creation, approval, authorization, source mutation, apply, discard, cancellation, resume or recovery execution, repository, path, source, target or diff truth, file or diff content, acceptance, merge, release, deployment, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion or action authority."
+}
