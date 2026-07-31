@@ -43,6 +43,7 @@ import type {
   ApplyDiscardFoundationProjection,
   ScopedApplyProjection,
   RollbackRecoveryProjection,
+  ChangeConflictDetectionProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -321,6 +322,9 @@ export interface CurrentStudioEngineReader {
   rollbackRecovery?: {
     project(initiativeId: string): Promise<RollbackRecoveryProjection>
   }
+  changeConflictDetection?: {
+    project(initiativeId: string): Promise<ChangeConflictDetectionProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -525,6 +529,7 @@ interface ObservedStudioState {
   applyDiscardFoundationProjections: Map<string, ApplyDiscardFoundationProjection>
   scopedApplyProjections: Map<string, ScopedApplyProjection>
   rollbackRecoveryProjections: Map<string, RollbackRecoveryProjection>
+  changeConflictDetectionProjections: Map<string, ChangeConflictDetectionProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3976,6 +3981,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     applyDiscardFoundations: applyDiscardFoundationTable(state.applyDiscardFoundationProjections.values()),
     scopedApplies: scopedApplyTable(state.scopedApplyProjections.values()),
     rollbackRecoveries: rollbackRecoveryTable(state.rollbackRecoveryProjections.values()),
+    changeConflictDetections: changeConflictDetectionTable(state.changeConflictDetectionProjections.values()),
   }
 }
 
@@ -5636,6 +5642,27 @@ export function rollbackRecoveryTable(projections: Iterable<RollbackRecoveryProj
     { key: "assessment", label: "Fail-closed assessment" }, { key: "boundary", label: "Privacy and authority boundary" }], rows, actions: [],
     ...(rows.length === 0 ? { emptyState: emptySurface("No governed Rollback and Recovery candidate",
       "Create the metadata-only candidate through the governed engine after the exact current recovery model, stage, whole-stage decision and scoped selection exist. Refresh Product Studio after a superseding revision. This view cannot create or inspect a real stage or checkpoint, mutate source, execute rollback or recovery, return a system to service, establish approval or authorization, or accept work.") } : {}) }
+}
+
+export function changeConflictDetectionTable(projections: Iterable<ChangeConflictDetectionProjection>): StudioTableSnapshot {
+  const rows = [...projections].flatMap((projection) => projection.candidate?.subjects.flatMap((subject) => subject.findings.map((finding) => ({
+    id: `${subject.id}:${finding.kind}`, cells: { initiative: projection.initiative.id, stage: projection.candidate!.stageIdentity.stageKey,
+      generation: String(projection.candidate!.stageIdentity.generation), subject: subject.subjectKey, path: subject.pathCandidate,
+      kind: finding.kind, state: finding.state, currentObservation: subject.currentObservationState, handoffObservation: subject.handoffObservationState,
+      assessment: `${projection.status.state} · ${projection.status.conflictCandidateCount} conflict candidates · ${projection.status.noConflictCandidateCount} no-conflict candidates · ${projection.status.unavailableCount} unavailable · ${projection.status.staleBindingCount} stale bindings`,
+      receipts: `${projection.candidate!.dependencyReceiptDigest} · ${projection.candidate!.stageReceiptDigest} · ${projection.candidate!.subjectReceiptDigest} · ${projection.candidate!.observationReceiptDigest} · ${projection.candidate!.conflictReceiptDigest}`,
+      boundary: "Conflict candidate metadata only. A no-conflict candidate does not establish absence of user edits, baseline drift, overlapping stages, stale generations or provider handoff changes. This view does not inspect or mutate source, resolve or overwrite edits, execute a handoff, approve or authorize changes, establish outcomes or acceptance, or grant action authority." },
+    state: finding.state, actions: [],
+  }))) ?? [])
+  return { id: "change-conflict-detection", title: "Governed Change Conflict Detection", columns: [
+    { key: "initiative", label: "Initiative", identifier: true }, { key: "stage", label: "Candidate stage", identifier: true },
+    { key: "generation", label: "Generation" }, { key: "subject", label: "Conflict subject" },
+    { key: "path", label: "Repository-relative path candidate" }, { key: "kind", label: "Conflict kind" },
+    { key: "state", label: "Candidate finding" }, { key: "currentObservation", label: "Current-content observation" },
+    { key: "handoffObservation", label: "Handoff observation" }, { key: "assessment", label: "Fail-closed assessment" },
+    { key: "receipts", label: "Deterministic receipts" }, { key: "boundary", label: "Privacy and authority boundary" }], rows, actions: [],
+    ...(rows.length === 0 ? { emptyState: emptySurface("No governed Change Conflict Detection candidate",
+      "Create the metadata-only candidate through the governed engine after every exact current change, preview, stage, provider/model switch, whole-stage decision, scoped selection and recovery predecessor exists. Refresh Product Studio after a superseding revision. This view cannot inspect or mutate source, resolve or overwrite user edits, execute a provider handoff, establish conflict absence, approve or authorize changes, or accept work.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7556,6 +7583,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       applyDiscardFoundationProjections: new Map(),
       scopedApplyProjections: new Map(),
       rollbackRecoveryProjections: new Map(),
+      changeConflictDetectionProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -9560,6 +9588,38 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("rollback-recovery-unavailable", "Rollback and Recovery metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
+    }
+    if (route === "delivery" && engine.changeConflictDetection) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map((initiative) => engine.changeConflictDetection!.project(initiative.id)))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value
+            const candidates = { changedUnitInventory: empty.changedUnitInventoryProjections.get(initiative.id)?.candidate,
+              proposedChangePreview: empty.proposedChangePreviewProjections.get(initiative.id)?.candidate,
+              stagingWorkspace: empty.stagingWorkspaceProjections.get(initiative.id)?.candidate,
+              providerSwitchImplementation: empty.providerSwitchImplementationProjections.get(initiative.id)?.candidate,
+              modelSwitchImplementation: empty.modelSwitchImplementationProjections.get(initiative.id)?.candidate,
+              applyDiscardFoundation: empty.applyDiscardFoundationProjections.get(initiative.id)?.candidate,
+              scopedApply: empty.scopedApplyProjections.get(initiative.id)?.candidate,
+              rollbackRecovery: empty.rollbackRecoveryProjections.get(initiative.id)?.candidate }
+            const { snapshotDigest, ...projectionBody } = value
+            const exactDependencies = value.status.dependencies !== undefined && (Object.keys(candidates) as (keyof typeof candidates)[]).every((key) => {
+              const reference = value.status.dependencies?.[key], candidate = candidates[key]
+              return reference !== undefined && candidate !== undefined && reference.recordId === candidate.id && reference.revision === candidate.revision && reference.digest === candidate.digest
+            })
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id && value.initiative.revision === (initiative.revision ?? 1) &&
+                value.initiative.digest === canonicalDigest(initiative) && exactDependencies && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.changeConflictDetectionProjections.set(initiative.id, value); return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Change Conflict Detection projection was unavailable or did not bind all exact current change, preview, stage, switch, decision, scope, and recovery predecessors", projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`change-conflict-detection-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Change Conflict Detection metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) empty.issues.push(issue("change-conflict-detection-unavailable", "Change Conflict Detection metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
     }
     if (
       (route === "direction" || route === "users-jobs" || route === "outcomes") &&
