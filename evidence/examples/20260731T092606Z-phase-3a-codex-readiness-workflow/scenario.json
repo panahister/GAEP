@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "kind": "gaep-phase3a-claude-readiness-workflow-scenario",
-  "id": "phase-3a-atlas-claude-readiness-workflow-v1",
-  "observedAt": "2026-07-31T08:07:26Z",
+  "kind": "gaep-phase3a-codex-readiness-workflow-scenario",
+  "id": "phase-3a-atlas-codex-readiness-workflow-v1",
+  "observedAt": "2026-07-31T07:26:48Z",
   "product": {
     "id": "33000000-0000-4000-8000-000000000001",
     "revision": 1,
@@ -16,25 +16,14 @@
     "title": "Prepare the Atlas evidence review implementation slice"
   },
   "provider": {
-    "adapterId": "gaep.claude-code-cli",
-    "agentId": "claude-code-cli",
-    "executionMode": "deterministic-offline-tool-free-context-contract",
-    "liveRequestExpected": false,
-    "stagingExpected": false,
-    "toolDefinitionCountExpected": 0,
-    "writeScopeCountExpected": 0
-  },
-  "parity": {
-    "sourceScenarioPath": "examples/phase-3a-codex-readiness-workflow/scenario.json",
-    "sourceWorkflowReceiptPath": "evidence/examples/20260731T092606Z-phase-3a-codex-readiness-workflow/receipt.json",
-    "expectedStageCount": 20,
-    "expectedReopenObservationCount": 2,
-    "expectedFailureRecoveryCaseCount": 3,
-    "expectedHostProjectionCount": 4
+    "adapterId": "gaep.codex-cli",
+    "agentId": "codex-cli",
+    "executionMode": "deterministic-offline-staged-contract",
+    "liveRequestExpected": false
   },
   "sourcePaths": {
-    "phase3aConformance": "evidence/ide-conformance/20260731T074242Z-phase-3a-codex-readiness-workflow.json",
-    "phase3aReport": "evidence/phase-reports/20260731T074657Z-phase-3a-codex-readiness-workflow.json",
+    "phase3aConformance": "evidence/ide-conformance/20260731T071500Z-phase-3a-implementation-readiness-gate.json",
+    "phase3aReport": "evidence/phase-reports/20260731T072242Z-phase-3a-implementation-readiness-gate.json",
     "productStudio": "apps/vscode/src/current-engine-studio-data-source.ts"
   },
   "stages": [
@@ -66,10 +55,9 @@
   ],
   "limitations": [
     "This is a deterministic local fixture and not real Product, backlog, design, boilerplate, test, risk, security, or readiness evidence.",
-    "Claude execution uses the isolated fake stream, tool-free context-only contract and makes no live provider request or semantic-quality claim.",
-    "No OAuth, keychain, API key helper, administrator-policy override, authentication bypass, or supported-runtime claim is attempted.",
-    "Reopen, recovery, Product Studio, and host projections prove bounded deterministic continuity and Codex scenario parity only, not native-host interaction or acceptance.",
+    "Codex execution uses the isolated fake app-server contract and makes no live provider request or semantic-quality claim.",
+    "Reopen, recovery, Product Studio, and host projections prove bounded deterministic continuity only and not native-host interaction or acceptance.",
     "No waiver, owner appointment, implementation readiness, assignment, execution, acceptance, security, release, deployment, or action authority is established."
   ],
-  "authorityBoundary": "phase-3a-claude-readiness-workflow-is-deterministic-offline-tool-free-parity-evidence-not-live-provider-runtime-authentication-policy-product-truth-readiness-waiver-ownership-native-host-product-owner-security-release-deployment-or-action-authority"
+  "authorityBoundary": "phase-3a-codex-readiness-workflow-is-deterministic-local-candidate-evidence-not-live-provider-product-truth-readiness-waiver-ownership-native-host-product-owner-security-release-deployment-or-action-authority"
 }

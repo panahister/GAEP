@@ -24,9 +24,9 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260731T081602Z-phase-3a-claude-readiness-workflow-packages.json",
-  conformance: "evidence/ide-conformance/20260731T081602Z-phase-3a-claude-readiness-workflow.json",
-  example: "evidence/examples/20260731T081205Z-phase-3a-claude-readiness-workflow/receipt.json",
+  packages: "evidence/local-packages/20260731T092606Z-phase-3a-dashboard-packages.json",
+  conformance: "evidence/ide-conformance/20260731T092606Z-phase-3a-dashboard.json",
+  example: "evidence/examples/20260731T092606Z-phase-3a-claude-readiness-workflow/receipt.json",
 }
 const gateDefinitions = [
   { id: "typecheck", command: ["npm", "run", "typecheck"], parser: parseTypecheck },
@@ -209,7 +209,7 @@ async function verifiedSources(root, paths) {
   return { packages: packages.value, conformance: conformance.value, receipt, sources, exampleKind: example.value.kind }
 }
 
-function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, figmaToBoilerplateMapping, designToCodeBindingRegistry, routeScreenComponentMapping, testMethodology, testInventory, highLevelDesign, lowLevelDesign, implementationReadinessGate, phase3aCodexReadinessWorkflow, phase3aClaudeReadinessWorkflow, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
+function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, figmaToBoilerplateMapping, designToCodeBindingRegistry, routeScreenComponentMapping, testMethodology, testInventory, highLevelDesign, lowLevelDesign, implementationReadinessGate, phase3aDashboard, phase3aCodexReadinessWorkflow, phase3aClaudeReadinessWorkflow, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
   return [
     {
       id: "native-package-and-host-acceptance",
@@ -236,7 +236,13 @@ function knownGaps(inputs, { designApplicability, designPersonasRoles, userJourn
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    phase3aClaudeReadinessWorkflow
+    phase3aDashboard
+      ? {
+          id: "phase-3a-dashboard-closure",
+          state: "not-established",
+          basis: "the exact derived Phase 3A backlog/slice, readiness/gap, boilerplate/design-to-code, change/impact and agent/model views over 20 governed projections and two explicit local provider-workflow evidence slots are implemented locally in Product Studio and all four host integrations with bounded accessible metadata export; source counts, freshness, conflicts, unavailable state and deterministic local evidence remain observational and do not establish completeness, priority, readiness, waiver, ownership, implementation, live-provider or semantic quality, native-host interaction, Product Owner acceptance, security completion, release authorization or deployment approval",
+        }
+      : phase3aClaudeReadinessWorkflow
       ? {
           id: "phase-3a-claude-readiness-workflow-closure",
           state: "not-established",
@@ -698,6 +704,9 @@ export async function buildPhase0AcceptanceReport({
   const phase2RealisticFigmaLoop = inputs.exampleKind === "gaep-phase2-realistic-figma-loop-receipt"
   const phase3aCodexReadinessWorkflow = inputs.exampleKind === "gaep-phase3a-codex-readiness-workflow-receipt"
   const phase3aClaudeReadinessWorkflow = inputs.exampleKind === "gaep-phase3a-claude-readiness-workflow-receipt"
+  const phase3aDashboard = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "phase3a-dashboard" && capability.state === "implemented"))
   const gaps = knownGaps(inputs, {
     designApplicability,
     designPersonasRoles,
@@ -725,6 +734,7 @@ export async function buildPhase0AcceptanceReport({
     highLevelDesign,
     lowLevelDesign,
     implementationReadinessGate,
+    phase3aDashboard,
     phase3aCodexReadinessWorkflow,
     phase3aClaudeReadinessWorkflow,
     designSystemTokenContract,
@@ -765,7 +775,9 @@ export async function buildPhase0AcceptanceReport({
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
     phase: implementationReadinessGate || lowLevelDesign || highLevelDesign || testInventory || testMethodology || routeScreenComponentMapping || designToCodeBindingRegistry || figmaToBoilerplateMapping || boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: phase3aClaudeReadinessWorkflow
+    evidenceScope: phase3aDashboard
+      ? "phase-3a-dashboard-local"
+      : phase3aClaudeReadinessWorkflow
       ? "phase-3a-claude-readiness-workflow-local"
       : phase3aCodexReadinessWorkflow
       ? "phase-3a-codex-readiness-workflow-local"
@@ -903,7 +915,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: phase3aClaudeReadinessWorkflow
+    claimBoundary: phase3aDashboard
+      ? "This report binds the exact derived Phase 3A dashboard contract: five canonical views, 20 ordered governed source projections, explicit unavailable and attention-required state, deterministic count, freshness, gap and conflict signals, two bounded local Codex and Claude workflow-evidence slots, fixed 20-row pagination, visible-metadata-only CSV export, exact current Product and Initiative bindings, privacy-safe Product Studio rendering and all four local host integrations to current package, test, host and conformance evidence. This report does not establish source completeness or truth, priority, readiness, waiver, owner appointment, implementation, live-provider or semantic output quality, native-host interaction, Product Owner acceptance, security completion, release authorization or deployment approval."
+      : phase3aClaudeReadinessWorkflow
       ? "This report binds the exact deterministic Claude Phase 3A readiness workflow: semantic parity to the sealed Codex scenario, 20 ordered P3A-01 through P3A-20 candidate stages, one freshly verified isolated tool-free context-only Claude receipt with no staging, Tools or write scopes, two exact reopen observations with zero continuity mismatch or mutation, three fail-closed stale, gap and conflict recovery cases, the current Product Studio Implementation Readiness table, four current host projections and zero live provider requests, credential access, administrator-policy bypasses or implementation effects to current package, test, host, conformance and artifact evidence. This report does not establish a supported Claude runtime, authentication or policy readiness, semantic model quality, real Product, backlog, design, boilerplate, test, risk, security, artifact or evidence truth or completeness; approval, waiver or owner authority; implementation readiness, assignment, execution, acceptance, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion, release authorization or deployment approval."
       : phase3aCodexReadinessWorkflow
       ? "This report binds the exact deterministic Codex Phase 3A readiness workflow: 20 ordered P3A-01 through P3A-20 candidate stages, one freshly verified isolated Codex app-server receipt, two exact reopen observations with zero continuity mismatch or mutation, three fail-closed stale, gap and conflict recovery cases, the current Product Studio Implementation Readiness table, four current host projections and zero live provider requests or implementation effects to current package, test, host, conformance and artifact evidence. This report does not establish real Product, backlog, design, boilerplate, test, risk, security, artifact, evidence or semantic-quality truth or completeness; approval, waiver or owner authority; implementation readiness, assignment, execution, acceptance, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion, release authorization or deployment approval."

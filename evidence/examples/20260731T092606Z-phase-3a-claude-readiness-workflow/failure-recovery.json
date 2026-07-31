@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-claude-readiness-failure-recovery",
+  "scenario": {
+    "id": "phase-3a-atlas-claude-readiness-workflow-v1",
+    "digest": "sha256:70fe64cb8633b94ab5971ec8f091c13c7116dc061c12190cbd0ff7ab52385d24"
+  },
+  "cases": [
+    {
+      "ordinal": 1,
+      "id": "stale-dependency-revision",
+      "injectedState": "stale",
+      "expectedState": "hold",
+      "recovery": "rebind-exact-current-revision",
+      "observationDigest": "sha256:faf14acfcad9c6e88b4df666d3223774c3205e148fca91b0086d8dbcaa2c6d0b",
+      "gateState": "attention-required",
+      "automaticRetry": false,
+      "recoveryCandidate": {
+        "recovery": "rebind-exact-current-revision",
+        "supersedesObservationDigest": "sha256:faf14acfcad9c6e88b4df666d3223774c3205e148fca91b0086d8dbcaa2c6d0b",
+        "resultingState": "candidate-continuity-restored",
+        "digest": "sha256:730f8cb6d3c645509a7d9c948867a93ffe255d776037c7ba3ba8fcfae6c780d2"
+      },
+      "readinessGranted": false,
+      "effectApplied": false
+    },
+    {
+      "ordinal": 2,
+      "id": "missing-readiness-evidence",
+      "injectedState": "gap",
+      "expectedState": "hold",
+      "recovery": "record-attributable-evidence-candidate",
+      "observationDigest": "sha256:ab661cd066899fa8e3be6fa2e3a8aceb187785228a6526bae8163bad8503569c",
+      "gateState": "attention-required",
+      "automaticRetry": false,
+      "recoveryCandidate": {
+        "recovery": "record-attributable-evidence-candidate",
+        "supersedesObservationDigest": "sha256:ab661cd066899fa8e3be6fa2e3a8aceb187785228a6526bae8163bad8503569c",
+        "resultingState": "candidate-continuity-restored",
+        "digest": "sha256:a38d37237ed9ac3b9d8991003a4afb0332aef8f0f27e6982d5d345badbdc1b69"
+      },
+      "readinessGranted": false,
+      "effectApplied": false
+    },
+    {
+      "ordinal": 3,
+      "id": "conflicting-readiness-outcome",
+      "injectedState": "conflict",
+      "expectedState": "hold",
+      "recovery": "record-superseding-reviewed-candidate",
+      "observationDigest": "sha256:9091de16e83dac457a4471f3e8342af73d3b73fb6e9ed644621b7e11b6c110f6",
+      "gateState": "attention-required",
+      "automaticRetry": false,
+      "recoveryCandidate": {
+        "recovery": "record-superseding-reviewed-candidate",
+        "supersedesObservationDigest": "sha256:9091de16e83dac457a4471f3e8342af73d3b73fb6e9ed644621b7e11b6c110f6",
+        "resultingState": "candidate-continuity-restored",
+        "digest": "sha256:58fbe4db9418b48a948b4c104154920389d6c38d269b4bc407401b2697281eb1"
+      },
+      "readinessGranted": false,
+      "effectApplied": false
+    }
+  ],
+  "summary": {
+    "caseCount": 3,
+    "holdCount": 3,
+    "recoveredCandidateCount": 3,
+    "automaticRetryCount": 0,
+    "effectsApplied": 0
+  },
+  "authorityBoundary": "failure-recovery-records-hold-and-superseding-candidate-evidence-not-waiver-readiness-approval-implementation-or-action-authority",
+  "recoveryDigest": "sha256:1d7ea6c9ae299f1e2c1935f36a499020551d012f220092e99e80b8501f4eced5"
+}

@@ -274,7 +274,7 @@ async function run() {
   await evidenceRequest
   const finalStoreManifest = await inspectPortableStore(path.join(workspace, ".gaep"))
   assert.deepEqual(finalStoreManifest, fixtureStoreManifest)
-  process.stdout.write("PASS installed compatible-host provider/model/Phase 1 and Phase 2 dashboard smoke: two bounded capability rows, exact Initiative scope, 23-of-23 UX/Figma attention state, integrated change/impact/execution truth, explicit no-authority boundaries, private-safe output, and immutable fixture store\n")
+  process.stdout.write("PASS installed compatible-host provider/model/Phase 1, Phase 2, and Phase 3A dashboard smoke: two bounded capability rows, exact Initiative scope, 23-of-23 UX/Figma attention state, five-view/20-source/two-workflow Phase 3A state, integrated change/impact/execution truth, explicit no-authority boundaries, private-safe output, and immutable fixture store\n")
   process.stdout.write(`PASS activation: seventy-six bounded commands, machine-only configuration, static Product Studio, exact package-local engine ${packagedEngineSha256}, provider/model/UX/Figma/integrated dashboards, governed Backlog Hierarchy, MVP/Vertical Slice, Prioritization Model, Acceptance Criteria, Definition of Ready, Definition of Done, Implementation Unit Model, Dependency Mapping, and Technology Profile projections, empty audit-gated evidence workflow, and no workspace mutation\n`)
 }
 

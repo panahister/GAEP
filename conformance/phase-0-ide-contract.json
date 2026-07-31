@@ -23,6 +23,7 @@
     { "id": "phase-dashboard-framework", "label": "Exact phase-scoped dashboard framework projection" },
     { "id": "phase2-ux-figma-dashboard", "label": "Exact derived Phase 2 UX/Figma dashboard over the canonical P2-01 through P2-23 projection catalog, with explicit unavailable and attention states and without second-source-of-truth, completeness, validity, approval, baseline, readiness, Figma, remediation, implementation, release, or action authority" },
     { "id": "phase2-change-impact-agent-model-dashboard", "label": "Exact derived Phase 2 synchronization-change, bounded-impact, and Initiative-scoped Agent/Model execution-truth views without second-source-of-truth, impact-completeness, design-validity, provider-quality, selection, Run-launch, approval, baseline, readiness, remediation, Figma, implementation, effect, release, or action authority" },
+    { "id": "phase3a-dashboard", "label": "Exact derived Phase 3A backlog/slice, readiness/gap, boilerplate/design-to-code, change/impact, and agent/model views over 20 governed projections and two explicit local provider-workflow evidence slots, with bounded accessible export and without completeness, priority, readiness, waiver, ownership, implementation, acceptance, release, deployment, or action authority" },
     { "id": "phase1-summary-readiness-dashboard", "label": "Exact Phase 1 summary and readiness candidate projection without approval, acceptance, phase-entry, release, or action authority" },
     { "id": "phase1-change-impact-dashboard", "label": "Exact Phase 1 Change and bounded P0-P4 impact candidate projection without impact-completeness, revalidation, approval, risk-acceptance, readiness, effect, release, write, or action authority" },
     { "id": "phase1-agent-model-dashboard", "label": "Exact Initiative-scoped Phase 1 Agent, model, Run, Managed Run and handoff execution-truth projection without provider readiness or quality, provider preference, automatic selection, handoff acknowledgement, Run launch, readiness, approval, acceptance, effect, release, write, or action authority" },
@@ -109,7 +110,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T081602Z-phase-3a-claude-readiness-workflow-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T092606Z-phase-3a-dashboard-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "installed-package-bundled-engine-workflow-local",
         "remainingRequirements": ["native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "supported-OS installation matrix", "Product Owner acceptance"]
@@ -169,6 +170,11 @@
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["phase2ChangeImpactAgentModel = composePhase2ChangeImpactAgentModelDashboard(", "phase1AgentModel.agentModel", "...(phase2ChangeImpactAgentModel ? { phase2ChangeImpactAgentModel } : {})"] },
           { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isPhase2ChangeImpactAgentModelDashboard", "phase2ChangeImpactAgentModelDashboardSchema.safeParse(value)", "sources.agentModelSnapshotDigest !== value.phase1AgentModel.agentModel.snapshotDigest"] },
           { "path": "apps/vscode/src/studio-client.ts", "contains": ["renderPhase2ChangeImpactAgentModelDashboard", "Synchronization change evidence", "Bounded impact signals", "Initiative-scoped agent and model execution truth"] }
+        ] },
+        { "capabilityId": "phase3a-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["phase3aDashboard = composePhase3aDashboard", "appendForInitiative(observed.backlogHierarchyProjections.values())", "appendForInitiative(observed.implementationReadinessGateProjections.values())", "...(phase3aDashboard ? { phase3aDashboard } : {})"] },
+          { "path": "apps/vscode/src/studio-protocol.ts", "contains": ["function isPhase3aDashboard", "phase3aDashboardSchema.safeParse(value)", "sourceCatalogDigest === canonicalStudioDigest(parsed.data.sources)"] },
+          { "path": "apps/vscode/src/studio-client.ts", "contains": ["renderPhase3aDashboard", "Phase 3A dashboard views", "Bounded provider workflow evidence", "no completeness, priority, readiness, waiver, ownership"] }
         ] },
         { "capabilityId": "phase1-summary-readiness-dashboard", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["phase1Summary = composePhase1SummaryDashboard(", "observed.p0P4ReadinessGateProjections.get(initiative.id)", "observed.p5HandoffPackageProjections.get(initiative.id)", "...(phase1Summary ? { phase1Summary } : {})"] },
@@ -429,7 +435,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T081602Z-phase-3a-claude-readiness-workflow-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T092606Z-phase-3a-dashboard-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "compatible-host-packaged-engine-workflow-local",
         "remainingRequirements": ["native Kiro installation and activation", "native assistive-technology acceptance", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -488,6 +494,11 @@
           { "path": "apps/kiro/src/extension.ts", "contains": ["phase2ChangeImpactAgentModel: \"gaepKiro.dashboard.phase2ChangeImpactAgentModel\"", "async function showPhase2ChangeImpactAgentModelDashboard", "not a second source of truth"] },
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readPhase2ChangeImpactAgentModelDashboard(", "this.request(\"dashboard.phase2ChangeImpactAgentModel\"", "phase2ChangeImpactAgentModelDashboardSchema.safeParse(result)"] },
           { "path": "apps/kiro/package.json", "contains": ["gaepKiro.dashboard.phase2ChangeImpactAgentModel", "Show Phase 2 Change, Impact, Agent and Model Dashboard"] }
+        ] },
+        { "capabilityId": "phase3a-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/extension.ts", "contains": ["phase3a: \"gaepKiro.dashboard.phase3a\"", "async function showPhase3aDashboard", "Bounded provider workflow evidence", "grants no completeness, priority, readiness, waiver, ownership"] },
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readPhase3aDashboard(", "this.request(\"dashboard.phase3a\"", "sourceCatalogDigest !== canonicalDigest(parsed.data.sources)"] },
+          { "path": "apps/kiro/package.json", "contains": ["gaepKiro.dashboard.phase3a", "Show Phase 3A Backlog and Implementation Readiness Dashboard"] }
         ] },
         { "capabilityId": "phase1-summary-readiness-dashboard", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/extension.ts", "contains": ["phase1Summary: \"gaepKiro.dashboard.phase1Summary\"", "async function showPhase1Summary", "client.readPhase1Summary(product, initiative)", "grants no readiness, approval, acceptance, phase-entry"] },
@@ -802,7 +813,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T081602Z-phase-3a-claude-readiness-workflow-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T092606Z-phase-3a-dashboard-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Plugins UI or Marketplace installation", "IDE-managed uninstall", "interactive Product tool-window packaged-engine and assistive-technology automation", "real-provider managed read-only and staged-review package workflow acceptance", "interactive cancellation and resume", "supported-OS matrix", "Product Owner acceptance"]
@@ -867,6 +878,12 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readPhase2ChangeImpactAgentModelDashboard(", "portableRequest(\"dashboard.phase2ChangeImpactAgentModel\""] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["fun parsePhase2ChangeImpactAgentModelDashboardEnvelope(", "PHASE2_INTEGRATED_AUTHORITY_BOUNDARY", "snapshotDigest != canonicalDigest(digestBody)"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP exact Phase 2 Change, Impact, Agent and Model dashboard", "Impact boundary: bounded-not-complete", "not a second source of truth"] }
+        ] },
+        { "capabilityId": "phase3a-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["Show Phase 3A backlog and implementation readiness dashboard…", "controller.readPhase3aDashboard(initiativeId)"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readPhase3aDashboard(", "portableRequest(\"dashboard.phase3a\""] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["fun parsePhase3aDashboardEnvelope(", "sourceCatalogDigest\") != canonicalDigest(sourcesElement)", "snapshotDigest != canonicalDigest(digestBody)"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP exact Phase 3A backlog and implementation readiness dashboard", "Bounded provider workflow evidence", "grants no completeness, priority, readiness, waiver, ownership"] }
         ] },
         { "capabilityId": "phase1-summary-readiness-dashboard", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepToolWindowFactory.kt", "contains": ["Show Phase 1 summary…", "controller.readPhase1Summary(initiativeId)"] },
@@ -1254,7 +1271,7 @@
       "runtimeEvidence": {
         "source": "json-evidence",
         "format": "gaep-host-behavior-v1",
-        "reportPath": "evidence/ide-smokes/20260731T081602Z-phase-3a-claude-readiness-workflow-host-behavior.json",
+        "reportPath": "evidence/ide-smokes/20260731T092606Z-phase-3a-dashboard-host-behavior.json",
         "expectedKind": "gaep-phase-0-host-behavior-evidence-v1",
         "level": "cross-platform-packaged-engine-client-workflow-local",
         "remainingRequirements": ["Windows VSIX container", "Windows installation and activation", "rendered Remote UI automation", "installed Windows-package engine workflow", "real-provider managed read-only workflow acceptance", "interactive provider cancellation and resume", "supported-Visual-Studio matrix", "Product Owner acceptance"]
@@ -1324,6 +1341,12 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadPhase2ChangeImpactAgentModelDashboardAsync(", "\"dashboard.phase2ChangeImpactAgentModel\"", "ParsePhase2ChangeImpactAgentModelDashboardResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/Phase2ChangeImpactAgentModelDashboardProtocol.cs", "contains": ["ParsePhase2ChangeImpactAgentModelDashboardResponse(", "Phase2IntegratedAuthorityBoundary", "snapshotDigest != CanonicalDigest(WithoutProperty(dashboard, \"snapshotDigest\"))"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP exact Phase 2 Change, Impact, Agent and Model dashboard", "Impact boundary: bounded-not-complete", "not a second source of truth"] }
+        ] },
+        { "capabilityId": "phase3a-dashboard", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Show Phase 3A backlog and implementation readiness dashboard", "ShowPhase3aDashboardCommand"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadPhase3aDashboardAsync(", "\"dashboard.phase3a\"", "ParsePhase3aDashboardResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/Phase3aDashboardProtocol.cs", "contains": ["ParsePhase3aDashboardResponse(", "sourceCatalogDigest\") != CanonicalDigest(sourceElements)", "snapshotDigest != CanonicalDigest(WithoutProperty(dashboard, \"snapshotDigest\"))"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP exact Phase 3A backlog and implementation readiness dashboard", "Bounded provider workflow evidence", "grants no completeness, priority, readiness, waiver, ownership"] }
         ] },
         { "capabilityId": "phase1-summary-readiness-dashboard", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.VisualStudio/GaepToolWindowControl.xaml", "contains": ["Show Phase 1 summary and readiness", "ShowPhase1SummaryCommand"] },
