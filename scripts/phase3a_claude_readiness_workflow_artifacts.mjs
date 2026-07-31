@@ -11,7 +11,7 @@ import { verifyPhase3aCodexReadinessWorkflowArtifactDirectory } from "./phase3a_
 const repository = fileURLToPath(new URL("..", import.meta.url))
 const scenarioSourcePath = resolve(repository, "examples/phase-3a-claude-readiness-workflow/scenario.json")
 const codexScenarioSourcePath = resolve(repository, "examples/phase-3a-codex-readiness-workflow/scenario.json")
-const codexArtifactDirectory = resolve(repository, "evidence/examples/20260731T151500Z-phase-3a-codex-readiness-workflow")
+const codexArtifactDirectory = resolve(repository, "evidence/examples/20260731T160300Z-phase-3a-codex-readiness-workflow")
 const codexWorkflowReceiptSourcePath = resolve(codexArtifactDirectory, "receipt.json")
 const fileByteLimit = 4 * 1024 * 1024
 const artifactByteLimit = 24 * 1024 * 1024

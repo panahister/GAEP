@@ -25,9 +25,9 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260731T150650Z-phase-3b-controlled-claude-implementation-packages.json",
-  conformance: "evidence/ide-conformance/20260731T150650Z-phase-3b-controlled-claude-implementation.json",
-  example: "evidence/examples/20260731T151700Z-phase-3a-realistic-readiness-example/receipt.json",
+  packages: "evidence/local-packages/20260731T160050Z-phase-3b-provider-switch-implementation-packages.json",
+  conformance: "evidence/ide-conformance/20260731T160050Z-phase-3b-provider-switch-implementation.json",
+  example: "evidence/examples/20260731T160500Z-phase-3a-realistic-readiness-example/receipt.json",
 }
 const gateDefinitions = [
   { id: "typecheck", command: ["npm", "run", "typecheck"], parser: parseTypecheck },
@@ -213,6 +213,9 @@ async function verifiedSources(root, paths) {
 }
 
 function knownGaps(inputs, { stagingWorkspace, proposedChangePreview, changedUnitInventory, designApplicability, designPersonasRoles, userJourneys, informationArchitecture, screenStateInventory, designRequirements, backlogHierarchy, mvpSliceDefinition, prioritizationModel, acceptanceCriteria, definitionOfReady, definitionOfDone, implementationUnitModel, dependencyMapping, technologyProfile, boilerplateRegistry, boilerplateSelectionBinding, boilerplateCompatibilityValidation, figmaToBoilerplateMapping, designToCodeBindingRegistry, routeScreenComponentMapping, testMethodology, testInventory, highLevelDesign, lowLevelDesign, implementationReadinessGate, phase3aRealisticReadinessExample, phase3aDashboard, phase3aCodexReadinessWorkflow, phase3aClaudeReadinessWorkflow, designSystemTokenContract, accessibilityDesignRules, responsiveMultiPlatformTargets, manualFigmaExecutionPath, figmaMcpCapabilityDiscovery, figmaReadSnapshot, figmaContextImport, outboundDesignBriefPackage, governedFigmaWrite, finalizedFigmaSnapshotImport, designToRequirementBinding, designerReadyGate, designDelta, designConflictResolution, humanDesignApproval, designBaseline, designDriftDetection, phase2UxFigmaDashboard, phase2ChangeImpactAgentModelDashboard, phase2RealisticFigmaLoop }) {
+  const providerSwitchImplementation = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "provider-switch-implementation" && capability.state === "implemented"))
   const controlledClaudeImplementation = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "controlled-claude-implementation" && capability.state === "implemented"))
@@ -245,7 +248,13 @@ function knownGaps(inputs, { stagingWorkspace, proposedChangePreview, changedUni
       state: "not-established",
       basis: "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent",
     },
-    controlledClaudeImplementation
+    providerSwitchImplementation
+      ? {
+          id: "phase-3b-provider-switch-implementation-closure",
+          state: "not-established",
+          basis: "the exact immutable Provider Switching During Implementation candidate binds the current Product, Initiative, Proposed Change Preview, Isolated Staging Workspace, Controlled Codex and Controlled Claude candidates, Agent Selections, plans and recovery receipts; explicit switch direction, exact provider, agent, model, unit and path continuity, deterministic binding, provider, continuity and handoff receipts, candidate-only handoff metadata, lifecycle stop lines, prerequisites, evidence, Product Studio and four host projections are implemented locally; actual provider execution or transition, handoff recording, stage-ownership transfer, resume, supported Claude runtime or access, approval, authorization, source mutation, apply, discard, recovery execution, native-host, live-provider, security or Product Owner acceptance, release and deployment remain unestablished",
+        }
+      : controlledClaudeImplementation
       ? {
           id: "phase-3b-controlled-claude-implementation-closure",
           state: "not-established",
@@ -704,6 +713,9 @@ export async function buildPhase0AcceptanceReport({
   const controlledClaudeImplementation = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "controlled-claude-implementation" && capability.state === "implemented"))
+  const providerSwitchImplementation = inputs.conformance.hosts.every((host) =>
+    host.capabilities.some((capability) =>
+      capability.capabilityId === "provider-switch-implementation" && capability.state === "implemented"))
   const designSystemTokenContract = inputs.conformance.hosts.every((host) =>
     host.capabilities.some((capability) =>
       capability.capabilityId === "design-system-token-contract" && capability.state === "implemented"))
@@ -839,8 +851,10 @@ export async function buildPhase0AcceptanceReport({
   const report = {
     schemaVersion: 1,
     kind: "gaep-phase-acceptance-report-v1",
-    phase: controlledClaudeImplementation || controlledCodexImplementation || stagingWorkspace || proposedChangePreview || changedUnitInventory ? "phase-3b-implementation" : implementationReadinessGate || lowLevelDesign || highLevelDesign || testInventory || testMethodology || routeScreenComponentMapping || designToCodeBindingRegistry || figmaToBoilerplateMapping || boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
-    evidenceScope: controlledClaudeImplementation
+    phase: providerSwitchImplementation || controlledClaudeImplementation || controlledCodexImplementation || stagingWorkspace || proposedChangePreview || changedUnitInventory ? "phase-3b-implementation" : implementationReadinessGate || lowLevelDesign || highLevelDesign || testInventory || testMethodology || routeScreenComponentMapping || designToCodeBindingRegistry || figmaToBoilerplateMapping || boilerplateCompatibilityValidation || boilerplateSelectionBinding || boilerplateRegistry || technologyProfile || dependencyMapping || implementationUnitModel || definitionOfDone || definitionOfReady || acceptanceCriteria || prioritizationModel || mvpSliceDefinition || backlogHierarchy ? "phase-3a-delivery-planning" : phase2ChangeImpactAgentModelDashboard || phase2UxFigmaDashboard || designDriftDetection || designBaseline || humanDesignApproval || designConflictResolution || designDelta || designerReadyGate || designToRequirementBinding || finalizedFigmaSnapshotImport || governedFigmaWrite || outboundDesignBriefPackage || figmaContextImport || figmaReadSnapshot || figmaMcpCapabilityDiscovery || manualFigmaExecutionPath || responsiveMultiPlatformTargets || accessibilityDesignRules || designSystemTokenContract || designRequirements || screenStateInventory || informationArchitecture || userJourneys || designPersonasRoles || designApplicability ? "phase-2-ux-figma-loop" : p0P4 ? "phase-1-p0-p4-core" : "phase-0-1a-foundation",
+    evidenceScope: providerSwitchImplementation
+      ? "phase-3b-provider-switch-implementation-local"
+      : controlledClaudeImplementation
       ? "phase-3b-controlled-claude-implementation-local"
       : controlledCodexImplementation
       ? "phase-3b-controlled-codex-implementation-local"
@@ -992,7 +1006,9 @@ export async function buildPhase0AcceptanceReport({
     testsDigest: canonicalDigest(testEvidence),
     knownGaps: gaps,
     knownGapsDigest: canonicalDigest(gaps),
-    claimBoundary: controlledClaudeImplementation
+    claimBoundary: providerSwitchImplementation
+      ? "This report binds the exact governed Provider Switching During Implementation candidate lifecycle, immutable revision history, exact current Product, Initiative, Proposed Change Preview, Isolated Staging Workspace, Controlled Codex and Controlled Claude Implementation candidate bindings, exact source and target Agent Selections, provider, agent and model identities, one-for-one unit and path continuity, exact source and target plans and recovery receipts, deterministic binding, provider, continuity and handoff receipts, candidate-only handoff metadata, explicit provider-transition, handoff, stage-ownership, resume, approval, authorization, source-mutation, apply, discard and recovery stop lines, prerequisites, evidence, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. It does not establish actual provider execution or transition, handoff recording, stage-ownership transfer, resume, a supported Claude runtime, authentication, effective administrator policy, credential, workspace or tool access, approval, authorization, source mutation, apply, discard, recovery execution, repository, path, source, target or diff truth, file or diff content, acceptance, merge, release, deployment, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion or action authority."
+      : controlledClaudeImplementation
       ? "This report binds the exact governed Controlled Claude Implementation candidate lifecycle, immutable revision history, exact current Product, Initiative, Proposed Change Preview, Isolated Staging Workspace and portable Claude Agent Selection bindings, exact Claude Code provider, agent, model and capability identity, one controlled unit and path per exact preview and staging candidate, repository-relative resource scopes, zero path tool capabilities, one explicit deny-all tool permission, deterministic context-only plan, runtime-boundary and staged-effect receipts, explicit approval and authorization prerequisites, recovery metadata, evidence, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. It does not establish a supported Claude runtime, authentication, effective administrator policy, credential access, administrator-policy bypass, workspace or tool access, resume capability, actual provider execution, real stage creation, approval, authorization, source mutation, apply, discard, cancellation, resume or recovery execution, repository, path, source, target or diff truth, file or diff content, acceptance, merge, release, deployment, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion or action authority."
       : controlledCodexImplementation
       ? "This report binds the exact governed Controlled Codex Implementation candidate lifecycle, immutable revision history, exact current Product, Initiative, Proposed Change Preview, Isolated Staging Workspace and portable Codex Agent Selection bindings, exact provider, agent, model and capability identity, one controlled unit and path per exact preview and staging candidate, bounded repository-relative resource and tool scopes, deterministic plan and staged-effect receipts, explicit approval and authorization prerequisites, cancellation, resume and recovery states, apply and discard preconditions, evidence, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. It does not establish actual provider execution, real stage creation, approval, authorization, source mutation, apply, discard, cancellation, resume or recovery execution, repository, path, source, target or diff truth, file or diff content, acceptance, merge, release, deployment, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion or action authority."

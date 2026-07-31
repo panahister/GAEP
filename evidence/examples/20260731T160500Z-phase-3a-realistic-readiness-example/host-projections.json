@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-realistic-readiness-host-projections",
+  "scenario": {
+    "id": "phase-3a-atlas-realistic-readiness-example-v1",
+    "digest": "sha256:f2564b5cbea1b6b564d221bea28c48b2d0944dff09c986cad0b9303883688aa9"
+  },
+  "productStudio": {
+    "host": "vscode",
+    "viewId": "phase3aDashboard",
+    "sourcePath": "apps/vscode/src/current-engine-studio-data-source.ts",
+    "sourceDigest": "sha256:c79d8b3e8ff51f3797509ddcff69a39647237786123dba26667654366390470e",
+    "dashboardSnapshotDigest": "sha256:0a4ce9983140f8353ecc5f0775c3dcee66ef6799c8107f8d1a96642a10beeaba",
+    "projectionState": "implemented-local"
+  },
+  "hosts": [
+    {
+      "id": "vscode",
+      "phase3aDashboard": {
+        "state": "implemented",
+        "sourceProbesVerified": 3,
+        "snapshotDigest": "sha256:0a4ce9983140f8353ecc5f0775c3dcee66ef6799c8107f8d1a96642a10beeaba"
+      },
+      "packageStatus": "produced",
+      "runtimeLevel": "installed-package-bundled-engine-workflow-local",
+      "runtimeSourceSnapshotDigest": "sha256:fb346fb0fcb4e193f6ae91f052bf71ca8c9056bdc6e09258d82b167002e8b87c",
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "kiro",
+      "phase3aDashboard": {
+        "state": "implemented",
+        "sourceProbesVerified": 3,
+        "snapshotDigest": "sha256:0a4ce9983140f8353ecc5f0775c3dcee66ef6799c8107f8d1a96642a10beeaba"
+      },
+      "packageStatus": "produced",
+      "runtimeLevel": "compatible-host-packaged-engine-workflow-local",
+      "runtimeSourceSnapshotDigest": "sha256:1e3b7e3af0340d825430ba3aae618df673601d52e66f3eae6d58ec3bcfa5f5c3",
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "rider",
+      "phase3aDashboard": {
+        "state": "implemented",
+        "sourceProbesVerified": 4,
+        "snapshotDigest": "sha256:0a4ce9983140f8353ecc5f0775c3dcee66ef6799c8107f8d1a96642a10beeaba"
+      },
+      "packageStatus": "produced",
+      "runtimeLevel": "native-plugin-code-activation-startup-archive-install-and-packaged-engine-client-workflow-local",
+      "runtimeSourceSnapshotDigest": "sha256:507b1b08ca215eb2fb5a528b38041708ecd0888be04da21e3d67d6c9db820074",
+      "acceptance": "incomplete"
+    },
+    {
+      "id": "visual-studio",
+      "phase3aDashboard": {
+        "state": "implemented",
+        "sourceProbesVerified": 4,
+        "snapshotDigest": "sha256:0a4ce9983140f8353ecc5f0775c3dcee66ef6799c8107f8d1a96642a10beeaba"
+      },
+      "packageStatus": "not-produced-on-this-platform",
+      "runtimeLevel": "cross-platform-packaged-engine-client-workflow-local",
+      "runtimeSourceSnapshotDigest": "sha256:b13d32e722dd8e09fa34103d10e5f37a4982f70c009511aba7dc8a041ec4df8e",
+      "acceptance": "incomplete"
+    }
+  ],
+  "summary": {
+    "productStudioProjectionCount": 1,
+    "hostCount": 4,
+    "implementedHostProjectionCount": 4,
+    "acceptedHostCount": 0
+  },
+  "authorityBoundary": "host-projections-bind-current-local-source-package-runtime-and-dashboard-evidence-not-native-interaction-live-provider-or-host-acceptance",
+  "hostProjectionDigest": "sha256:b6d499c4a14e7a7d6152b60fbf5aad5623729c1dfc77b044952c1e22d83258ca"
+}

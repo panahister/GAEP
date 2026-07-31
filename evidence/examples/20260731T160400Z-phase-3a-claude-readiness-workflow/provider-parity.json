@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-claude-readiness-provider-parity",
+  "scenario": {
+    "id": "phase-3a-atlas-claude-readiness-workflow-v1",
+    "digest": "sha256:b59dfa90d756d3fa4a680e8c97ef48a8335a5410482f98acda21101cf2b2c9c9"
+  },
+  "codex": {
+    "scenarioId": "phase-3a-atlas-codex-readiness-workflow-v1",
+    "provider": {
+      "adapterId": "gaep.codex-cli",
+      "agentId": "codex-cli",
+      "executionMode": "deterministic-offline-staged-contract",
+      "liveRequestExpected": false
+    },
+    "scenarioSemanticDigest": "sha256:c2970f4784cfbc8849246a13770c56ce08edf799d08e849540d7b4d93c381c72",
+    "workflowCompositionDigest": "sha256:2bb4e40bb3645b479849bd90ec8541483923268609b1cf964b9c35e471f97006"
+  },
+  "claude": {
+    "scenarioId": "phase-3a-atlas-claude-readiness-workflow-v1",
+    "provider": {
+      "adapterId": "gaep.claude-code-cli",
+      "agentId": "claude-code-cli",
+      "executionMode": "deterministic-offline-tool-free-context-contract",
+      "liveRequestExpected": false,
+      "stagingExpected": false,
+      "toolDefinitionCountExpected": 0,
+      "writeScopeCountExpected": 0
+    },
+    "scenarioSemanticDigest": "sha256:c2970f4784cfbc8849246a13770c56ce08edf799d08e849540d7b4d93c381c72",
+    "receiptSummaryDigest": "sha256:7a1a526288ec3ef910cbbfea8fc0e53b8cf57b6788950a4724cc053fecb53ad7",
+    "execution": {
+      "mode": "claude-context-only",
+      "stagingPresent": false,
+      "toolDefinitionCount": 0,
+      "writeScopeCount": 0
+    }
+  },
+  "summary": {
+    "semanticParityMismatchCount": 0,
+    "stageCount": 20,
+    "reopenObservationCount": 2,
+    "failureRecoveryCaseCount": 3,
+    "hostProjectionCount": 4,
+    "liveProviderRequestCount": 0,
+    "implementationEffectsApplied": 0
+  },
+  "authorityBoundary": "provider-parity-proves-deterministic-fixture-contract-equivalence-not-live-provider-runtime-authentication-policy-semantic-quality-readiness-or-action-authority",
+  "parityDigest": "sha256:6722bcf26b730ddb87c059c761b4b472d699ed96f5b8adca4714b438ce7452e0"
+}
