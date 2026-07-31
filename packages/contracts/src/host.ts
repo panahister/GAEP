@@ -20,6 +20,7 @@ import { routeScreenComponentMappingInputSchema } from "./route-screen-component
 import { testMethodologyInputSchema } from "./test-methodology.js"
 import { testInventoryInputSchema } from "./test-inventory.js"
 import { highLevelDesignInputSchema } from "./high-level-design.js"
+import { lowLevelDesignInputSchema } from "./low-level-design.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -831,6 +832,23 @@ export const hostHighLevelDesignReviseParamsSchema = z.object({
   record: highLevelDesignInputSchema,
 }).strict()
 
+export const hostLowLevelDesignReadParamsSchema = z.object({
+  initiativeId: z.string().uuid(),
+  implementationUnitId: z.string().uuid(),
+}).strict()
+
+export const hostLowLevelDesignCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: lowLevelDesignInputSchema,
+}).strict()
+
+export const hostLowLevelDesignReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: lowLevelDesignInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1538,6 +1556,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("planning.highLevelDesign.revise", hostHighLevelDesignReviseParamsSchema),
   requestVariant("planning.highLevelDesign.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("planning.highLevelDesign.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("planning.lowLevelDesign.read", hostLowLevelDesignReadParamsSchema),
+  requestVariant("planning.lowLevelDesign.create", hostLowLevelDesignCreateParamsSchema),
+  requestVariant("planning.lowLevelDesign.revise", hostLowLevelDesignReviseParamsSchema),
+  requestVariant("planning.lowLevelDesign.assess", hostLowLevelDesignReadParamsSchema),
+  requestVariant("planning.lowLevelDesign.snapshot", hostLowLevelDesignReadParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

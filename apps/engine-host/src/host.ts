@@ -184,6 +184,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "planning.highLevelDesign.revise",
   "planning.highLevelDesign.assess",
   "planning.highLevelDesign.snapshot",
+  "planning.lowLevelDesign.read",
+  "planning.lowLevelDesign.create",
+  "planning.lowLevelDesign.revise",
+  "planning.lowLevelDesign.assess",
+  "planning.lowLevelDesign.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1615,6 +1620,21 @@ export class EngineHost {
         return this.engine.highLevelDesign.assess(request.params.initiativeId)
       case "planning.highLevelDesign.snapshot":
         return this.engine.highLevelDesign.project(request.params.initiativeId)
+      case "planning.lowLevelDesign.read":
+        return await this.engine.lowLevelDesign.readCurrent(request.params.initiativeId, request.params.implementationUnitId) ?? null
+      case "planning.lowLevelDesign.create":
+        return this.engine.lowLevelDesign.create(request.params.record, actorId(request.params.actorId))
+      case "planning.lowLevelDesign.revise":
+        return this.engine.lowLevelDesign.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "planning.lowLevelDesign.assess":
+        return this.engine.lowLevelDesign.assess(request.params.initiativeId, request.params.implementationUnitId)
+      case "planning.lowLevelDesign.snapshot":
+        return this.engine.lowLevelDesign.project(request.params.initiativeId, request.params.implementationUnitId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":
