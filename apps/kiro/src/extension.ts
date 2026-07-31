@@ -48,6 +48,7 @@ import {
   type TestMethodologyProjection,
   type TestInventoryProjection,
   type HighLevelDesignProjection,
+  type LowLevelDesignProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -188,6 +189,7 @@ const commandIds = {
   testMethodology: "gaepKiro.testMethodology.inspect",
   testInventory: "gaepKiro.testInventory.inspect",
   highLevelDesign: "gaepKiro.highLevelDesign.inspect",
+  lowLevelDesign: "gaepKiro.lowLevelDesign.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -345,6 +347,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.testMethodology, (input?: unknown) => runUserCommand(() => showTestMethodology(pool, input))),
     vscode.commands.registerCommand(commandIds.testInventory, (input?: unknown) => runUserCommand(() => showTestInventory(pool, input))),
     vscode.commands.registerCommand(commandIds.highLevelDesign, (input?: unknown) => runUserCommand(() => showHighLevelDesign(pool, input))),
+    vscode.commands.registerCommand(commandIds.lowLevelDesign, (input?: unknown) => runUserCommand(() => showLowLevelDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2575,6 +2578,56 @@ async function showHighLevelDesign(
       `Updated: ${record.updatedAt}`,
     ] : []), "",
     "Candidate identities, counts, statuses, and structure, dependency, trace, coverage, ownership, assessment, and snapshot digests only; no design narrative, diagram, interface, data flow, technology, owner, evidence source content, personal data, secret, credential, or machine path. This inspection does not establish architecture, repository, runtime, or deployment truth or completeness, architecture approval, privacy or security approval, owner appointment, implementation readiness, acceptance, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`,
+    `Privacy boundary: ${projection.privacyBoundary}`,
+    `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showLowLevelDesign(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<LowLevelDesignProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Low-Level Design inspection", "Initiative ID")
+  const suppliedUnit = typeof input === "object" && input !== null && "implementationUnitId" in input
+    ? (input as { implementationUnitId?: unknown }).implementationUnitId
+    : undefined
+  const implementationUnitId = typeof suppliedUnit === "string" ? suppliedUnit :
+    await collectUuid("Enter the exact Implementation Unit UUID for Low-Level Design inspection", "Implementation Unit ID")
+  const projection = await client.readLowLevelDesign(initiativeId, implementationUnitId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Low-Level Design candidate", "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Implementation Unit: ${status.implementationUnitId ?? "unbound"}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Exact dependencies: ${status.presentDependencyCount}/${status.dependencyCount}`,
+    `Candidate structure: ${status.definedElementCount}/${status.elementCount} elements · ${status.definedRelationCount}/${status.relationCount} relations · ${status.selectedDecisionCount}/${status.decisionCount} decisions`,
+    `Candidate structural gaps: ${status.conflictCount} conflicts · ${status.missingCount} missing · ${status.orphanRelationCount} orphan relations`,
+    `Candidate integrity gaps: ${status.traceGapCount} trace · ${status.evidenceGapCount} evidence · ${status.ownershipGapCount} ownership · ${status.uncoveredUnitCount} uncovered units`,
+    `Candidate freshness gaps: ${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+    ...status.reasons.map((reason) => `  - ${reason}`), "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [
+      `Structure receipt digest: ${record.structureReceiptDigest}`,
+      `Dependency receipt digest: ${record.dependencyReceiptDigest}`,
+      `Trace receipt digest: ${record.traceReceiptDigest}`,
+      `Coverage receipt digest: ${record.coverageReceiptDigest}`,
+      `Ownership receipt digest: ${record.ownershipReceiptDigest}`,
+      `Assessment receipt digest: ${record.assessmentReceiptDigest}`,
+      `Candidate coverage: ${record.elementCount} elements · ${record.relationCount} relations · ${record.decisionCount} decisions · ${record.reviewState}`,
+      `Updated: ${record.updatedAt}`,
+    ] : []), "",
+    "Candidate identities, counts, statuses, and receipt digests only; no design narrative, module, class, component, interface, data contract, algorithm, state, error recovery, authorization, observability, test hook, owner, evidence source content, personal data, secret, credential, or machine path. This inspection does not establish design, repository, source, runtime, or deployment truth or completeness, design approval, privacy or security approval, owner appointment, implementation readiness, acceptance, release, deployment, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`,
     `Privacy boundary: ${projection.privacyBoundary}`,
     `Authority boundary: ${projection.authorityBoundary}`,

@@ -100,6 +100,7 @@
     "onCommand:gaepKiro.testMethodology.inspect",
     "onCommand:gaepKiro.testInventory.inspect",
     "onCommand:gaepKiro.highLevelDesign.inspect",
+    "onCommand:gaepKiro.lowLevelDesign.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -394,6 +395,10 @@
       {
         "command": "gaepKiro.highLevelDesign.inspect",
         "title": "GAEP for Kiro: Inspect Governed High-Level Design Candidate"
+      },
+      {
+        "command": "gaepKiro.lowLevelDesign.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Low-Level Design Candidate"
       },
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",

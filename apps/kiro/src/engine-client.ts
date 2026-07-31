@@ -47,6 +47,7 @@ import {
   testMethodologyProjectionSchema,
   testInventoryProjectionSchema,
   highLevelDesignProjectionSchema,
+  lowLevelDesignProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -120,6 +121,7 @@ import {
   type TestMethodologyProjection,
   type TestInventoryProjection,
   type HighLevelDesignProjection,
+  type LowLevelDesignProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -1089,6 +1091,23 @@ export class GaepEngineClient {
       const projection = parsed.data
       const { snapshotDigest, ...projectionBody } = projection
       if (projection.initiative.id.toLowerCase() !== initiativeId ||
+          snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readLowLevelDesign(initiativeValue: string, implementationUnitValue: string): Promise<LowLevelDesignProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const implementationUnitId = normalizeUuid(implementationUnitValue, "Implementation Unit ID")
+      const parsed = lowLevelDesignProjectionSchema.safeParse(
+        await this.request("planning.lowLevelDesign.snapshot", { initiativeId, implementationUnitId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId ||
+          projection.status.implementationUnitId?.toLowerCase() !== implementationUnitId ||
           snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
       return projection
     })
