@@ -2549,6 +2549,42 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Low-Level Design projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val implementationUnitId = UUID.fromString("f2f2f2f2-f2f2-42f2-82f2-f2f2f2f2f2f2")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("low-level-design-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readLowLevelDesign(entryId, implementationUnitId)
+            assertEquals("attention-required", projection.state)
+            assertEquals("held", projection.reviewState)
+            assertEquals(implementationUnitId, projection.implementationUnitId)
+            assertEquals(16, projection.dependencyCount)
+            assertEquals(12, projection.elementCount)
+            assertEquals(14, projection.relationCount)
+            assertEquals(5, projection.decisionCount)
+            assertEquals(2, projection.traceGapCount)
+            assertEquals("sha256:${"1".repeat(64)}", projection.candidate?.structureReceiptDigest)
+            val rendered = RiderProductController(client).readLowLevelDesign(entryId, implementationUnitId)
+            assertTrue(rendered.contains("GAEP governed Low-Level Design candidate"))
+            assertTrue(rendered.contains("16/16"))
+            assertTrue(rendered.contains("10/12 elements · 11/14 relations · 4/5 decisions"))
+            assertTrue(rendered.contains("no design narrative, module, class, component, interface, data contract"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("elements" + "\":"))
+        }
+        listOf("bad-low-level-design-snapshot-binding", "bad-low-level-design-snapshot-digest", "bad-low-level-design-snapshot-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readLowLevelDesign(entryId, implementationUnitId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

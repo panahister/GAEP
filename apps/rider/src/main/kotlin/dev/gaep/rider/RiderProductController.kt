@@ -2917,6 +2917,46 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Snapshot digest: ${projection.snapshotDigest}")
     }
 
+    fun readLowLevelDesign(initiativeId: UUID, implementationUnitId: UUID): String {
+        val product = client.readProductBinding()
+        val initiative = client.readInitiative(initiativeId)
+        val projection = client.readLowLevelDesign(initiativeId, implementationUnitId)
+        require(projection.productId == product.id && projection.productRevision == product.revision &&
+            projection.productDigest == product.digest && projection.initiativeId == initiative.id &&
+            projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest &&
+            projection.initiativeState == initiative.state && projection.implementationUnitId == implementationUnitId) {
+            "Low-Level Design projection does not match exact current Product, Initiative, and Implementation Unit"
+        }
+        return renderLowLevelDesign(projection)
+    }
+
+    fun renderLowLevelDesign(projection: LowLevelDesignProjection): String = buildString {
+        appendLine("GAEP governed Low-Level Design candidate")
+        appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Implementation Unit: ${projection.implementationUnitId}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine("Exact dependencies: ${projection.presentDependencyCount}/${projection.dependencyCount}")
+        appendLine("Candidate structure: ${projection.definedElementCount}/${projection.elementCount} elements · ${projection.definedRelationCount}/${projection.relationCount} relations · ${projection.selectedDecisionCount}/${projection.decisionCount} decisions")
+        appendLine("Candidate structural gaps: ${projection.conflictCount} conflicts · ${projection.missingCount} missing · ${projection.orphanRelationCount} orphan relations")
+        appendLine("Candidate integrity gaps: ${projection.traceGapCount} trace · ${projection.evidenceGapCount} evidence · ${projection.ownershipGapCount} ownership · ${projection.uncoveredUnitCount} uncovered units")
+        appendLine("Candidate freshness gaps: ${projection.staleBindingCount} stale bindings · ${projection.staleDependencyCount} stale dependencies · ${projection.invalidCandidateCount} invalid candidates · ${projection.unresolvedQuestionCount} questions")
+        projection.reasons.forEach { appendLine("  - $it") }
+        appendLine()
+        appendLine("Candidate record: ${projection.candidate?.let { "${it.id}@${it.revision} · candidate · ${it.digest}" } ?: "not recorded"}")
+        projection.candidate?.let {
+            appendLine("Structure receipt digest: ${it.structureReceiptDigest}")
+            appendLine("Dependency receipt digest: ${it.dependencyReceiptDigest}")
+            appendLine("Trace receipt digest: ${it.traceReceiptDigest}")
+            appendLine("Coverage receipt digest: ${it.coverageReceiptDigest}")
+            appendLine("Ownership receipt digest: ${it.ownershipReceiptDigest}")
+            appendLine("Assessment receipt digest: ${it.assessmentReceiptDigest}")
+        }
+        appendLine()
+        appendLine("Candidate identities, counts, statuses, and receipt digests only; no design narrative, module, class, component, interface, data contract, algorithm, state, error recovery, authorization, observability, test hook, owner, evidence source content, personal data, secret, credential, or machine path. This inspection does not establish design, repository, source, runtime, or deployment truth or completeness, design approval, privacy or security approval, owner appointment, implementation readiness, acceptance, release, deployment, or action authority.")
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+    }
+
     fun renderTestInventory(projection: TestInventoryProjection): String = buildString {
         appendLine("GAEP governed Test Inventory candidate")
         appendLine()

@@ -60,6 +60,8 @@ private val routeScreenComponentMappingId = UUID.fromString("cdcdcdcd-cdcd-4dcd-
 private val testMethodologyId = UUID.fromString("dededede-dede-4ede-8ede-dededededede")
 private val testInventoryId = UUID.fromString("efefefef-efef-4fef-8fef-efefefefefef")
 private val highLevelDesignId = UUID.fromString("f0f0f0f0-f0f0-40f0-80f0-f0f0f0f0f0f0")
+private val lowLevelDesignId = UUID.fromString("f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1")
+private val lowLevelImplementationUnitId = UUID.fromString("f2f2f2f2-f2f2-42f2-82f2-f2f2f2f2f2f2")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -375,6 +377,9 @@ fun main(arguments: Array<String>) {
                 workspacePath,
             )
             "planning.highLevelDesign.snapshot" -> handleHighLevelDesign(
+                id, request.getAsJsonObject("params"), workspacePath,
+            )
+            "planning.lowLevelDesign.snapshot" -> handleLowLevelDesign(
                 id, request.getAsJsonObject("params"), workspacePath,
             )
             "design.systemTokenContract.snapshot" -> handleDesignSystemTokenContract(
@@ -5164,6 +5169,60 @@ private fun handleHighLevelDesign(id: Long, params: JsonObject, workspacePath: S
     val result = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
     if (workspacePath.endsWith("bad-high-level-design-snapshot-digest")) result.getAsJsonObject("candidate").addProperty("elementCount", 9)
     if (workspacePath.endsWith("bad-high-level-design-snapshot-private")) {
+        result.addProperty("designNarrative", "$privateRoot/$privateCredential")
+        val body = result.deepCopy().also { it.remove("snapshotDigest") }
+        result.addProperty("snapshotDigest", canonicalDigest(body))
+    }
+    writeResult(id, result)
+}
+
+private fun handleLowLevelDesign(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("implementationUnitId", "initiativeId") || params.get("initiativeId").asString != initiativeId.toString() || params.get("implementationUnitId").asString != lowLevelImplementationUnitId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE LOW LEVEL DESIGN PARAMS")
+        return
+    }
+    val candidateDigest = "sha256:${"8".repeat(64)}"
+    val status = JsonObject().apply {
+        addProperty("schemaVersion", 1); addProperty("kind", "low-level-design-status")
+        addProperty("productId", productId.toString()); addProperty("productRevision", 7)
+        addProperty("initiativeId", initiativeId.toString()); addProperty("initiativeRevision", initiativeState.get("revision").asLong); addProperty("implementationUnitId", lowLevelImplementationUnitId.toString())
+        add("candidate", JsonObject().apply {
+            addProperty("recordId", lowLevelDesignId.toString()); addProperty("revision", 2); addProperty("digest", candidateDigest)
+        })
+        listOf("dependencyCount" to 16, "presentDependencyCount" to 16, "elementCount" to 12,
+            "definedElementCount" to 10, "relationCount" to 14, "definedRelationCount" to 11,
+            "decisionCount" to 5, "selectedDecisionCount" to 4, "qualityAttributeCount" to 5,
+            "deploymentViewCount" to 3, "conflictCount" to 1, "missingCount" to 1,
+            "orphanRelationCount" to 1, "traceGapCount" to 2, "evidenceGapCount" to 1,
+            "ownershipGapCount" to 1, "uncoveredUnitCount" to 0, "staleBindingCount" to 0,
+            "staleDependencyCount" to 0, "invalidCandidateCount" to 1, "unresolvedQuestionCount" to 2,
+        ).forEach { (name, value) -> addProperty(name, value) }
+        addProperty("reviewState", "held"); addProperty("state", "attention-required")
+        add("reasons", JsonArray().apply { add("One or more Low-Level Design candidates require human review") })
+        addProperty("assessedAt", "2026-07-31T03:00:00.000Z")
+        addProperty("authorityBoundary", "low-level-design-status-is-observational-and-does-not-establish-design-repository-source-runtime-or-deployment-truth-or-completeness-design-baseline-or-approval-privacy-or-security-approval-owner-appointment-implementation-readiness-acceptance-release-deployment-or-action-authority")
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1); addProperty("kind", "low-level-design-projection")
+        add("product", JsonObject().apply { addProperty("id", productId.toString()); addProperty("revision", 7); addProperty("digest", canonicalDigest(productRecord())) })
+        add("initiative", JsonObject().apply { addProperty("id", initiativeId.toString()); addProperty("revision", initiativeState.get("revision").asLong); addProperty("digest", canonicalDigest(initiativeState)); addProperty("state", initiativeState.get("state").asString) })
+        add("status", status)
+        add("candidate", JsonObject().apply {
+            addProperty("id", lowLevelDesignId.toString()); addProperty("revision", 2); addProperty("digest", candidateDigest); addProperty("state", "candidate")
+            addProperty("structureReceiptDigest", "sha256:${"1".repeat(64)}"); addProperty("dependencyReceiptDigest", "sha256:${"2".repeat(64)}")
+            addProperty("traceReceiptDigest", "sha256:${"3".repeat(64)}"); addProperty("coverageReceiptDigest", "sha256:${"4".repeat(64)}")
+            addProperty("ownershipReceiptDigest", "sha256:${"5".repeat(64)}"); addProperty("assessmentReceiptDigest", "sha256:${"6".repeat(64)}")
+            addProperty("elementCount", 12); addProperty("relationCount", 14); addProperty("decisionCount", 5)
+            addProperty("reviewState", "held"); addProperty("updatedAt", "2026-07-31T02:59:00.000Z")
+        })
+        addProperty("observedAt", "2026-07-31T03:00:00.000Z")
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-structure-dependency-trace-coverage-ownership-assessment-snapshot-digests-only-not-design-narratives-modules-classes-components-interfaces-data-contracts-algorithms-state-error-recovery-authorization-observability-test-hooks-technologies-owners-evidence-source-content-personal-data-secrets-credentials-or-machine-paths")
+        addProperty("authorityBoundary", "low-level-design-projection-is-read-only-and-does-not-establish-design-repository-source-runtime-or-deployment-truth-or-completeness-design-baseline-or-approval-privacy-or-security-approval-owner-appointment-implementation-readiness-acceptance-release-deployment-or-action-authority")
+    }
+    if (workspacePath.endsWith("bad-low-level-design-snapshot-binding")) content.getAsJsonObject("status").addProperty("implementationUnitId", lowLevelDesignId.toString())
+    val result = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-low-level-design-snapshot-digest")) result.getAsJsonObject("candidate").addProperty("elementCount", 13)
+    if (workspacePath.endsWith("bad-low-level-design-snapshot-private")) {
         result.addProperty("designNarrative", "$privateRoot/$privateCredential")
         val body = result.deepCopy().also { it.remove("snapshotDigest") }
         result.addProperty("snapshotDigest", canonicalDigest(body))

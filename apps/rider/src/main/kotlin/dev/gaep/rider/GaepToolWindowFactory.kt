@@ -831,6 +831,22 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += highLevelDesignButton
         actions.add(highLevelDesignButton)
 
+        val lowLevelDesignButton = JButton("Inspect Low-Level Design…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project, "Inspect Low-Level Design", "Enter the exact Initiative UUID.", "Initiative ID",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                val implementationUnitId = promptManagedUuid(
+                    project, "Inspect Low-Level Design", "Enter the exact Implementation Unit UUID.", "Implementation Unit ID",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Low-Level Design", status, output, buttons) {
+                    controller.readLowLevelDesign(initiativeId, implementationUnitId)
+                }
+            }
+        }
+        buttons += lowLevelDesignButton
+        actions.add(lowLevelDesignButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

@@ -510,6 +510,19 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readLowLevelDesign(initiativeId: UUID, implementationUnitId: UUID): LowLevelDesignProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        require(implementationUnitId != UUID(0, 0)) { "Implementation Unit ID must be a non-empty UUID" }
+        val params = JsonObject().apply {
+            addProperty("initiativeId", initiativeId.toString())
+            addProperty("implementationUnitId", implementationUnitId.toString())
+        }
+        return portableRequest("planning.lowLevelDesign.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseLowLevelDesignEnvelope(envelope, initiativeId, implementationUnitId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
