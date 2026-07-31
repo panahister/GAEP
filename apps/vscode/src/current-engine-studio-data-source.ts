@@ -41,6 +41,7 @@ import type {
   BoilerplateConstraintEnforcementProjection,
   BacklogToCodeTraceabilityProjection,
   ApplyDiscardFoundationProjection,
+  ScopedApplyProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -313,6 +314,9 @@ export interface CurrentStudioEngineReader {
   applyDiscardFoundation?: {
     project(initiativeId: string): Promise<ApplyDiscardFoundationProjection>
   }
+  scopedApply?: {
+    project(initiativeId: string): Promise<ScopedApplyProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -515,6 +519,7 @@ interface ObservedStudioState {
   boilerplateConstraintEnforcementProjections: Map<string, BoilerplateConstraintEnforcementProjection>
   backlogToCodeTraceabilityProjections: Map<string, BacklogToCodeTraceabilityProjection>
   applyDiscardFoundationProjections: Map<string, ApplyDiscardFoundationProjection>
+  scopedApplyProjections: Map<string, ScopedApplyProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3964,6 +3969,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     boilerplateConstraintEnforcements: boilerplateConstraintEnforcementTable(state.boilerplateConstraintEnforcementProjections.values()),
     backlogToCodeTraceability: backlogToCodeTraceabilityTable(state.backlogToCodeTraceabilityProjections.values()),
     applyDiscardFoundations: applyDiscardFoundationTable(state.applyDiscardFoundationProjections.values()),
+    scopedApplies: scopedApplyTable(state.scopedApplyProjections.values()),
   }
 }
 
@@ -5561,6 +5567,39 @@ export function applyDiscardFoundationTable(projections: Iterable<ApplyDiscardFo
       { key: "receipts", label: "Deterministic receipts" }, { key: "boundary", label: "Privacy and authority boundary" },
     ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Apply/Discard Foundation candidate",
       "Create the metadata-only whole-stage decision candidate through the governed engine after every exact current change, preview, staging, controlled-provider and backlog-trace predecessor exists. Refresh Product Studio after a superseding revision. This view cannot create or inspect a real stage, mutate source, execute apply, discard or recovery, establish approval or authorization, or accept work.") } : {}) }
+}
+
+export function scopedApplyTable(projections: Iterable<ScopedApplyProjection>): StudioTableSnapshot {
+  const rows = [...projections].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const selectedRows = record.selectedPaths.map((path) => ({ id: path.id, cells: {
+      initiative: projection.initiative.id, stage: record.stageIdentity.stageKey, generation: String(record.stageIdentity.generation),
+      partition: "selected", key: path.selectionKey, path: path.pathCandidate, disposition: "scoped-apply-candidate", scope: path.scopeState,
+      envelope: record.writeEnvelopeCandidates.includes(path.pathCandidate) ? "inside exact candidate envelope" : "outside candidate envelope",
+      assessment: `${projection.status.state} · ${projection.status.reviewState} · ${projection.status.staleBindingCount} stale binding · ${projection.status.coverageGapCount} coverage gap · ${projection.status.outOfEnvelopeCount} out of envelope · ${projection.status.invalidCandidateCount} invalid`,
+      receipts: `${record.dependencyReceiptDigest} · ${record.stageReceiptDigest} · ${record.selectionReceiptDigest} · ${record.exclusionReceiptDigest} · ${record.envelopeReceiptDigest} · ${record.recoveryReceiptDigest}`,
+      boundary: "Scoped subset metadata only. Stage identity, selected path, candidate write envelope, recovery controls and evidence links are unverified candidates; this view does not inspect or create a real stage, inspect or mutate source, execute apply or recovery, establish approval, authorization, outcome or acceptance, or grant action authority.",
+    }, state: path.scopeState === "candidate-exact" ? projection.status.state : path.scopeState, actions: [] }))
+    const excludedRows = record.excludedPaths.map((path) => ({ id: path.id, cells: {
+      initiative: projection.initiative.id, stage: record.stageIdentity.stageKey, generation: String(record.stageIdentity.generation),
+      partition: "excluded", key: path.exclusionKey, path: path.pathCandidate, disposition: path.reason, scope: "excluded-from-scoped-apply",
+      envelope: "not in candidate write envelope",
+      assessment: `${projection.status.state} · excluded ${projection.status.excludedPathCount} · selected ${projection.status.selectedPathCount} · stage ${projection.status.stagePathCount}`,
+      receipts: `${record.dependencyReceiptDigest} · ${record.stageReceiptDigest} · ${record.selectionReceiptDigest} · ${record.exclusionReceiptDigest} · ${record.envelopeReceiptDigest} · ${record.recoveryReceiptDigest}`,
+      boundary: "Excluded path metadata only. Exclusion from this scoped-apply candidate is not discard, cleanup, source mutation, approval, acceptance or action authority.",
+    }, state: "excluded", actions: [] }))
+    return [...selectedRows, ...excludedRows]
+  })
+  return { id: "scoped-apply", title: "Governed Scoped Apply",
+    columns: [{ key: "initiative", label: "Initiative", identifier: true }, { key: "stage", label: "Candidate stage", identifier: true },
+      { key: "generation", label: "Generation" }, { key: "partition", label: "Partition" }, { key: "key", label: "Selection or exclusion" },
+      { key: "path", label: "Repository-relative path candidate" }, { key: "disposition", label: "Candidate disposition or reason" },
+      { key: "scope", label: "Scope state" }, { key: "envelope", label: "Candidate write envelope" },
+      { key: "assessment", label: "Fail-closed assessment" }, { key: "receipts", label: "Deterministic receipts" },
+      { key: "boundary", label: "Privacy and authority boundary" }], rows, actions: [],
+    ...(rows.length === 0 ? { emptyState: emptySurface("No governed Scoped Apply candidate",
+      "Create the metadata-only subset selection through the governed engine after every exact current change, preview, stage, controlled-plan, backlog-trace and P3B-13 predecessor exists. Refresh Product Studio after a superseding revision. This view cannot create or inspect a real stage, mutate source, execute apply or recovery, establish approval or authorization, or accept work.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7479,6 +7518,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       boilerplateConstraintEnforcementProjections: new Map(),
       backlogToCodeTraceabilityProjections: new Map(),
       applyDiscardFoundationProjections: new Map(),
+      scopedApplyProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -9392,6 +9432,47 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("apply-discard-foundation-unavailable", "Apply/Discard Foundation metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.scopedApply) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map((initiative) =>
+          engine.scopedApply!.project(initiative.id)))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value
+            const candidates = {
+              changedUnitInventory: empty.changedUnitInventoryProjections.get(initiative.id)?.candidate,
+              proposedChangePreview: empty.proposedChangePreviewProjections.get(initiative.id)?.candidate,
+              stagingWorkspace: empty.stagingWorkspaceProjections.get(initiative.id)?.candidate,
+              controlledCodexImplementation: empty.controlledCodexImplementationProjections.get(initiative.id)?.candidate,
+              backlogToCodeTraceability: empty.backlogToCodeTraceabilityProjections.get(initiative.id)?.candidate,
+              applyDiscardFoundation: empty.applyDiscardFoundationProjections.get(initiative.id)?.candidate,
+            }
+            const { snapshotDigest, ...projectionBody } = value
+            const exactDependencies = value.status.dependencies !== undefined &&
+              (Object.keys(candidates) as (keyof typeof candidates)[]).every((key) => {
+                const reference = value.status.dependencies?.[key]
+                const candidate = candidates[key]
+                return reference !== undefined && candidate !== undefined && reference.recordId === candidate.id &&
+                  reference.revision === candidate.revision && reference.digest === candidate.digest
+              })
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactDependencies && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.scopedApplyProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Scoped Apply projection was unavailable or did not bind all exact current change, preview, staging, controlled-Codex, backlog-trace, and apply/discard predecessors",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`scoped-apply-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Scoped Apply metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("scoped-apply-unavailable", "Scoped Apply metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (
