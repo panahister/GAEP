@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-realistic-readiness-scenario",
+  "id": "phase-3a-atlas-realistic-readiness-example-v1",
+  "observedAt": "2026-07-31T10:30:00.000Z",
+  "product": {
+    "id": "33000000-0000-4000-8000-000000000001",
+    "revision": 1,
+    "name": "Atlas Release Readiness"
+  },
+  "initiative": {
+    "id": "33000000-0000-4000-8000-000000000002",
+    "revision": 1,
+    "productId": "33000000-0000-4000-8000-000000000001",
+    "state": "active",
+    "title": "Prepare the Atlas evidence review implementation slice"
+  },
+  "caseStudy": {
+    "problem": "Release reviewers need one bounded workspace that reconciles evidence, trace, implementation planning, and unresolved authority without treating provider completion as Product readiness.",
+    "outcomeCandidate": "A three-unit local-first evidence review slice is structurally complete enough for accountable implementation-readiness review.",
+    "userGroups": [
+      "Product owners",
+      "Release reviewers",
+      "Implementation engineers"
+    ],
+    "implementationUnits": [
+      { "id": "atlas-review-shell", "kind": "frontend", "dependencyIds": ["atlas-evidence-api"], "candidateRepository": "atlas-review", "candidateModule": "apps/review" },
+      { "id": "atlas-evidence-api", "kind": "service", "dependencyIds": ["atlas-audit-store"], "candidateRepository": "atlas-review", "candidateModule": "services/evidence" },
+      { "id": "atlas-audit-store", "kind": "data", "dependencyIds": [], "candidateRepository": "atlas-review", "candidateModule": "packages/audit-store" }
+    ],
+    "counts": {
+      "epicCount": 1,
+      "storyCount": 4,
+      "taskCount": 9,
+      "requirementCount": 8,
+      "acceptanceCriterionCount": 12,
+      "implementationUnitCount": 3,
+      "testInventoryCount": 18,
+      "riskCount": 3
+    },
+    "candidateDisposition": "complete-for-accountable-human-readiness-review"
+  },
+  "sourceFacts": [
+    { "id": "backlog-hierarchy", "evidenceReferenceCount": 4 },
+    { "id": "mvp-slice-definition", "evidenceReferenceCount": 5 },
+    { "id": "prioritization-model", "evidenceReferenceCount": 3 },
+    { "id": "acceptance-criteria", "evidenceReferenceCount": 6 },
+    { "id": "definition-of-ready", "evidenceReferenceCount": 4 },
+    { "id": "definition-of-done", "evidenceReferenceCount": 4 },
+    { "id": "implementation-unit-model", "evidenceReferenceCount": 5 },
+    { "id": "dependency-mapping", "evidenceReferenceCount": 4 },
+    { "id": "technology-profile", "evidenceReferenceCount": 3 },
+    { "id": "boilerplate-registry", "evidenceReferenceCount": 3 },
+    { "id": "boilerplate-selection-binding", "evidenceReferenceCount": 3 },
+    { "id": "boilerplate-compatibility-validation", "evidenceReferenceCount": 4 },
+    { "id": "figma-to-boilerplate-mapping", "evidenceReferenceCount": 2 },
+    { "id": "design-to-code-binding-registry", "evidenceReferenceCount": 4 },
+    { "id": "route-screen-component-mapping", "evidenceReferenceCount": 4 },
+    { "id": "test-methodology", "evidenceReferenceCount": 3 },
+    { "id": "test-inventory", "evidenceReferenceCount": 5 },
+    { "id": "high-level-design", "evidenceReferenceCount": 4 },
+    { "id": "low-level-design", "evidenceReferenceCount": 5 },
+    { "id": "implementation-readiness-gate", "evidenceReferenceCount": 6 }
+  ],
+  "failureCases": [
+    {
+      "id": "source-revision-stale",
+      "injectedState": "stale-source-binding",
+      "expectedState": "hold",
+      "recovery": "Re-read the exact governed source, rebuild the complete source catalog, and require a new readiness review."
+    },
+    {
+      "id": "evidence-reference-missing",
+      "injectedState": "missing-evidence-reference",
+      "expectedState": "hold",
+      "recovery": "Record attributable evidence or explicitly retain the gap before recomputing the candidate dashboard."
+    },
+    {
+      "id": "readiness-outcome-conflict",
+      "injectedState": "conflicting-readiness-candidate",
+      "expectedState": "hold",
+      "recovery": "Route the exact conflict to an accountable human without granting a waiver, owner appointment, or implementation authority."
+    }
+  ],
+  "sourcePaths": {
+    "codexArtifact": "evidence/examples/20260731T110500Z-phase-3a-codex-readiness-workflow",
+    "claudeArtifact": "evidence/examples/20260731T110600Z-phase-3a-claude-readiness-workflow",
+    "phase3aConformance": "evidence/ide-conformance/20260731T092606Z-phase-3a-dashboard.json",
+    "phase3aReport": "evidence/phase-reports/20260731T094455Z-phase-3a-dashboard.json",
+    "productStudio": "apps/vscode/src/current-engine-studio-data-source.ts"
+  },
+  "limitations": [
+    "This is a deterministic local realistic fixture, not a real Product, repository, source, design, test, risk, security, or production dataset.",
+    "The 20 source candidates and 81 evidence-reference metadata entries demonstrate structural continuity only; truth, completeness, quality, priority, readiness, waiver, and ownership remain accountable human decisions.",
+    "Codex and Claude bindings reference sealed offline deterministic workflows; no live request, authentication, semantic-quality assessment, source-code write, or implementation effect occurs.",
+    "Candidate-complete-for-human-review is not implementation authorization, Product Owner acceptance, native-host acceptance, security completion, release authorization, or deployment approval.",
+    "Reopen, failure recovery, Product Studio, and four-host projections prove bounded deterministic evidence behavior only."
+  ],
+  "authorityBoundary": "phase-3a-realistic-readiness-example-is-deterministic-candidate-evidence-not-real-product-source-completeness-priority-readiness-waiver-ownership-implementation-live-provider-native-host-product-owner-security-release-deployment-or-action-authority"
+}

@@ -25,9 +25,9 @@ const sourceByteLimit = 2 * 1024 * 1024
 const reportByteLimit = 512 * 1024
 const defaultPaths = {
   contract: "conformance/phase-0-ide-contract.json",
-  packages: "evidence/local-packages/20260731T105153Z-phase-3b-changed-unit-inventory-packages.json",
-  conformance: "evidence/ide-conformance/20260731T105153Z-phase-3b-changed-unit-inventory.json",
-  example: "evidence/examples/20260731T110700Z-phase-3a-realistic-readiness-example/receipt.json",
+  packages: "evidence/local-packages/20260731T115622Z-phase-3b-proposed-change-preview-packages.json",
+  conformance: "evidence/ide-conformance/20260731T115622Z-phase-3b-proposed-change-preview.json",
+  example: "evidence/examples/20260731T120110Z-phase-3a-realistic-readiness-example/receipt.json",
 }
 const gateDefinitions = [
   { id: "typecheck", command: ["npm", "run", "typecheck"], parser: parseTypecheck },

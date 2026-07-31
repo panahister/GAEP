@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-ide-package-report-v1",
+  "packageSet": "phase-0-local",
+  "artifacts": [
+    {
+      "host": "vscode",
+      "packageId": "gaep.gaep-vscode@0.1.0",
+      "artifactPath": "apps/vscode/dist/gaep-vscode.vsix",
+      "status": "produced",
+      "bytes": 1139813,
+      "digest": "sha256:e5487be654245ba065521f47afe26249e00846c2be0aa8824c91a9ce46e9612a",
+      "verification": "exact-isolated-fixture-package-build-bundled-engine-and-accessible-phase-3b-proposed-change-preview-product-studio-projection; native-install-reinstall-and-interaction-acceptance-remain-pending"
+    },
+    {
+      "host": "kiro",
+      "packageId": "gaep.gaep-kiro@0.1.0",
+      "artifactPath": "apps/kiro/dist/gaep-kiro.vsix",
+      "status": "produced",
+      "bytes": 1090906,
+      "digest": "sha256:7634b23162795737d8a512912be52c56b8d83397b9044f6b49f853cb5a6793de",
+      "verification": "package-build-digest-bound-engine-and-private-safe-phase-3b-proposed-change-preview-command-projection; native-compatible-host-install-and-interaction-acceptance-remain-pending"
+    },
+    {
+      "host": "rider",
+      "packageId": "dev.gaep.productstudio@0.1.0",
+      "artifactPath": "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
+      "status": "produced",
+      "bytes": 2252895,
+      "digest": "sha256:accf5044d644660f25c7aa2661c648f90f4cc252f09b00a7ac0716fd1c26dba6",
+      "verification": "clean-kotlin-compile-instrumented-plugin-build-structure-check-digest-bound-engine-and-phase-3b-proposed-change-preview-projection; native-Rider-install-startup-and-interaction-acceptance-remain-pending"
+    },
+    {
+      "host": "visual-studio",
+      "packageId": "Gaep.VisualStudio.90e45161-916c-4c39-b2bf-c2379c168fe9@0.1.0",
+      "artifactPath": "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
+      "status": "not-produced-on-this-platform",
+      "verification": "cross-platform-hostclient-build-and-phase-3b-proposed-change-preview-protocol-controller-projection; Windows-VSIX-container-install-startup-and-interaction-acceptance-remain-pending",
+      "limitation": "Native Visual Studio VSIX container creation and installation require Windows and VsixUtil.exe."
+    }
+  ],
+  "summary": {
+    "expected": 4,
+    "produced": 3,
+    "missingNativePlatformArtifacts": 1
+  },
+  "claimBoundary": "Local package evidence is not release signing, publication, supported-OS acceptance, Product readiness, or release approval."
+}
