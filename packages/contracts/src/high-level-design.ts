@@ -203,6 +203,14 @@ const statusAuthorityBoundary = "high-level-design-status-is-observational-and-d
 export const highLevelDesignStatusSchema = z.object({
   schemaVersion: z.literal(1), kind: z.literal("high-level-design-status"), productId: z.string().uuid(), productRevision: z.number().int().positive(),
   initiativeId: z.string().uuid(), initiativeRevision: z.number().int().positive(), candidate: exactHighLevelDesignReferenceSchema.optional(),
+  systemSolutionArchitecture: exactSystemSolutionArchitectureReferenceSchema.optional(),
+  boundedContextModel: exactBoundedContextModelReferenceSchema.optional(), technologyProfile: exactTechnologyProfileReferenceSchema.optional(),
+  dependencyMapping: exactDependencyMappingReferenceSchema.optional(), implementationUnitModel: exactImplementationUnitModelReferenceSchema.optional(),
+  boilerplateRegistry: exactBoilerplateRegistryReferenceSchema.optional(), boilerplateSelectionBinding: exactBoilerplateSelectionBindingReferenceSchema.optional(),
+  boilerplateCompatibilityValidation: exactBoilerplateCompatibilityValidationReferenceSchema.optional(), designBaseline: exactDesignBaselineReferenceSchema.optional(),
+  designToCodeBindingRegistry: exactDesignToCodeBindingRegistryReferenceSchema.optional(), routeScreenComponentMapping: exactRouteScreenComponentMappingReferenceSchema.optional(),
+  testMethodology: exactTestMethodologyReferenceSchema.optional(), testInventory: exactTestInventoryReferenceSchema.optional(),
+  riskRegister: exactRiskRegisterReferenceSchema.optional(), securityPrivacyAssessment: exactSecurityPrivacyAssessmentReferenceSchema.optional(),
   dependencyCount: z.number().int().nonnegative().max(32), presentDependencyCount: z.number().int().nonnegative().max(32),
   elementCount: z.number().int().nonnegative().max(65_536), definedElementCount: z.number().int().nonnegative().max(65_536),
   relationCount: z.number().int().nonnegative().max(65_536), definedRelationCount: z.number().int().nonnegative().max(65_536),
@@ -218,7 +226,11 @@ export const highLevelDesignStatusSchema = z.object({
   authorityBoundary: z.literal(statusAuthorityBoundary),
 }).strict().superRefine((status, context) => {
   const gaps = status.dependencyCount - status.presentDependencyCount + status.conflictCount + status.missingCount + status.orphanRelationCount + status.traceGapCount + status.evidenceGapCount + status.ownershipGapCount + status.uncoveredUnitCount + status.staleBindingCount + status.staleDependencyCount + status.invalidCandidateCount + status.unresolvedQuestionCount
-  if (status.state === "candidate-complete" && (gaps > 0 || !status.candidate || status.definedElementCount !== status.elementCount || status.definedRelationCount !== status.relationCount || status.selectedDecisionCount !== status.decisionCount || status.reviewState !== "ready-for-human-review" || status.reasons.length > 0)) context.addIssue({ code: "custom", path: ["state"], message: "Candidate-complete HLD requires exact dependencies, defined traceable structure, selected decision candidates, and no structural gaps" })
+  const dependencies = [status.systemSolutionArchitecture, status.boundedContextModel, status.technologyProfile, status.dependencyMapping,
+    status.implementationUnitModel, status.boilerplateRegistry, status.boilerplateSelectionBinding,
+    status.boilerplateCompatibilityValidation, status.designBaseline, status.designToCodeBindingRegistry,
+    status.routeScreenComponentMapping, status.testMethodology, status.testInventory, status.riskRegister, status.securityPrivacyAssessment]
+  if (status.state === "candidate-complete" && (gaps > 0 || !status.candidate || dependencies.some((dependency) => !dependency) || status.definedElementCount !== status.elementCount || status.definedRelationCount !== status.relationCount || status.selectedDecisionCount !== status.decisionCount || status.reviewState !== "ready-for-human-review" || status.reasons.length > 0)) context.addIssue({ code: "custom", path: ["state"], message: "Candidate-complete HLD requires exact dependencies, defined traceable structure, selected decision candidates, and no structural gaps" })
   if (status.state === "attention-required" && status.reasons.length === 0) context.addIssue({ code: "custom", path: ["reasons"], message: "Attention-required HLD status must expose reasons" })
 })
 

@@ -25,6 +25,7 @@ import type {
   RouteScreenComponentMappingProjection,
   TestMethodologyProjection,
   TestInventoryProjection,
+  HighLevelDesignProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -247,6 +248,9 @@ export interface CurrentStudioEngineReader {
   testInventory?: {
     project(initiativeId: string): Promise<TestInventoryProjection>
   }
+  highLevelDesign?: {
+    project(initiativeId: string): Promise<HighLevelDesignProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -433,6 +437,7 @@ interface ObservedStudioState {
   routeScreenComponentMappingProjections: Map<string, RouteScreenComponentMappingProjection>
   testMethodologyProjections: Map<string, TestMethodologyProjection>
   testInventoryProjections: Map<string, TestInventoryProjection>
+  highLevelDesignProjections: Map<string, HighLevelDesignProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3866,6 +3871,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     routeScreenComponentMappings: routeScreenComponentMappingTable(state),
     testMethodologies: testMethodologyTable(state),
     testInventories: testInventoryTable(state),
+    highLevelDesigns: highLevelDesignTable(state),
   }
 }
 
@@ -4896,6 +4902,71 @@ function testInventoryTable(state: ObservedStudioState): StudioTableSnapshot {
       emptyState: emptySurface(
         "No governed Test Inventory candidate",
         "Create the candidate through the governed engine workflow after the exact acceptance criteria, risk register, implementation unit, route/screen/component mapping, and test methodology candidates exist. This view does not create or execute tests, access environments or providers, establish test existence, results, evidence or coverage truth, approve security/privacy, appoint owners, accept, release, deploy, or grant action authority.",
+      ),
+    } : {}),
+  }
+}
+
+function highLevelDesignTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.highLevelDesignProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{
+      id: record.id,
+      cells: {
+        initiative: projection.initiative.id,
+        record: record.id,
+        revision: String(record.revision),
+        digest: record.digest,
+        structureReceipt: record.structureReceiptDigest,
+        dependencyReceipt: record.dependencyReceiptDigest,
+        traceReceipt: record.traceReceiptDigest,
+        coverageReceipt: record.coverageReceiptDigest,
+        ownershipReceipt: record.ownershipReceiptDigest,
+        assessmentReceipt: record.assessmentReceiptDigest,
+        dependencies: `${status.presentDependencyCount}/${status.dependencyCount} exact current candidates`,
+        structure: `${status.definedElementCount}/${status.elementCount} elements · ${status.definedRelationCount}/${status.relationCount} relations · ${status.selectedDecisionCount}/${status.decisionCount} decisions`,
+        views: `${status.qualityAttributeCount} quality attributes · ${status.deploymentViewCount} deployment views`,
+        assessment: `${status.state} · ${status.reviewState}`,
+        structuralGaps: `${status.conflictCount} conflicts · ${status.missingCount} missing · ${status.orphanRelationCount} orphan relations`,
+        integrityGaps: `${status.traceGapCount} trace · ${status.evidenceGapCount} evidence · ${status.ownershipGapCount} ownership · ${status.uncoveredUnitCount} uncovered units`,
+        staleGaps: `${status.staleBindingCount} stale bindings · ${status.staleDependencyCount} stale dependencies · ${status.invalidCandidateCount} invalid candidates · ${status.unresolvedQuestionCount} questions`,
+        boundary: "Candidate identities, counts, statuses, and structure, dependency, trace, coverage, ownership, assessment, and snapshot digests only; no design narratives, diagrams, interfaces, data flows, technologies, owners, evidence source content, personal data, secrets, credentials, or machine paths. This view does not establish architecture, repository, runtime, or deployment truth or completeness, architecture approval, privacy or security approval, owner appointment, implementation readiness, acceptance, release, deployment, or action authority.",
+      },
+      state: status.state,
+      actions: [],
+    }]
+  })
+  return {
+    id: "high-level-design",
+    title: "Governed High-Level Design Candidate",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" },
+      { key: "digest", label: "Exact digest" },
+      { key: "structureReceipt", label: "Structure receipt" },
+      { key: "dependencyReceipt", label: "Dependency receipt" },
+      { key: "traceReceipt", label: "Trace receipt" },
+      { key: "coverageReceipt", label: "Coverage receipt" },
+      { key: "ownershipReceipt", label: "Ownership receipt" },
+      { key: "assessmentReceipt", label: "Assessment receipt" },
+      { key: "dependencies", label: "Exact dependencies" },
+      { key: "structure", label: "Candidate structure" },
+      { key: "views", label: "Candidate views" },
+      { key: "assessment", label: "Candidate assessment" },
+      { key: "structuralGaps", label: "Candidate structural gaps" },
+      { key: "integrityGaps", label: "Candidate integrity gaps" },
+      { key: "staleGaps", label: "Candidate freshness gaps" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? {
+      emptyState: emptySurface(
+        "No governed High-Level Design candidate",
+        "Create the candidate through the governed engine workflow after all 15 exact architecture, context, technology, dependency, implementation-unit, boilerplate, design, test, risk, and security/privacy candidates exist. This view does not establish architecture truth or approval, implementation readiness, acceptance, release, deployment, or action authority.",
       ),
     } : {}),
   }
@@ -6752,6 +6823,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       routeScreenComponentMappingProjections: new Map(),
       testMethodologyProjections: new Map(),
       testInventoryProjections: new Map(),
+      highLevelDesignProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -7949,6 +8021,68 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("test-inventory-unavailable",
           "Test Inventory metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.highLevelDesign) {
+      if (auditSemanticsVerified) {
+        const dependencyReaders = [
+          engine.systemSolutionArchitecture, engine.boundedContextModel, engine.technologyProfile,
+          engine.dependencyMapping, engine.implementationUnitModel, engine.boilerplateRegistry,
+          engine.boilerplateSelectionBinding, engine.boilerplateCompatibilityValidation, engine.designBaseline,
+          engine.designToCodeBindingRegistry, engine.routeScreenComponentMapping, engine.testMethodology,
+          engine.testInventory, engine.riskRegister, engine.securityPrivacyAssessment,
+        ]
+        const dependencyKeys = [
+          "architecture", "model", "candidate", "candidate", "candidate", "candidate", "candidate", "candidate",
+          "candidate", "candidate", "candidate", "candidate", "candidate", "register", "assessment",
+        ] as const
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const design = await engine.highLevelDesign!.project(initiative.id)
+          const dependencies = dependencyReaders.every((reader) => reader !== undefined)
+            ? await Promise.all(dependencyReaders.map((reader) => reader!.project(initiative.id)))
+            : undefined
+          return { design, dependencies }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.design
+            const { snapshotDigest, ...projectionBody } = value
+            const references = [
+              value.status.systemSolutionArchitecture, value.status.boundedContextModel, value.status.technologyProfile,
+              value.status.dependencyMapping, value.status.implementationUnitModel, value.status.boilerplateRegistry,
+              value.status.boilerplateSelectionBinding, value.status.boilerplateCompatibilityValidation,
+              value.status.designBaseline, value.status.designToCodeBindingRegistry,
+              value.status.routeScreenComponentMapping, value.status.testMethodology, value.status.testInventory,
+              value.status.riskRegister, value.status.securityPrivacyAssessment,
+            ]
+            const exactDependencies = !value.candidate || (
+              projection.value.dependencies !== undefined && references.every((reference, dependencyIndex) => {
+                const dependencyProjection = projection.value.dependencies?.[dependencyIndex] as Record<string, unknown> | undefined
+                const dependency = dependencyProjection?.[dependencyKeys[dependencyIndex]!] as { id: string; revision: number; digest: string } | undefined
+                return reference !== undefined && dependency !== undefined && reference.recordId === dependency.id &&
+                  reference.revision === dependency.revision && reference.digest === dependency.digest
+              })
+            )
+            if (value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactDependencies && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.highLevelDesignProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic(
+            "Product Studio High-Level Design projection was unavailable or did not bind all 15 exact current governed dependencies",
+            projection.status === "rejected" ? projection.reason : undefined,
+          )
+          empty.issues.push(issue(`high-level-design-${initiative.id}-unavailable`,
+            `${initiative.title}: exact privacy-safe High-Level Design metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("high-level-design-unavailable",
+          "High-Level Design metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (

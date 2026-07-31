@@ -236,6 +236,7 @@ export class HighLevelDesignService {
     return highLevelDesignStatusSchema.parse({
       schemaVersion: 1, kind: "high-level-design-status", productId: product.id, productRevision: revisionOf(product),
       initiativeId: initiative.id, initiativeRevision: revisionOf(initiative), ...(candidate ? { candidate: exactReference(candidate) } : {}),
+      ...(candidate ? this.dependencyReferences(candidate) : {}),
       dependencyCount: dependencyNames.length, presentDependencyCount, elementCount: elements.length,
       definedElementCount: elements.filter((entry) => entry.disposition === "candidate-defined").length,
       relationCount: relations.length, definedRelationCount: relations.filter((entry) => entry.disposition === "candidate-defined").length,
