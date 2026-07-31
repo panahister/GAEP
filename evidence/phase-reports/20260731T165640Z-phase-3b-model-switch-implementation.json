@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-3b-implementation",
+  "evidenceScope": "phase-3b-model-switch-implementation-local",
+  "recordedAt": "2026-07-31T17:01:13Z",
+  "sourceCommit": "8b869743508cd3552bccc95ebaf9fbbfef214509",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 104,
+    "hostAssessments": 416,
+    "hostAssessmentsImplemented": 416,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:bc2ca1564b2996ef772e71a05950f80ba55c3c38e5e8fec7cb397ba9bd063298",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 300483,
+      "digest": "sha256:a09b1183c60c253b1fa2449ff46e1c88bfdf9f7ab5f6107994b6158440391484",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260731T164639Z-phase-3b-model-switch-implementation-packages.json",
+      "bytes": 3560,
+      "digest": "sha256:00e40712596a78a652310a311edd937864d56391ba8ad2e15aef9e98e3e77fc0",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260731T164639Z-phase-3b-model-switch-implementation-host-behavior.json",
+      "bytes": 3576,
+      "digest": "sha256:dbb01f88e80e4aa571a8ad9dd23ea710764af059f4b559d76eae7aa533f9cabb",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260731T164639Z-phase-3b-model-switch-implementation.json",
+      "bytes": 68628,
+      "digest": "sha256:bd8a67b77bb55d3bf0e841b6ec60cbef6816b879d1ecf4ab49c65cb745f93027",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260731T165000Z-phase-3a-realistic-readiness-example/receipt.json",
+      "bytes": 6811,
+      "digest": "sha256:65b3780ad9c72ba294cd861d1e2730f3979b5137ae6c87a654a513a32945a2ca",
+      "kind": "gaep-phase3a-realistic-readiness-example-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 144,
+        "testsPassed": 1051,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:17b6c46fd1d22dd0ee898787df477c3818f135d1b5da008460388fb03b710b3f"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:9075a95bfba569f9f64ca8ee6843f5fd804ad56942b6fc3b371c317e0d81833d"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 41,
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:a026b177c3c40934a0d905c04973e50afcf7f2015421a974b98a3bf69f715ce1"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:822ac294c92c24309ebcfcf56e4c1eb796845b31beb504e3e23d9c30276b0047"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:3f07f10f8abc243e8450d6b56aa44a4a553d14868b1e076ebc4328df124ab76b"
+    }
+  ],
+  "testsDigest": "sha256:bbca6b2fbeaf851b56401997f5d1b22cdc61ac82656c835c788d93c1ac9dadc6",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-3b-model-switch-implementation-closure",
+      "state": "not-established",
+      "basis": "the exact immutable Model Switching Within One Provider candidate binds the current Product, Initiative, Proposed Change Preview, Isolated Staging Workspace, Provider Switch Implementation, Controlled Codex and Controlled Claude candidates; one exact provider and agent, distinct source and target models, exact capability, unit and path continuity, deterministic binding, model, continuity, transition, lifecycle, prerequisite and assessment receipts, explicit target-model availability and no-effect transition stop lines, evidence, Product Studio and four host projections are implemented locally; target-model availability, capability refresh, provider execution, actual model transition, context transfer, handoff recording, stage-ownership transfer, resume, approval, authorization, source mutation, apply, discard, recovery execution, native-host, live-provider, security or Product Owner acceptance, release and deployment remain unestablished"
+    }
+  ],
+  "knownGapsDigest": "sha256:f8ffcc5ec241c794829d9bb261d77309aaef36cf7c4cc1671cf088105c529ef6",
+  "claimBoundary": "This report binds the exact governed Model Switching Within One Provider candidate lifecycle, immutable revision history, exact current Product, Initiative, Proposed Change Preview, Isolated Staging Workspace, Provider Switch Implementation, Controlled Codex and Controlled Claude candidate bindings, one exact provider and agent, distinct source and target model identities, exact capability, unit and path continuity, deterministic binding, model, continuity, transition, lifecycle, prerequisite and assessment receipts, explicit target-model availability, capability-refresh, provider-execution, model-transition, context-transfer, handoff, stage-ownership, resume, approval, authorization, source-mutation, apply, discard and recovery stop lines, evidence, portable protocol-v2 transport, privacy-safe Product Studio table and four host projections to current package, test, host and conformance evidence. It does not establish target-model availability, capability refresh, actual provider execution or model transition, context transfer, handoff recording, stage-ownership transfer, resume, authentication, credential, workspace or tool access, approval, authorization, source mutation, apply, discard, recovery execution, repository, path, source, target or diff truth, file or diff content, acceptance, merge, release, deployment, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion or action authority."
+}
