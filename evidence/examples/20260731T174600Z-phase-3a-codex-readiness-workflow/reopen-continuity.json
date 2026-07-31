@@ -1,0 +1,379 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-codex-readiness-reopen-continuity",
+  "scenario": {
+    "id": "phase-3a-atlas-codex-readiness-workflow-v1",
+    "digest": "sha256:f4404086e1b5a3c822c764355b99ada861b3a93021120b275884869ff21ac988"
+  },
+  "observations": [
+    {
+      "ordinal": 1,
+      "event": "workspace-closed-after-candidate-chain",
+      "snapshot": {
+        "product": {
+          "id": "33000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "digest": "sha256:97d9dca3f37d6e03af0be8db1581f6f72366681d15d3d09fdd722d6cf40669cb"
+        },
+        "initiative": {
+          "id": "33000000-0000-4000-8000-000000000002",
+          "revision": 1,
+          "digest": "sha256:c8dca5f451f2e159740dc48fb17afca54ede34b99424ee8a8552402868d0f30d"
+        },
+        "stageReferences": [
+          {
+            "stageId": "P3A-01",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000101",
+              "revision": 1,
+              "digest": "sha256:b165c2647f534f944600d3443df3697482ce872c01dde4909fc1dae3e650ee60"
+            }
+          },
+          {
+            "stageId": "P3A-02",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000102",
+              "revision": 1,
+              "digest": "sha256:e22d108814a163e64d20563857b28c81b3369aa123dcdfc4eb82058f0f177396"
+            }
+          },
+          {
+            "stageId": "P3A-03",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000103",
+              "revision": 1,
+              "digest": "sha256:4434281136da6b449deff8b12226613c31683e982cdf93f6825aef50fcfde17c"
+            }
+          },
+          {
+            "stageId": "P3A-04",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000104",
+              "revision": 1,
+              "digest": "sha256:4d65a09a8d63e5d2f0b5cf52fdc2c2eb7317d152f05192e89d6f49fd82e3970e"
+            }
+          },
+          {
+            "stageId": "P3A-05",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000105",
+              "revision": 1,
+              "digest": "sha256:4197c3363f89990825484df36cf27e554d4d69901a20bf65751dcdf2244909b1"
+            }
+          },
+          {
+            "stageId": "P3A-06",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000106",
+              "revision": 1,
+              "digest": "sha256:7db53a3f7f25de7623d6707bbb090967cba5afc67a31f3129d80dab21217c515"
+            }
+          },
+          {
+            "stageId": "P3A-07",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000107",
+              "revision": 1,
+              "digest": "sha256:2199ea1161ce53b431ba61449a4ada52cd1fe1f15d316667af5f47646b3974b5"
+            }
+          },
+          {
+            "stageId": "P3A-08",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000108",
+              "revision": 1,
+              "digest": "sha256:f1bf83ea9c4b5a3ae6742b2e9da784b9db75ef9b831e3269a1e96f32877e7601"
+            }
+          },
+          {
+            "stageId": "P3A-09",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000109",
+              "revision": 1,
+              "digest": "sha256:31e8fdff4b837fcda5bec614463ce93b57143170a9f5d2b2325f548436691682"
+            }
+          },
+          {
+            "stageId": "P3A-10",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000110",
+              "revision": 1,
+              "digest": "sha256:2f7bbda59b8cfe785b6b30364541bf2ccdb9aaec99586c04b447cf3f3cea7a64"
+            }
+          },
+          {
+            "stageId": "P3A-11",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000111",
+              "revision": 1,
+              "digest": "sha256:ea45e1a88bd8892b80373f76a461600639105b07ef1809f827f22417ff6d4bf4"
+            }
+          },
+          {
+            "stageId": "P3A-12",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000112",
+              "revision": 1,
+              "digest": "sha256:1067ed86db58b4215452ae11165a42c017326b13f39f53d71fc64d13050a8df6"
+            }
+          },
+          {
+            "stageId": "P3A-13",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000113",
+              "revision": 1,
+              "digest": "sha256:ff3002427f4302ef0be25eb9c33bde04db309d82de95fe9b7a4510bc8661ccec"
+            }
+          },
+          {
+            "stageId": "P3A-14",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000114",
+              "revision": 1,
+              "digest": "sha256:849228eb8a7261d1100ea3e7e880076045026c7154653c575c3bf9857d71b5aa"
+            }
+          },
+          {
+            "stageId": "P3A-15",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000115",
+              "revision": 1,
+              "digest": "sha256:6da65e114fcb9de0339e608c90746feb112c79ddea611e1b24645c9526f59015"
+            }
+          },
+          {
+            "stageId": "P3A-16",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000116",
+              "revision": 1,
+              "digest": "sha256:7a1b6b3fc1b1017b453d617df5dfc31666726f92689c8562210e18384ebeb1c4"
+            }
+          },
+          {
+            "stageId": "P3A-17",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000117",
+              "revision": 1,
+              "digest": "sha256:32c66493fa2bbb02aa6636c1a2689c38988517ccb8467b3805fd7231fa657d23"
+            }
+          },
+          {
+            "stageId": "P3A-18",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000118",
+              "revision": 1,
+              "digest": "sha256:0eed201e23b922e3988fcf5bb20ab9150f2cba70c7b58cbf12a18a015a006c2f"
+            }
+          },
+          {
+            "stageId": "P3A-19",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000119",
+              "revision": 1,
+              "digest": "sha256:82ebf08dccae82bd3acb99f301484c2db859b165ca45273f30c64dc7e2863949"
+            }
+          },
+          {
+            "stageId": "P3A-20",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000120",
+              "revision": 1,
+              "digest": "sha256:acd658b9ea75530c5bd0af5c9a89973790bfe63172b43a731a20f4d13cb4df0e"
+            }
+          }
+        ],
+        "chainDigest": "sha256:2524448bc7fb92e5a69c039f75e76a1d2d6adb3ebe05de258add329571f56907"
+      },
+      "snapshotDigest": "sha256:95fbfd13069b3771f64813901294014a669420a6a4a1f926b4080dcc58ad6f2a"
+    },
+    {
+      "ordinal": 2,
+      "event": "workspace-reopened-and-chain-recomputed",
+      "snapshot": {
+        "product": {
+          "id": "33000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "digest": "sha256:97d9dca3f37d6e03af0be8db1581f6f72366681d15d3d09fdd722d6cf40669cb"
+        },
+        "initiative": {
+          "id": "33000000-0000-4000-8000-000000000002",
+          "revision": 1,
+          "digest": "sha256:c8dca5f451f2e159740dc48fb17afca54ede34b99424ee8a8552402868d0f30d"
+        },
+        "stageReferences": [
+          {
+            "stageId": "P3A-01",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000101",
+              "revision": 1,
+              "digest": "sha256:b165c2647f534f944600d3443df3697482ce872c01dde4909fc1dae3e650ee60"
+            }
+          },
+          {
+            "stageId": "P3A-02",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000102",
+              "revision": 1,
+              "digest": "sha256:e22d108814a163e64d20563857b28c81b3369aa123dcdfc4eb82058f0f177396"
+            }
+          },
+          {
+            "stageId": "P3A-03",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000103",
+              "revision": 1,
+              "digest": "sha256:4434281136da6b449deff8b12226613c31683e982cdf93f6825aef50fcfde17c"
+            }
+          },
+          {
+            "stageId": "P3A-04",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000104",
+              "revision": 1,
+              "digest": "sha256:4d65a09a8d63e5d2f0b5cf52fdc2c2eb7317d152f05192e89d6f49fd82e3970e"
+            }
+          },
+          {
+            "stageId": "P3A-05",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000105",
+              "revision": 1,
+              "digest": "sha256:4197c3363f89990825484df36cf27e554d4d69901a20bf65751dcdf2244909b1"
+            }
+          },
+          {
+            "stageId": "P3A-06",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000106",
+              "revision": 1,
+              "digest": "sha256:7db53a3f7f25de7623d6707bbb090967cba5afc67a31f3129d80dab21217c515"
+            }
+          },
+          {
+            "stageId": "P3A-07",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000107",
+              "revision": 1,
+              "digest": "sha256:2199ea1161ce53b431ba61449a4ada52cd1fe1f15d316667af5f47646b3974b5"
+            }
+          },
+          {
+            "stageId": "P3A-08",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000108",
+              "revision": 1,
+              "digest": "sha256:f1bf83ea9c4b5a3ae6742b2e9da784b9db75ef9b831e3269a1e96f32877e7601"
+            }
+          },
+          {
+            "stageId": "P3A-09",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000109",
+              "revision": 1,
+              "digest": "sha256:31e8fdff4b837fcda5bec614463ce93b57143170a9f5d2b2325f548436691682"
+            }
+          },
+          {
+            "stageId": "P3A-10",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000110",
+              "revision": 1,
+              "digest": "sha256:2f7bbda59b8cfe785b6b30364541bf2ccdb9aaec99586c04b447cf3f3cea7a64"
+            }
+          },
+          {
+            "stageId": "P3A-11",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000111",
+              "revision": 1,
+              "digest": "sha256:ea45e1a88bd8892b80373f76a461600639105b07ef1809f827f22417ff6d4bf4"
+            }
+          },
+          {
+            "stageId": "P3A-12",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000112",
+              "revision": 1,
+              "digest": "sha256:1067ed86db58b4215452ae11165a42c017326b13f39f53d71fc64d13050a8df6"
+            }
+          },
+          {
+            "stageId": "P3A-13",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000113",
+              "revision": 1,
+              "digest": "sha256:ff3002427f4302ef0be25eb9c33bde04db309d82de95fe9b7a4510bc8661ccec"
+            }
+          },
+          {
+            "stageId": "P3A-14",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000114",
+              "revision": 1,
+              "digest": "sha256:849228eb8a7261d1100ea3e7e880076045026c7154653c575c3bf9857d71b5aa"
+            }
+          },
+          {
+            "stageId": "P3A-15",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000115",
+              "revision": 1,
+              "digest": "sha256:6da65e114fcb9de0339e608c90746feb112c79ddea611e1b24645c9526f59015"
+            }
+          },
+          {
+            "stageId": "P3A-16",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000116",
+              "revision": 1,
+              "digest": "sha256:7a1b6b3fc1b1017b453d617df5dfc31666726f92689c8562210e18384ebeb1c4"
+            }
+          },
+          {
+            "stageId": "P3A-17",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000117",
+              "revision": 1,
+              "digest": "sha256:32c66493fa2bbb02aa6636c1a2689c38988517ccb8467b3805fd7231fa657d23"
+            }
+          },
+          {
+            "stageId": "P3A-18",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000118",
+              "revision": 1,
+              "digest": "sha256:0eed201e23b922e3988fcf5bb20ab9150f2cba70c7b58cbf12a18a015a006c2f"
+            }
+          },
+          {
+            "stageId": "P3A-19",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000119",
+              "revision": 1,
+              "digest": "sha256:82ebf08dccae82bd3acb99f301484c2db859b165ca45273f30c64dc7e2863949"
+            }
+          },
+          {
+            "stageId": "P3A-20",
+            "candidate": {
+              "recordId": "33000000-0000-4000-8000-000000000120",
+              "revision": 1,
+              "digest": "sha256:acd658b9ea75530c5bd0af5c9a89973790bfe63172b43a731a20f4d13cb4df0e"
+            }
+          }
+        ],
+        "chainDigest": "sha256:2524448bc7fb92e5a69c039f75e76a1d2d6adb3ebe05de258add329571f56907"
+      },
+      "snapshotDigest": "sha256:95fbfd13069b3771f64813901294014a669420a6a4a1f926b4080dcc58ad6f2a"
+    }
+  ],
+  "summary": {
+    "observationCount": 2,
+    "exactStageReferenceCount": 20,
+    "continuityMismatchCount": 0,
+    "mutationDuringReopenCount": 0,
+    "implementationEffectsApplied": 0
+  },
+  "authorityBoundary": "reopen-continuity-proves-deterministic-reference-stability-not-source-truth-readiness-native-host-acceptance-or-action-authority",
+  "continuityDigest": "sha256:c4e0e6526231931bda398851eed14769e786ad85db2f30d54397aa4c4b6047fc"
+}

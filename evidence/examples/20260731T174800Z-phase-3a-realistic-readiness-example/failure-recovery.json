@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-realistic-readiness-failure-recovery",
+  "scenario": {
+    "id": "phase-3a-atlas-realistic-readiness-example-v1",
+    "digest": "sha256:65e36a7686126de8adaf68045fadb07bb61fd8ae5b95653df4bfb659dc309833"
+  },
+  "cases": [
+    {
+      "ordinal": 1,
+      "id": "source-revision-stale",
+      "injectedState": "stale-source-binding",
+      "expectedState": "hold",
+      "recovery": "Re-read the exact governed source, rebuild the complete source catalog, and require a new readiness review.",
+      "observationDigest": "sha256:69f5ecd1bdb3f08340201ac7bff26b5513d2d0dccb0c72fffaeb8efa25f077d6",
+      "gateState": "attention-required",
+      "automaticRetry": false,
+      "recoveryCandidate": {
+        "recovery": "Re-read the exact governed source, rebuild the complete source catalog, and require a new readiness review.",
+        "supersedesObservationDigest": "sha256:69f5ecd1bdb3f08340201ac7bff26b5513d2d0dccb0c72fffaeb8efa25f077d6",
+        "resultingState": "candidate-recomputation-required",
+        "digest": "sha256:5729e79097974e625a62397126ecb0a20f8e89c8e1d1abf55a8678651fa97976"
+      },
+      "waiverGranted": false,
+      "readinessGranted": false,
+      "ownerAppointed": false,
+      "effectApplied": false
+    },
+    {
+      "ordinal": 2,
+      "id": "evidence-reference-missing",
+      "injectedState": "missing-evidence-reference",
+      "expectedState": "hold",
+      "recovery": "Record attributable evidence or explicitly retain the gap before recomputing the candidate dashboard.",
+      "observationDigest": "sha256:bdd6fba7db931c8cdc61a86eae0d688b24b281fc09136d26321d0c3f81834564",
+      "gateState": "attention-required",
+      "automaticRetry": false,
+      "recoveryCandidate": {
+        "recovery": "Record attributable evidence or explicitly retain the gap before recomputing the candidate dashboard.",
+        "supersedesObservationDigest": "sha256:bdd6fba7db931c8cdc61a86eae0d688b24b281fc09136d26321d0c3f81834564",
+        "resultingState": "candidate-recomputation-required",
+        "digest": "sha256:c3c142a835eacd0b244c49808aaeef452375f51aa0d4fd99f91224b5a58e7ce2"
+      },
+      "waiverGranted": false,
+      "readinessGranted": false,
+      "ownerAppointed": false,
+      "effectApplied": false
+    },
+    {
+      "ordinal": 3,
+      "id": "readiness-outcome-conflict",
+      "injectedState": "conflicting-readiness-candidate",
+      "expectedState": "hold",
+      "recovery": "Route the exact conflict to an accountable human without granting a waiver, owner appointment, or implementation authority.",
+      "observationDigest": "sha256:513a02ccb7d5fc3e35567d99a6a3bf6ab457b88fea4b75bb58fd1dceaabc50ef",
+      "gateState": "attention-required",
+      "automaticRetry": false,
+      "recoveryCandidate": {
+        "recovery": "Route the exact conflict to an accountable human without granting a waiver, owner appointment, or implementation authority.",
+        "supersedesObservationDigest": "sha256:513a02ccb7d5fc3e35567d99a6a3bf6ab457b88fea4b75bb58fd1dceaabc50ef",
+        "resultingState": "candidate-recomputation-required",
+        "digest": "sha256:e0f1e86e99d4514f0700e8f4ab1d774f9706c7482e824e336cfe99469b1e5c08"
+      },
+      "waiverGranted": false,
+      "readinessGranted": false,
+      "ownerAppointed": false,
+      "effectApplied": false
+    }
+  ],
+  "summary": {
+    "caseCount": 3,
+    "holdCount": 3,
+    "automaticRetryCount": 0,
+    "waiversGranted": 0,
+    "readinessGrants": 0,
+    "ownersAppointed": 0,
+    "effectsApplied": 0
+  },
+  "authorityBoundary": "failure-recovery-records-hold-and-recomputation-candidates-not-waiver-readiness-ownership-approval-implementation-or-action-authority",
+  "recoveryDigest": "sha256:5111019b8855cb8ed88dc7f3099ba799596ea9d159861455829a3765ce42b74d"
+}
