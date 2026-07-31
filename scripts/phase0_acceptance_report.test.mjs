@@ -40,7 +40,7 @@ function passingTestEvidence() {
       id: "canonical-example",
       command: "npm run test:example",
       result: "pass",
-      summary: { tests: 26, passed: 26, failed: 0, skipped: 0 },
+      summary: { tests: 31, passed: 31, failed: 0, skipped: 0 },
       outputDigest,
     },
     {
@@ -71,9 +71,9 @@ test("binds exact Phase 0 package, conformance, provider, host, example, test an
   const report = await buildPhase0AcceptanceReport({ root, recordedAt, sourceCommit, testEvidence: passingTestEvidence() })
   assert.equal(report.verificationResult, "pass")
   assert.equal(report.phase, "phase-3a-delivery-planning")
-  assert.equal(report.evidenceScope, "phase-3a-implementation-readiness-gate-local")
-  assert.match(report.claimBoundary, /all 20 exact current backlog/u)
-  assert.match(report.claimBoundary, /Readiness outputs remain governed candidates only/u)
+  assert.equal(report.evidenceScope, "phase-3a-codex-readiness-workflow-local")
+  assert.match(report.claimBoundary, /20 ordered P3A-01 through P3A-20/u)
+  assert.match(report.claimBoundary, /zero live provider requests or implementation effects/u)
   assert.equal(report.reportingStatus, "current-local-evidence-bound")
   assert.equal(report.phaseGate, "incomplete")
   assert.equal(report.acceptance, "not-established")
@@ -85,7 +85,7 @@ test("binds exact Phase 0 package, conformance, provider, host, example, test an
   assert.equal(report.sources.length, 6)
   assert.equal(report.tests.length, 7)
   assert.equal(report.knownGaps.length, 6)
-  assert.equal(report.knownGaps.at(-1).id, "phase-3a-implementation-readiness-gate-closure")
+  assert.equal(report.knownGaps.at(-1).id, "phase-3a-codex-readiness-workflow-closure")
   await verifyPhase0AcceptanceReportObject(report, { root })
 })
 
