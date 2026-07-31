@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-claude-readiness-workflow-scenario",
+  "id": "phase-3a-atlas-claude-readiness-workflow-v1",
+  "observedAt": "2026-07-31T08:07:26Z",
+  "product": {
+    "id": "33000000-0000-4000-8000-000000000001",
+    "revision": 1,
+    "name": "Atlas Release Readiness"
+  },
+  "initiative": {
+    "id": "33000000-0000-4000-8000-000000000002",
+    "revision": 1,
+    "productId": "33000000-0000-4000-8000-000000000001",
+    "state": "active",
+    "title": "Prepare the Atlas evidence review implementation slice"
+  },
+  "provider": {
+    "adapterId": "gaep.claude-code-cli",
+    "agentId": "claude-code-cli",
+    "executionMode": "deterministic-offline-tool-free-context-contract",
+    "liveRequestExpected": false,
+    "stagingExpected": false,
+    "toolDefinitionCountExpected": 0,
+    "writeScopeCountExpected": 0
+  },
+  "parity": {
+    "sourceScenarioPath": "examples/phase-3a-codex-readiness-workflow/scenario.json",
+    "sourceWorkflowReceiptPath": "evidence/examples/20260731T074156Z-phase-3a-codex-readiness-workflow/receipt.json",
+    "expectedStageCount": 20,
+    "expectedReopenObservationCount": 2,
+    "expectedFailureRecoveryCaseCount": 3,
+    "expectedHostProjectionCount": 4
+  },
+  "sourcePaths": {
+    "phase3aConformance": "evidence/ide-conformance/20260731T074242Z-phase-3a-codex-readiness-workflow.json",
+    "phase3aReport": "evidence/phase-reports/20260731T074657Z-phase-3a-codex-readiness-workflow.json",
+    "productStudio": "apps/vscode/src/current-engine-studio-data-source.ts"
+  },
+  "stages": [
+    { "ordinal": 1, "id": "P3A-01", "title": "Backlog Hierarchy", "artifactKind": "backlog-hierarchy-candidate" },
+    { "ordinal": 2, "id": "P3A-02", "title": "MVP and Vertical Slice Definition", "artifactKind": "mvp-slice-definition-candidate" },
+    { "ordinal": 3, "id": "P3A-03", "title": "Prioritization Model", "artifactKind": "prioritization-model-candidate" },
+    { "ordinal": 4, "id": "P3A-04", "title": "Acceptance Criteria", "artifactKind": "acceptance-criteria-candidate" },
+    { "ordinal": 5, "id": "P3A-05", "title": "Definition of Ready", "artifactKind": "definition-of-ready-candidate" },
+    { "ordinal": 6, "id": "P3A-06", "title": "Definition of Done", "artifactKind": "definition-of-done-candidate" },
+    { "ordinal": 7, "id": "P3A-07", "title": "Implementation Unit Model", "artifactKind": "implementation-unit-model-candidate" },
+    { "ordinal": 8, "id": "P3A-08", "title": "Dependency Mapping", "artifactKind": "dependency-mapping-candidate" },
+    { "ordinal": 9, "id": "P3A-09", "title": "Technology Profile", "artifactKind": "technology-profile-candidate" },
+    { "ordinal": 10, "id": "P3A-10", "title": "Boilerplate Registry", "artifactKind": "boilerplate-registry-candidate" },
+    { "ordinal": 11, "id": "P3A-11", "title": "Boilerplate Selection and Binding", "artifactKind": "boilerplate-selection-binding-candidate" },
+    { "ordinal": 12, "id": "P3A-12", "title": "Boilerplate Compatibility Validation", "artifactKind": "boilerplate-compatibility-validation-candidate" },
+    { "ordinal": 13, "id": "P3A-13", "title": "Figma-to-Boilerplate Mapping", "artifactKind": "figma-to-boilerplate-mapping-candidate" },
+    { "ordinal": 14, "id": "P3A-14", "title": "Design-to-Code Binding Registry", "artifactKind": "design-to-code-binding-registry-candidate" },
+    { "ordinal": 15, "id": "P3A-15", "title": "Route, Screen, and Component Mapping", "artifactKind": "route-screen-component-mapping-candidate" },
+    { "ordinal": 16, "id": "P3A-16", "title": "Test Methodology", "artifactKind": "test-methodology-candidate" },
+    { "ordinal": 17, "id": "P3A-17", "title": "Test Inventory", "artifactKind": "test-inventory-candidate" },
+    { "ordinal": 18, "id": "P3A-18", "title": "High-Level Design", "artifactKind": "high-level-design-candidate" },
+    { "ordinal": 19, "id": "P3A-19", "title": "Low-Level Design", "artifactKind": "low-level-design-candidate" },
+    { "ordinal": 20, "id": "P3A-20", "title": "Implementation Readiness Gate", "artifactKind": "implementation-readiness-gate-candidate" }
+  ],
+  "failureCases": [
+    { "id": "stale-dependency-revision", "injectedState": "stale", "expectedState": "hold", "recovery": "rebind-exact-current-revision" },
+    { "id": "missing-readiness-evidence", "injectedState": "gap", "expectedState": "hold", "recovery": "record-attributable-evidence-candidate" },
+    { "id": "conflicting-readiness-outcome", "injectedState": "conflict", "expectedState": "hold", "recovery": "record-superseding-reviewed-candidate" }
+  ],
+  "limitations": [
+    "This is a deterministic local fixture and not real Product, backlog, design, boilerplate, test, risk, security, or readiness evidence.",
+    "Claude execution uses the isolated fake stream, tool-free context-only contract and makes no live provider request or semantic-quality claim.",
+    "No OAuth, keychain, API key helper, administrator-policy override, authentication bypass, or supported-runtime claim is attempted.",
+    "Reopen, recovery, Product Studio, and host projections prove bounded deterministic continuity and Codex scenario parity only, not native-host interaction or acceptance.",
+    "No waiver, owner appointment, implementation readiness, assignment, execution, acceptance, security, release, deployment, or action authority is established."
+  ],
+  "authorityBoundary": "phase-3a-claude-readiness-workflow-is-deterministic-offline-tool-free-parity-evidence-not-live-provider-runtime-authentication-policy-product-truth-readiness-waiver-ownership-native-host-product-owner-security-release-deployment-or-action-authority"
+}
