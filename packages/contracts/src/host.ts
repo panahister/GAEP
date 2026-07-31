@@ -1622,6 +1622,7 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("delivery.stagingWorkspace.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("delivery.controlledCodexImplementation.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("delivery.controlledClaudeImplementation.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("delivery.providerSwitchImplementation.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

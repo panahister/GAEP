@@ -55,6 +55,7 @@ import {
   type StagingWorkspaceProjection,
   type ControlledCodexImplementationProjection,
   type ControlledClaudeImplementationProjection,
+  type ProviderSwitchImplementationProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -204,6 +205,7 @@ const commandIds = {
   stagingWorkspace: "gaepKiro.stagingWorkspace.inspect",
   controlledCodexImplementation: "gaepKiro.controlledCodexImplementation.inspect",
   controlledClaudeImplementation: "gaepKiro.controlledClaudeImplementation.inspect",
+  providerSwitchImplementation: "gaepKiro.providerSwitchImplementation.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -369,6 +371,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.stagingWorkspace, (input?: unknown) => runUserCommand(() => showStagingWorkspace(pool, input))),
     vscode.commands.registerCommand(commandIds.controlledCodexImplementation, (input?: unknown) => runUserCommand(() => showControlledCodexImplementation(pool, input))),
     vscode.commands.registerCommand(commandIds.controlledClaudeImplementation, (input?: unknown) => runUserCommand(() => showControlledClaudeImplementation(pool, input))),
+    vscode.commands.registerCommand(commandIds.providerSwitchImplementation, (input?: unknown) => runUserCommand(() => showProviderSwitchImplementation(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2859,6 +2862,41 @@ async function showControlledClaudeImplementation(
       `Recovery: cancellation ${record.lifecycle.cancellationState} · resume ${record.lifecycle.resumeState} · recovery ${record.lifecycle.recoveryState}`,
       `Candidate units: ${record.unitCount} · paths: ${record.pathCount} · prerequisites: ${record.prerequisiteCount}`, `Updated: ${record.updatedAt}`] : []), "",
     "Privacy-safe candidate metadata only. This inspection is tool-free and context-only; it does not inspect credentials, bypass administrator policy, call Claude, access a workspace, create a real stage, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showProviderSwitchImplementation(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<ProviderSwitchImplementationProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Provider Switch Implementation inspection", "Initiative ID")
+  const projection = await client.readProviderSwitchImplementation(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Provider Switching During Implementation candidate", "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Continuity: ${status.unitCount} units · ${status.pathCount} paths · ${status.continuityGapCount} gaps`,
+    `Gaps: ${status.gapCount} unit · ${status.staleBindingCount} stale · ${status.providerGapCount} provider · ${status.continuityGapCount} continuity · ${status.handoffGapCount} handoff · ${status.prerequisiteGapCount} prerequisite · ${status.evidenceGapCount} evidence`,
+    ...status.reasons.map((reason) => `  - ${reason}`), "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [`Direction: ${record.direction}`,
+      `Providers: ${record.sourceProvider.adapterId}/${record.sourceProvider.agentId}/${record.sourceProvider.modelId} → ${record.targetProvider.adapterId}/${record.targetProvider.agentId}/${record.targetProvider.modelId}`,
+      `Handoff stop lines: ${record.handoff.state} · source terminal ${record.handoff.sourceTerminalRunState} · target runtime ${record.handoff.targetRuntimeReadinessState}`,
+      `Lifecycle: transition ${record.lifecycle.providerTransitionState} · handoff ${record.lifecycle.handoffState} · stage ownership ${record.lifecycle.stageOwnershipState} · resume ${record.lifecycle.resumeState}`,
+      `Effects: source mutation ${record.lifecycle.sourceMutationState} · apply ${record.lifecycle.applyState} · discard ${record.lifecycle.discardState} · recovery ${record.lifecycle.recoveryState}`,
+      `Candidate units: ${record.unitCount} · paths: ${record.pathCount} · prerequisites: ${record.prerequisiteCount}`, `Updated: ${record.updatedAt}`] : []), "",
+    "Privacy-safe candidate metadata only. This inspection does not transition or execute either provider, record a handoff, transfer stage ownership, resume work, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })

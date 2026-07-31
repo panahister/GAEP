@@ -256,6 +256,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadStagingWorkspaceCommand = new AsyncCommand(LoadStagingWorkspaceAsync);
         LoadControlledCodexImplementationCommand = new AsyncCommand(LoadControlledCodexImplementationAsync);
         LoadControlledClaudeImplementationCommand = new AsyncCommand(LoadControlledClaudeImplementationAsync);
+        LoadProviderSwitchImplementationCommand = new AsyncCommand(LoadProviderSwitchImplementationAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -478,6 +479,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadControlledClaudeImplementationCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadProviderSwitchImplementationCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1232,6 +1236,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Controlled Claude Implementation candidate",
             (controller, _, token) => controller.ReadControlledClaudeImplementationAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadProviderSwitchImplementationAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Provider Switching During Implementation candidate",
+            (controller, _, token) => controller.ReadProviderSwitchImplementationAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

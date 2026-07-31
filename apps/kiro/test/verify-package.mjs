@@ -145,7 +145,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
     fail("package identity, host engine, entry point, or extension kind differs")
   }
   const commands = packagedManifest.contributes?.commands
-  if (!Array.isArray(commands) || commands.length !== 93 ||
+  if (!Array.isArray(commands) || commands.length !== 94 ||
       new Set(commands.map((command) => command.command)).size !== commands.length ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase2UxFigma") ||
       !commands.some((command) => command.command === "gaepKiro.dashboard.phase2ChangeImpactAgentModel") ||
@@ -184,6 +184,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.stagingWorkspace.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.controlledCodexImplementation.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.controlledClaudeImplementation.inspect") ||
+      !commands.some((command) => command.command === "gaepKiro.providerSwitchImplementation.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designSystemTokenContract.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.accessibilityDesignRules.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.responsiveMultiPlatformTargets.inspect") ||
@@ -201,7 +202,7 @@ export async function verifyKiroPackage(packagePath = resolve(kiroRoot, "dist/ga
       !commands.some((command) => command.command === "gaepKiro.humanDesignApproval.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designBaseline.inspect") ||
       !commands.some((command) => command.command === "gaepKiro.designDriftDetection.inspect")) {
-    fail("package command inventory must contain 93 unique commands including the Phase 3B Changed Unit Inventory, Proposed Change Preview, Isolated Staging Workspace, Controlled Codex Implementation, and Controlled Claude Implementation, Phase 3A dashboard, both Phase 2 dashboards, all three Phase 1 dashboards, Backlog Hierarchy, MVP and Vertical Slice Definition, Prioritization Model, Acceptance Criteria, Definition of Ready, Definition of Done, Implementation Unit Model, Dependency Mapping, Technology Profile, Boilerplate Registry, Boilerplate Selection and Binding, Boilerplate Compatibility Validation, Figma-to-Boilerplate Mapping, Design-to-Code Binding Registry, Route, Screen, and Component Mapping, Test Methodology, Test Inventory, High-Level Design, Low-Level Design, Implementation Readiness Gate, and governed Design phase candidates through Design Drift Detection")
+    fail("package command inventory must contain 94 unique commands including the Phase 3B Changed Unit Inventory, Proposed Change Preview, Isolated Staging Workspace, Controlled Codex Implementation, Controlled Claude Implementation, and Provider Switching During Implementation, Phase 3A dashboard, both Phase 2 dashboards, all three Phase 1 dashboards, Backlog Hierarchy, MVP and Vertical Slice Definition, Prioritization Model, Acceptance Criteria, Definition of Ready, Definition of Done, Implementation Unit Model, Dependency Mapping, Technology Profile, Boilerplate Registry, Boilerplate Selection and Binding, Boilerplate Compatibility Validation, Figma-to-Boilerplate Mapping, Design-to-Code Binding Registry, Route, Screen, and Component Mapping, Test Methodology, Test Inventory, High-Level Design, Low-Level Design, Implementation Readiness Gate, and governed Design phase candidates through Design Drift Detection")
   }
   const activationCommands = packagedManifest.activationEvents
     .filter((event) => event.startsWith("onCommand:"))

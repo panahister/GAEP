@@ -3306,6 +3306,24 @@ data class ControlledClaudeImplementationProjection(
     val unresolvedQuestionCount: Int, val candidate: ControlledClaudeImplementationRecordView?, val snapshotDigest: String,
 )
 
+data class ProviderSwitchImplementationRecordView(
+    val id: UUID, val revision: Long, val digest: String, val direction: String,
+    val sourceAdapterId: String, val sourceAgentId: String, val sourceModelId: String,
+    val targetAdapterId: String, val targetAgentId: String, val targetModelId: String,
+    val handoffState: String, val providerTransitionState: String, val stageOwnershipState: String, val resumeState: String,
+    val sourceMutationState: String, val applyState: String, val discardState: String, val recoveryState: String,
+    val unitCount: Int, val pathCount: Int, val prerequisiteCount: Int, val reviewState: String,
+)
+
+data class ProviderSwitchImplementationProjection(
+    val productId: UUID, val productRevision: Long, val productDigest: String,
+    val initiativeId: UUID, val initiativeRevision: Long, val initiativeDigest: String, val initiativeState: String,
+    val state: String, val reviewState: String, val reasons: List<String>, val unitCount: Int, val pathCount: Int,
+    val candidateDefinedCount: Int, val gapCount: Int, val staleBindingCount: Int, val providerGapCount: Int,
+    val continuityGapCount: Int, val handoffGapCount: Int, val prerequisiteGapCount: Int, val evidenceGapCount: Int,
+    val invalidCandidateCount: Int, val unresolvedQuestionCount: Int, val candidate: ProviderSwitchImplementationRecordView?, val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -4599,6 +4617,12 @@ internal object PortableDesignProtocol {
         "controlled-claude-implementation-projection-is-read-only-and-grants-no-execution-stage-approval-authorization-mutation-apply-discard-recovery-acceptance-release-deployment-or-action-authority"
     private const val CONTROLLED_CLAUDE_IMPLEMENTATION_STATUS_AUTHORITY_BOUNDARY =
         "controlled-claude-implementation-status-is-observational-and-grants-no-execution-stage-approval-authorization-mutation-apply-discard-recovery-acceptance-release-deployment-or-action-authority"
+    private const val PROVIDER_SWITCH_IMPLEMENTATION_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-repository-relative-path-candidates-provider-model-identifiers-counts-states-and-receipt-digests-only-not-prompts-context-source-diffs-provider-output-machine-paths-personal-data-secrets-or-credentials"
+    private const val PROVIDER_SWITCH_IMPLEMENTATION_PROJECTION_AUTHORITY_BOUNDARY =
+        "provider-switch-implementation-projection-is-read-only-and-grants-no-provider-transition-handoff-resume-stage-transfer-mutation-apply-discard-recovery-acceptance-release-deployment-or-action-authority"
+    private const val PROVIDER_SWITCH_IMPLEMENTATION_STATUS_AUTHORITY_BOUNDARY =
+        "provider-switch-implementation-status-is-observational-and-grants-no-provider-transition-handoff-resume-stage-transfer-mutation-apply-discard-recovery-acceptance-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -12606,6 +12630,73 @@ internal object PortableDesignProtocol {
         if (state == "candidate-defined" && (candidate == null || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || countNames.filterNot { it in setOf("unitCount", "pathCount", "resourceScopeCount", "toolPermissionCount", "candidateDefinedCount") }.sumOf { counts.getValue(it) } > 0)) throw invalidResponse()
         return ControlledClaudeImplementationProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState, state, reviewState, reasons,
             counts.getValue("unitCount"), counts.getValue("pathCount"), counts.getValue("resourceScopeCount"), counts.getValue("toolPermissionCount"), counts.getValue("candidateDefinedCount"), counts.getValue("gapCount"), counts.getValue("staleBindingCount"), counts.getValue("providerGapCount"), counts.getValue("scopeGapCount"), counts.getValue("planGapCount"), counts.getValue("prerequisiteGapCount"), counts.getValue("recoveryGapCount"), counts.getValue("evidenceGapCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
+    }
+
+    fun parseProviderSwitchImplementationEnvelope(envelope: JsonObject, expectedInitiativeId: UUID): ProviderSwitchImplementationProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(setOf("schemaVersion", "kind", "product", "initiative", "status", "observedAt", "privacyBoundary", "authorityBoundary", "snapshotDigest"), setOf("candidate"))
+        if (projection.requireInt("schemaVersion") != 1 || projection.requireString("kind") != "provider-switch-implementation-projection" ||
+            projection.requireString("privacyBoundary") != PROVIDER_SWITCH_IMPLEMENTATION_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != PROVIDER_SWITCH_IMPLEMENTATION_PROJECTION_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        if (snapshotDigest != canonicalDigest(projection.deepCopy().also { it.remove("snapshotDigest") })) throw invalidResponse()
+        val product = projection.get("product").requireObject().also { it.requireExactKeys("id", "revision", "digest") }
+        val productId = product.requireNonEmptyUuid("id"); val productRevision = product.requireLong("revision"); val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject().also { it.requireExactKeys("id", "revision", "digest", "state") }
+        val initiativeId = initiative.requireNonEmptyUuid("id"); val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || productRevision !in 1..MAX_SAFE_PRODUCT_REVISION || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest"); val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+        val countNames = setOf("unitCount", "pathCount", "candidateDefinedCount", "gapCount", "staleBindingCount", "providerGapCount", "continuityGapCount", "handoffGapCount", "prerequisiteGapCount", "evidenceGapCount", "invalidCandidateCount", "unresolvedQuestionCount")
+        val status = projection.get("status").requireObject()
+        status.requireKeys(setOf("schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision", "reviewState", "state", "reasons", "assessedAt", "authorityBoundary") + countNames,
+            setOf("candidate", "proposedChangePreview", "stagingWorkspace", "controlledCodexImplementation", "controlledClaudeImplementation"))
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "provider-switch-implementation-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != PROVIDER_SWITCH_IMPLEMENTATION_STATUS_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val counts = countNames.associateWith { status.requireBoundedNonNegativeInt(it, 65_536) }
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")); val state = status.requireOneOf("state", setOf("attention-required", "candidate-defined"))
+        val reasonsElement = status.get("reasons"); if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 2_048) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }; if (state == "attention-required" && reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+        val candidateReference = status.get("candidate")?.requireObject()?.also { it.requireExactKeys("recordId", "revision", "digest") }
+        listOf("proposedChangePreview", "stagingWorkspace", "controlledCodexImplementation", "controlledClaudeImplementation").forEach { name ->
+            status.get(name)?.requireObject()?.also { it.requireExactKeys("recordId", "revision", "digest"); it.requireNonEmptyUuid("recordId"); it.requireLong("revision"); it.requireDigest("digest") }
+        }
+        fun provider(value: JsonObject): Triple<String, String, String> {
+            value.requireKeys(setOf("adapterId", "agentId", "modelId", "capabilityDigest"), setOf("runtimeVersion"))
+            val adapterId = portableText(value.requireString("adapterId"), 1, 128); val agentId = portableText(value.requireString("agentId"), 1, 128); val modelId = portableText(value.requireString("modelId"), 1, 1_024)
+            value.requireDigest("capabilityDigest"); value.get("runtimeVersion")?.let { portableText(it.requireString(), 1, 1_024) }; return Triple(adapterId, agentId, modelId)
+        }
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject(); value.requireExactKeys("id", "revision", "digest", "state", "direction", "sourceProvider", "targetProvider", "sourceSelection", "targetSelection", "handoff", "lifecycle", "unitCount", "pathCount", "prerequisiteCount", "bindingReceiptDigest", "providerReceiptDigest", "continuityReceiptDigest", "handoffReceiptDigest", "lifecycleReceiptDigest", "prerequisiteReceiptDigest", "assessmentReceiptDigest", "reviewState", "updatedAt")
+            val id = value.requireNonEmptyUuid("id"); val revision = value.requireLong("revision"); if (value.requireString("state") != "candidate") throw invalidResponse()
+            val direction = value.requireOneOf("direction", setOf("codex-to-claude", "claude-to-codex")); val source = provider(value.get("sourceProvider").requireObject()); val target = provider(value.get("targetProvider").requireObject())
+            if (source.first == target.first || (direction == "codex-to-claude" && (source.first != "gaep.codex-cli" || target.first != "gaep.claude-code-cli")) ||
+                (direction == "claude-to-codex" && (source.first != "gaep.claude-code-cli" || target.first != "gaep.codex-cli"))) throw invalidResponse()
+            listOf("sourceSelection", "targetSelection").forEach { name ->
+                value.get(name).requireObject().also { selection ->
+                    selection.requireExactKeys("schemaVersion", "adapterId", "agentId", "modelId", "modelTruthClass", "modelAlias", "settings", "selectedAt", "capabilityDigest")
+                    if (selection.requireInt("schemaVersion") != 2) throw invalidResponse(); portableText(selection.requireString("adapterId"), 1, 128); portableText(selection.requireString("agentId"), 1, 128); portableText(selection.requireString("modelId"), 1, 1_024); selection.requireDigest("capabilityDigest"); selection.requireInstant("selectedAt")
+                    if (!selection.get("settings").isJsonObject) throw invalidResponse()
+                }
+            }
+            val handoff = value.get("handoff").requireObject().also { it.requireExactKeys("state", "handoffKey", "sourceTerminalRunState", "targetRuntimeReadinessState", "stageOwnershipTransferState", "resumeState", "handoffReceiptDigest") }
+            if (handoff.requireString("state") != "candidate-not-recorded" || handoff.requireString("sourceTerminalRunState") != "not-established" || handoff.requireString("targetRuntimeReadinessState") != "not-established" || handoff.requireString("stageOwnershipTransferState") != "not-performed" || handoff.requireString("resumeState") != "not-performed") throw invalidResponse()
+            portableText(handoff.requireString("handoffKey"), 1, 128); handoff.requireDigest("handoffReceiptDigest")
+            val lifecycle = value.get("lifecycle").requireObject().also { it.requireExactKeys("planningState", "providerTransitionState", "handoffState", "stageOwnershipState", "resumeState", "approvalState", "authorizationState", "sourceMutationState", "applyState", "discardState", "recoveryState") }
+            if (lifecycle.requireString("planningState") != "candidate-defined" || lifecycle.requireString("providerTransitionState") != "not-performed" || lifecycle.requireString("handoffState") != "not-recorded" || lifecycle.requireString("stageOwnershipState") != "unchanged" || lifecycle.requireString("resumeState") != "not-performed" || lifecycle.requireString("approvalState") != "not-established" || lifecycle.requireString("authorizationState") != "not-established" || lifecycle.requireString("sourceMutationState") != "not-performed" || lifecycle.requireString("applyState") != "not-performed" || lifecycle.requireString("discardState") != "not-performed" || lifecycle.requireString("recoveryState") != "not-exercised") throw invalidResponse()
+            val unitCount = value.requireBoundedNonNegativeInt("unitCount", 65_536); val pathCount = value.requireBoundedNonNegativeInt("pathCount", 65_536); val prerequisiteCount = value.requireBoundedNonNegativeInt("prerequisiteCount", 5)
+            listOf("bindingReceiptDigest", "providerReceiptDigest", "continuityReceiptDigest", "handoffReceiptDigest", "lifecycleReceiptDigest", "prerequisiteReceiptDigest", "assessmentReceiptDigest").forEach { value.requireDigest(it) }
+            val record = ProviderSwitchImplementationRecordView(id, revision, value.requireDigest("digest"), direction, source.first, source.second, source.third, target.first, target.second, target.third,
+                lifecycle.requireString("handoffState"), lifecycle.requireString("providerTransitionState"), lifecycle.requireString("stageOwnershipState"), lifecycle.requireString("resumeState"), lifecycle.requireString("sourceMutationState"), lifecycle.requireString("applyState"), lifecycle.requireString("discardState"), lifecycle.requireString("recoveryState"), unitCount, pathCount, prerequisiteCount, value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")))
+            if (candidateReference == null || candidateReference.requireNonEmptyUuid("recordId") != id || candidateReference.requireLong("revision") != revision || candidateReference.requireDigest("digest") != record.digest || record.reviewState != reviewState || unitCount != counts.getValue("unitCount") || pathCount != counts.getValue("pathCount")) throw invalidResponse()
+            value.requireInstant("updatedAt"); record
+        }
+        if ((candidateReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        if (state == "candidate-defined" && (candidate == null || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || countNames.filterNot { it in setOf("unitCount", "pathCount", "candidateDefinedCount") }.sumOf { counts.getValue(it) } > 0)) throw invalidResponse()
+        return ProviderSwitchImplementationProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState, state, reviewState, reasons,
+            counts.getValue("unitCount"), counts.getValue("pathCount"), counts.getValue("candidateDefinedCount"), counts.getValue("gapCount"), counts.getValue("staleBindingCount"), counts.getValue("providerGapCount"), counts.getValue("continuityGapCount"), counts.getValue("handoffGapCount"), counts.getValue("prerequisiteGapCount"), counts.getValue("evidenceGapCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
     }
 
     fun parseDesignSystemTokenContractEnvelope(

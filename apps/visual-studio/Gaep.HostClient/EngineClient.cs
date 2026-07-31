@@ -807,6 +807,13 @@ public sealed class EngineClient : IAsyncDisposable
         return ParsePortableDesignResponse(response, envelope => PortableDesignProtocol.ParseControlledClaudeImplementationResponse(envelope, initiativeId));
     }
 
+    public async Task<ProviderSwitchImplementationProjection> ReadProviderSwitchImplementationAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        using var response = await RequestPortableDesignAsync("delivery.providerSwitchImplementation.snapshot", new Dictionary<string, object?> { ["initiativeId"] = initiativeId }, cancellationToken);
+        return ParsePortableDesignResponse(response, envelope => PortableDesignProtocol.ParseProviderSwitchImplementationResponse(envelope, initiativeId));
+    }
+
     public async Task<AccessibilityDesignRulesProjection> ReadAccessibilityDesignRulesAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

@@ -108,6 +108,7 @@
     "onCommand:gaepKiro.stagingWorkspace.inspect",
     "onCommand:gaepKiro.controlledCodexImplementation.inspect",
     "onCommand:gaepKiro.controlledClaudeImplementation.inspect",
+    "onCommand:gaepKiro.providerSwitchImplementation.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -434,6 +435,10 @@
       {
         "command": "gaepKiro.controlledClaudeImplementation.inspect",
         "title": "GAEP for Kiro: Inspect Governed Controlled Claude Implementation Candidate"
+      },
+      {
+        "command": "gaepKiro.providerSwitchImplementation.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Provider Switching During Implementation Candidate"
       },
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",

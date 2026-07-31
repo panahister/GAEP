@@ -54,6 +54,7 @@ import {
   stagingWorkspaceProjectionSchema,
   controlledCodexImplementationProjectionSchema,
   controlledClaudeImplementationProjectionSchema,
+  providerSwitchImplementationProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -135,6 +136,7 @@ import {
   type StagingWorkspaceProjection,
   type ControlledCodexImplementationProjection,
   type ControlledClaudeImplementationProjection,
+  type ProviderSwitchImplementationProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -1202,6 +1204,20 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = controlledClaudeImplementationProjectionSchema.safeParse(
         await this.request("delivery.controlledClaudeImplementation.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId || snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readProviderSwitchImplementation(initiativeValue: string): Promise<ProviderSwitchImplementationProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = providerSwitchImplementationProjectionSchema.safeParse(
+        await this.request("delivery.providerSwitchImplementation.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data
