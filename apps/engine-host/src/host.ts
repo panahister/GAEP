@@ -202,6 +202,11 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "delivery.changedUnitInventory.revise",
   "delivery.changedUnitInventory.assess",
   "delivery.changedUnitInventory.snapshot",
+  "delivery.proposedChangePreview.read",
+  "delivery.proposedChangePreview.create",
+  "delivery.proposedChangePreview.revise",
+  "delivery.proposedChangePreview.assess",
+  "delivery.proposedChangePreview.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1734,6 +1739,21 @@ export class EngineHost {
         return this.engine.changedUnitInventory.assess(request.params.initiativeId)
       case "delivery.changedUnitInventory.snapshot":
         return this.engine.changedUnitInventory.project(request.params.initiativeId)
+      case "delivery.proposedChangePreview.read":
+        return await this.engine.proposedChangePreview.readCurrent(request.params.initiativeId) ?? null
+      case "delivery.proposedChangePreview.create":
+        return this.engine.proposedChangePreview.create(request.params.record, actorId(request.params.actorId))
+      case "delivery.proposedChangePreview.revise":
+        return this.engine.proposedChangePreview.revise(
+          request.params.recordId,
+          request.params.expectedRevision,
+          request.params.record,
+          actorId(request.params.actorId),
+        )
+      case "delivery.proposedChangePreview.assess":
+        return this.engine.proposedChangePreview.assess(request.params.initiativeId)
+      case "delivery.proposedChangePreview.snapshot":
+        return this.engine.proposedChangePreview.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":

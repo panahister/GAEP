@@ -3233,6 +3233,23 @@ data class ChangedUnitInventoryProjection(
     val invalidCandidateCount: Int, val unresolvedQuestionCount: Int, val candidate: ChangedUnitInventoryRecordView?, val snapshotDigest: String,
 )
 
+data class ProposedChangePreviewRecordView(
+    val id: UUID, val revision: Long, val digest: String, val dependencyReceiptDigest: String,
+    val planReceiptDigest: String, val diffReceiptDigest: String, val traceReceiptDigest: String,
+    val evidenceReceiptDigest: String, val assessmentReceiptDigest: String, val unitCount: Int, val reviewState: String,
+)
+
+data class ProposedChangePreviewProjection(
+    val productId: UUID, val productRevision: Long, val productDigest: String,
+    val initiativeId: UUID, val initiativeRevision: Long, val initiativeDigest: String, val initiativeState: String,
+    val state: String, val reviewState: String, val reasons: List<String>, val inventoryUnitCount: Int,
+    val inventoryPathCount: Int, val previewUnitCount: Int, val previewPathCount: Int, val candidatePreviewedCount: Int,
+    val gapCount: Int, val conflictCount: Int, val staleCount: Int, val notAssessedCount: Int, val orphanUnitCount: Int,
+    val orphanPathCount: Int, val endpointGapCount: Int, val diffGapCount: Int, val traceGapCount: Int,
+    val evidenceGapCount: Int, val staleBindingCount: Int, val staleInventoryCount: Int, val invalidCandidateCount: Int,
+    val unresolvedQuestionCount: Int, val candidate: ProposedChangePreviewRecordView?, val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -4502,6 +4519,12 @@ internal object PortableDesignProtocol {
         "changed-unit-inventory-projection-is-read-only-and-does-not-establish-repository-or-path-truth-approved-change-scope-or-change-approval-owner-appointment-implementation-readiness-code-mutation-or-staging-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
     private const val CHANGED_UNIT_INVENTORY_STATUS_AUTHORITY_BOUNDARY =
         "changed-unit-inventory-status-is-observational-and-does-not-establish-repository-or-path-truth-approved-change-scope-or-change-approval-owner-appointment-implementation-readiness-code-mutation-or-staging-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
+    private const val PROPOSED_CHANGE_PREVIEW_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-repository-relative-path-candidates-change-kinds-endpoint-and-diff-metadata-counts-statuses-and-receipt-digests-only-not-file-or-diff-content-evidence-content-personal-data-secrets-credentials-or-machine-paths"
+    private const val PROPOSED_CHANGE_PREVIEW_PROJECTION_AUTHORITY_BOUNDARY =
+        "proposed-change-preview-projection-is-read-only-and-does-not-establish-repository-path-source-target-or-diff-truth-approved-change-scope-or-change-approval-code-mutation-staging-apply-discard-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
+    private const val PROPOSED_CHANGE_PREVIEW_STATUS_AUTHORITY_BOUNDARY =
+        "proposed-change-preview-status-is-observational-and-does-not-establish-repository-path-source-target-or-diff-truth-approved-change-scope-or-change-approval-code-mutation-staging-apply-discard-assignment-execution-acceptance-merge-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -12251,6 +12274,73 @@ internal object PortableDesignProtocol {
         if ((candidateReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
         return ChangedUnitInventoryProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState, state, reviewState, reasons,
             counts.getValue("dependencyCount"), counts.getValue("presentDependencyCount"), counts.getValue("sourceUnitCount"), counts.getValue("inventoryUnitCount"), counts.getValue("pathCandidateCount"), counts.getValue("candidateScopedCount"), counts.getValue("gapCount"), counts.getValue("conflictCount"), counts.getValue("staleCount"), counts.getValue("notAssessedCount"), counts.getValue("orphanUnitCount"), counts.getValue("traceGapCount"), counts.getValue("evidenceGapCount"), counts.getValue("ownershipGapCount"), counts.getValue("blastRadiusGapCount"), counts.getValue("staleBindingCount"), counts.getValue("staleDependencyCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
+    }
+
+    fun parseProposedChangePreviewEnvelope(envelope: JsonObject, expectedInitiativeId: UUID): ProposedChangePreviewProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(setOf("schemaVersion", "kind", "product", "initiative", "status", "observedAt", "privacyBoundary", "authorityBoundary", "snapshotDigest"), setOf("candidate"))
+        if (projection.requireInt("schemaVersion") != 1 || projection.requireString("kind") != "proposed-change-preview-projection" ||
+            projection.requireString("privacyBoundary") != PROPOSED_CHANGE_PREVIEW_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != PROPOSED_CHANGE_PREVIEW_PROJECTION_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        if (snapshotDigest != canonicalDigest(projection.deepCopy().also { it.remove("snapshotDigest") })) throw invalidResponse()
+        val product = projection.get("product").requireObject().also { it.requireExactKeys("id", "revision", "digest") }
+        val productId = product.requireNonEmptyUuid("id"); val productRevision = product.requireLong("revision"); val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject().also { it.requireExactKeys("id", "revision", "digest", "state") }
+        val initiativeId = initiative.requireNonEmptyUuid("id"); val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || productRevision !in 1..MAX_SAFE_PRODUCT_REVISION || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest"); val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+        val countNames = setOf("inventoryUnitCount", "inventoryPathCount", "previewUnitCount", "previewPathCount", "candidatePreviewedCount", "gapCount", "conflictCount", "staleCount", "notAssessedCount", "orphanUnitCount", "orphanPathCount", "endpointGapCount", "diffGapCount", "traceGapCount", "evidenceGapCount", "staleBindingCount", "staleInventoryCount", "invalidCandidateCount", "unresolvedQuestionCount")
+        val status = projection.get("status").requireObject()
+        status.requireKeys(setOf("schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision", "reviewState", "state", "reasons", "assessedAt", "authorityBoundary") + countNames, setOf("candidate", "changedUnitInventory"))
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "proposed-change-preview-status" || status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision || status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision || status.requireString("authorityBoundary") != PROPOSED_CHANGE_PREVIEW_STATUS_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val counts = countNames.associateWith { status.requireBoundedNonNegativeInt(it, 65_536) }
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")); val state = status.requireOneOf("state", setOf("attention-required", "candidate-previewed"))
+        val reasonsElement = status.get("reasons"); if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 2_048) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }; if (state == "attention-required" && reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+        val candidateReference = status.get("candidate")?.requireObject()?.also { it.requireExactKeys("recordId", "revision", "digest") }
+        val inventoryReference = status.get("changedUnitInventory")?.requireObject()?.also { it.requireExactKeys("recordId", "revision", "digest") }
+        inventoryReference?.also { value ->
+            if (value.requireLong("revision") !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+            value.requireNonEmptyUuid("recordId"); value.requireDigest("digest")
+        }
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject(); value.requireExactKeys("id", "revision", "digest", "state", "dependencyReceiptDigest", "planReceiptDigest", "diffReceiptDigest", "traceReceiptDigest", "evidenceReceiptDigest", "assessmentReceiptDigest", "reviewState", "updatedAt", "units")
+            val id = value.requireNonEmptyUuid("id"); val revision = value.requireLong("revision"); val units = value.get("units")
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || units == null || !units.isJsonArray || units.asJsonArray.size() > 65_536) throw invalidResponse()
+            var pathCount = 0
+            units.asJsonArray.forEach { unitElement ->
+                val unit = unitElement.requireObject(); unit.requireExactKeys("implementationUnitId", "implementationUnitKey", "outcome", "paths")
+                unit.requireNonEmptyUuid("implementationUnitId"); portableText(unit.requireString("implementationUnitKey"), 1, 128)
+                unit.requireOneOf("outcome", setOf("candidate-previewed", "gap", "conflict", "stale", "not-assessed"))
+                val paths = unit.get("paths")
+                if (paths == null || !paths.isJsonArray || paths.asJsonArray.size() > 65_536 || pathCount > 65_536 - paths.asJsonArray.size()) throw invalidResponse()
+                pathCount += paths.asJsonArray.size()
+                paths.asJsonArray.forEach { pathElement ->
+                    val path = pathElement.requireObject()
+                    path.requireKeys(setOf("pathCandidate", "changeKind", "sourceState", "targetState", "diffState", "diffFormat", "truncated"), setOf("sourcePathCandidate", "patchDigest", "addedLineCount", "removedLineCount"))
+                    portableText(path.requireString("pathCandidate"), 1, 4_096); path.get("sourcePathCandidate")?.let { portableText(it.requireString(), 1, 4_096) }
+                    path.requireOneOf("changeKind", setOf("add", "delete", "modify", "move", "not-assessed"))
+                    path.requireOneOf("sourceState", setOf("candidate-observed", "candidate-generated", "candidate-absent", "unavailable", "not-assessed"))
+                    path.requireOneOf("targetState", setOf("candidate-observed", "candidate-generated", "candidate-absent", "unavailable", "not-assessed"))
+                    path.requireOneOf("diffState", setOf("candidate-generated", "unavailable", "gap", "conflict", "stale", "not-assessed"))
+                    path.requireOneOf("diffFormat", setOf("unified-text-metadata", "binary-metadata", "not-assessed"))
+                    path.get("patchDigest")?.let { path.requireDigest("patchDigest") }
+                    path.get("addedLineCount")?.let { path.requireBoundedNonNegativeInt("addedLineCount", 10_000_000) }
+                    path.get("removedLineCount")?.let { path.requireBoundedNonNegativeInt("removedLineCount", 10_000_000) }
+                    if (!path.get("truncated").isJsonPrimitive || !path.get("truncated").asJsonPrimitive.isBoolean) throw invalidResponse()
+                }
+            }
+            if (pathCount != counts.getValue("previewPathCount")) throw invalidResponse()
+            val record = ProposedChangePreviewRecordView(id, revision, value.requireDigest("digest"), value.requireDigest("dependencyReceiptDigest"), value.requireDigest("planReceiptDigest"), value.requireDigest("diffReceiptDigest"), value.requireDigest("traceReceiptDigest"), value.requireDigest("evidenceReceiptDigest"), value.requireDigest("assessmentReceiptDigest"), units.asJsonArray.size(), value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")))
+            if (value.requireString("state") != "candidate" || candidateReference == null || candidateReference.requireNonEmptyUuid("recordId") != id || candidateReference.requireLong("revision") != revision || candidateReference.requireDigest("digest") != record.digest || record.reviewState != reviewState || record.unitCount != counts.getValue("previewUnitCount")) throw invalidResponse()
+            value.requireInstant("updatedAt"); record
+        }
+        if ((candidateReference == null) != (candidate == null) || (inventoryReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        if (state == "candidate-previewed" && (candidate == null || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || counts.getValue("inventoryUnitCount") != counts.getValue("previewUnitCount") || counts.getValue("inventoryPathCount") != counts.getValue("previewPathCount") || countNames.filterNot { it in setOf("inventoryUnitCount", "inventoryPathCount", "previewUnitCount", "previewPathCount", "candidatePreviewedCount") }.sumOf { counts.getValue(it) } > 0)) throw invalidResponse()
+        return ProposedChangePreviewProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState, state, reviewState, reasons,
+            counts.getValue("inventoryUnitCount"), counts.getValue("inventoryPathCount"), counts.getValue("previewUnitCount"), counts.getValue("previewPathCount"), counts.getValue("candidatePreviewedCount"), counts.getValue("gapCount"), counts.getValue("conflictCount"), counts.getValue("staleCount"), counts.getValue("notAssessedCount"), counts.getValue("orphanUnitCount"), counts.getValue("orphanPathCount"), counts.getValue("endpointGapCount"), counts.getValue("diffGapCount"), counts.getValue("traceGapCount"), counts.getValue("evidenceGapCount"), counts.getValue("staleBindingCount"), counts.getValue("staleInventoryCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
     }
 
     fun parseDesignSystemTokenContractEnvelope(

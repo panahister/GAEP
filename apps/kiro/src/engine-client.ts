@@ -50,6 +50,7 @@ import {
   lowLevelDesignProjectionSchema,
   implementationReadinessGateProjectionSchema,
   changedUnitInventoryProjectionSchema,
+  proposedChangePreviewProjectionSchema,
   designSystemTokenContractProjectionSchema,
   accessibilityDesignRulesProjectionSchema,
   responsiveMultiPlatformTargetsProjectionSchema,
@@ -127,6 +128,7 @@ import {
   type LowLevelDesignProjection,
   type ImplementationReadinessGateProjection,
   type ChangedUnitInventoryProjection,
+  type ProposedChangePreviewProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -1138,6 +1140,20 @@ export class GaepEngineClient {
       const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
       const parsed = changedUnitInventoryProjectionSchema.safeParse(
         await this.request("delivery.changedUnitInventory.snapshot", { initiativeId }),
+      )
+      if (!parsed.success) throw invalidHostResponse()
+      const projection = parsed.data
+      const { snapshotDigest, ...projectionBody } = projection
+      if (projection.initiative.id.toLowerCase() !== initiativeId || snapshotDigest !== canonicalDigest(projectionBody)) throw invalidHostResponse()
+      return projection
+    })
+  }
+
+  readProposedChangePreview(initiativeValue: string): Promise<ProposedChangePreviewProjection> {
+    return this.enqueue(async () => {
+      const initiativeId = normalizeUuid(initiativeValue, "Initiative ID")
+      const parsed = proposedChangePreviewProjectionSchema.safeParse(
+        await this.request("delivery.proposedChangePreview.snapshot", { initiativeId }),
       )
       if (!parsed.success) throw invalidHostResponse()
       const projection = parsed.data

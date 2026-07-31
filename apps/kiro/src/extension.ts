@@ -51,6 +51,7 @@ import {
   type LowLevelDesignProjection,
   type ImplementationReadinessGateProjection,
   type ChangedUnitInventoryProjection,
+  type ProposedChangePreviewProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -196,6 +197,7 @@ const commandIds = {
   lowLevelDesign: "gaepKiro.lowLevelDesign.inspect",
   implementationReadinessGate: "gaepKiro.implementationReadinessGate.inspect",
   changedUnitInventory: "gaepKiro.changedUnitInventory.inspect",
+  proposedChangePreview: "gaepKiro.proposedChangePreview.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -357,6 +359,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.lowLevelDesign, (input?: unknown) => runUserCommand(() => showLowLevelDesign(pool, input))),
     vscode.commands.registerCommand(commandIds.implementationReadinessGate, (input?: unknown) => runUserCommand(() => showImplementationReadinessGate(pool, input))),
     vscode.commands.registerCommand(commandIds.changedUnitInventory, (input?: unknown) => runUserCommand(() => showChangedUnitInventory(pool, input))),
+    vscode.commands.registerCommand(commandIds.proposedChangePreview, (input?: unknown) => runUserCommand(() => showProposedChangePreview(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2708,6 +2711,39 @@ async function showChangedUnitInventory(
     ...(record ? [`Inventory receipt digest: ${record.inventoryReceiptDigest}`, `Trace receipt digest: ${record.traceReceiptDigest}`,
       `Blast-radius receipt digest: ${record.blastRadiusReceiptDigest}`, `Candidate units: ${record.units.length}`, `Updated: ${record.updatedAt}`] : []), "",
     "Repository-relative candidates, counts, statuses, and receipt digests only. This inspection does not establish repository or path truth, approved scope, code mutation, staging, assignment, acceptance, merge, release, deployment, or action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showProposedChangePreview(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<ProposedChangePreviewProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Proposed Change Preview inspection", "Initiative ID")
+  const projection = await client.readProposedChangePreview(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Proposed Change Preview candidate", "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Inventory coverage: ${status.previewUnitCount}/${status.inventoryUnitCount} units · ${status.previewPathCount}/${status.inventoryPathCount} paths`,
+    `Candidate outcomes: ${status.candidatePreviewedCount} previewed · ${status.gapCount} gaps · ${status.conflictCount} conflicts · ${status.staleCount} stale · ${status.notAssessedCount} not assessed`,
+    `Metadata gaps: ${status.endpointGapCount} endpoint · ${status.diffGapCount} diff · ${status.traceGapCount} trace · ${status.evidenceGapCount} evidence`,
+    `Freshness gaps: ${status.staleBindingCount} bindings · ${status.staleInventoryCount} inventories · ${status.invalidCandidateCount} invalid · ${status.unresolvedQuestionCount} questions`,
+    ...status.reasons.map((reason) => `  - ${reason}`), "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [`Plan receipt digest: ${record.planReceiptDigest}`, `Diff receipt digest: ${record.diffReceiptDigest}`,
+      `Trace receipt digest: ${record.traceReceiptDigest}`, `Candidate units: ${record.units.length}`, `Updated: ${record.updatedAt}`] : []), "",
+    "Repository-relative plan and source/target/diff metadata only; no file or diff content. This inspection does not establish repository truth, approved scope, mutation, staging, apply/discard, assignment, acceptance, merge, release, deployment, or action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })

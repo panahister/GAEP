@@ -3477,6 +3477,38 @@ public sealed class ProductWorkflowController(EngineClient client)
             .Append("Authority boundary: repository-relative candidates, counts, statuses, and receipt digests only. This inspection does not establish repository or path truth, approved scope, code mutation, staging, assignment, acceptance, merge, release, deployment, or action authority.").ToString();
     }
 
+    public async Task<string> ReadProposedChangePreviewAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken); var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadProposedChangePreviewAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision || projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id || projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest || projection.InitiativeState != initiative.State)
+            throw new ArgumentException("The Product or Initiative changed while Proposed Change Preview was read. Refresh the exact records.");
+        return RenderProposedChangePreview(projection);
+    }
+
+    public static string RenderProposedChangePreview(ProposedChangePreviewProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder().AppendLine("GAEP governed Proposed Change Preview candidate").AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine($"Inventory coverage: {projection.PreviewUnitCount}/{projection.InventoryUnitCount} units · {projection.PreviewPathCount}/{projection.InventoryPathCount} paths")
+            .AppendLine($"Candidate outcomes: {projection.CandidatePreviewedCount} previewed · {projection.GapCount} gaps · {projection.ConflictCount} conflicts · {projection.StaleCount} stale · {projection.NotAssessedCount} not assessed")
+            .AppendLine($"Coverage gaps: {projection.OrphanUnitCount} orphan units · {projection.OrphanPathCount} orphan paths · {projection.EndpointGapCount} endpoints · {projection.DiffGapCount} diffs")
+            .AppendLine($"Integrity gaps: {projection.TraceGapCount} trace · {projection.EvidenceGapCount} evidence · {projection.StaleBindingCount} stale bindings · {projection.StaleInventoryCount} stale inventory · {projection.InvalidCandidateCount} invalid · {projection.UnresolvedQuestionCount} questions");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}");
+        output.AppendLine();
+        if (projection.Candidate is { } candidate) output.AppendLine($"Proposed Change Preview candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+            .AppendLine($"Dependency receipt digest: {candidate.DependencyReceiptDigest}").AppendLine($"Plan receipt digest: {candidate.PlanReceiptDigest}")
+            .AppendLine($"Diff receipt digest: {candidate.DiffReceiptDigest}").AppendLine($"Trace receipt digest: {candidate.TraceReceiptDigest}")
+            .AppendLine($"Evidence receipt digest: {candidate.EvidenceReceiptDigest}").AppendLine($"Assessment receipt digest: {candidate.AssessmentReceiptDigest}")
+            .AppendLine($"Candidate units: {candidate.UnitCount}");
+        else output.AppendLine("Proposed Change Preview candidate: not recorded");
+        return output.AppendLine().AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append("Authority boundary: repository-relative plan and source/target/diff metadata only; no file or diff content. This inspection does not establish repository truth, approved scope, mutation, staging, apply/discard, assignment, acceptance, merge, release, deployment, or action authority.").ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

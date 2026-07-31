@@ -3009,6 +3009,31 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Snapshot digest: ${projection.snapshotDigest}")
     }
 
+    fun readProposedChangePreview(initiativeId: UUID): String {
+        val product = client.readProductBinding(); val initiative = client.readInitiative(initiativeId)
+        val projection = client.readProposedChangePreview(initiativeId)
+        require(projection.productId == product.id && projection.productRevision == product.revision && projection.productDigest == product.digest &&
+            projection.initiativeId == initiative.id && projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state) {
+            "Proposed Change Preview projection does not match exact current Product and Initiative"
+        }
+        return renderProposedChangePreview(projection)
+    }
+
+    fun renderProposedChangePreview(projection: ProposedChangePreviewProjection): String = buildString {
+        appendLine("GAEP governed Proposed Change Preview candidate"); appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine("Inventory coverage: ${projection.previewUnitCount}/${projection.inventoryUnitCount} units · ${projection.previewPathCount}/${projection.inventoryPathCount} paths")
+        appendLine("Candidate outcomes: ${projection.candidatePreviewedCount} previewed · ${projection.gapCount} gaps · ${projection.conflictCount} conflicts · ${projection.staleCount} stale · ${projection.notAssessedCount} not assessed")
+        appendLine("Coverage gaps: ${projection.orphanUnitCount} orphan units · ${projection.orphanPathCount} orphan paths · ${projection.endpointGapCount} endpoints · ${projection.diffGapCount} diffs")
+        appendLine("Integrity gaps: ${projection.traceGapCount} trace · ${projection.evidenceGapCount} evidence · ${projection.staleBindingCount} stale bindings · ${projection.staleInventoryCount} stale inventory · ${projection.invalidCandidateCount} invalid · ${projection.unresolvedQuestionCount} questions")
+        projection.reasons.forEach { appendLine("  - $it") }; appendLine()
+        appendLine("Candidate record: ${projection.candidate?.let { "${it.id}@${it.revision} · candidate · ${it.digest}" } ?: "not recorded"}")
+        projection.candidate?.let { appendLine("Dependency receipt digest: ${it.dependencyReceiptDigest}"); appendLine("Plan receipt digest: ${it.planReceiptDigest}"); appendLine("Diff receipt digest: ${it.diffReceiptDigest}"); appendLine("Trace receipt digest: ${it.traceReceiptDigest}"); appendLine("Evidence receipt digest: ${it.evidenceReceiptDigest}"); appendLine("Assessment receipt digest: ${it.assessmentReceiptDigest}"); appendLine("Candidate units: ${it.unitCount}") }
+        appendLine(); appendLine("Repository-relative plan and source/target/diff metadata only; no file or diff content. This inspection does not establish repository truth, approved scope, mutation, staging, apply/discard, assignment, acceptance, merge, release, deployment, or action authority.")
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+    }
+
     fun renderTestInventory(projection: TestInventoryProjection): String = buildString {
         appendLine("GAEP governed Test Inventory candidate")
         appendLine()

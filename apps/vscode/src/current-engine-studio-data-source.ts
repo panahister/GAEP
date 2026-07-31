@@ -29,6 +29,7 @@ import type {
   LowLevelDesignProjection,
   ImplementationReadinessGateProjection,
   ChangedUnitInventoryProjection,
+  ProposedChangePreviewProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -265,6 +266,9 @@ export interface CurrentStudioEngineReader {
   changedUnitInventory?: {
     project(initiativeId: string): Promise<ChangedUnitInventoryProjection>
   }
+  proposedChangePreview?: {
+    project(initiativeId: string): Promise<ProposedChangePreviewProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -455,6 +459,7 @@ interface ObservedStudioState {
   lowLevelDesignProjections: Map<string, LowLevelDesignProjection>
   implementationReadinessGateProjections: Map<string, ImplementationReadinessGateProjection>
   changedUnitInventoryProjections: Map<string, ChangedUnitInventoryProjection>
+  proposedChangePreviewProjections: Map<string, ProposedChangePreviewProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3892,6 +3897,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     lowLevelDesigns: lowLevelDesignTable(state),
     implementationReadinessGates: implementationReadinessGateTable(state),
     changedUnitInventories: changedUnitInventoryTable(state),
+    proposedChangePreviews: proposedChangePreviewTable(state),
   }
 }
 
@@ -5118,6 +5124,34 @@ function changedUnitInventoryTable(state: ObservedStudioState): StudioTableSnaps
       { key: "assessment", label: "Candidate assessment" }, { key: "boundary", label: "Privacy and authority boundary" },
     ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Changed Unit Inventory candidate",
       "Create the candidate through the governed engine workflow only after the exact current Phase 3A dependencies and realistic-example receipt are available. This view cannot approve change scope or authorize code mutation.") } : {}) }
+}
+
+function proposedChangePreviewTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.proposedChangePreviewProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{ id: record.id, cells: {
+      initiative: projection.initiative.id, record: record.id, revision: String(record.revision), digest: record.digest,
+      inventory: `${status.previewUnitCount}/${status.inventoryUnitCount} units · ${status.previewPathCount}/${status.inventoryPathCount} paths`,
+      outcomes: `${status.candidatePreviewedCount} previewed · ${status.gapCount} gaps · ${status.conflictCount} conflicts · ${status.staleCount} stale · ${status.notAssessedCount} not assessed`,
+      metadata: `${status.endpointGapCount} endpoint · ${status.diffGapCount} diff · ${status.traceGapCount} trace · ${status.evidenceGapCount} evidence gaps`,
+      freshness: `${status.staleBindingCount} stale bindings · ${status.staleInventoryCount} stale inventories · ${status.invalidCandidateCount} invalid · ${status.unresolvedQuestionCount} questions`,
+      receipts: `${record.planReceiptDigest} · ${record.diffReceiptDigest} · ${record.traceReceiptDigest}`,
+      assessment: `${status.state} · ${status.reviewState}`,
+      boundary: "Repository-relative plan and source/target/diff metadata only. This view does not expose file or diff content or establish repository truth, approved scope, mutation, staging, apply/discard, assignment, acceptance, merge, release, deployment, or action authority.",
+    }, state: status.state, actions: [] }]
+  })
+  return { id: "proposed-change-preview", title: "Governed Proposed Change Preview Candidates",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true }, { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" }, { key: "digest", label: "Exact digest" },
+      { key: "inventory", label: "Inventory coverage" }, { key: "outcomes", label: "Preview outcomes" },
+      { key: "metadata", label: "Metadata gaps" }, { key: "freshness", label: "Freshness and integrity" },
+      { key: "receipts", label: "Deterministic receipts" }, { key: "assessment", label: "Candidate assessment" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Proposed Change Preview candidate",
+      "Create the candidate through the governed engine workflow only after an exact current Changed Unit Inventory exists. This view cannot approve scope, stage, apply, discard, or mutate source.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7024,6 +7058,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       lowLevelDesignProjections: new Map(),
       implementationReadinessGateProjections: new Map(),
       changedUnitInventoryProjections: new Map(),
+      proposedChangePreviewProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -8448,6 +8483,42 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("changed-unit-inventory-unavailable", "Changed Unit Inventory metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.proposedChangePreview) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const [preview, inventory] = await Promise.all([
+            engine.proposedChangePreview!.project(initiative.id),
+            engine.changedUnitInventory?.project(initiative.id),
+          ])
+          return { preview, inventory }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.preview
+            const inventory = projection.value.inventory
+            const { snapshotDigest, ...projectionBody } = value
+            const exactInventory = inventory?.candidate !== undefined && value.status.changedUnitInventory !== undefined &&
+              value.status.changedUnitInventory.recordId === inventory.candidate.id &&
+              value.status.changedUnitInventory.revision === inventory.candidate.revision &&
+              value.status.changedUnitInventory.digest === inventory.candidate.digest
+            if (value.candidate !== undefined && value.product.id === empty.product?.id &&
+                value.product.revision === (empty.product.revision ?? 1) && value.product.digest === canonicalDigest(empty.product) &&
+                value.initiative.id === initiative.id && value.initiative.revision === (initiative.revision ?? 1) &&
+                value.initiative.digest === canonicalDigest(initiative) && exactInventory && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.proposedChangePreviewProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Proposed Change Preview projection was unavailable or did not bind the exact current Changed Unit Inventory",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`proposed-change-preview-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Proposed Change Preview metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("proposed-change-preview-unavailable", "Proposed Change Preview metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (

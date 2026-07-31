@@ -84,6 +84,7 @@
     { "id": "low-level-design", "label": "Exact governed Low-Level Design candidate per Implementation Unit with bounded modules, classes, components, interfaces, data contracts, algorithms, states, error recovery, authorization, observability and test hooks; exact current High-Level Design plus architecture, context, technology, dependency, implementation-unit, boilerplate, design, test, risk and security/privacy dependency bindings; deterministic structure, dependency, trace, coverage, ownership and assessment receipts; without establishing design, repository, source, runtime or deployment truth or completeness, design baseline or approval, privacy or security approval, owner appointment, implementation readiness, acceptance, release, deployment, write or action authority" },
     { "id": "implementation-readiness-gate", "label": "Exact governed Implementation Readiness Gate candidate with exact current Phase 3A dependency bindings, one exact Low-Level Design and readiness subject per current Implementation Unit, explicit satisfied, gap, conflict, stale, waived-candidate and not-assessed outcomes, attributable evidence and review candidates, deterministic dependency, coverage, evidence, ownership and assessment receipts, and no elevation of automated assessment into artifact or evidence truth, completeness, approval, waiver, owner appointment, implementation readiness, assignment, execution, acceptance, release, deployment, write or action authority" },
     { "id": "changed-unit-inventory", "label": "Exact governed Changed Unit Inventory candidate with current Product and Initiative, backlog, Implementation Unit, dependency, design-to-code, route-screen-component, test, risk, readiness and realistic-example bindings, repository-relative path candidates, change kinds, deterministic inventory, trace, blast-radius, evidence, ownership and assessment receipts, and no elevation into repository or path truth, approved change scope, mutation, staging, assignment, acceptance, merge, release, deployment, write or action authority" },
+    { "id": "proposed-change-preview", "label": "Exact governed pre-apply Proposed Change Preview candidate bound to the exact current Changed Unit Inventory, with immutable revisions, one preview unit and path per inventory candidate, repository-relative source and target candidates, endpoint and diff metadata without file or diff content, plan operations, trace and attributable evidence, deterministic dependency, plan, diff, trace, evidence and assessment receipts, and no elevation into repository, path, source, target or diff truth, approved change scope or approval, mutation, staging, apply or discard, assignment, execution, acceptance, merge, release, deployment, write or action authority" },
     { "id": "design-system-token-contract", "label": "Exact governed Design System and Token Contract candidate projection with bounded system, token, variable, component and requirement-coverage metadata, without system, token, variable or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "accessibility-design-rules", "label": "Exact governed Accessibility Design Rules candidate projection with bounded target, rule, check, evidence-state and requirement-coverage metadata, without accessibility conformance, rule or check validity, legal compliance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
     { "id": "responsive-multi-platform-targets", "label": "Exact governed Responsive and Multi-Platform Targets candidate projection with bounded platform-target, breakpoint, behavior, check, evidence-state and requirement-coverage metadata, without responsive completeness, platform parity, breakpoint or behavior validity, accessibility conformance, ownership authority, design approval, baseline, readiness, implementation, write, or action authority" },
@@ -378,6 +379,10 @@
         { "capabilityId": "changed-unit-inventory", "state": "implemented", "probes": [
           { "path": "packages/engine/src/changed-unit-inventory.ts", "contains": ["class ChangedUnitInventoryService", "inventoryReceiptDigest", "changed-unit-inventory-projection-is-read-only"] },
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["changedUnitInventory?: {", "engine.changedUnitInventory!.project(initiative.id)", "id: \"changed-unit-inventory\"", "does not establish repository or path truth"] }
+        ] },
+        { "capabilityId": "proposed-change-preview", "state": "implemented", "probes": [
+          { "path": "packages/engine/src/proposed-change-preview.ts", "contains": ["class ProposedChangePreviewService", "planReceiptDigest", "proposed-change-preview-projection-is-read-only"] },
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["proposedChangePreview?: {", "engine.proposedChangePreview!.project(initiative.id)", "id: \"proposed-change-preview\"", "no file or diff content"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designSystemTokenContract?: {", "engine.designSystemTokenContract!.project(initiative.id)", "id: \"design-system-token-contract\"", "no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."] }
@@ -743,6 +748,10 @@
         { "capabilityId": "changed-unit-inventory", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readChangedUnitInventory(", "this.request(\"delivery.changedUnitInventory.snapshot\"", "changedUnitInventoryProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showChangedUnitInventory", "GAEP governed Changed Unit Inventory candidate", "does not establish repository or path truth"] }
+        ] },
+        { "capabilityId": "proposed-change-preview", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readProposedChangePreview(", "this.request(\"delivery.proposedChangePreview.snapshot\"", "proposedChangePreviewProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showProposedChangePreview", "GAEP governed Proposed Change Preview candidate", "does not establish repository truth"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignSystemTokenContract(", "this.request(\"design.systemTokenContract.snapshot\"", "designSystemTokenContractProjectionSchema.safeParse"] },
@@ -1189,6 +1198,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readChangedUnitInventory(", "portableRequest(\"delivery.changedUnitInventory.snapshot\"", "parseChangedUnitInventoryEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Changed Unit Inventory candidate", "Inventory coverage:", "does not establish repository or path truth"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["ChangedUnitInventoryProjection", "CHANGED_UNIT_INVENTORY_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "proposed-change-preview", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readProposedChangePreview(", "portableRequest(\"delivery.proposedChangePreview.snapshot\"", "parseProposedChangePreviewEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Proposed Change Preview candidate", "Inventory coverage:", "does not establish repository truth"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["ProposedChangePreviewProjection", "PROPOSED_CHANGE_PREVIEW_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignSystemTokenContract(", "portableRequest(\"design.systemTokenContract.snapshot\"", "parseDesignSystemTokenContractEnvelope"] },
@@ -1664,6 +1678,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadChangedUnitInventoryAsync(", "\"delivery.changedUnitInventory.snapshot\"", "ParseChangedUnitInventoryResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Changed Unit Inventory candidate", "Inventory coverage:", "does not establish repository or path truth"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ChangedUnitInventoryProtocol.cs", "contains": ["ChangedUnitInventoryProjection", "ChangedUnitInventoryProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "proposed-change-preview", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadProposedChangePreviewAsync(", "\"delivery.proposedChangePreview.snapshot\"", "ParseProposedChangePreviewResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Proposed Change Preview candidate", "Inventory coverage:", "does not establish repository truth"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProposedChangePreviewProtocol.cs", "contains": ["ProposedChangePreviewProjection", "ProposedChangePreviewProjectionAuthorityBoundary"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignSystemTokenContractAsync(", "\"design.systemTokenContract.snapshot\"", "ParseDesignSystemTokenContractResponse"] },

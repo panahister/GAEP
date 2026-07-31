@@ -865,6 +865,15 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += changedUnitInventoryButton
         actions.add(changedUnitInventoryButton)
 
+        val proposedChangePreviewButton = JButton("Inspect Proposed Change Preview…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(project, "Inspect Proposed Change Preview", "Enter the exact Initiative UUID. File and diff content, repository truth, approved scope, mutation, staging, apply/discard, acceptance, merge, release, deployment, and authority are withheld.", "Initiative ID")?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Proposed Change Preview", status, output, buttons) { controller.readProposedChangePreview(initiativeId) }
+            }
+        }
+        buttons += proposedChangePreviewButton
+        actions.add(proposedChangePreviewButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

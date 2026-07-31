@@ -23,6 +23,7 @@ import { highLevelDesignInputSchema } from "./high-level-design.js"
 import { lowLevelDesignInputSchema } from "./low-level-design.js"
 import { implementationReadinessGateInputSchema } from "./implementation-readiness-gate.js"
 import { changedUnitInventoryInputSchema } from "./changed-unit-inventory.js"
+import { proposedChangePreviewInputSchema } from "./proposed-change-preview.js"
 import { businessArchitectureBaselineInputSchema } from "./business-architecture-baseline.js"
 import { businessRuleCatalogInputSchema } from "./business-rule-catalog.js"
 import {
@@ -876,6 +877,18 @@ export const hostChangedUnitInventoryReviseParamsSchema = z.object({
   record: changedUnitInventoryInputSchema,
 }).strict()
 
+export const hostProposedChangePreviewCreateParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  record: proposedChangePreviewInputSchema,
+}).strict()
+
+export const hostProposedChangePreviewReviseParamsSchema = z.object({
+  actorId: hostActorIdSchema,
+  recordId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+  record: proposedChangePreviewInputSchema,
+}).strict()
+
 export const hostDesignSystemTokenContractCreateParamsSchema = z.object({
   actorId: hostActorIdSchema,
   record: designSystemTokenContractInputSchema,
@@ -1601,6 +1614,11 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
   requestVariant("delivery.changedUnitInventory.revise", hostChangedUnitInventoryReviseParamsSchema),
   requestVariant("delivery.changedUnitInventory.assess", hostBusinessInitiativeParamsSchema),
   requestVariant("delivery.changedUnitInventory.snapshot", hostBusinessInitiativeParamsSchema),
+  requestVariant("delivery.proposedChangePreview.read", hostBusinessInitiativeParamsSchema),
+  requestVariant("delivery.proposedChangePreview.create", hostProposedChangePreviewCreateParamsSchema),
+  requestVariant("delivery.proposedChangePreview.revise", hostProposedChangePreviewReviseParamsSchema),
+  requestVariant("delivery.proposedChangePreview.assess", hostBusinessInitiativeParamsSchema),
+  requestVariant("delivery.proposedChangePreview.snapshot", hostBusinessInitiativeParamsSchema),
   requestVariant("source.list", hostSourceInitiativeParamsSchema),
   requestVariant("source.create", hostSourceCreateParamsSchema),
   requestVariant("source.revise", hostSourceReviseParamsSchema),

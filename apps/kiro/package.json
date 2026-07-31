@@ -104,6 +104,7 @@
     "onCommand:gaepKiro.lowLevelDesign.inspect",
     "onCommand:gaepKiro.implementationReadinessGate.inspect",
     "onCommand:gaepKiro.changedUnitInventory.inspect",
+    "onCommand:gaepKiro.proposedChangePreview.inspect",
     "onCommand:gaepKiro.designSystemTokenContract.inspect",
     "onCommand:gaepKiro.accessibilityDesignRules.inspect",
     "onCommand:gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -414,6 +415,10 @@
       {
         "command": "gaepKiro.changedUnitInventory.inspect",
         "title": "GAEP for Kiro: Inspect Governed Changed Unit Inventory Candidate"
+      },
+      {
+        "command": "gaepKiro.proposedChangePreview.inspect",
+        "title": "GAEP for Kiro: Inspect Governed Proposed Change Preview Candidate"
       },
       {
         "command": "gaepKiro.designSystemTokenContract.inspect",
