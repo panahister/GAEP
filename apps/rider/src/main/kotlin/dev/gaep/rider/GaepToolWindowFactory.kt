@@ -818,6 +818,19 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += testInventoryButton
         actions.add(testInventoryButton)
 
+        val highLevelDesignButton = JButton("Inspect High-Level Design…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(
+                    project, "Inspect High-Level Design", "Enter the exact Initiative UUID.", "Initiative ID",
+                )?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect High-Level Design", status, output, buttons) {
+                    controller.readHighLevelDesign(initiativeId)
+                }
+            }
+        }
+        buttons += highLevelDesignButton
+        actions.add(highLevelDesignButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

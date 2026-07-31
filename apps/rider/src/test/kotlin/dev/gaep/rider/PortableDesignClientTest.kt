@@ -2515,6 +2515,40 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `High-Level Design projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("high-level-design-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readHighLevelDesign(entryId)
+            assertEquals("attention-required", projection.state)
+            assertEquals("held", projection.reviewState)
+            assertEquals(15, projection.dependencyCount)
+            assertEquals(8, projection.elementCount)
+            assertEquals(11, projection.relationCount)
+            assertEquals(4, projection.decisionCount)
+            assertEquals(2, projection.traceGapCount)
+            assertEquals("sha256:${"1".repeat(64)}", projection.candidate?.structureReceiptDigest)
+            val rendered = RiderProductController(client).readHighLevelDesign(entryId)
+            assertTrue(rendered.contains("GAEP governed High-Level Design candidate"))
+            assertTrue(rendered.contains("15/15"))
+            assertTrue(rendered.contains("6/8 elements · 8/11 relations · 3/4 decisions"))
+            assertTrue(rendered.contains("no design narrative, diagram, interface, data flow, technology, owner"))
+            assertFalse(rendered.contains(privateRoot))
+            assertFalse(rendered.contains(privateCredential))
+            assertFalse(rendered.contains("elements" + "\":"))
+        }
+        listOf("bad-high-level-design-snapshot-binding", "bad-high-level-design-snapshot-digest", "bad-high-level-design-snapshot-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readHighLevelDesign(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind)
+                assertPrivateTextWithheld(error)
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

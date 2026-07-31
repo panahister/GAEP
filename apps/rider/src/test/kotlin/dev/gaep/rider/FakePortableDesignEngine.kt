@@ -59,6 +59,7 @@ private val designToCodeBindingRegistryId = UUID.fromString("bcbcbcbc-bcbc-4cbc-
 private val routeScreenComponentMappingId = UUID.fromString("cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd")
 private val testMethodologyId = UUID.fromString("dededede-dede-4ede-8ede-dededededede")
 private val testInventoryId = UUID.fromString("efefefef-efef-4fef-8fef-efefefefefef")
+private val highLevelDesignId = UUID.fromString("f0f0f0f0-f0f0-40f0-80f0-f0f0f0f0f0f0")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
 private val responsiveMultiPlatformTargetsId = UUID.fromString("71717171-7171-4171-8171-717171717171")
@@ -372,6 +373,9 @@ fun main(arguments: Array<String>) {
                 id,
                 request.getAsJsonObject("params"),
                 workspacePath,
+            )
+            "planning.highLevelDesign.snapshot" -> handleHighLevelDesign(
+                id, request.getAsJsonObject("params"), workspacePath,
             )
             "design.systemTokenContract.snapshot" -> handleDesignSystemTokenContract(
                 id,
@@ -5111,6 +5115,60 @@ private fun handleTestInventory(id: Long, params: JsonObject, workspacePath: Str
         }
     }
     writeResult(id, value)
+}
+
+private fun handleHighLevelDesign(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE HIGH LEVEL DESIGN PARAMS")
+        return
+    }
+    val candidateDigest = "sha256:${"8".repeat(64)}"
+    val status = JsonObject().apply {
+        addProperty("schemaVersion", 1); addProperty("kind", "high-level-design-status")
+        addProperty("productId", productId.toString()); addProperty("productRevision", 7)
+        addProperty("initiativeId", initiativeId.toString()); addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+        add("candidate", JsonObject().apply {
+            addProperty("recordId", highLevelDesignId.toString()); addProperty("revision", 2); addProperty("digest", candidateDigest)
+        })
+        listOf("dependencyCount" to 15, "presentDependencyCount" to 15, "elementCount" to 8,
+            "definedElementCount" to 6, "relationCount" to 11, "definedRelationCount" to 8,
+            "decisionCount" to 4, "selectedDecisionCount" to 3, "qualityAttributeCount" to 5,
+            "deploymentViewCount" to 3, "conflictCount" to 1, "missingCount" to 1,
+            "orphanRelationCount" to 1, "traceGapCount" to 2, "evidenceGapCount" to 1,
+            "ownershipGapCount" to 1, "uncoveredUnitCount" to 1, "staleBindingCount" to 0,
+            "staleDependencyCount" to 0, "invalidCandidateCount" to 1, "unresolvedQuestionCount" to 2,
+        ).forEach { (name, value) -> addProperty(name, value) }
+        addProperty("reviewState", "held"); addProperty("state", "attention-required")
+        add("reasons", JsonArray().apply { add("One or more High-Level Design candidates require human review") })
+        addProperty("assessedAt", "2026-07-31T03:00:00.000Z")
+        addProperty("authorityBoundary", "high-level-design-status-is-observational-and-does-not-establish-architecture-repository-runtime-or-deployment-truth-or-completeness-architecture-baseline-or-approval-privacy-or-security-approval-owner-appointment-implementation-readiness-acceptance-release-deployment-or-action-authority")
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1); addProperty("kind", "high-level-design-projection")
+        add("product", JsonObject().apply { addProperty("id", productId.toString()); addProperty("revision", 7); addProperty("digest", canonicalDigest(productRecord())) })
+        add("initiative", JsonObject().apply { addProperty("id", initiativeId.toString()); addProperty("revision", initiativeState.get("revision").asLong); addProperty("digest", canonicalDigest(initiativeState)); addProperty("state", initiativeState.get("state").asString) })
+        add("status", status)
+        add("candidate", JsonObject().apply {
+            addProperty("id", highLevelDesignId.toString()); addProperty("revision", 2); addProperty("digest", candidateDigest); addProperty("state", "candidate")
+            addProperty("structureReceiptDigest", "sha256:${"1".repeat(64)}"); addProperty("dependencyReceiptDigest", "sha256:${"2".repeat(64)}")
+            addProperty("traceReceiptDigest", "sha256:${"3".repeat(64)}"); addProperty("coverageReceiptDigest", "sha256:${"4".repeat(64)}")
+            addProperty("ownershipReceiptDigest", "sha256:${"5".repeat(64)}"); addProperty("assessmentReceiptDigest", "sha256:${"6".repeat(64)}")
+            addProperty("elementCount", 8); addProperty("relationCount", 11); addProperty("decisionCount", 4)
+            addProperty("reviewState", "held"); addProperty("updatedAt", "2026-07-31T02:59:00.000Z")
+        })
+        addProperty("observedAt", "2026-07-31T03:00:00.000Z")
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-structure-dependency-trace-coverage-ownership-assessment-snapshot-digests-only-not-design-narratives-diagrams-interfaces-data-flows-technologies-owners-evidence-source-content-personal-data-secrets-credentials-or-machine-paths")
+        addProperty("authorityBoundary", "high-level-design-projection-is-read-only-and-does-not-establish-architecture-repository-runtime-or-deployment-truth-or-completeness-architecture-baseline-or-approval-privacy-or-security-approval-owner-appointment-implementation-readiness-acceptance-release-deployment-or-action-authority")
+    }
+    if (workspacePath.endsWith("bad-high-level-design-snapshot-binding")) content.getAsJsonObject("initiative").addProperty("id", highLevelDesignId.toString())
+    val result = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-high-level-design-snapshot-digest")) result.getAsJsonObject("candidate").addProperty("elementCount", 9)
+    if (workspacePath.endsWith("bad-high-level-design-snapshot-private")) {
+        result.addProperty("designNarrative", "$privateRoot/$privateCredential")
+        val body = result.deepCopy().also { it.remove("snapshotDigest") }
+        result.addProperty("snapshotDigest", canonicalDigest(body))
+    }
+    writeResult(id, result)
 }
 
 private fun handleDesignSystemTokenContract(id: Long, params: JsonObject, workspacePath: String) {
