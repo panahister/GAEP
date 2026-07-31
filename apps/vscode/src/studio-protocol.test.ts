@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { canonicalDigest } from "@gaep/agent-sdk"
 import type { Initiative, Product } from "@gaep/contracts"
-import { composePhase2UxFigmaDashboard } from "@gaep/engine"
+import { composePhase2UxFigmaDashboard, composePhase3aDashboard } from "@gaep/engine"
 
 import {
   isStudioAction,
@@ -392,6 +392,55 @@ describe("Product Studio protocol", () => {
     wrongPhase.dashboard.phase = { id: "phase-0-1a-foundation", label: "Phase 0 / 1A — Four-IDE Platform Foundation" }
     wrongPhase.dashboard.panels[0] = {
       id: "foundation-summary", role: "phase", title: "Foundation summary and readiness",
+      applicability: { status: "unknown", basis: "not-evaluated" }, state: "attention-required",
+    }
+    expect(isStudioSnapshot(wrongPhase)).toBe(false)
+  })
+
+  it("accepts only a digest-bound Phase 3A view beside the Phase 3A dashboard shell", () => {
+    const product: Product = {
+      schemaVersion: 1, id: "00000000-0000-4000-8000-000000000001", kind: "product", revision: 2,
+      name: "Phase 3A dashboard Product", summary: "Exact Product Studio Phase 3A projection fixture",
+      problem: "Phase 3A source state must remain derived and bounded.", affectedUsers: "GAEP operators",
+      desiredOutcome: "Expose exact source state without synthesizing authority.", successSignals: ["Exact digest validation"],
+      firstWorkflow: "Inspect Phase 3A source coverage.", exclusions: ["Readiness, approval, or action authority"], profile: "internal-tool",
+      lifecycleState: "active", createdAt: "2026-07-31T03:00:00.000Z", updatedAt: "2026-07-31T03:00:00.000Z",
+    }
+    const initiative: Initiative = {
+      schemaVersion: 1, id: "00000000-0000-4000-8000-000000000002", kind: "initiative", revision: 1,
+      productId: product.id, title: "Phase 3A dashboard Initiative", outcome: "Inspect current delivery-planning state.",
+      scope: ["P3A-01 through P3A-23"], exclusions: ["Automatic priority or implementation effects"], state: "active",
+      createdAt: "2026-07-31T03:00:00.000Z", updatedAt: "2026-07-31T03:00:00.000Z",
+    }
+    const phase3a = composePhase3aDashboard(product, initiative, [], {
+      expectedProductId: product.id, expectedProductRevision: product.revision ?? 1, expectedProductDigest: canonicalDigest(product),
+      expectedInitiativeId: initiative.id, expectedInitiativeRevision: initiative.revision ?? 1,
+      expectedInitiativeDigest: canonicalDigest(initiative),
+    }, [], "2026-07-31T03:10:00.000Z")
+    const candidate = snapshot("overview")
+    if (!candidate.dashboard) throw new Error("Expected dashboard fixture")
+    candidate.dashboard.phase = { id: "phase-3a-readiness", label: "Phase 3A — Backlog and Implementation Readiness" }
+    candidate.dashboard.panels[0] = {
+      id: "backlog-readiness", role: "phase", title: "Backlog and implementation readiness",
+      applicability: { status: "unknown", basis: "not-evaluated" }, state: "attention-required",
+    }
+    candidate.phase3aDashboard = phase3a
+    expect(isStudioSnapshot(candidate)).toBe(true)
+    const forged = structuredClone(candidate)
+    if (!forged.phase3aDashboard) throw new Error("Expected Phase 3A dashboard fixture")
+    forged.phase3aDashboard.phaseStatus.unavailableSourceCount = 19
+    expect(isStudioSnapshot(forged)).toBe(false)
+    const forgedCatalog = structuredClone(candidate)
+    if (!forgedCatalog.phase3aDashboard) throw new Error("Expected Phase 3A dashboard fixture")
+    forgedCatalog.phase3aDashboard.phaseStatus.sourceCatalogDigest = `sha256:${"0".repeat(64)}`
+    const { snapshotDigest: _snapshotDigest, ...forgedCatalogContent } = forgedCatalog.phase3aDashboard
+    forgedCatalog.phase3aDashboard.snapshotDigest = canonicalDigest(forgedCatalogContent)
+    expect(isStudioSnapshot(forgedCatalog)).toBe(false)
+    const wrongPhase = structuredClone(candidate)
+    if (!wrongPhase.dashboard) throw new Error("Expected dashboard fixture")
+    wrongPhase.dashboard.phase = { id: "phase-2-design", label: "Phase 2 — UX and Figma Loop" }
+    wrongPhase.dashboard.panels[0] = {
+      id: "ux-figma", role: "phase", title: "UX and Figma",
       applicability: { status: "unknown", basis: "not-evaluated" }, state: "attention-required",
     }
     expect(isStudioSnapshot(wrongPhase)).toBe(false)

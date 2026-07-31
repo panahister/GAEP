@@ -29,6 +29,7 @@ import {
   composePhaseDashboardFramework,
   composePhase2UxFigmaDashboard,
   composePhase2ChangeImpactAgentModelDashboard,
+  composePhase3aDashboard,
   composePhase1AgentModelDashboard,
   composePhase1SummaryDashboard,
   composePhase1ChangeImpactDashboard,
@@ -37,6 +38,7 @@ import {
   Phase1AgentModelBindingError,
   Phase2UxFigmaDashboardBindingError,
   Phase2ChangeImpactAgentModelBindingError,
+  Phase3aDashboardBindingError,
   Phase1SummaryBindingError,
   Phase1ChangeImpactBindingError,
 } from "@gaep/engine"
@@ -84,6 +86,7 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "dashboard.framework",
   "dashboard.phase2UxFigma",
   "dashboard.phase2ChangeImpactAgentModel",
+  "dashboard.phase3a",
   "dashboard.phase1Summary",
   "dashboard.phase1ChangeImpact",
   "dashboard.changeImpact.changes",
@@ -976,6 +979,62 @@ export class EngineHost {
             "PHASE2_CHANGE_IMPACT_AGENT_MODEL_DASHBOARD_INVALID",
             "The current Phase 2 Change, Impact, Agent and Model sources could not be verified",
           )
+        }
+      }
+      case "dashboard.phase3a": {
+        const audit = await this.engine.repository.verifyAudit()
+        if (!audit.valid) {
+          throw new HostRpcError(
+            -32_058,
+            "PHASE3A_DASHBOARD_AUDIT_INVALID",
+            "The audit chain is invalid or unavailable; no Phase 3A dashboard was composed",
+          )
+        }
+        const initiativeId = request.params.expectedInitiativeId
+        const implementationUnits = await this.engine.implementationUnitModel.readCurrent(initiativeId)
+        const firstImplementationUnitId = implementationUnits?.units[0]?.id
+        const lowLevelDesignProjection = firstImplementationUnitId
+          ? await this.engine.lowLevelDesign.project(initiativeId, firstImplementationUnitId)
+          : undefined
+        const [product, initiative, ...projectionValues] = await Promise.all([
+          this.engine.readProduct(),
+          this.engine.readInitiative(initiativeId),
+          this.engine.backlogHierarchy.project(initiativeId),
+          this.engine.mvpSliceDefinition.project(initiativeId),
+          this.engine.prioritizationModel.project(initiativeId),
+          this.engine.acceptanceCriteria.project(initiativeId),
+          this.engine.definitionOfReady.project(initiativeId),
+          this.engine.definitionOfDone.project(initiativeId),
+          this.engine.implementationUnitModel.project(initiativeId),
+          this.engine.dependencyMapping.project(initiativeId),
+          this.engine.technologyProfile.project(initiativeId),
+          this.engine.boilerplateRegistry.project(initiativeId),
+          this.engine.boilerplateSelectionBinding.project(initiativeId),
+          this.engine.boilerplateCompatibilityValidation.project(initiativeId),
+          this.engine.figmaToBoilerplateMapping.project(initiativeId),
+          this.engine.designToCodeBindingRegistry.project(initiativeId),
+          this.engine.routeScreenComponentMapping.project(initiativeId),
+          this.engine.testMethodology.project(initiativeId),
+          this.engine.testInventory.project(initiativeId),
+          this.engine.highLevelDesign.project(initiativeId),
+          this.engine.implementationReadinessGate.project(initiativeId),
+        ])
+        try {
+          return composePhase3aDashboard(
+            product,
+            initiative,
+            lowLevelDesignProjection ? [...projectionValues, lowLevelDesignProjection] : projectionValues,
+            request.params,
+          )
+        } catch (error) {
+          if (error instanceof Phase3aDashboardBindingError) {
+            throw new HostRpcError(
+              -32_059,
+              "PHASE3A_DASHBOARD_CONTEXT_CHANGED",
+              "The Product, Initiative, or a Phase 3A projection changed before dashboard composition; reload the exact governed context",
+            )
+          }
+          throw error
         }
       }
       case "dashboard.phase1Summary": {

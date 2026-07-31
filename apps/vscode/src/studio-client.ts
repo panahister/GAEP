@@ -9,6 +9,7 @@ import type {
   PhaseDashboardFramework,
   Phase2UxFigmaDashboard,
   Phase2ChangeImpactAgentModelDashboard,
+  Phase3aDashboard,
 } from "@gaep/contracts"
 
 import {
@@ -220,6 +221,7 @@ class StudioShell {
       main.append(this.renderPage(snapshot))
       if (snapshot.dashboard) main.append(this.renderPhaseDashboard(snapshot.dashboard))
       if (snapshot.phase2UxFigma) main.append(this.renderPhase2UxFigmaDashboard(snapshot.phase2UxFigma))
+      if (snapshot.phase3aDashboard) main.append(this.renderPhase3aDashboard(snapshot.phase3aDashboard))
       if (snapshot.phase2ChangeImpactAgentModel) main.append(this.renderPhase2ChangeImpactAgentModelDashboard(snapshot.phase2ChangeImpactAgentModel))
       if (snapshot.phase1Summary) main.append(this.renderPhase1Summary(snapshot.phase1Summary))
       if (snapshot.phase1ChangeImpact) main.append(this.renderPhase1ChangeImpact(snapshot.phase1ChangeImpact))
@@ -1191,6 +1193,118 @@ class StudioShell {
         { id: "baseline", cells: { subject: "Design baseline", candidate: dashboard.governance.baselineCandidateResult, authority: "Baseline Set designation not established" }, actions: [] },
         { id: "drift-review", cells: { subject: "Design drift", candidate: dashboard.governance.driftCandidateResult, authority: "Remediation effect not applied" }, actions: [] },
       ],
+      actions: [],
+    }))
+    section.append(this.renderStringList("Projection limits", dashboard.limitations))
+    return section
+  }
+
+  private renderPhase3aDashboard(dashboard: Phase3aDashboard): HTMLElement {
+    const section = element("section", "section phase3a-dashboard")
+    section.setAttribute("aria-label", "Phase 3A backlog and implementation readiness dashboard")
+    const phaseState = dashboard.phaseStatus.state === "candidate-complete-for-human-review"
+      ? "Candidate complete for human review"
+      : "Attention required"
+    section.append(
+      element("h3", undefined, "Phase 3A backlog and implementation readiness"),
+      element(
+        "p",
+        "prose",
+        `${phaseState}. ${dashboard.phaseStatus.currentSourceCount} current, ${dashboard.phaseStatus.attentionRequiredSourceCount} attention-required, and ${dashboard.phaseStatus.unavailableSourceCount} unavailable governed sources.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        `Exact Product revision ${dashboard.product.revision}; exact Initiative revision ${dashboard.initiative.revision}; observed ${dashboard.observedAt}. ${dashboard.phaseStatus.providerWorkflowEvidenceCount} of 2 bounded local provider workflow evidence slots are sealed.`,
+      ),
+      element(
+        "p",
+        "prose muted",
+        "This derived read-only view establishes no completeness, priority, readiness, waiver, ownership, implementation, acceptance, release, deployment, or action authority.",
+      ),
+    )
+    section.append(this.renderTable({
+      id: "phase3a-dashboard-views",
+      title: "Phase 3A dashboard views",
+      columns: [
+        { key: "view", label: "View" },
+        { key: "state", label: "State" },
+        { key: "sources", label: "Source coverage" },
+        { key: "signals", label: "Candidate and evidence signals" },
+        { key: "attention", label: "Attention signals" },
+        { key: "workflows", label: "Workflow evidence" },
+      ],
+      rows: dashboard.views.map((view) => ({
+        id: view.id,
+        cells: {
+          view: view.title,
+          state: view.state.replaceAll("-", " "),
+          sources: `${view.currentSourceCount} current · ${view.attentionRequiredSourceCount} attention · ${view.unavailableSourceCount} unavailable`,
+          signals: `${view.candidateCount} candidates · ${view.evidenceReferenceCount} evidence references`,
+          attention: `${view.gapCount} gaps · ${view.conflictCount} conflicts · ${view.staleCount} stale · ${view.unresolvedCount} unresolved`,
+          workflows: `${view.workflowEvidenceCount} sealed local deterministic`,
+        },
+        actions: [],
+      })),
+      actions: [],
+    }))
+    section.append(this.renderTable({
+      id: "phase3a-dashboard-sources",
+      title: "Phase 3A governed source projections",
+      columns: [
+        { key: "source", label: "Source" },
+        { key: "group", label: "Group" },
+        { key: "availability", label: "Availability" },
+        { key: "assessment", label: "Assessment" },
+        { key: "attention", label: "Attention signals" },
+      ],
+      rows: dashboard.sources.map((source) => ({
+        id: source.id,
+        cells: {
+          source: source.title,
+          group: source.group.replaceAll("-", " "),
+          availability: source.availability.replaceAll("-", " "),
+          assessment: source.assessment
+            ? `${source.assessment.state}${source.assessment.reviewState ? ` · ${source.assessment.reviewState}` : ""}`
+            : "Unavailable — no state inferred",
+          attention: source.assessment
+            ? `${source.assessment.gapCount} gaps · ${source.assessment.conflictCount} conflicts · ${source.assessment.staleCount} stale · ${source.assessment.unresolvedCount} unresolved`
+            : "Unknown",
+        },
+        actions: [],
+      })),
+      actions: [],
+      pagination: {
+        offset: dashboard.pagination.offset,
+        limit: dashboard.pagination.limit,
+        total: dashboard.pagination.total,
+        hasPrevious: false,
+        hasNext: false,
+      },
+    }))
+    section.append(this.renderTable({
+      id: "phase3a-dashboard-workflows",
+      title: "Bounded provider workflow evidence",
+      columns: [
+        { key: "provider", label: "Provider" },
+        { key: "availability", label: "Availability" },
+        { key: "mode", label: "Execution mode" },
+        { key: "acceptance", label: "Live acceptance" },
+        { key: "quality", label: "Semantic quality" },
+        { key: "authority", label: "Authority" },
+      ],
+      rows: dashboard.workflows.map((workflow) => ({
+        id: workflow.provider,
+        cells: {
+          provider: workflow.provider,
+          availability: workflow.availability.replaceAll("-", " "),
+          mode: workflow.executionMode.replaceAll("-", " "),
+          acceptance: workflow.liveAcceptance.replaceAll("-", " "),
+          quality: workflow.semanticQuality.replaceAll("-", " "),
+          authority: workflow.authority.replaceAll("-", " "),
+        },
+        actions: [],
+      })),
       actions: [],
     }))
     section.append(this.renderStringList("Projection limits", dashboard.limitations))

@@ -5771,6 +5771,56 @@ describe("current-engine Product Studio data source", () => {
     expect(diagnostics).toEqual([])
   })
 
+  it("composes a bounded Phase 3A dashboard from exact current delivery-planning projections", async () => {
+    const projection = backlogHierarchyProjection()
+    const { source, diagnostics } = harness({
+      deliveryPhase: "phase-3a-readiness",
+      backlogHierarchyProjection: projection,
+    })
+    const snapshot = await source.readSnapshot("delivery")
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.dashboard).toMatchObject({ phase: { id: "phase-3a-readiness" } })
+    expect(snapshot.phase3aDashboard).toMatchObject({
+      kind: "phase-3a-dashboard",
+      product: { recordId: product.id, revision: product.revision },
+      initiative: { recordId: initiative.id, revision: initiative.revision, state: initiative.state },
+      phaseStatus: {
+        state: "attention-required",
+        currentSourceCount: 0,
+        attentionRequiredSourceCount: 1,
+        unavailableSourceCount: 19,
+        providerWorkflowEvidenceCount: 0,
+        liveProviderAcceptanceCount: 0,
+        nativeHostAcceptanceCount: 0,
+        readinessAuthority: "not-established",
+        waiverAuthority: "not-established",
+        ownershipAuthority: "not-established",
+        productOwnerAcceptance: "not-established",
+      },
+      pagination: { offset: 0, limit: 20, total: 20, truncated: false },
+      export: { format: "csv-visible-metadata-only", formulaPrefixesNeutralized: true, hiddenContentExcluded: true },
+    })
+    const dashboard = snapshot.phase3aDashboard
+    if (!dashboard) throw new Error("Expected exact Phase 3A dashboard")
+    expect(dashboard.sources[0]).toMatchObject({
+      id: "backlog-hierarchy",
+      availability: "attention-required",
+      binding: { snapshotDigest: projection.snapshotDigest },
+    })
+    expect(dashboard.sources.slice(1).every((source) => source.availability === "unavailable")).toBe(true)
+    expect(dashboard.workflows.every((workflow) => workflow.availability === "unavailable")).toBe(true)
+    const { snapshotDigest, ...content } = dashboard
+    expect(snapshotDigest).toBe(canonicalDigest(content))
+    expect(JSON.stringify(dashboard)).not.toContain(product.name)
+    expect(JSON.stringify(dashboard)).not.toContain(initiative.title)
+    expect(JSON.stringify(dashboard)).not.toContain("/Users/")
+    const tampered = structuredClone(snapshot)
+    if (!tampered.phase3aDashboard) throw new Error("Expected Phase 3A dashboard to tamper")
+    tampered.phase3aDashboard.phaseStatus.unavailableSourceCount = 18
+    expect(isStudioSnapshot(tampered)).toBe(false)
+    expect(diagnostics).toEqual([])
+  })
+
   it("projects exact privacy-safe Source, candidate Baseline, and Provenance metadata on Delivery", async () => {
     const projection = sourceGovernanceProjection()
     const { source } = harness({ sourceGovernanceProjection: projection })

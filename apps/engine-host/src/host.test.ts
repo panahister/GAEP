@@ -3408,6 +3408,59 @@ describe("engine host protocol", () => {
     })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
   })
 
+  it("composes an exact Initiative-bound Phase 3A dashboard without readiness or implementation authority", async () => {
+    const { initiativeId } = await createProductAndInitiative()
+    const [product, initiative] = await Promise.all([
+      host.engine.readProduct(),
+      host.engine.readInitiative(initiativeId),
+    ])
+    const params = {
+      expectedProductId: product.id,
+      expectedProductRevision: product.revision ?? 1,
+      expectedProductDigest: canonicalDigest(product),
+      expectedInitiativeId: initiative.id,
+      expectedInitiativeRevision: initiative.revision ?? 1,
+      expectedInitiativeDigest: canonicalDigest(initiative),
+    }
+
+    await expect(host.dispatch({ jsonrpc: "2.0", id: 1, method: "dashboard.phase3a", params }))
+      .rejects.toMatchObject({ kind: "PROTOCOL_UPGRADE_REQUIRED" })
+
+    const result = await host.dispatch({
+      jsonrpc: "2.0", id: 2, protocolVersion: 2, method: "dashboard.phase3a", params,
+    }) as Record<string, unknown>
+    expect(result).toMatchObject({
+      kind: "phase-3a-dashboard",
+      phase: { id: "phase-3a-readiness" },
+      product: { recordId: product.id, revision: product.revision ?? 1 },
+      initiative: { recordId: initiative.id, revision: initiative.revision ?? 1 },
+      phaseStatus: {
+        expectedSourceCount: 20,
+        providerWorkflowEvidenceCount: 0,
+        liveProviderAcceptanceCount: 0,
+        nativeHostAcceptanceCount: 0,
+        readinessAuthority: "not-established",
+        waiverAuthority: "not-established",
+        ownershipAuthority: "not-established",
+        productOwnerAcceptance: "not-established",
+      },
+      pagination: { offset: 0, limit: 20, total: 20, truncated: false },
+    })
+    const { snapshotDigest, ...content } = result
+    expect(snapshotDigest).toBe(canonicalDigest(content))
+    expect(JSON.stringify(result)).not.toContain(workspace)
+    expect(JSON.stringify(result)).not.toContain(product.name)
+
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: 3, protocolVersion: 2, method: "dashboard.phase3a",
+      params: { ...params, expectedInitiativeDigest: `sha256:${"0".repeat(64)}` },
+    })).rejects.toMatchObject({ kind: "PHASE3A_DASHBOARD_CONTEXT_CHANGED" })
+    await expect(host.dispatch({
+      jsonrpc: "2.0", id: 4, protocolVersion: 2, method: "dashboard.phase3a",
+      params: { ...params, ready: true },
+    })).rejects.toMatchObject({ kind: "INVALID_PARAMS" })
+  })
+
   it("composes an exact Initiative-bound Phase 1 summary without synthesizing readiness or owners", async () => {
     const { initiativeId } = await createProductAndInitiative()
     const [product, initiative] = await Promise.all([

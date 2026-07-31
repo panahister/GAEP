@@ -111,6 +111,7 @@ import type {
   PhaseDashboardFramework,
   Phase2UxFigmaDashboard,
   Phase2ChangeImpactAgentModelDashboard,
+  Phase3aDashboard,
 } from "@gaep/contracts"
 import { containsSecretShapedValue } from "@gaep/contracts"
 import { canonicalDigest, capabilityDigest } from "@gaep/agent-sdk"
@@ -123,6 +124,7 @@ import {
   composePhaseDashboardFramework,
   composePhase2UxFigmaDashboard,
   composePhase2ChangeImpactAgentModelDashboard,
+  composePhase3aDashboard,
 } from "@gaep/engine"
 import type {
   ManagedRunListPage,
@@ -6474,6 +6476,54 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         }
       }
     }
+    let phase3aDashboard: Phase3aDashboard | undefined
+    if (deliveryPhase === "phase-3a-readiness" && observed.product) {
+      const initiative = currentInitiative(observed.initiatives)
+      if (initiative) {
+        const projections: unknown[] = []
+        const appendForInitiative = <T extends { initiative: { id: string } }>(values: Iterable<T>): void => {
+          const projection = [...values].find((value) => value.initiative.id.toLowerCase() === initiative.id.toLowerCase())
+          if (projection) projections.push(projection)
+        }
+        appendForInitiative(observed.backlogHierarchyProjections.values())
+        appendForInitiative(observed.mvpSliceDefinitionProjections.values())
+        appendForInitiative(observed.prioritizationModelProjections.values())
+        appendForInitiative(observed.acceptanceCriteriaProjections.values())
+        appendForInitiative(observed.definitionOfReadyProjections.values())
+        appendForInitiative(observed.definitionOfDoneProjections.values())
+        appendForInitiative(observed.implementationUnitModelProjections.values())
+        appendForInitiative(observed.dependencyMappingProjections.values())
+        appendForInitiative(observed.technologyProfileProjections.values())
+        appendForInitiative(observed.boilerplateRegistryProjections.values())
+        appendForInitiative(observed.boilerplateSelectionBindingProjections.values())
+        appendForInitiative(observed.boilerplateCompatibilityValidationProjections.values())
+        appendForInitiative(observed.figmaToBoilerplateMappingProjections.values())
+        appendForInitiative(observed.designToCodeBindingRegistryProjections.values())
+        appendForInitiative(observed.routeScreenComponentMappingProjections.values())
+        appendForInitiative(observed.testMethodologyProjections.values())
+        appendForInitiative(observed.testInventoryProjections.values())
+        appendForInitiative(observed.highLevelDesignProjections.values())
+        appendForInitiative(observed.lowLevelDesignProjections.values())
+        appendForInitiative(observed.implementationReadinessGateProjections.values())
+        try {
+          phase3aDashboard = composePhase3aDashboard(observed.product, initiative, projections, {
+            expectedProductId: observed.product.id,
+            expectedProductRevision: observed.product.revision ?? 1,
+            expectedProductDigest: canonicalDigest(observed.product),
+            expectedInitiativeId: initiative.id,
+            expectedInitiativeRevision: initiative.revision ?? 1,
+            expectedInitiativeDigest: canonicalDigest(initiative),
+          })
+        } catch (error) {
+          this.context.logDiagnostic("Product Studio exact Phase 3A dashboard composition failed; stale or private detail was withheld", error)
+          observed.issues.push(issue(
+            "phase-3a-dashboard-unavailable",
+            "The Phase 3A dashboard could not be revalidated against the exact current Product, Initiative, and governed P3A-01 through P3A-20 projections.",
+            "warning",
+          ))
+        }
+      }
+    }
     let phase1Summary: Phase1SummaryDashboard | undefined
     let phase1ChangeImpact: Phase1ChangeImpactDashboard | undefined
     if (observed.product) {
@@ -6566,6 +6616,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       ...(dashboard ? { dashboard } : {}),
       ...(phase2UxFigma ? { phase2UxFigma } : {}),
       ...(phase2ChangeImpactAgentModel ? { phase2ChangeImpactAgentModel } : {}),
+      ...(phase3aDashboard ? { phase3aDashboard } : {}),
       ...(phase1Summary ? { phase1Summary } : {}),
       ...(phase1ChangeImpact ? { phase1ChangeImpact } : {}),
       ...(changeImpact ? { changeImpact } : {}),

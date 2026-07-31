@@ -9,6 +9,7 @@ import {
   composePhase1AgentModelDashboard,
   composePhase2ChangeImpactAgentModelDashboard,
   composePhase2UxFigmaDashboard,
+  composePhase3aDashboard,
   composePhaseDashboardFramework,
 } from "@gaep/engine"
 
@@ -489,6 +490,49 @@ function phase2UxFigmaDashboard(): NonNullable<StudioSnapshot["phase2UxFigma"]> 
   }, "2026-07-30T03:10:00.000Z")
 }
 
+function phase3aDashboard(): NonNullable<StudioSnapshot["phase3aDashboard"]> {
+  const product: Product = {
+    schemaVersion: 1,
+    id: "00000000-0000-4000-8000-000000000001",
+    kind: "product",
+    revision: 2,
+    name: "Accessible Phase 3A Product",
+    summary: "An exact, accessible Phase 3A dashboard fixture",
+    problem: "Implementation-readiness evidence is distributed across governed projections.",
+    affectedUsers: "Product owners, reviewers, and engineers",
+    desiredOutcome: "Expose bounded Phase 3A state without synthesizing authority.",
+    successSignals: ["The derived view remains exact and accessible"],
+    firstWorkflow: "Inspect source coverage, gaps, and provider workflow evidence.",
+    exclusions: ["Automatic prioritization, readiness, approval, implementation, or release effects"],
+    profile: "internal-tool",
+    lifecycleState: "active",
+    createdAt: "2026-07-31T03:00:00.000Z",
+    updatedAt: "2026-07-31T03:00:00.000Z",
+  }
+  const initiative: Initiative = {
+    schemaVersion: 1,
+    id: "00000000-0000-4000-8000-000000000002",
+    kind: "initiative",
+    revision: 3,
+    productId: product.id,
+    title: "Accessible Phase 3A Initiative",
+    outcome: "Inspect exact delivery-planning evidence without granting readiness.",
+    scope: ["P3A-01 through P3A-23 derived state"],
+    exclusions: ["Priority, readiness, waiver, ownership, implementation, acceptance, release, or deployment authority"],
+    state: "active",
+    createdAt: "2026-07-31T03:00:00.000Z",
+    updatedAt: "2026-07-31T03:00:00.000Z",
+  }
+  return composePhase3aDashboard(product, initiative, [], {
+    expectedProductId: product.id,
+    expectedProductRevision: product.revision ?? 1,
+    expectedProductDigest: canonicalDigest(product),
+    expectedInitiativeId: initiative.id,
+    expectedInitiativeRevision: initiative.revision ?? 1,
+    expectedInitiativeDigest: canonicalDigest(initiative),
+  }, [], "2026-07-31T03:10:00.000Z")
+}
+
 function changeImpactDashboard(): NonNullable<StudioSnapshot["changeImpact"]> {
   const emptyLimit = { shown: 0, total: 0, omitted: 0 }
   return {
@@ -903,6 +947,38 @@ describe("Product Studio rendered accessibility", () => {
     expect(document.body.textContent).toMatch(/Product Owner acceptance.*not established/i)
     const labels = Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (button) => button.textContent ?? "")
     expect(labels.some((label) => /approve|set baseline|write figma|import figma|apply remediation/i.test(label))).toBe(false)
+
+    const result = await axe.run(document.documentElement, {
+      rules: { "color-contrast": { enabled: false } },
+    })
+    expect(result.violations.map((violation) => ({ id: violation.id, nodes: violation.nodes.map((node) => node.target) }))).toEqual([])
+  })
+
+  it("renders the bounded Phase 3A dashboard accessibly without readiness or action authority", async () => {
+    const candidate = snapshot("overview", 97)
+    if (!candidate.dashboard) throw new Error("Expected dashboard fixture")
+    candidate.dashboard.phase = { id: "phase-3a-readiness", label: "Phase 3A — Backlog and Implementation Readiness" }
+    candidate.dashboard.panels[0] = {
+      id: "backlog-readiness",
+      role: "phase",
+      title: "Backlog and implementation readiness",
+      applicability: { status: "unknown", basis: "not-evaluated" },
+      state: "attention-required",
+    }
+    candidate.phase3aDashboard = phase3aDashboard()
+    expect(isStudioSnapshot(candidate)).toBe(true)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
+
+    const document = dom.window.document
+    expect(document.querySelector('[aria-label="Phase 3A backlog and implementation readiness dashboard"]')).not.toBeNull()
+    expect(document.body.textContent).toMatch(/20 unavailable governed sources/i)
+    expect(document.body.textContent).toMatch(/Phase 3A dashboard views/i)
+    expect(document.body.textContent).toMatch(/Phase 3A governed source projections/i)
+    expect(document.body.textContent).toMatch(/Bounded provider workflow evidence/i)
+    expect(document.body.textContent).toMatch(/0 of 2 bounded local provider workflow evidence slots are sealed/i)
+    expect(document.body.textContent).toMatch(/no completeness, priority, readiness, waiver, ownership, implementation, acceptance, release, deployment, or action authority/i)
+    const labels = Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (button) => button.textContent ?? "")
+    expect(labels.some((label) => /prioritize|mark ready|grant waiver|assign owner|implement|approve|release|deploy/i.test(label))).toBe(false)
 
     const result = await axe.run(document.documentElement, {
       rules: { "color-contrast": { enabled: false } },
