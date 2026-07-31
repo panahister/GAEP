@@ -921,6 +921,14 @@ class GaepToolWindowFactory : ToolWindowFactory {
         }
         buttons += modelSwitchImplementationButton
         actions.add(modelSwitchImplementationButton)
+        val approvedFigmaContextRetrievalButton = JButton("Inspect Approved Figma Context Retrieval…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(project, "Inspect Approved Figma Context Retrieval", "Enter the exact Initiative UUID. Figma access, remote fetch, content materialization/transfer, generation, provider execution, stage effects, source mutation, approval, acceptance, release, deployment, and authority are withheld.", "Initiative ID")?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Approved Figma Context Retrieval", status, output, buttons) { controller.readApprovedFigmaContextRetrieval(initiativeId) }
+            }
+        }
+        buttons += approvedFigmaContextRetrievalButton
+        actions.add(approvedFigmaContextRetrievalButton)
 
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {

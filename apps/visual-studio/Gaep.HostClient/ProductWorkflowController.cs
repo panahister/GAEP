@@ -3663,6 +3663,37 @@ public sealed class ProductWorkflowController(EngineClient client)
             .Append("Authority boundary: privacy-safe same-provider model-switch candidate metadata only. This inspection does not establish model availability, refresh capabilities, execute a provider or model transition, transfer context, record a handoff, transfer stage ownership, resume work, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.").ToString();
     }
 
+    public async Task<string> ReadApprovedFigmaContextRetrievalAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken); var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadApprovedFigmaContextRetrievalAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision || projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id || projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest || projection.InitiativeState != initiative.State)
+            throw new ArgumentException("The Product or Initiative changed while Approved Figma Context Retrieval was read. Refresh the exact records.");
+        return RenderApprovedFigmaContextRetrieval(projection);
+    }
+
+    public static string RenderApprovedFigmaContextRetrieval(ApprovedFigmaContextRetrievalProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder().AppendLine("GAEP governed Approved Figma Context Retrieval candidate").AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine($"Snapshot scope: {projection.IncludedItemCount}/{projection.SnapshotItemCount} items · {projection.SnapshotGapCount} gaps")
+            .AppendLine($"Generation context: {projection.RequirementBindingCount} requirement bindings · {projection.DesignToCodeBindingCount} code bindings · {projection.RouteSubjectCount} route/screen/component subjects · {projection.ImplementationUnitCount} units · {projection.PathCount} paths")
+            .AppendLine($"Gaps: {projection.StaleBindingCount} stale · {projection.GenerationContextGapCount} context · {projection.LifecycleGapCount} lifecycle · {projection.EvidenceGapCount} evidence · {projection.InvalidCandidateCount} invalid");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}"); output.AppendLine();
+        if (projection.Candidate is { } candidate) output.AppendLine($"Approved Figma Context Retrieval candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+            .AppendLine($"Approved-scope snapshot candidate: {candidate.BaselineSemanticVersion} · {candidate.IncludedItemCount}/{candidate.SnapshotItemCount} items")
+            .AppendLine($"Exact version digest: {candidate.ReturnedExternalVersionDigest}")
+            .AppendLine($"Content boundary: {candidate.ContentBoundary} · materialization {candidate.MaterializationState} · transfer {candidate.TransferState}")
+            .AppendLine($"Retrieval stop lines: Figma {candidate.FigmaConnectionState} · fetch {candidate.RemoteFetchState} · materialize {candidate.ContextMaterializationState} · transfer {candidate.ContextTransferState} · generate {candidate.GenerationState}")
+            .AppendLine($"Effect stop lines: provider {candidate.ProviderExecutionState} · stage {candidate.StageEffectState} · source mutation {candidate.SourceMutationState}");
+        else output.AppendLine("Approved Figma Context Retrieval candidate: not recorded");
+        return output.AppendLine().AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append("Authority boundary: privacy-safe approved-snapshot/version and bounded generation-context metadata only. This inspection does not connect to Figma, fetch or expose design/source content, materialize or transfer context, generate code, execute a provider, create or change a stage, mutate source, establish approval, baseline or readiness, accept, release, deploy, or grant action authority.").ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

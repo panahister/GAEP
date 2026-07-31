@@ -821,6 +821,13 @@ public sealed class EngineClient : IAsyncDisposable
         return ParsePortableDesignResponse(response, envelope => PortableDesignProtocol.ParseModelSwitchImplementationResponse(envelope, initiativeId));
     }
 
+    public async Task<ApprovedFigmaContextRetrievalProjection> ReadApprovedFigmaContextRetrievalAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        using var response = await RequestPortableDesignAsync("delivery.approvedFigmaContextRetrieval.snapshot", new Dictionary<string, object?> { ["initiativeId"] = initiativeId }, cancellationToken);
+        return ParsePortableDesignResponse(response, envelope => PortableDesignProtocol.ParseApprovedFigmaContextRetrievalResponse(envelope, initiativeId));
+    }
+
     public async Task<AccessibilityDesignRulesProjection> ReadAccessibilityDesignRulesAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

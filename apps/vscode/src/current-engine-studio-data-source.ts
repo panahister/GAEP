@@ -35,6 +35,7 @@ import type {
   ControlledClaudeImplementationProjection,
   ProviderSwitchImplementationProjection,
   ModelSwitchImplementationProjection,
+  ApprovedFigmaContextRetrievalProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -289,6 +290,9 @@ export interface CurrentStudioEngineReader {
   modelSwitchImplementation?: {
     project(initiativeId: string): Promise<ModelSwitchImplementationProjection>
   }
+  approvedFigmaContextRetrieval?: {
+    project(initiativeId: string): Promise<ApprovedFigmaContextRetrievalProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -485,6 +489,7 @@ interface ObservedStudioState {
   controlledClaudeImplementationProjections: Map<string, ControlledClaudeImplementationProjection>
   providerSwitchImplementationProjections: Map<string, ProviderSwitchImplementationProjection>
   modelSwitchImplementationProjections: Map<string, ModelSwitchImplementationProjection>
+  approvedFigmaContextRetrievalProjections: Map<string, ApprovedFigmaContextRetrievalProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3928,6 +3933,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     controlledClaudeImplementations: controlledClaudeImplementationTable(state),
     providerSwitchImplementations: providerSwitchImplementationTable(state),
     modelSwitchImplementations: modelSwitchImplementationTable(state),
+    approvedFigmaContextRetrievals: approvedFigmaContextRetrievalTable(state),
   }
 }
 
@@ -5347,6 +5353,38 @@ function modelSwitchImplementationTable(state: ObservedStudioState): StudioTable
       { key: "boundary", label: "Privacy and authority boundary" },
     ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Model Switch Implementation candidate",
       "Create the candidate through the governed engine only after an exact current Provider Switch Implementation candidate exists. This view cannot establish model availability, refresh capabilities, transition a model, transfer context, record a handoff, resume, apply, discard, or mutate source.") } : {}) }
+}
+
+function approvedFigmaContextRetrievalTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.approvedFigmaContextRetrievalProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{ id: record.id, cells: {
+      initiative: projection.initiative.id, record: record.id, revision: String(record.revision), digest: record.digest,
+      snapshot: `${record.approvedSnapshot.baselineSemanticVersion} · ${record.approvedSnapshot.includedItemCount}/${record.approvedSnapshot.itemCount} approved-scope candidate items`,
+      version: `${record.approvedSnapshot.returnedExternalVersionDigest} · baseline ${record.approvedSnapshot.baselineMembershipDigest}`,
+      context: `${record.generationContext.requirementBindingCount} requirement bindings · ${record.generationContext.designToCodeBindingCount} code bindings · ${record.generationContext.routeSubjectCount} route/screen/component subjects`,
+      implementation: `${record.generationContext.implementationUnitCount} units · ${record.generationContext.pathCount} paths · ${record.generationContext.contentBoundary}`,
+      lifecycle: `Figma ${record.lifecycle.figmaConnectionState} · fetch ${record.lifecycle.remoteFetchState} · materialize ${record.lifecycle.contextMaterializationState} · transfer ${record.lifecycle.contextTransferState} · generate ${record.lifecycle.generationState}`,
+      effects: `provider ${record.lifecycle.providerExecutionState} · stage ${record.lifecycle.stageEffectState} · source mutation ${record.lifecycle.sourceMutationState}`,
+      gaps: `${status.staleBindingCount} stale · ${status.snapshotGapCount} snapshot · ${status.generationContextGapCount} context · ${status.lifecycleGapCount} lifecycle · ${status.evidenceGapCount} evidence · ${status.invalidCandidateCount} invalid`,
+      receipts: `${record.dependencyReceiptDigest} · ${record.approvedSnapshotReceiptDigest} · ${record.generationContextReceiptDigest} · ${record.lifecycleReceiptDigest}`,
+      assessment: `${status.state} · ${status.reviewState}`,
+      boundary: "Privacy-safe approved-snapshot/version and bounded generation-context metadata only. This view does not connect to Figma, fetch or expose design/source content, materialize or transfer context, generate code, execute a provider, create or change a stage, mutate source, establish approval, baseline or readiness, accept, release, deploy, or grant action authority.",
+    }, state: status.state, actions: [] }]
+  })
+  return { id: "approved-figma-context-retrieval", title: "Governed Approved Figma Context Retrieval Candidates",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true }, { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" }, { key: "digest", label: "Exact digest" },
+      { key: "snapshot", label: "Approved-scope snapshot candidate" }, { key: "version", label: "Exact version and baseline" },
+      { key: "context", label: "Bounded generation context" }, { key: "implementation", label: "Implementation continuity" },
+      { key: "lifecycle", label: "Retrieval stop lines" }, { key: "effects", label: "Effect stop lines" },
+      { key: "gaps", label: "Candidate gaps" }, { key: "receipts", label: "Deterministic receipts" },
+      { key: "assessment", label: "Candidate assessment" }, { key: "boundary", label: "Privacy and authority boundary" },
+    ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Approved Figma Context Retrieval candidate",
+      "Create the offline candidate through the governed engine only after all exact current design and P3B implementation predecessors exist. This view cannot connect to Figma, fetch content, generate code, create a stage, or mutate source.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7259,6 +7297,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       controlledClaudeImplementationProjections: new Map(),
       providerSwitchImplementationProjections: new Map(),
       modelSwitchImplementationProjections: new Map(),
+      approvedFigmaContextRetrievalProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -8895,6 +8934,55 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("model-switch-implementation-unavailable", "Model Switch Implementation metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.approvedFigmaContextRetrieval) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const [retrieval, designApplicability, finalizedFigmaSnapshotImport, humanDesignApproval, designBaseline,
+            designToRequirementBinding, designToCodeBindingRegistry, routeScreenComponentMapping,
+            proposedChangePreview, stagingWorkspace, modelSwitchImplementation] = await Promise.all([
+            engine.approvedFigmaContextRetrieval!.project(initiative.id),
+            engine.designApplicability?.project(initiative.id), engine.finalizedFigmaSnapshotImport?.project(initiative.id),
+            engine.humanDesignApproval?.project(initiative.id), engine.designBaseline?.project(initiative.id),
+            engine.designToRequirementBinding?.project(initiative.id), engine.designToCodeBindingRegistry?.project(initiative.id),
+            engine.routeScreenComponentMapping?.project(initiative.id), engine.proposedChangePreview?.project(initiative.id),
+            engine.stagingWorkspace?.project(initiative.id), engine.modelSwitchImplementation?.project(initiative.id),
+          ])
+          return { retrieval, candidates: { designApplicability: designApplicability?.candidate,
+            finalizedFigmaSnapshotImport: finalizedFigmaSnapshotImport?.candidate, humanDesignApproval: humanDesignApproval?.candidate,
+            designBaseline: designBaseline?.candidate, designToRequirementBinding: designToRequirementBinding?.candidate,
+            designToCodeBindingRegistry: designToCodeBindingRegistry?.candidate, routeScreenComponentMapping: routeScreenComponentMapping?.candidate,
+            proposedChangePreview: proposedChangePreview?.candidate, stagingWorkspace: stagingWorkspace?.candidate,
+            modelSwitchImplementation: modelSwitchImplementation?.candidate } }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.retrieval
+            const { snapshotDigest, ...projectionBody } = value
+            const exactDependencies = value.status.dependencies !== undefined &&
+              (Object.keys(projection.value.candidates) as (keyof typeof projection.value.candidates)[]).every((key) => {
+                const reference = value.status.dependencies?.[key]
+                const candidate = projection.value.candidates[key]
+                return reference !== undefined && candidate !== undefined && reference.recordId === candidate.id &&
+                  reference.revision === candidate.revision && reference.digest === candidate.digest
+              })
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactDependencies && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.approvedFigmaContextRetrievalProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Approved Figma Context Retrieval projection was unavailable or did not bind all exact current design and implementation predecessors",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`approved-figma-context-retrieval-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Approved Figma Context Retrieval metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("approved-figma-context-retrieval-unavailable", "Approved Figma Context Retrieval metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (

@@ -594,6 +594,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readApprovedFigmaContextRetrieval(initiativeId: UUID): ApprovedFigmaContextRetrievalProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("delivery.approvedFigmaContextRetrieval.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseApprovedFigmaContextRetrievalEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }

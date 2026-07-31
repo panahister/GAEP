@@ -83,6 +83,7 @@ const commands = [
   "gaepKiro.controlledClaudeImplementation.inspect",
   "gaepKiro.providerSwitchImplementation.inspect",
   "gaepKiro.modelSwitchImplementation.inspect",
+  "gaepKiro.approvedFigmaContextRetrieval.inspect",
   "gaepKiro.designSystemTokenContract.inspect",
   "gaepKiro.accessibilityDesignRules.inspect",
   "gaepKiro.responsiveMultiPlatformTargets.inspect",

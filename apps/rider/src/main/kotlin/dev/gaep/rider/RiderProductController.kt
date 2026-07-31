@@ -3172,6 +3172,36 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Snapshot digest: ${projection.snapshotDigest}")
     }
 
+    fun readApprovedFigmaContextRetrieval(initiativeId: UUID): String {
+        val product = client.readProductBinding(); val initiative = client.readInitiative(initiativeId)
+        val projection = client.readApprovedFigmaContextRetrieval(initiativeId)
+        require(projection.productId == product.id && projection.productRevision == product.revision && projection.productDigest == product.digest &&
+            projection.initiativeId == initiative.id && projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state) {
+            "Approved Figma Context Retrieval projection does not match exact current Product and Initiative"
+        }
+        return renderApprovedFigmaContextRetrieval(projection)
+    }
+
+    fun renderApprovedFigmaContextRetrieval(projection: ApprovedFigmaContextRetrievalProjection): String = buildString {
+        appendLine("GAEP governed Approved Figma Context Retrieval candidate"); appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine("Snapshot scope: ${projection.includedItemCount}/${projection.snapshotItemCount} items · ${projection.snapshotGapCount} gaps")
+        appendLine("Generation context: ${projection.requirementBindingCount} requirement bindings · ${projection.designToCodeBindingCount} code bindings · ${projection.routeSubjectCount} route/screen/component subjects · ${projection.implementationUnitCount} units · ${projection.pathCount} paths")
+        appendLine("Gaps: ${projection.staleBindingCount} stale · ${projection.generationContextGapCount} context · ${projection.lifecycleGapCount} lifecycle · ${projection.evidenceGapCount} evidence · ${projection.invalidCandidateCount} invalid")
+        projection.reasons.forEach { appendLine("  - $it") }; appendLine()
+        appendLine("Candidate record: ${projection.candidate?.let { "${it.id}@${it.revision} · candidate · ${it.digest}" } ?: "not recorded"}")
+        projection.candidate?.let {
+            appendLine("Approved-scope snapshot candidate: ${it.baselineSemanticVersion} · ${it.includedItemCount}/${it.snapshotItemCount} items")
+            appendLine("Exact version digest: ${it.returnedExternalVersionDigest}")
+            appendLine("Content boundary: ${it.contentBoundary} · materialization ${it.materializationState} · transfer ${it.transferState}")
+            appendLine("Retrieval stop lines: Figma ${it.figmaConnectionState} · fetch ${it.remoteFetchState} · materialize ${it.contextMaterializationState} · transfer ${it.contextTransferState} · generate ${it.generationState}")
+            appendLine("Effect stop lines: provider ${it.providerExecutionState} · stage ${it.stageEffectState} · source mutation ${it.sourceMutationState}")
+        }
+        appendLine(); appendLine("Privacy-safe approved-snapshot/version and bounded generation-context metadata only. This inspection does not connect to Figma, fetch or expose design/source content, materialize or transfer context, generate code, execute a provider, create or change a stage, mutate source, establish approval, baseline or readiness, accept, release, deploy, or grant action authority.")
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+    }
+
     fun renderTestInventory(projection: TestInventoryProjection): String = buildString {
         appendLine("GAEP governed Test Inventory candidate")
         appendLine()

@@ -57,6 +57,7 @@ import {
   type ControlledClaudeImplementationProjection,
   type ProviderSwitchImplementationProjection,
   type ModelSwitchImplementationProjection,
+  type ApprovedFigmaContextRetrievalProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -208,6 +209,7 @@ const commandIds = {
   controlledClaudeImplementation: "gaepKiro.controlledClaudeImplementation.inspect",
   providerSwitchImplementation: "gaepKiro.providerSwitchImplementation.inspect",
   modelSwitchImplementation: "gaepKiro.modelSwitchImplementation.inspect",
+  approvedFigmaContextRetrieval: "gaepKiro.approvedFigmaContextRetrieval.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -375,6 +377,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.controlledClaudeImplementation, (input?: unknown) => runUserCommand(() => showControlledClaudeImplementation(pool, input))),
     vscode.commands.registerCommand(commandIds.providerSwitchImplementation, (input?: unknown) => runUserCommand(() => showProviderSwitchImplementation(pool, input))),
     vscode.commands.registerCommand(commandIds.modelSwitchImplementation, (input?: unknown) => runUserCommand(() => showModelSwitchImplementation(pool, input))),
+    vscode.commands.registerCommand(commandIds.approvedFigmaContextRetrieval, (input?: unknown) => runUserCommand(() => showApprovedFigmaContextRetrieval(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2936,6 +2939,42 @@ async function showModelSwitchImplementation(
       `Effects: source mutation ${record.lifecycle.sourceMutationState} · apply ${record.lifecycle.applyState} · discard ${record.lifecycle.discardState} · recovery ${record.lifecycle.recoveryState}`,
       `Candidate units: ${record.unitCount} · paths: ${record.pathCount} · prerequisites: ${record.prerequisiteCount}`, `Updated: ${record.updatedAt}`] : []), "",
     "Privacy-safe same-provider model-switch candidate metadata only. This inspection does not establish model availability, refresh capabilities, execute a provider or model transition, transfer context, record a handoff, transfer stage ownership, resume work, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showApprovedFigmaContextRetrieval(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<ApprovedFigmaContextRetrievalProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Approved Figma Context Retrieval inspection", "Initiative ID")
+  const projection = await client.readApprovedFigmaContextRetrieval(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Approved Figma Context Retrieval candidate", "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Snapshot scope: ${status.includedItemCount}/${status.snapshotItemCount} items · ${status.snapshotGapCount} gaps`,
+    `Generation context: ${status.requirementBindingCount} requirement bindings · ${status.designToCodeBindingCount} code bindings · ${status.routeSubjectCount} route/screen/component subjects · ${status.implementationUnitCount} units · ${status.pathCount} paths`,
+    `Gaps: ${status.staleBindingCount} stale · ${status.generationContextGapCount} context · ${status.lifecycleGapCount} lifecycle · ${status.evidenceGapCount} evidence · ${status.invalidCandidateCount} invalid`,
+    ...status.reasons.map((reason) => `  - ${reason}`), "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [`Approved-scope snapshot candidate: ${record.approvedSnapshot.baselineSemanticVersion} · ${record.approvedSnapshot.includedItemCount}/${record.approvedSnapshot.itemCount} items`,
+      `Exact version digest: ${record.approvedSnapshot.returnedExternalVersionDigest}`,
+      `Content boundary: ${record.generationContext.contentBoundary} · materialization ${record.generationContext.materializationState} · transfer ${record.generationContext.transferState}`,
+      `Retrieval stop lines: Figma ${record.lifecycle.figmaConnectionState} · fetch ${record.lifecycle.remoteFetchState} · materialize ${record.lifecycle.contextMaterializationState} · transfer ${record.lifecycle.contextTransferState} · generate ${record.lifecycle.generationState}`,
+      `Effect stop lines: provider ${record.lifecycle.providerExecutionState} · stage ${record.lifecycle.stageEffectState} · source mutation ${record.lifecycle.sourceMutationState}`,
+      `Updated: ${record.updatedAt}`] : []), "",
+    "Privacy-safe approved-snapshot/version and bounded generation-context metadata only. This inspection does not connect to Figma, fetch or expose design/source content, materialize or transfer context, generate code, execute a provider, create or change a stage, mutate source, establish approval, baseline or readiness, accept, release, deploy, or grant action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
