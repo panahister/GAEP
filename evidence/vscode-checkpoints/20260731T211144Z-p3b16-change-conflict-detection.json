@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "vscode-local-implementation-checkpoint",
+  "feature": { "id": "P3B-16", "title": "Change Conflict Detection", "implementationScope": "shared-contract-engine-and-vscode-product-studio" },
+  "recordedAt": "2026-07-31T21:11:44.000Z",
+  "branch": "codex/gaep-hardwork-completion",
+  "source": { "contractCommit": "140bb0e", "engineCommit": "aa025f4", "productStudioCommit": "faedf1d" },
+  "implementation": {
+    "contract": "packages/contracts/src/change-conflict-detection.ts",
+    "engine": "packages/engine/src/change-conflict-detection.ts",
+    "productStudioDataSource": "apps/vscode/src/current-engine-studio-data-source.ts",
+    "vscodeProtocol": "apps/vscode/src/studio-protocol.ts",
+    "surface": "Product Studio Delivery route",
+    "lifecycle": [
+      "immutable versioned change-conflict candidate history",
+      "exact eight-predecessor current revision and digest validation across change, preview, stage, provider/model switches, whole-stage decision, scoped selection, and recovery",
+      "one conflict subject per exact scoped selected path",
+      "exact changed, previewed, staged, decision, recovery-subject, provider-handoff, model-transition, endpoint-digest, and repository-relative path continuity",
+      "five explicit candidate finding kinds per subject: baseline drift, overlapping stage, provider handoff, stale generation, and user edit",
+      "deterministic dependency, stage, subject, observation, conflict, evidence, and assessment receipts",
+      "fail-closed unavailable, gap, stale, not-assessed, forged, and stale-predecessor handling",
+      "bounded privacy-safe Product Studio projection with no inspect, overwrite, resolve, handoff, or apply action"
+    ]
+  },
+  "verification": {
+    "typecheck": { "command": "npm run typecheck", "status": "passed" },
+    "focused": { "command": "npx vitest run packages/contracts/src/change-conflict-detection.test.ts packages/engine/src/change-conflict-detection.test.ts apps/vscode/src/change-conflict-detection-product-studio.test.ts apps/vscode/src/studio-protocol.test.ts apps/vscode/src/studio-accessibility.test.ts apps/vscode/src/current-engine-studio-data-source.test.ts", "status": "passed", "testFilesPassed": 6, "testsPassed": 146, "testsSkipped": 0 },
+    "sharedAndVscode": { "command": "npx vitest run packages apps/vscode", "status": "passed", "testFilesPassed": 159, "testsPassed": 1054, "testsSkipped": 1 },
+    "vscodePackage": { "command": "npm run package:vscode", "status": "passed", "path": "apps/vscode/dist/gaep-vscode.vsix", "bytes": 1220050,
+      "sha256": "4e12f390e1e97959ecc4b05a0871539cf581bf54b1861fb0050ed282b60672c9", "published": false },
+    "isolatedExtensionHost": { "command": "npm run test:vscode:extension-host", "status": "passed", "normalProfileUsed": false,
+      "checks": ["development activation, contributed commands, four native views, and Product Studio open", "explicit two-root Product context without silent Product-root mutation", "isolated previous-version install, upgrade, reinstall, rollback, uninstall, absence, and final install", "exact VSIX activation, commands, views, Product Studio, bundled-engine empty recovery/evidence workflow, and no workspace mutation"],
+      "limitation": "The test harness disables workspace trust, so untrusted-host behavior is not established by this receipt." }
+  },
+  "acceptanceBoundary": {
+    "candidateConflictMetadataOnly": true,
+    "repositoryInspection": "not-performed",
+    "sourceInspection": "not-performed",
+    "liveWorkingTreeObservation": "not-performed",
+    "userEditTruth": "not-established",
+    "providerHandoffTruth": "not-established",
+    "conflictAbsenceTruth": "not-established",
+    "conflictResolution": "not-performed",
+    "sourceMutation": "not-performed",
+    "outcomeTruth": "not-established",
+    "approval": "not-established",
+    "authorization": "not-established",
+    "nativeVscodeAcceptance": "not-established",
+    "liveProviderValidation": "not-performed",
+    "productOwnerAcceptance": "not-established",
+    "securityReview": "skipped",
+    "releaseAuthorization": "not-granted",
+    "publicationAuthorization": "not-granted",
+    "deploymentAuthorization": "not-granted",
+    "actionAuthority": "not-granted"
+  },
+  "externalEffects": { "credentialAccess": false, "externalProviderCalls": 0, "figmaCalls": 0, "sourceInspection": false, "sourceMutation": false,
+    "userEditResolution": false, "providerHandoffExecution": false, "externalSystemMutations": 0, "normalProfileExtensionMutation": false,
+    "packagePublished": false, "releaseOrDeploymentPerformed": false }
+}
