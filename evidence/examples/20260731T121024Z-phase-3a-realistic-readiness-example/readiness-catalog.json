@@ -1,0 +1,620 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase3a-realistic-readiness-catalog",
+  "scenario": {
+    "id": "phase-3a-atlas-realistic-readiness-example-v1",
+    "digest": "sha256:5bb3d52776685ae5249457aa02d5a644c58f9a7d9539178191eb2a7b7acdcaa4"
+  },
+  "product": {
+    "id": "33000000-0000-4000-8000-000000000001",
+    "revision": 1,
+    "digest": "sha256:97d9dca3f37d6e03af0be8db1581f6f72366681d15d3d09fdd722d6cf40669cb"
+  },
+  "initiative": {
+    "id": "33000000-0000-4000-8000-000000000002",
+    "revision": 1,
+    "digest": "sha256:c8dca5f451f2e159740dc48fb17afca54ede34b99424ee8a8552402868d0f30d"
+  },
+  "caseStudy": {
+    "problem": "Release reviewers need one bounded workspace that reconciles evidence, trace, implementation planning, and unresolved authority without treating provider completion as Product readiness.",
+    "outcomeCandidate": "A three-unit local-first evidence review slice is structurally complete enough for accountable implementation-readiness review.",
+    "userGroups": [
+      "Product owners",
+      "Release reviewers",
+      "Implementation engineers"
+    ],
+    "implementationUnits": [
+      {
+        "id": "atlas-review-shell",
+        "kind": "frontend",
+        "dependencyIds": [
+          "atlas-evidence-api"
+        ],
+        "candidateRepository": "atlas-review",
+        "candidateModule": "apps/review"
+      },
+      {
+        "id": "atlas-evidence-api",
+        "kind": "service",
+        "dependencyIds": [
+          "atlas-audit-store"
+        ],
+        "candidateRepository": "atlas-review",
+        "candidateModule": "services/evidence"
+      },
+      {
+        "id": "atlas-audit-store",
+        "kind": "data",
+        "dependencyIds": [],
+        "candidateRepository": "atlas-review",
+        "candidateModule": "packages/audit-store"
+      }
+    ],
+    "counts": {
+      "epicCount": 1,
+      "storyCount": 4,
+      "taskCount": 9,
+      "requirementCount": 8,
+      "acceptanceCriterionCount": 12,
+      "implementationUnitCount": 3,
+      "testInventoryCount": 18,
+      "riskCount": 3
+    },
+    "candidateDisposition": "complete-for-accountable-human-readiness-review"
+  },
+  "sources": [
+    {
+      "ordinal": 1,
+      "id": "backlog-hierarchy",
+      "title": "Backlog hierarchy",
+      "group": "backlog-slice",
+      "projectionKind": "backlog-hierarchy-projection",
+      "stageId": "P3A-01",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000101",
+        "revision": 1,
+        "digest": "sha256:b165c2647f534f944600d3443df3697482ce872c01dde4909fc1dae3e650ee60"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 4,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:ab4b8527100c5df1e3e28f0e69fa7db236c7ba2dd37ce544e311dcc6aaddbed2"
+    },
+    {
+      "ordinal": 2,
+      "id": "mvp-slice-definition",
+      "title": "MVP and slice definition",
+      "group": "backlog-slice",
+      "projectionKind": "mvp-slice-definition-projection",
+      "stageId": "P3A-02",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000102",
+        "revision": 1,
+        "digest": "sha256:e22d108814a163e64d20563857b28c81b3369aa123dcdfc4eb82058f0f177396"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 5,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:bc1777959539e7527e5dc989aa630816dd12e06215659624d4c9dcb043f85f3c"
+    },
+    {
+      "ordinal": 3,
+      "id": "prioritization-model",
+      "title": "Prioritization model",
+      "group": "backlog-slice",
+      "projectionKind": "prioritization-model-projection",
+      "stageId": "P3A-03",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000103",
+        "revision": 1,
+        "digest": "sha256:4434281136da6b449deff8b12226613c31683e982cdf93f6825aef50fcfde17c"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 3,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:167b6bf717f58317c1ea7a0b69e03130a9d72bb2b56b744fe8be2b03299f9b8f"
+    },
+    {
+      "ordinal": 4,
+      "id": "acceptance-criteria",
+      "title": "Acceptance criteria",
+      "group": "readiness-gap",
+      "projectionKind": "acceptance-criteria-projection",
+      "stageId": "P3A-04",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000104",
+        "revision": 1,
+        "digest": "sha256:4d65a09a8d63e5d2f0b5cf52fdc2c2eb7317d152f05192e89d6f49fd82e3970e"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 6,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:4c870ed74121afd9ae6a34d3d100976f30b7b6c52404c70d52229ebb24aadbb8"
+    },
+    {
+      "ordinal": 5,
+      "id": "definition-of-ready",
+      "title": "Definition of Ready",
+      "group": "readiness-gap",
+      "projectionKind": "definition-of-ready-projection",
+      "stageId": "P3A-05",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000105",
+        "revision": 1,
+        "digest": "sha256:4197c3363f89990825484df36cf27e554d4d69901a20bf65751dcdf2244909b1"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 4,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:9a85d6d7186c6837edad5fa8a81ed633cc8839fb70a879192d964115e0775578"
+    },
+    {
+      "ordinal": 6,
+      "id": "definition-of-done",
+      "title": "Definition of Done",
+      "group": "readiness-gap",
+      "projectionKind": "definition-of-done-projection",
+      "stageId": "P3A-06",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000106",
+        "revision": 1,
+        "digest": "sha256:7db53a3f7f25de7623d6707bbb090967cba5afc67a31f3129d80dab21217c515"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 4,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:431b60b20e328a461bcb158542c7992b24d9bbf7dff5478f2d715d163ef12a18"
+    },
+    {
+      "ordinal": 7,
+      "id": "implementation-unit-model",
+      "title": "Implementation Unit model",
+      "group": "readiness-gap",
+      "projectionKind": "implementation-unit-model-projection",
+      "stageId": "P3A-07",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000107",
+        "revision": 1,
+        "digest": "sha256:2199ea1161ce53b431ba61449a4ada52cd1fe1f15d316667af5f47646b3974b5"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 5,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:daecd4a88da59e5f94d4ffd558e8b406f4fe0a7afa4c51b94c175df653a04b6f"
+    },
+    {
+      "ordinal": 8,
+      "id": "dependency-mapping",
+      "title": "Dependency mapping",
+      "group": "readiness-gap",
+      "projectionKind": "dependency-mapping-projection",
+      "stageId": "P3A-08",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000108",
+        "revision": 1,
+        "digest": "sha256:f1bf83ea9c4b5a3ae6742b2e9da784b9db75ef9b831e3269a1e96f32877e7601"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 4,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:9db3394311bbdc6576ae8a6ac9b9390408d0d9affd75f6cc5679087a4eee75f2"
+    },
+    {
+      "ordinal": 9,
+      "id": "technology-profile",
+      "title": "Technology profile",
+      "group": "boilerplate-design-code",
+      "projectionKind": "technology-profile-projection",
+      "stageId": "P3A-09",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000109",
+        "revision": 1,
+        "digest": "sha256:31e8fdff4b837fcda5bec614463ce93b57143170a9f5d2b2325f548436691682"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 3,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:027c7399298a88a0203952277a2dbc9ca517625572ad33db07bf9b4bec6e5de8"
+    },
+    {
+      "ordinal": 10,
+      "id": "boilerplate-registry",
+      "title": "Boilerplate registry",
+      "group": "boilerplate-design-code",
+      "projectionKind": "boilerplate-registry-projection",
+      "stageId": "P3A-10",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000110",
+        "revision": 1,
+        "digest": "sha256:2f7bbda59b8cfe785b6b30364541bf2ccdb9aaec99586c04b447cf3f3cea7a64"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 3,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:e7b9182a480ea0daa2653957f664df554d4b7365320afb046344da9c7a02d4fe"
+    },
+    {
+      "ordinal": 11,
+      "id": "boilerplate-selection-binding",
+      "title": "Boilerplate selection and binding",
+      "group": "boilerplate-design-code",
+      "projectionKind": "boilerplate-selection-binding-projection",
+      "stageId": "P3A-11",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000111",
+        "revision": 1,
+        "digest": "sha256:ea45e1a88bd8892b80373f76a461600639105b07ef1809f827f22417ff6d4bf4"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 3,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:79888bee0cf0c4008b2c1fde3fe78281b466a8951079e8683b69c41d2f28a208"
+    },
+    {
+      "ordinal": 12,
+      "id": "boilerplate-compatibility-validation",
+      "title": "Boilerplate compatibility validation",
+      "group": "boilerplate-design-code",
+      "projectionKind": "boilerplate-compatibility-validation-projection",
+      "stageId": "P3A-12",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000112",
+        "revision": 1,
+        "digest": "sha256:1067ed86db58b4215452ae11165a42c017326b13f39f53d71fc64d13050a8df6"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 4,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:bb0ca2ac6edd4b0f31d1b9e341ee7db4dd18aa9b6945bbc431a0a8ae72ef09a8"
+    },
+    {
+      "ordinal": 13,
+      "id": "figma-to-boilerplate-mapping",
+      "title": "Figma-to-boilerplate mapping",
+      "group": "boilerplate-design-code",
+      "projectionKind": "figma-to-boilerplate-mapping-projection",
+      "stageId": "P3A-13",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000113",
+        "revision": 1,
+        "digest": "sha256:ff3002427f4302ef0be25eb9c33bde04db309d82de95fe9b7a4510bc8661ccec"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 2,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:5feb158586886f909b40abf2e9b810ac0dbf3dbd3f11afbc398d90c74b85f583"
+    },
+    {
+      "ordinal": 14,
+      "id": "design-to-code-binding-registry",
+      "title": "Design-to-code binding registry",
+      "group": "boilerplate-design-code",
+      "projectionKind": "design-to-code-binding-registry-projection",
+      "stageId": "P3A-14",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000114",
+        "revision": 1,
+        "digest": "sha256:849228eb8a7261d1100ea3e7e880076045026c7154653c575c3bf9857d71b5aa"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 4,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:87b0c543bafff7096043ac3827e496af6a5699a4d7981f8fe14e2580692b7ef6"
+    },
+    {
+      "ordinal": 15,
+      "id": "route-screen-component-mapping",
+      "title": "Route, screen, and component mapping",
+      "group": "boilerplate-design-code",
+      "projectionKind": "route-screen-component-mapping-projection",
+      "stageId": "P3A-15",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000115",
+        "revision": 1,
+        "digest": "sha256:6da65e114fcb9de0339e608c90746feb112c79ddea611e1b24645c9526f59015"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 4,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:9f91e50e167795211102c11e13538b7f3b733a0befb83214fed494d5026d52a1"
+    },
+    {
+      "ordinal": 16,
+      "id": "test-methodology",
+      "title": "Test methodology",
+      "group": "readiness-gap",
+      "projectionKind": "test-methodology-projection",
+      "stageId": "P3A-16",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000116",
+        "revision": 1,
+        "digest": "sha256:7a1b6b3fc1b1017b453d617df5dfc31666726f92689c8562210e18384ebeb1c4"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 3,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:d79e340d842e9dbe94e8fac75938a98fbf747742248a574a2942315415d237b3"
+    },
+    {
+      "ordinal": 17,
+      "id": "test-inventory",
+      "title": "Test inventory",
+      "group": "readiness-gap",
+      "projectionKind": "test-inventory-projection",
+      "stageId": "P3A-17",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000117",
+        "revision": 1,
+        "digest": "sha256:32c66493fa2bbb02aa6636c1a2689c38988517ccb8467b3805fd7231fa657d23"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 5,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:d5537033e0f81e2936f7d954207d9ff1c4672dbc8871203aff42af3329d7e492"
+    },
+    {
+      "ordinal": 18,
+      "id": "high-level-design",
+      "title": "High-Level Design",
+      "group": "readiness-gap",
+      "projectionKind": "high-level-design-projection",
+      "stageId": "P3A-18",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000118",
+        "revision": 1,
+        "digest": "sha256:0eed201e23b922e3988fcf5bb20ab9150f2cba70c7b58cbf12a18a015a006c2f"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 4,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:af3c0edea675d7b43c51c7e6efe99cd898ccda838510098f88a6998094d0b97c"
+    },
+    {
+      "ordinal": 19,
+      "id": "low-level-design",
+      "title": "Low-Level Design",
+      "group": "readiness-gap",
+      "projectionKind": "low-level-design-projection",
+      "stageId": "P3A-19",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000119",
+        "revision": 1,
+        "digest": "sha256:82ebf08dccae82bd3acb99f301484c2db859b165ca45273f30c64dc7e2863949"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 5,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:bc8f9585f73377c03ddecd92a9ae22a243722df22a49eec4365f27e63b606c52"
+    },
+    {
+      "ordinal": 20,
+      "id": "implementation-readiness-gate",
+      "title": "Implementation Readiness Gate",
+      "group": "readiness-gap",
+      "projectionKind": "implementation-readiness-gate-projection",
+      "stageId": "P3A-20",
+      "candidate": {
+        "recordId": "33000000-0000-4000-8000-000000000120",
+        "revision": 1,
+        "digest": "sha256:acd658b9ea75530c5bd0af5c9a89973790bfe63172b43a731a20f4d13cb4df0e"
+      },
+      "observedAt": "2026-07-31T10:30:00.000Z",
+      "assessment": {
+        "state": "candidate-evidence-complete",
+        "reviewState": "ready-for-human-review",
+        "reasonCount": 0,
+        "candidateCount": 1,
+        "evidenceReferenceCount": 6,
+        "gapCount": 0,
+        "conflictCount": 0,
+        "staleCount": 0,
+        "unresolvedCount": 0,
+        "attentionRequired": false
+      },
+      "snapshotDigest": "sha256:3bd426107fb108b540c82ff6a74af5a1be9648c587f4a7bd84f4d401b27896b5"
+    }
+  ],
+  "summary": {
+    "sourceCount": 20,
+    "exactCurrentCandidateCount": 20,
+    "evidenceReferenceCount": 81,
+    "gapCount": 0,
+    "conflictCount": 0,
+    "staleCount": 0,
+    "unresolvedCount": 0,
+    "writesApplied": 0,
+    "implementationEffectsApplied": 0
+  },
+  "authorityBoundary": "readiness-catalog-is-candidate-structural-evidence-for-human-review-not-source-truth-completeness-priority-readiness-waiver-ownership-implementation-or-action-authority",
+  "catalogDigest": "sha256:2a6f7ae63e627b6532847386c46d3a86382f60826f94c6fa99a38171843b3681"
+}
