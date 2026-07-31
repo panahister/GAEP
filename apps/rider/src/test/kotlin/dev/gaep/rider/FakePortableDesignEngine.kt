@@ -61,6 +61,7 @@ private val testMethodologyId = UUID.fromString("dededede-dede-4ede-8ede-dededed
 private val testInventoryId = UUID.fromString("efefefef-efef-4fef-8fef-efefefefefef")
 private val highLevelDesignId = UUID.fromString("f0f0f0f0-f0f0-40f0-80f0-f0f0f0f0f0f0")
 private val lowLevelDesignId = UUID.fromString("f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1")
+private val implementationReadinessGateId = UUID.fromString("e1e1e1e1-e1e1-41e1-81e1-e1e1e1e1e1e1")
 private val lowLevelImplementationUnitId = UUID.fromString("f2f2f2f2-f2f2-42f2-82f2-f2f2f2f2f2f2")
 private val designSystemTokenContractId = UUID.fromString("69696969-6969-4969-8969-696969696969")
 private val accessibilityDesignRulesId = UUID.fromString("70707070-7070-4070-8070-707070707070")
@@ -380,6 +381,9 @@ fun main(arguments: Array<String>) {
                 id, request.getAsJsonObject("params"), workspacePath,
             )
             "planning.lowLevelDesign.snapshot" -> handleLowLevelDesign(
+                id, request.getAsJsonObject("params"), workspacePath,
+            )
+            "planning.implementationReadinessGate.snapshot" -> handleImplementationReadinessGate(
                 id, request.getAsJsonObject("params"), workspacePath,
             )
             "design.systemTokenContract.snapshot" -> handleDesignSystemTokenContract(
@@ -5226,6 +5230,52 @@ private fun handleLowLevelDesign(id: Long, params: JsonObject, workspacePath: St
         result.addProperty("designNarrative", "$privateRoot/$privateCredential")
         val body = result.deepCopy().also { it.remove("snapshotDigest") }
         result.addProperty("snapshotDigest", canonicalDigest(body))
+    }
+    writeResult(id, result)
+}
+
+private fun handleImplementationReadinessGate(id: Long, params: JsonObject, workspacePath: String) {
+    if (params.keySet() != setOf("initiativeId") || params.get("initiativeId").asString != initiativeId.toString()) {
+        writeError(id, -32_602, "INVALID_PARAMS", "PRIVATE IMPLEMENTATION READINESS PARAMS"); return
+    }
+    val candidateDigest = "sha256:${"7".repeat(64)}"
+    val status = JsonObject().apply {
+        addProperty("schemaVersion", 1); addProperty("kind", "implementation-readiness-gate-status")
+        addProperty("productId", productId.toString()); addProperty("productRevision", 7)
+        addProperty("initiativeId", initiativeId.toString()); addProperty("initiativeRevision", initiativeState.get("revision").asLong)
+        add("candidate", JsonObject().apply { addProperty("recordId", implementationReadinessGateId.toString()); addProperty("revision", 2); addProperty("digest", candidateDigest) })
+        add("lowLevelDesigns", JsonArray())
+        listOf("dependencyCount" to 24, "presentDependencyCount" to 24, "subjectCount" to 4, "satisfiedCount" to 2,
+            "gapCount" to 1, "conflictCount" to 0, "staleCount" to 0, "waivedCandidateCount" to 1,
+            "notAssessedCount" to 0, "evidenceGapCount" to 1, "ownershipGapCount" to 0, "coverageGapCount" to 0,
+            "staleBindingCount" to 0, "staleDependencyCount" to 0, "invalidCandidateCount" to 0, "unresolvedQuestionCount" to 1,
+        ).forEach { (name, value) -> addProperty(name, value) }
+        addProperty("reviewState", "held"); addProperty("state", "attention-required")
+        add("reasons", JsonArray().apply { add("One or more readiness subjects require accountable human review") })
+        addProperty("assessedAt", "2026-07-31T05:00:00.000Z")
+        addProperty("authorityBoundary", "implementation-readiness-gate-status-is-observational-and-does-not-establish-artifact-or-evidence-truth-completeness-approval-waiver-owner-appointment-implementation-readiness-assignment-execution-acceptance-release-deployment-or-action-authority")
+    }
+    val content = JsonObject().apply {
+        addProperty("schemaVersion", 1); addProperty("kind", "implementation-readiness-gate-projection")
+        add("product", JsonObject().apply { addProperty("id", productId.toString()); addProperty("revision", 7); addProperty("digest", canonicalDigest(productRecord())) })
+        add("initiative", JsonObject().apply { addProperty("id", initiativeId.toString()); addProperty("revision", initiativeState.get("revision").asLong); addProperty("digest", canonicalDigest(initiativeState)); addProperty("state", initiativeState.get("state").asString) })
+        add("status", status)
+        add("candidate", JsonObject().apply {
+            addProperty("id", implementationReadinessGateId.toString()); addProperty("revision", 2); addProperty("digest", candidateDigest); addProperty("state", "candidate")
+            addProperty("dependencyReceiptDigest", "sha256:${"1".repeat(64)}"); addProperty("coverageReceiptDigest", "sha256:${"2".repeat(64)}")
+            addProperty("evidenceReceiptDigest", "sha256:${"3".repeat(64)}"); addProperty("ownershipReceiptDigest", "sha256:${"4".repeat(64)}")
+            addProperty("assessmentReceiptDigest", "sha256:${"5".repeat(64)}"); addProperty("subjectCount", 4); addProperty("reviewState", "held"); addProperty("updatedAt", "2026-07-31T04:59:00.000Z")
+        })
+        addProperty("observedAt", "2026-07-31T05:00:00.000Z")
+        addProperty("privacyBoundary", "projection-contains-record-identities-counts-statuses-and-dependency-coverage-evidence-ownership-assessment-digests-only-not-readiness-rationales-evidence-content-review-content-owner-details-personal-data-secrets-credentials-or-machine-paths")
+        addProperty("authorityBoundary", "implementation-readiness-gate-projection-is-read-only-and-does-not-establish-artifact-or-evidence-truth-completeness-approval-waiver-owner-appointment-implementation-readiness-assignment-execution-acceptance-release-deployment-or-action-authority")
+    }
+    if (workspacePath.endsWith("bad-implementation-readiness-snapshot-binding")) content.getAsJsonObject("initiative").addProperty("id", implementationReadinessGateId.toString())
+    val result = content.deepCopy().apply { addProperty("snapshotDigest", canonicalDigest(content)) }
+    if (workspacePath.endsWith("bad-implementation-readiness-snapshot-digest")) result.getAsJsonObject("candidate").addProperty("subjectCount", 5)
+    if (workspacePath.endsWith("bad-implementation-readiness-snapshot-private")) {
+        result.addProperty("readinessRationale", "$privateRoot/$privateCredential")
+        result.addProperty("snapshotDigest", canonicalDigest(result.deepCopy().also { it.remove("snapshotDigest") }))
     }
     writeResult(id, result)
 }

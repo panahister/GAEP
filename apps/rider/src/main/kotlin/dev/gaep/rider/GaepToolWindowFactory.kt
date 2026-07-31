@@ -847,6 +847,15 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += lowLevelDesignButton
         actions.add(lowLevelDesignButton)
 
+        val implementationReadinessButton = JButton("Inspect Implementation Readiness Gate…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(project, "Inspect Implementation Readiness Gate", "Enter the exact Initiative UUID. Readiness rationales, evidence content, owner details, and authority are withheld.", "Initiative ID")?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Implementation Readiness Gate", status, output, buttons) { controller.readImplementationReadinessGate(initiativeId) }
+            }
+        }
+        buttons += implementationReadinessButton
+        actions.add(implementationReadinessButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

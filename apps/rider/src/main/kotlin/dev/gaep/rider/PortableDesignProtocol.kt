@@ -3136,6 +3136,23 @@ data class LowLevelDesignProjection(
     val snapshotDigest: String,
 )
 
+data class ImplementationReadinessGateRecordView(
+    val id: UUID, val revision: Long, val digest: String, val dependencyReceiptDigest: String,
+    val coverageReceiptDigest: String, val evidenceReceiptDigest: String, val ownershipReceiptDigest: String,
+    val assessmentReceiptDigest: String, val subjectCount: Int, val reviewState: String,
+)
+
+data class ImplementationReadinessGateProjection(
+    val productId: UUID, val productRevision: Long, val productDigest: String,
+    val initiativeId: UUID, val initiativeRevision: Long, val initiativeDigest: String, val initiativeState: String,
+    val state: String, val reviewState: String, val reasons: List<String>, val dependencyCount: Int,
+    val presentDependencyCount: Int, val subjectCount: Int, val satisfiedCount: Int, val gapCount: Int,
+    val conflictCount: Int, val staleCount: Int, val waivedCandidateCount: Int, val notAssessedCount: Int,
+    val evidenceGapCount: Int, val ownershipGapCount: Int, val coverageGapCount: Int,
+    val staleBindingCount: Int, val staleDependencyCount: Int, val invalidCandidateCount: Int,
+    val unresolvedQuestionCount: Int, val candidate: ImplementationReadinessGateRecordView?, val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -4393,6 +4410,12 @@ internal object PortableDesignProtocol {
         "low-level-design-projection-is-read-only-and-does-not-establish-design-repository-source-runtime-or-deployment-truth-or-completeness-design-baseline-or-approval-privacy-or-security-approval-owner-appointment-implementation-readiness-acceptance-release-deployment-or-action-authority"
     private const val LOW_LEVEL_DESIGN_STATUS_AUTHORITY_BOUNDARY =
         "low-level-design-status-is-observational-and-does-not-establish-design-repository-source-runtime-or-deployment-truth-or-completeness-design-baseline-or-approval-privacy-or-security-approval-owner-appointment-implementation-readiness-acceptance-release-deployment-or-action-authority"
+    private const val IMPLEMENTATION_READINESS_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-counts-statuses-and-dependency-coverage-evidence-ownership-assessment-digests-only-not-readiness-rationales-evidence-content-review-content-owner-details-personal-data-secrets-credentials-or-machine-paths"
+    private const val IMPLEMENTATION_READINESS_PROJECTION_AUTHORITY_BOUNDARY =
+        "implementation-readiness-gate-projection-is-read-only-and-does-not-establish-artifact-or-evidence-truth-completeness-approval-waiver-owner-appointment-implementation-readiness-assignment-execution-acceptance-release-deployment-or-action-authority"
+    private const val IMPLEMENTATION_READINESS_STATUS_AUTHORITY_BOUNDARY =
+        "implementation-readiness-gate-status-is-observational-and-does-not-establish-artifact-or-evidence-truth-completeness-approval-waiver-owner-appointment-implementation-readiness-assignment-execution-acceptance-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -12052,6 +12075,59 @@ internal object PortableDesignProtocol {
         )
     }
 
+
+    fun parseImplementationReadinessGateEnvelope(envelope: JsonObject, expectedInitiativeId: UUID): ImplementationReadinessGateProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(setOf("schemaVersion", "kind", "product", "initiative", "status", "observedAt", "privacyBoundary", "authorityBoundary", "snapshotDigest"), setOf("candidate"))
+        if (projection.requireInt("schemaVersion") != 1 || projection.requireString("kind") != "implementation-readiness-gate-projection" ||
+            projection.requireString("privacyBoundary") != IMPLEMENTATION_READINESS_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != IMPLEMENTATION_READINESS_PROJECTION_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        if (snapshotDigest != canonicalDigest(projection.deepCopy().also { it.remove("snapshotDigest") })) throw invalidResponse()
+        val product = projection.get("product").requireObject().also { it.requireExactKeys("id", "revision", "digest") }
+        val productId = product.requireNonEmptyUuid("id"); val productRevision = product.requireLong("revision")
+        if (productRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject().also { it.requireExactKeys("id", "revision", "digest", "state") }
+        val initiativeId = initiative.requireNonEmptyUuid("id"); val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest")
+        val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+        val dependencyNames = setOf("backlogHierarchy", "mvpSliceDefinition", "prioritizationModel", "acceptanceCriteria", "definitionOfReady", "definitionOfDone", "implementationUnitModel", "dependencyMapping", "technologyProfile", "boilerplateRegistry", "boilerplateSelectionBinding", "boilerplateCompatibilityValidation", "designBaseline", "designToCodeBindingRegistry", "routeScreenComponentMapping", "testMethodology", "testInventory", "highLevelDesign", "riskRegister", "securityPrivacyAssessment")
+        val countNames = setOf("dependencyCount", "presentDependencyCount", "subjectCount", "satisfiedCount", "gapCount", "conflictCount", "staleCount", "waivedCandidateCount", "notAssessedCount", "evidenceGapCount", "ownershipGapCount", "coverageGapCount", "staleBindingCount", "staleDependencyCount", "invalidCandidateCount", "unresolvedQuestionCount")
+        val status = projection.get("status").requireObject()
+        status.requireKeys(setOf("schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision", "lowLevelDesigns", "reviewState", "state", "reasons", "assessedAt", "authorityBoundary") + countNames, dependencyNames + "candidate")
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "implementation-readiness-gate-status" ||
+            status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision ||
+            status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision ||
+            status.requireString("authorityBoundary") != IMPLEMENTATION_READINESS_STATUS_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val counts = countNames.associateWith { status.requireBoundedNonNegativeInt(it, 65_536) }
+        if (counts.getValue("presentDependencyCount") > counts.getValue("dependencyCount") || counts.getValue("satisfiedCount") > counts.getValue("subjectCount")) throw invalidResponse()
+        val lowLevels = status.get("lowLevelDesigns")
+        if (lowLevels == null || !lowLevels.isJsonArray || lowLevels.asJsonArray.size() > 65_536) throw invalidResponse()
+        lowLevels.asJsonArray.forEach { binding -> binding.requireObject().also { value ->
+            value.requireExactKeys("implementationUnitId", "reference"); value.requireNonEmptyUuid("implementationUnitId")
+            value.get("reference").requireObject().also { it.requireExactKeys("recordId", "revision", "digest"); it.requireNonEmptyUuid("recordId"); it.requireLong("revision"); it.requireDigest("digest") }
+        } }
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review"))
+        val state = status.requireOneOf("state", setOf("attention-required", "candidate-assessed"))
+        val reasonsElement = status.get("reasons")
+        if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 2_048) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }
+        if (state == "attention-required" && reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+        val candidateReference = status.get("candidate")?.requireObject()?.also { it.requireExactKeys("recordId", "revision", "digest") }
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject(); value.requireExactKeys("id", "revision", "digest", "state", "dependencyReceiptDigest", "coverageReceiptDigest", "evidenceReceiptDigest", "ownershipReceiptDigest", "assessmentReceiptDigest", "subjectCount", "reviewState", "updatedAt")
+            val id = value.requireNonEmptyUuid("id"); val revision = value.requireLong("revision")
+            val record = ImplementationReadinessGateRecordView(id, revision, value.requireDigest("digest"), value.requireDigest("dependencyReceiptDigest"), value.requireDigest("coverageReceiptDigest"), value.requireDigest("evidenceReceiptDigest"), value.requireDigest("ownershipReceiptDigest"), value.requireDigest("assessmentReceiptDigest"), value.requireBoundedNonNegativeInt("subjectCount", 65_536), value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")))
+            if (revision !in 1..MAX_SAFE_PRODUCT_REVISION || value.requireString("state") != "candidate" || candidateReference == null || candidateReference.requireNonEmptyUuid("recordId") != id || candidateReference.requireLong("revision") != revision || candidateReference.requireDigest("digest") != record.digest || record.subjectCount != counts.getValue("subjectCount") || record.reviewState != reviewState) throw invalidResponse()
+            value.requireInstant("updatedAt"); record
+        }
+        if ((candidateReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        return ImplementationReadinessGateProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState,
+            state, reviewState, reasons, counts.getValue("dependencyCount"), counts.getValue("presentDependencyCount"), counts.getValue("subjectCount"), counts.getValue("satisfiedCount"), counts.getValue("gapCount"), counts.getValue("conflictCount"), counts.getValue("staleCount"), counts.getValue("waivedCandidateCount"), counts.getValue("notAssessedCount"), counts.getValue("evidenceGapCount"), counts.getValue("ownershipGapCount"), counts.getValue("coverageGapCount"), counts.getValue("staleBindingCount"), counts.getValue("staleDependencyCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
+    }
 
     fun parseDesignSystemTokenContractEnvelope(
         envelope: JsonObject,

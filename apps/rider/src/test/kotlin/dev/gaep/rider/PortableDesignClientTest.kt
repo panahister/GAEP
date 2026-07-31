@@ -2585,6 +2585,32 @@ class PortableDesignClientTest {
     }
 
     @Test
+    fun `Implementation Readiness Gate projection is exact private safe and non authorizing`() {
+        val executable = createFakeEngineLauncher(temporaryRoot)
+        val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val workspace = Files.createDirectory(temporaryRoot.resolve("implementation-readiness-workspace"))
+        GaepEngineClient(workspace, executable.toString()).use { client ->
+            val projection = client.readImplementationReadinessGate(entryId)
+            assertEquals("attention-required", projection.state); assertEquals("held", projection.reviewState)
+            assertEquals(24, projection.dependencyCount); assertEquals(4, projection.subjectCount)
+            assertEquals(1, projection.gapCount); assertEquals(1, projection.waivedCandidateCount)
+            assertEquals("sha256:${"1".repeat(64)}", projection.candidate?.dependencyReceiptDigest)
+            val rendered = RiderProductController(client).readImplementationReadinessGate(entryId)
+            assertTrue(rendered.contains("GAEP governed Implementation Readiness Gate candidate"))
+            assertTrue(rendered.contains("24/24")); assertTrue(rendered.contains("1 waiver candidates"))
+            assertTrue(rendered.contains("does not establish artifact or evidence truth"))
+            assertFalse(rendered.contains(privateRoot)); assertFalse(rendered.contains(privateCredential)); assertFalse(rendered.contains("readinessRationale"))
+        }
+        listOf("bad-implementation-readiness-snapshot-binding", "bad-implementation-readiness-snapshot-digest", "bad-implementation-readiness-snapshot-private").forEach { name ->
+            val root = Files.createDirectory(temporaryRoot.resolve(name))
+            GaepEngineClient(root, executable.toString()).use { client ->
+                val error = hostError { client.readImplementationReadinessGate(entryId) }
+                assertEquals("HOST_RESPONSE_INVALID", error.kind); assertPrivateTextWithheld(error)
+            }
+        }
+    }
+
+    @Test
     fun `Design System and Token Contract projection is exact private safe and non authorizing`() {
         val executable = createFakeEngineLauncher(temporaryRoot)
         val entryId = UUID.fromString("22222222-2222-4222-8222-222222222222")

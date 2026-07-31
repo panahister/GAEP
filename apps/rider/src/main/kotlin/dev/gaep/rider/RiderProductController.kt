@@ -2957,6 +2957,32 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Snapshot digest: ${projection.snapshotDigest}")
     }
 
+    fun readImplementationReadinessGate(initiativeId: UUID): String {
+        val product = client.readProductBinding(); val initiative = client.readInitiative(initiativeId)
+        val projection = client.readImplementationReadinessGate(initiativeId)
+        require(projection.productId == product.id && projection.productRevision == product.revision && projection.productDigest == product.digest &&
+            projection.initiativeId == initiative.id && projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state) {
+            "Implementation Readiness Gate projection does not match exact current Product and Initiative"
+        }
+        return renderImplementationReadinessGate(projection)
+    }
+
+    fun renderImplementationReadinessGate(projection: ImplementationReadinessGateProjection): String = buildString {
+        appendLine("GAEP governed Implementation Readiness Gate candidate"); appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine("Exact dependencies: ${projection.presentDependencyCount}/${projection.dependencyCount}")
+        appendLine("Per-unit subjects: ${projection.subjectCount} · ${projection.satisfiedCount} satisfied · ${projection.gapCount} gaps · ${projection.conflictCount} conflicts")
+        appendLine("Candidate exceptions: ${projection.waivedCandidateCount} waiver candidates · ${projection.notAssessedCount} not assessed · ${projection.staleCount} stale")
+        appendLine("Candidate integrity gaps: ${projection.evidenceGapCount} evidence · ${projection.ownershipGapCount} ownership · ${projection.coverageGapCount} coverage")
+        appendLine("Candidate freshness gaps: ${projection.staleBindingCount} stale bindings · ${projection.staleDependencyCount} stale dependencies · ${projection.invalidCandidateCount} invalid candidates · ${projection.unresolvedQuestionCount} questions")
+        projection.reasons.forEach { appendLine("  - $it") }; appendLine()
+        appendLine("Candidate record: ${projection.candidate?.let { "${it.id}@${it.revision} · candidate · ${it.digest}" } ?: "not recorded"}")
+        projection.candidate?.let { appendLine("Dependency receipt digest: ${it.dependencyReceiptDigest}"); appendLine("Coverage receipt digest: ${it.coverageReceiptDigest}"); appendLine("Evidence receipt digest: ${it.evidenceReceiptDigest}"); appendLine("Ownership receipt digest: ${it.ownershipReceiptDigest}"); appendLine("Assessment receipt digest: ${it.assessmentReceiptDigest}") }
+        appendLine(); appendLine("Candidate identities, counts, statuses, and receipt digests only; no readiness rationale, evidence or review content, owner details, personal data, secret, credential, or machine path. Automated assessment does not establish artifact or evidence truth, completeness, approval, waiver, owner appointment, implementation readiness, assignment, execution, acceptance, release, deployment, or action authority.")
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+    }
+
     fun renderTestInventory(projection: TestInventoryProjection): String = buildString {
         appendLine("GAEP governed Test Inventory candidate")
         appendLine()
