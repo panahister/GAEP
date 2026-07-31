@@ -67,5 +67,35 @@ export const scopedApplySchema = scopedApplyInputSchema.safeExtend({ schemaVersi
   createdAt: z.string().datetime(), updatedAt: z.string().datetime(), authorityBoundary: z.literal(authorityBoundary) }).strict()
   .superRefine((record, context) => { if ((record.revision === 1) !== (record.predecessorDigest === undefined)) context.addIssue({ code: "custom", path: ["predecessorDigest"], message: "Only later revisions require a predecessor digest" }) })
 
+const statusAuthorityBoundary = "scoped-apply-status-is-observational-and-grants-no-stage-repository-source-approval-authorization-mutation-apply-discard-recovery-outcome-acceptance-release-deployment-or-action-authority" as const
+export const scopedApplyStatusSchema = z.object({ schemaVersion: z.literal(1), kind: z.literal("scoped-apply-status"),
+  productId: z.string().uuid(), productRevision: z.number().int().positive(), initiativeId: z.string().uuid(), initiativeRevision: z.number().int().positive(),
+  candidate: exactReferenceSchema.optional(), dependencies: scopedApplyDependencySchema.optional(), stageKey: identifierSchema.optional(), stageGeneration: z.number().int().positive().optional(),
+  stagePathCount: z.number().int().nonnegative(), selectedPathCount: z.number().int().nonnegative(), excludedPathCount: z.number().int().nonnegative(),
+  exactScopeCount: z.number().int().nonnegative(), gapCount: z.number().int().nonnegative(), conflictCount: z.number().int().nonnegative(), stalePathCount: z.number().int().nonnegative(),
+  outOfEnvelopeCount: z.number().int().nonnegative(), notAssessedCount: z.number().int().nonnegative(), staleBindingCount: z.number().int().nonnegative(),
+  coverageGapCount: z.number().int().nonnegative(), invalidCandidateCount: z.number().int().nonnegative(), unresolvedQuestionCount: z.number().int().nonnegative(),
+  reviewState: z.enum(["draft", "held", "ready-for-human-review"]), state: z.enum(["attention-required", "candidate-defined"]),
+  reasons: z.array(shortTextSchema).max(2_048), assessedAt: z.string().datetime(), authorityBoundary: z.literal(statusAuthorityBoundary) }).strict()
+
+const projectionAuthorityBoundary = "scoped-apply-projection-is-read-only-and-grants-no-stage-repository-source-approval-authorization-mutation-apply-discard-recovery-outcome-acceptance-release-deployment-or-action-authority" as const
+const privacyBoundary = "projection-contains-bounded-stage-path-selection-exclusion-envelope-evidence-identities-states-counts-and-digests-only-not-source-diff-commit-provider-output-machine-paths-personal-data-secrets-credentials-or-permissions" as const
+export const scopedApplyProjectionSchema = z.object({ schemaVersion: z.literal(1), kind: z.literal("scoped-apply-projection"),
+  product: z.object({ id: z.string().uuid(), revision: z.number().int().positive(), digest: digestSchema }).strict(),
+  initiative: z.object({ id: z.string().uuid(), revision: z.number().int().positive(), digest: digestSchema, state: z.enum(["proposed", "active", "blocked", "completed", "cancelled"]) }).strict(),
+  status: scopedApplyStatusSchema,
+  candidate: z.object({ id: z.string().uuid(), revision: z.number().int().positive(), digest: digestSchema,
+    stageIdentity: z.object({ namespace: z.literal("gaep-managed-stage"), stageKey: identifierSchema, generation: z.number().int().positive(), scopeDigest: digestSchema }).strict(),
+    selectedPaths: z.array(z.object({ id: z.string().uuid(), selectionKey: identifierSchema, pathCandidate: relativePathSchema,
+      scopeState: z.enum(["candidate-exact", "gap", "conflict", "stale", "out-of-envelope", "not-assessed"]) }).strict()).max(65_536),
+    excludedPaths: z.array(z.object({ id: z.string().uuid(), exclusionKey: identifierSchema, pathCandidate: relativePathSchema, reason: shortTextSchema }).strict()).max(65_536),
+    writeEnvelopeCandidates: z.array(relativePathSchema).max(65_536), dependencyReceiptDigest: digestSchema, stageReceiptDigest: digestSchema,
+    selectionReceiptDigest: digestSchema, exclusionReceiptDigest: digestSchema, envelopeReceiptDigest: digestSchema,
+    recoveryReceiptDigest: digestSchema, evidenceReceiptDigest: digestSchema, assessmentReceiptDigest: digestSchema,
+    reviewState: z.enum(["draft", "held", "ready-for-human-review"]), updatedAt: z.string().datetime() }).strict().optional(),
+  observedAt: z.string().datetime(), privacyBoundary: z.literal(privacyBoundary), authorityBoundary: z.literal(projectionAuthorityBoundary), snapshotDigest: digestSchema }).strict()
+
 export type ScopedApplyInput = z.infer<typeof scopedApplyInputSchema>
 export type ScopedApply = z.infer<typeof scopedApplySchema>
+export type ScopedApplyStatus = z.infer<typeof scopedApplyStatusSchema>
+export type ScopedApplyProjection = z.infer<typeof scopedApplyProjectionSchema>

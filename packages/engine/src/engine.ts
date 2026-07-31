@@ -105,6 +105,7 @@ import { DesignToCodeTraceabilityService } from "./design-to-code-traceability.j
 import { BoilerplateConstraintEnforcementService } from "./boilerplate-constraint-enforcement.js"
 import { BacklogToCodeTraceabilityService } from "./backlog-to-code-traceability.js"
 import { ApplyDiscardFoundationService } from "./apply-discard-foundation.js"
+import { ScopedApplyService } from "./scoped-apply.js"
 import { BusinessArchitectureBaselineService } from "./business-architecture-baseline.js"
 import { BusinessRuleCatalogService } from "./business-rule-catalog.js"
 import { BusinessUnderstandingService } from "./business-understanding.js"
@@ -343,6 +344,7 @@ export class GaepEngine {
   readonly boilerplateConstraintEnforcement: BoilerplateConstraintEnforcementService
   readonly backlogToCodeTraceability: BacklogToCodeTraceabilityService
   readonly applyDiscardFoundation: ApplyDiscardFoundationService
+  readonly scopedApply: ScopedApplyService
   readonly valueStreamModel: ValueStreamModelService
   readonly operatingModel: OperatingModelService
   readonly businessRuleCatalog: BusinessRuleCatalogService
@@ -1209,6 +1211,19 @@ export class GaepEngine {
         backlogToCodeTraceability: this.backlogToCodeTraceability,
       },
     )
+    this.scopedApply = new ScopedApplyService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      {
+        changedUnitInventory: this.changedUnitInventory,
+        proposedChangePreview: this.proposedChangePreview,
+        stagingWorkspace: this.stagingWorkspace,
+        controlledCodexImplementation: this.controlledCodexImplementation,
+        backlogToCodeTraceability: this.backlogToCodeTraceability,
+        applyDiscardFoundation: this.applyDiscardFoundation,
+      },
+    )
     this.designDriftDetection = new DesignDriftDetectionService(
       this.repository,
       () => this.readProduct(),
@@ -1314,7 +1329,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [acceptanceCriteriaIssues, definitionOfReadyIssues, definitionOfDoneIssues, implementationUnitModelIssues, dependencyMappingIssues, technologyProfileIssues, boilerplateRegistryIssues, boilerplateSelectionBindingIssues, boilerplateCompatibilityValidationIssues, routeScreenComponentMappingIssues, testMethodologyIssues, testInventoryIssues, highLevelDesignIssues, lowLevelDesignIssues, implementationReadinessGateIssues, changedUnitInventoryIssues, proposedChangePreviewIssues, stagingWorkspaceIssues, controlledCodexImplementationIssues, controlledClaudeImplementationIssues, providerSwitchImplementationIssues, modelSwitchImplementationIssues, approvedFigmaContextRetrievalIssues, controlledDesignToCodeGenerationIssues, designToCodeTraceabilityIssues, boilerplateConstraintEnforcementIssues, backlogToCodeTraceabilityIssues, applyDiscardFoundationIssues] = await Promise.all([
+      const [acceptanceCriteriaIssues, definitionOfReadyIssues, definitionOfDoneIssues, implementationUnitModelIssues, dependencyMappingIssues, technologyProfileIssues, boilerplateRegistryIssues, boilerplateSelectionBindingIssues, boilerplateCompatibilityValidationIssues, routeScreenComponentMappingIssues, testMethodologyIssues, testInventoryIssues, highLevelDesignIssues, lowLevelDesignIssues, implementationReadinessGateIssues, changedUnitInventoryIssues, proposedChangePreviewIssues, stagingWorkspaceIssues, controlledCodexImplementationIssues, controlledClaudeImplementationIssues, providerSwitchImplementationIssues, modelSwitchImplementationIssues, approvedFigmaContextRetrievalIssues, controlledDesignToCodeGenerationIssues, designToCodeTraceabilityIssues, boilerplateConstraintEnforcementIssues, backlogToCodeTraceabilityIssues, applyDiscardFoundationIssues, scopedApplyIssues] = await Promise.all([
         this.acceptanceCriteria.healthIssues(),
         this.definitionOfReady.healthIssues(),
         this.definitionOfDone.healthIssues(),
@@ -1343,6 +1358,7 @@ export class GaepEngine {
         this.boilerplateConstraintEnforcement.healthIssues(),
         this.backlogToCodeTraceability.healthIssues(),
         this.applyDiscardFoundation.healthIssues(),
+        this.scopedApply.healthIssues(),
       ])
       const [productIssues, backlogHierarchyIssues, mvpSliceDefinitionIssues, prioritizationModelIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues, figmaContextImportIssues, outboundDesignBriefPackageIssues, governedFigmaWriteIssues, finalizedFigmaSnapshotImportIssues, designToRequirementBindingIssues, designerReadyGateIssues, designDeltaIssues, designConflictResolutionIssues, humanDesignApprovalIssues, designBaselineIssues, designDriftDetectionIssues, figmaToBoilerplateMappingIssues, designToCodeBindingRegistryIssues] = await Promise.all([
         this.productStudio.healthIssues(),
@@ -1432,6 +1448,7 @@ export class GaepEngine {
         ...boilerplateConstraintEnforcementIssues,
         ...backlogToCodeTraceabilityIssues,
         ...applyDiscardFoundationIssues,
+        ...scopedApplyIssues,
         ...sourceIssues,
         ...businessIssues,
         ...capabilityMapIssues,
