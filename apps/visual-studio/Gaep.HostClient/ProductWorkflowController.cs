@@ -3570,6 +3570,37 @@ public sealed class ProductWorkflowController(EngineClient client)
             .Append("Authority boundary: privacy-safe record identities, provider identifiers, repository-relative scopes, states, counts, and receipt digests only. This inspection does not call a provider, create a real stage, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.").ToString();
     }
 
+    public async Task<string> ReadControlledClaudeImplementationAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken); var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadControlledClaudeImplementationAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision || projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id || projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest || projection.InitiativeState != initiative.State)
+            throw new ArgumentException("The Product or Initiative changed while Controlled Claude Implementation was read. Refresh the exact records.");
+        return RenderControlledClaudeImplementation(projection);
+    }
+
+    public static string RenderControlledClaudeImplementation(ControlledClaudeImplementationProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder().AppendLine("GAEP governed Controlled Claude Implementation candidate").AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine($"Scope: {projection.UnitCount} units · {projection.PathCount} paths · {projection.ResourceScopeCount} resource scopes · {projection.ToolPermissionCount} permissions")
+            .AppendLine($"Gaps: {projection.GapCount} unit · {projection.StaleBindingCount} stale · {projection.ProviderGapCount} provider · {projection.ScopeGapCount} scope · {projection.PlanGapCount} plan · {projection.PrerequisiteGapCount} prerequisite · {projection.RecoveryGapCount} recovery · {projection.EvidenceGapCount} evidence");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}"); output.AppendLine();
+        if (projection.Candidate is { } candidate) output.AppendLine($"Controlled Claude Implementation candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+            .AppendLine($"Provider: {candidate.AdapterId}/{candidate.AgentId} · {candidate.ModelId} · {candidate.CapabilityDigest}")
+            .AppendLine($"Plan: {candidate.PlanKey} · runtime boundary: {candidate.RuntimeMode}")
+            .AppendLine($"Runtime stop lines: supported runtime {candidate.SupportedRuntimeState} · authentication {candidate.AuthenticationState} · effective policy {candidate.EffectivePolicyState} · resume {candidate.ResumeCapabilityState}")
+            .AppendLine($"Access boundary: credentials {candidate.CredentialAccessState} · administrator-policy bypass {candidate.AdministratorPolicyBypassState} · workspace {candidate.WorkspaceAccessState} · tools {candidate.ToolAccessState}")
+            .AppendLine($"Lifecycle: provider {candidate.ProviderExecutionState} · real stage {candidate.RealStageCreationState} · source mutation {candidate.SourceMutationState} · apply {candidate.ApplyState} · discard {candidate.DiscardState}")
+            .AppendLine($"Candidate units: {candidate.UnitCount} · paths: {candidate.PathCount} · prerequisites: {candidate.PrerequisiteCount}");
+        else output.AppendLine("Controlled Claude Implementation candidate: not recorded");
+        return output.AppendLine().AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append("Authority boundary: privacy-safe record identities, provider identifiers, repository-relative scopes, states, counts, and receipt digests only. This tool-free, context-only inspection does not access credentials, bypass administrator policy, obtain workspace or tool access, call a provider, create a real stage, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.").ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

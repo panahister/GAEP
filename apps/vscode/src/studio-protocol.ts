@@ -321,6 +321,7 @@ export interface DeliveryPageSnapshot extends StudioPageBase {
   proposedChangePreviews?: StudioTableSnapshot
   stagingWorkspaces?: StudioTableSnapshot
   controlledCodexImplementations?: StudioTableSnapshot
+  controlledClaudeImplementations?: StudioTableSnapshot
   transitionPreview?: {
     recordType: "initiative" | "change" | "work-item"
     recordId: string
@@ -1390,7 +1391,7 @@ function isRecordFormPage(page: Record<string, unknown>, route: RecordFormRoute)
 function isDeliveryPage(page: Record<string, unknown>): boolean {
   if (!hasOnlyKeys(page, [
     "kind", "route", "title", "purpose", "source", "actions", "design", "initiatives", "sources",
-    "sourceBaselines", "sourceProvenance", "changes", "workItems", "backlogHierarchy", "mvpSliceDefinitions", "prioritizationModels", "acceptanceCriteria", "definitionOfReady", "definitionOfDone", "implementationUnits", "dependencyMappings", "technologyProfiles", "boilerplateRegistries", "boilerplateSelectionBindings", "boilerplateCompatibilityValidations", "figmaToBoilerplateMappings", "designToCodeBindingRegistries", "routeScreenComponentMappings", "testMethodologies", "testInventories", "highLevelDesigns", "lowLevelDesigns", "implementationReadinessGates", "changedUnitInventories", "proposedChangePreviews", "stagingWorkspaces", "controlledCodexImplementations", "transitionPreview",
+    "sourceBaselines", "sourceProvenance", "changes", "workItems", "backlogHierarchy", "mvpSliceDefinitions", "prioritizationModels", "acceptanceCriteria", "definitionOfReady", "definitionOfDone", "implementationUnits", "dependencyMappings", "technologyProfiles", "boilerplateRegistries", "boilerplateSelectionBindings", "boilerplateCompatibilityValidations", "figmaToBoilerplateMappings", "designToCodeBindingRegistries", "routeScreenComponentMappings", "testMethodologies", "testInventories", "highLevelDesigns", "lowLevelDesigns", "implementationReadinessGates", "changedUnitInventories", "proposedChangePreviews", "stagingWorkspaces", "controlledCodexImplementations", "controlledClaudeImplementations", "transitionPreview",
   ]) || !isPageBase(page, "delivery") || page.kind !== "delivery" || !isTableSnapshot(page.initiatives) ||
     !isTableSnapshot(page.sources) || !isTableSnapshot(page.sourceBaselines) ||
     !isTableSnapshot(page.sourceProvenance) || !isTableSnapshot(page.changes) ||
@@ -1418,7 +1419,8 @@ function isDeliveryPage(page: Record<string, unknown>): boolean {
     (page.changedUnitInventories !== undefined && !isTableSnapshot(page.changedUnitInventories)) ||
     (page.proposedChangePreviews !== undefined && !isTableSnapshot(page.proposedChangePreviews)) ||
     (page.stagingWorkspaces !== undefined && !isTableSnapshot(page.stagingWorkspaces)) ||
-    (page.controlledCodexImplementations !== undefined && !isTableSnapshot(page.controlledCodexImplementations))) return false
+    (page.controlledCodexImplementations !== undefined && !isTableSnapshot(page.controlledCodexImplementations)) ||
+    (page.controlledClaudeImplementations !== undefined && !isTableSnapshot(page.controlledClaudeImplementations))) return false
   if (page.transitionPreview === undefined) return true
   return isRecord(page.transitionPreview) && hasOnlyKeys(page.transitionPreview, [
     "recordType", "recordId", "currentState", "allowedNextStates",

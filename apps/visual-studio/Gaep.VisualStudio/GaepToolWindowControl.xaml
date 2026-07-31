@@ -245,6 +245,10 @@
                 Command="{Binding LoadControlledCodexImplementationCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows privacy-safe record identities, provider identifiers, repository-relative scopes, states, counts, and receipt digests only; it withholds prompts, source and diff content, provider output, machine paths, personal data, secrets, and credentials, and does not call a provider, create a real stage, approve, authorize, mutate source, apply or discard, recover, accept, release, deploy, or grant action authority."
                 Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
+        <Button x:Name="LoadControlledClaudeImplementationButton" Content="Inspect governed Controlled Claude Implementation"
+                Command="{Binding LoadControlledClaudeImplementationCommand}" MinHeight="28" Margin="0,0,0,10"
+                AutomationProperties.HelpText="Shows privacy-safe record identities, provider identifiers, repository-relative scopes, states, counts, and receipt digests only; it withholds prompts, source and diff content, provider output, machine paths, personal data, secrets, and credentials, and enforces a tool-free context-only stop line with no credential access, administrator-policy bypass, workspace access, or provider execution."
+                Style="{StaticResource {x:Static styles:VsResourceKeys.ButtonStyleKey}}" />
         <Button x:Name="LoadDesignSystemTokenContractButton" Content="Inspect governed Design System and Token Contract"
                 Command="{Binding LoadDesignSystemTokenContractCommand}" MinHeight="28" Margin="0,0,0,10"
                 AutomationProperties.HelpText="Shows bounded candidate identities, counts, statuses, and digests only; it withholds token values, component content, requirements, Source, design, and personal content, and does not establish system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."

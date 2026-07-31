@@ -209,6 +209,7 @@ const v2OnlyMethods = new Set<EngineHostMethod>([
   "delivery.proposedChangePreview.snapshot",
   "delivery.stagingWorkspace.snapshot",
   "delivery.controlledCodexImplementation.snapshot",
+  "delivery.controlledClaudeImplementation.snapshot",
   "source.list",
   "source.create",
   "source.revise",
@@ -1760,6 +1761,8 @@ export class EngineHost {
         return this.engine.stagingWorkspace.project(request.params.initiativeId)
       case "delivery.controlledCodexImplementation.snapshot":
         return this.engine.controlledCodexImplementation.project(request.params.initiativeId)
+      case "delivery.controlledClaudeImplementation.snapshot":
+        return this.engine.controlledClaudeImplementation.project(request.params.initiativeId)
       case "source.list":
         return this.engine.sourceGovernance.listSources(request.params.initiativeId)
       case "source.create":

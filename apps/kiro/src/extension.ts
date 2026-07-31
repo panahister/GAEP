@@ -54,6 +54,7 @@ import {
   type ProposedChangePreviewProjection,
   type StagingWorkspaceProjection,
   type ControlledCodexImplementationProjection,
+  type ControlledClaudeImplementationProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -202,6 +203,7 @@ const commandIds = {
   proposedChangePreview: "gaepKiro.proposedChangePreview.inspect",
   stagingWorkspace: "gaepKiro.stagingWorkspace.inspect",
   controlledCodexImplementation: "gaepKiro.controlledCodexImplementation.inspect",
+  controlledClaudeImplementation: "gaepKiro.controlledClaudeImplementation.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -366,6 +368,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.proposedChangePreview, (input?: unknown) => runUserCommand(() => showProposedChangePreview(pool, input))),
     vscode.commands.registerCommand(commandIds.stagingWorkspace, (input?: unknown) => runUserCommand(() => showStagingWorkspace(pool, input))),
     vscode.commands.registerCommand(commandIds.controlledCodexImplementation, (input?: unknown) => runUserCommand(() => showControlledCodexImplementation(pool, input))),
+    vscode.commands.registerCommand(commandIds.controlledClaudeImplementation, (input?: unknown) => runUserCommand(() => showControlledClaudeImplementation(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2820,6 +2823,42 @@ async function showControlledCodexImplementation(
       `Recovery: cancellation ${record.lifecycle.cancellationState} · resume ${record.lifecycle.resumeState} · recovery ${record.lifecycle.recoveryState}`,
       `Candidate units: ${record.unitCount} · paths: ${record.pathCount} · prerequisites: ${record.prerequisiteCount}`, `Updated: ${record.updatedAt}`] : []), "",
     "Privacy-safe record identities, provider identifiers, repository-relative scopes, states, counts, and receipt digests only. This inspection does not call a provider, create a real stage, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showControlledClaudeImplementation(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<ControlledClaudeImplementationProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Controlled Claude Implementation inspection", "Initiative ID")
+  const projection = await client.readControlledClaudeImplementation(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Controlled Claude Implementation candidate", "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Scope: ${status.unitCount} units · ${status.pathCount} paths · ${status.resourceScopeCount} candidate scopes · ${status.toolPermissionCount} deny-all permissions`,
+    `Gaps: ${status.gapCount} unit · ${status.staleBindingCount} stale · ${status.providerGapCount} provider · ${status.scopeGapCount} scope · ${status.planGapCount} plan · ${status.prerequisiteGapCount} prerequisite · ${status.recoveryGapCount} recovery · ${status.evidenceGapCount} evidence`,
+    ...status.reasons.map((reason) => `  - ${reason}`), "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [`Provider: ${record.provider.adapterId}/${record.provider.agentId} · ${record.provider.modelId} · ${record.provider.capabilityDigest}`,
+      `Runtime stop lines: ${record.runtimeBoundary.mode} · runtime ${record.runtimeBoundary.supportedRuntimeState} · authentication ${record.runtimeBoundary.authenticationState} · effective policy ${record.runtimeBoundary.effectivePolicyState}`,
+      `Access boundary: credentials ${record.runtimeBoundary.credentialAccessState} · policy bypass ${record.runtimeBoundary.administratorPolicyBypassState} · workspace ${record.runtimeBoundary.workspaceAccessState} · tools ${record.runtimeBoundary.toolAccessState}`,
+      `Plan: ${record.plan.strategy} · ${record.plan.planKey} · ${record.plan.planReceiptDigest}`,
+      `Lifecycle: provider ${record.lifecycle.providerExecutionState} · real stage ${record.lifecycle.realStageCreationState} · source mutation ${record.lifecycle.sourceMutationState} · apply ${record.lifecycle.applyState} · discard ${record.lifecycle.discardState}`,
+      `Recovery: cancellation ${record.lifecycle.cancellationState} · resume ${record.lifecycle.resumeState} · recovery ${record.lifecycle.recoveryState}`,
+      `Candidate units: ${record.unitCount} · paths: ${record.pathCount} · prerequisites: ${record.prerequisiteCount}`, `Updated: ${record.updatedAt}`] : []), "",
+    "Privacy-safe candidate metadata only. This inspection is tool-free and context-only; it does not inspect credentials, bypass administrator policy, call Claude, access a workspace, create a real stage, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })

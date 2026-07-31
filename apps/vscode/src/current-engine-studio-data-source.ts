@@ -32,6 +32,7 @@ import type {
   ProposedChangePreviewProjection,
   StagingWorkspaceProjection,
   ControlledCodexImplementationProjection,
+  ControlledClaudeImplementationProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -277,6 +278,9 @@ export interface CurrentStudioEngineReader {
   controlledCodexImplementation?: {
     project(initiativeId: string): Promise<ControlledCodexImplementationProjection>
   }
+  controlledClaudeImplementation?: {
+    project(initiativeId: string): Promise<ControlledClaudeImplementationProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -470,6 +474,7 @@ interface ObservedStudioState {
   proposedChangePreviewProjections: Map<string, ProposedChangePreviewProjection>
   stagingWorkspaceProjections: Map<string, StagingWorkspaceProjection>
   controlledCodexImplementationProjections: Map<string, ControlledCodexImplementationProjection>
+  controlledClaudeImplementationProjections: Map<string, ControlledClaudeImplementationProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3910,6 +3915,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     proposedChangePreviews: proposedChangePreviewTable(state),
     stagingWorkspaces: stagingWorkspaceTable(state),
     controlledCodexImplementations: controlledCodexImplementationTable(state),
+    controlledClaudeImplementations: controlledClaudeImplementationTable(state),
   }
 }
 
@@ -5227,6 +5233,40 @@ function controlledCodexImplementationTable(state: ObservedStudioState): StudioT
       { key: "assessment", label: "Candidate assessment" }, { key: "boundary", label: "Privacy and authority boundary" },
     ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Controlled Codex Implementation candidate",
       "Create the candidate through the governed engine only after exact current Proposed Change Preview, Staging Workspace, and Codex selection records exist. This view cannot call a provider, create a stage, approve, apply, discard, or mutate source.") } : {}) }
+}
+
+function controlledClaudeImplementationTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.controlledClaudeImplementationProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{ id: record.id, cells: {
+      initiative: projection.initiative.id, record: record.id, revision: String(record.revision), digest: record.digest,
+      provider: `${record.provider.adapterId}/${record.provider.agentId} · ${record.provider.modelId} · ${record.provider.capabilityDigest}`,
+      runtime: `${record.runtimeBoundary.mode} · runtime ${record.runtimeBoundary.supportedRuntimeState} · authentication ${record.runtimeBoundary.authenticationState} · policy ${record.runtimeBoundary.effectivePolicyState}`,
+      plan: `${record.plan.strategy} · ${record.plan.planKey} · workflow r${record.plan.workflowPlan.revision}`,
+      scope: `${record.unitCount} units · ${record.pathCount} paths · ${record.resourceScopes.length} candidate scopes · ${record.permissions.length} deny-all permission`,
+      lifecycle: `${record.lifecycle.planningState} · provider ${record.lifecycle.providerExecutionState} · real stage ${record.lifecycle.realStageCreationState} · source mutation ${record.lifecycle.sourceMutationState} · apply ${record.lifecycle.applyState} · discard ${record.lifecycle.discardState}`,
+      prerequisites: `${record.prerequisiteCount} required · approval ${record.lifecycle.approvalState} · authorization ${record.lifecycle.authorizationState}`,
+      recovery: `${record.lifecycle.cancellationState} cancellation · ${record.lifecycle.resumeState} resume · ${record.lifecycle.recoveryState} recovery`,
+      gaps: `${status.gapCount} unit · ${status.staleBindingCount} stale · ${status.providerGapCount} provider · ${status.scopeGapCount} scope · ${status.planGapCount} plan · ${status.prerequisiteGapCount} prerequisite · ${status.recoveryGapCount} recovery · ${status.evidenceGapCount} evidence`,
+      receipts: `${record.bindingReceiptDigest} · ${record.providerReceiptDigest} · ${record.runtimeBoundaryReceiptDigest} · ${record.scopeReceiptDigest} · ${record.planReceiptDigest}`,
+      assessment: `${status.state} · ${status.reviewState}`,
+      boundary: "Privacy-safe candidate metadata only. This view is tool-free, context-only, and does not inspect credentials, bypass administrator policy, call Claude, access a workspace, create a stage, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.",
+    }, state: status.state, actions: [] }]
+  })
+  return { id: "controlled-claude-implementation", title: "Governed Controlled Claude Implementation Candidates",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true }, { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" }, { key: "digest", label: "Exact digest" },
+      { key: "provider", label: "Exact Claude identity" }, { key: "runtime", label: "Runtime, authentication, and policy stop lines" },
+      { key: "plan", label: "Plan candidate" }, { key: "scope", label: "Candidate scope and deny-all permission" },
+      { key: "lifecycle", label: "Distinct lifecycle states" }, { key: "prerequisites", label: "Approval prerequisites" },
+      { key: "recovery", label: "Recovery state" }, { key: "gaps", label: "Candidate gaps" },
+      { key: "receipts", label: "Deterministic receipts" }, { key: "assessment", label: "Candidate assessment" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Controlled Claude Implementation candidate",
+      "Create the candidate through the governed engine only after exact current Proposed Change Preview, Staging Workspace, and Claude selection records exist. This view cannot access credentials, bypass policy, call a provider, create a stage, approve, apply, discard, or mutate source.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7136,6 +7176,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       proposedChangePreviewProjections: new Map(),
       stagingWorkspaceProjections: new Map(),
       controlledCodexImplementationProjections: new Map(),
+      controlledClaudeImplementationProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -8667,6 +8708,41 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("controlled-codex-implementation-unavailable", "Controlled Codex Implementation metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.controlledClaudeImplementation) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          const [controlled, staging] = await Promise.all([
+            engine.controlledClaudeImplementation!.project(initiative.id),
+            engine.stagingWorkspace?.project(initiative.id),
+          ])
+          return { controlled, staging }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value.controlled
+            const staging = projection.value.staging
+            const { snapshotDigest, ...projectionBody } = value
+            const exactStaging = staging?.candidate !== undefined && value.status.stagingWorkspace !== undefined &&
+              value.status.stagingWorkspace.recordId === staging.candidate.id && value.status.stagingWorkspace.revision === staging.candidate.revision &&
+              value.status.stagingWorkspace.digest === staging.candidate.digest
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactStaging && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.controlledClaudeImplementationProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Controlled Claude Implementation projection was unavailable or did not bind the exact current Staging Workspace",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`controlled-claude-implementation-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Controlled Claude Implementation metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("controlled-claude-implementation-unavailable", "Controlled Claude Implementation metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (

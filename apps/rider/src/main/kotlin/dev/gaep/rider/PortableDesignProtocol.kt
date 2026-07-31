@@ -3286,6 +3286,26 @@ data class ControlledCodexImplementationProjection(
     val unresolvedQuestionCount: Int, val candidate: ControlledCodexImplementationRecordView?, val snapshotDigest: String,
 )
 
+data class ControlledClaudeImplementationRecordView(
+    val id: UUID, val revision: Long, val digest: String, val adapterId: String, val agentId: String, val modelId: String,
+    val capabilityDigest: String, val planKey: String, val providerExecutionState: String, val realStageCreationState: String,
+    val sourceMutationState: String, val applyState: String, val discardState: String, val unitCount: Int, val pathCount: Int,
+    val prerequisiteCount: Int, val reviewState: String, val runtimeMode: String, val supportedRuntimeState: String,
+    val authenticationState: String, val effectivePolicyState: String, val credentialAccessState: String,
+    val administratorPolicyBypassState: String, val workspaceAccessState: String, val toolAccessState: String,
+    val resumeCapabilityState: String,
+)
+
+data class ControlledClaudeImplementationProjection(
+    val productId: UUID, val productRevision: Long, val productDigest: String,
+    val initiativeId: UUID, val initiativeRevision: Long, val initiativeDigest: String, val initiativeState: String,
+    val state: String, val reviewState: String, val reasons: List<String>, val unitCount: Int, val pathCount: Int,
+    val resourceScopeCount: Int, val toolPermissionCount: Int, val candidateDefinedCount: Int, val gapCount: Int,
+    val staleBindingCount: Int, val providerGapCount: Int, val scopeGapCount: Int, val planGapCount: Int,
+    val prerequisiteGapCount: Int, val recoveryGapCount: Int, val evidenceGapCount: Int, val invalidCandidateCount: Int,
+    val unresolvedQuestionCount: Int, val candidate: ControlledClaudeImplementationRecordView?, val snapshotDigest: String,
+)
+
 data class DesignSystemTokenContractRecordView(
     val id: UUID,
     val revision: Long,
@@ -4573,6 +4593,12 @@ internal object PortableDesignProtocol {
         "controlled-codex-implementation-projection-is-read-only-and-grants-no-execution-stage-approval-authorization-mutation-apply-discard-recovery-acceptance-release-deployment-or-action-authority"
     private const val CONTROLLED_CODEX_IMPLEMENTATION_STATUS_AUTHORITY_BOUNDARY =
         "controlled-codex-implementation-status-is-observational-and-grants-no-execution-stage-approval-authorization-mutation-apply-discard-recovery-acceptance-release-deployment-or-action-authority"
+    private const val CONTROLLED_CLAUDE_IMPLEMENTATION_PROJECTION_PRIVACY_BOUNDARY =
+        "projection-contains-record-identities-repository-relative-scopes-provider-identifiers-counts-states-and-receipt-digests-only-not-prompts-context-source-diffs-provider-output-machine-paths-personal-data-secrets-or-credentials"
+    private const val CONTROLLED_CLAUDE_IMPLEMENTATION_PROJECTION_AUTHORITY_BOUNDARY =
+        "controlled-claude-implementation-projection-is-read-only-and-grants-no-execution-stage-approval-authorization-mutation-apply-discard-recovery-acceptance-release-deployment-or-action-authority"
+    private const val CONTROLLED_CLAUDE_IMPLEMENTATION_STATUS_AUTHORITY_BOUNDARY =
+        "controlled-claude-implementation-status-is-observational-and-grants-no-execution-stage-approval-authorization-mutation-apply-discard-recovery-acceptance-release-deployment-or-action-authority"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_PRIVACY_BOUNDARY =
         "projection-contains-record-identities-counts-statuses-and-digests-only-not-token-values-component-content-requirement-source-design-or-personal-content-secrets-or-credentials"
     private const val DESIGN_SYSTEM_TOKEN_CONTRACT_PROJECTION_AUTHORITY_BOUNDARY =
@@ -12513,6 +12539,72 @@ internal object PortableDesignProtocol {
         if ((candidateReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
         if (state == "candidate-defined" && (candidate == null || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || countNames.filterNot { it in setOf("unitCount", "pathCount", "resourceScopeCount", "toolPermissionCount", "candidateDefinedCount") }.sumOf { counts.getValue(it) } > 0)) throw invalidResponse()
         return ControlledCodexImplementationProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState, state, reviewState, reasons,
+            counts.getValue("unitCount"), counts.getValue("pathCount"), counts.getValue("resourceScopeCount"), counts.getValue("toolPermissionCount"), counts.getValue("candidateDefinedCount"), counts.getValue("gapCount"), counts.getValue("staleBindingCount"), counts.getValue("providerGapCount"), counts.getValue("scopeGapCount"), counts.getValue("planGapCount"), counts.getValue("prerequisiteGapCount"), counts.getValue("recoveryGapCount"), counts.getValue("evidenceGapCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
+    }
+
+    fun parseControlledClaudeImplementationEnvelope(envelope: JsonObject, expectedInitiativeId: UUID): ControlledClaudeImplementationProjection {
+        val projection = readResult(envelope).requireObject()
+        projection.requireKeys(setOf("schemaVersion", "kind", "product", "initiative", "status", "observedAt", "privacyBoundary", "authorityBoundary", "snapshotDigest"), setOf("candidate"))
+        if (projection.requireInt("schemaVersion") != 1 || projection.requireString("kind") != "controlled-claude-implementation-projection" ||
+            projection.requireString("privacyBoundary") != CONTROLLED_CLAUDE_IMPLEMENTATION_PROJECTION_PRIVACY_BOUNDARY ||
+            projection.requireString("authorityBoundary") != CONTROLLED_CLAUDE_IMPLEMENTATION_PROJECTION_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val snapshotDigest = projection.requireDigest("snapshotDigest")
+        if (snapshotDigest != canonicalDigest(projection.deepCopy().also { it.remove("snapshotDigest") })) throw invalidResponse()
+        val product = projection.get("product").requireObject().also { it.requireExactKeys("id", "revision", "digest") }
+        val productId = product.requireNonEmptyUuid("id"); val productRevision = product.requireLong("revision"); val productDigest = product.requireDigest("digest")
+        val initiative = projection.get("initiative").requireObject().also { it.requireExactKeys("id", "revision", "digest", "state") }
+        val initiativeId = initiative.requireNonEmptyUuid("id"); val initiativeRevision = initiative.requireLong("revision")
+        if (initiativeId != expectedInitiativeId || productRevision !in 1..MAX_SAFE_PRODUCT_REVISION || initiativeRevision !in 1..MAX_SAFE_PRODUCT_REVISION) throw invalidResponse()
+        val initiativeDigest = initiative.requireDigest("digest"); val initiativeState = initiative.requireOneOf("state", setOf("proposed", "active", "blocked", "completed", "cancelled"))
+        val countNames = setOf("unitCount", "pathCount", "resourceScopeCount", "toolPermissionCount", "candidateDefinedCount", "gapCount", "staleBindingCount", "providerGapCount", "scopeGapCount", "planGapCount", "prerequisiteGapCount", "recoveryGapCount", "evidenceGapCount", "invalidCandidateCount", "unresolvedQuestionCount")
+        val status = projection.get("status").requireObject()
+        status.requireKeys(setOf("schemaVersion", "kind", "productId", "productRevision", "initiativeId", "initiativeRevision", "reviewState", "state", "reasons", "assessedAt", "authorityBoundary") + countNames, setOf("candidate", "proposedChangePreview", "stagingWorkspace"))
+        if (status.requireInt("schemaVersion") != 1 || status.requireString("kind") != "controlled-claude-implementation-status" || status.requireNonEmptyUuid("productId") != productId || status.requireLong("productRevision") != productRevision || status.requireNonEmptyUuid("initiativeId") != initiativeId || status.requireLong("initiativeRevision") != initiativeRevision || status.requireString("authorityBoundary") != CONTROLLED_CLAUDE_IMPLEMENTATION_STATUS_AUTHORITY_BOUNDARY) throw invalidResponse()
+        val counts = countNames.associateWith { status.requireBoundedNonNegativeInt(it, 65_536) }
+        val reviewState = status.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")); val state = status.requireOneOf("state", setOf("attention-required", "candidate-defined"))
+        val reasonsElement = status.get("reasons"); if (reasonsElement == null || !reasonsElement.isJsonArray || reasonsElement.asJsonArray.size() > 2_048) throw invalidResponse()
+        val reasons = reasonsElement.asJsonArray.map { portableText(it.requireString(), 2, 2_000) }; if (state == "attention-required" && reasons.isEmpty()) throw invalidResponse()
+        val assessedAt = status.requireInstant("assessedAt")
+        val candidateReference = status.get("candidate")?.requireObject()?.also { it.requireExactKeys("recordId", "revision", "digest") }
+        listOf("proposedChangePreview", "stagingWorkspace").forEach { name -> status.get(name)?.requireObject()?.also { it.requireExactKeys("recordId", "revision", "digest"); it.requireNonEmptyUuid("recordId"); it.requireLong("revision"); it.requireDigest("digest") } }
+        val candidate = projection.get("candidate")?.let { element ->
+            val value = element.requireObject(); value.requireExactKeys("id", "revision", "digest", "state", "provider", "runtimeBoundary", "plan", "lifecycle", "resourceScopes", "permissions", "unitCount", "pathCount", "prerequisiteCount", "bindingReceiptDigest", "providerReceiptDigest", "runtimeBoundaryReceiptDigest", "scopeReceiptDigest", "planReceiptDigest", "stagedEffectReceiptDigest", "lifecycleReceiptDigest", "prerequisiteReceiptDigest", "recoveryReceiptDigest", "assessmentReceiptDigest", "reviewState", "updatedAt")
+            val id = value.requireNonEmptyUuid("id"); val revision = value.requireLong("revision"); if (value.requireString("state") != "candidate") throw invalidResponse()
+            val provider = value.get("provider").requireObject(); provider.requireKeys(setOf("adapterId", "agentId", "modelId", "capabilityDigest"), setOf("runtimeVersion"))
+            val adapterId = portableText(provider.requireString("adapterId"), 1, 128); val agentId = portableText(provider.requireString("agentId"), 1, 128); val modelId = portableText(provider.requireString("modelId"), 1, 1_024); val capabilityDigest = provider.requireDigest("capabilityDigest")
+            if (adapterId != "gaep.claude-code-cli" || agentId != "claude-code-cli") throw invalidResponse(); provider.get("runtimeVersion")?.let { portableText(it.requireString(), 1, 1_024) }
+            val runtimeBoundary = value.get("runtimeBoundary").requireObject().also {
+                it.requireExactKeys("mode", "supportedRuntimeState", "authenticationState", "effectivePolicyState", "credentialAccessState", "administratorPolicyBypassState", "workspaceAccessState", "toolAccessState", "resumeCapabilityState")
+            }
+            if (runtimeBoundary.requireString("mode") != "claude-context-only" ||
+                runtimeBoundary.requireString("supportedRuntimeState") != "not-established" ||
+                runtimeBoundary.requireString("authenticationState") != "not-established" ||
+                runtimeBoundary.requireString("effectivePolicyState") != "not-established" ||
+                runtimeBoundary.requireString("credentialAccessState") != "not-attempted" ||
+                runtimeBoundary.requireString("administratorPolicyBypassState") != "not-attempted" ||
+                runtimeBoundary.requireString("workspaceAccessState") != "not-granted" ||
+                runtimeBoundary.requireString("toolAccessState") != "not-granted" ||
+                runtimeBoundary.requireString("resumeCapabilityState") != "not-established"
+            ) throw invalidResponse()
+            val plan = value.get("plan").requireObject().also { it.requireExactKeys("strategy", "planKey", "workflowPlan", "planReceiptDigest", "stagedEffectReceiptDigest") }
+            if (plan.requireString("strategy") != "managed-claude-context-only-candidate") throw invalidResponse(); val planKey = portableText(plan.requireString("planKey"), 1, 128)
+            plan.get("workflowPlan").requireObject().also { it.requireExactKeys("recordId", "revision", "digest"); it.requireNonEmptyUuid("recordId"); it.requireLong("revision"); it.requireDigest("digest") }; plan.requireDigest("planReceiptDigest"); plan.requireDigest("stagedEffectReceiptDigest")
+            val lifecycle = value.get("lifecycle").requireObject().also { it.requireExactKeys("planningState", "providerExecutionState", "realStageCreationState", "approvalState", "authorizationState", "sourceMutationState", "applyState", "discardState", "cancellationState", "resumeState", "recoveryState") }
+            if (lifecycle.requireString("planningState") != "candidate-defined" || lifecycle.requireString("providerExecutionState") != "not-performed" || lifecycle.requireString("realStageCreationState") != "not-performed" || lifecycle.requireString("approvalState") != "not-established" || lifecycle.requireString("authorizationState") != "not-established" || lifecycle.requireString("sourceMutationState") != "not-performed" || lifecycle.requireString("applyState") != "not-performed" || lifecycle.requireString("discardState") != "not-performed" || lifecycle.requireString("cancellationState") != "not-exercised" || lifecycle.requireString("resumeState") != "not-exercised" || lifecycle.requireString("recoveryState") != "not-exercised") throw invalidResponse()
+            val scopes = value.get("resourceScopes"); val permissions = value.get("permissions"); if (scopes == null || !scopes.isJsonArray || permissions == null || !permissions.isJsonArray || scopes.asJsonArray.size() > 65_536 || permissions.asJsonArray.size() != 1) throw invalidResponse()
+            scopes.asJsonArray.forEach { portableText(it.requireString(), 1, 4_096) }
+            permissions.asJsonArray.forEach { permissionElement -> val permission = permissionElement.requireObject(); permission.requireExactKeys("capability", "mode", "scope"); if (permission.requireString("capability") != "all-tools" || permission.requireString("mode") != "deny" || !permission.get("scope").isJsonArray || permission.get("scope").asJsonArray.size() != 0) throw invalidResponse() }
+            val unitCount = value.requireBoundedNonNegativeInt("unitCount", 65_536); val pathCount = value.requireBoundedNonNegativeInt("pathCount", 65_536); val prerequisiteCount = value.requireBoundedNonNegativeInt("prerequisiteCount", 4)
+            listOf("bindingReceiptDigest", "providerReceiptDigest", "runtimeBoundaryReceiptDigest", "scopeReceiptDigest", "planReceiptDigest", "stagedEffectReceiptDigest", "lifecycleReceiptDigest", "prerequisiteReceiptDigest", "recoveryReceiptDigest", "assessmentReceiptDigest").forEach { value.requireDigest(it) }
+            val record = ControlledClaudeImplementationRecordView(id, revision, value.requireDigest("digest"), adapterId, agentId, modelId, capabilityDigest, planKey,
+                lifecycle.requireString("providerExecutionState"), lifecycle.requireString("realStageCreationState"), lifecycle.requireString("sourceMutationState"), lifecycle.requireString("applyState"), lifecycle.requireString("discardState"), unitCount, pathCount, prerequisiteCount, value.requireOneOf("reviewState", setOf("draft", "held", "ready-for-human-review")),
+                runtimeBoundary.requireString("mode"), runtimeBoundary.requireString("supportedRuntimeState"), runtimeBoundary.requireString("authenticationState"), runtimeBoundary.requireString("effectivePolicyState"), runtimeBoundary.requireString("credentialAccessState"), runtimeBoundary.requireString("administratorPolicyBypassState"), runtimeBoundary.requireString("workspaceAccessState"), runtimeBoundary.requireString("toolAccessState"), runtimeBoundary.requireString("resumeCapabilityState"))
+            if (candidateReference == null || candidateReference.requireNonEmptyUuid("recordId") != id || candidateReference.requireLong("revision") != revision || candidateReference.requireDigest("digest") != record.digest || record.reviewState != reviewState || unitCount != counts.getValue("unitCount") || pathCount != counts.getValue("pathCount")) throw invalidResponse()
+            value.requireInstant("updatedAt"); record
+        }
+        if ((candidateReference == null) != (candidate == null) || projection.requireInstant("observedAt") != assessedAt) throw invalidResponse()
+        if (state == "candidate-defined" && (candidate == null || reviewState != "ready-for-human-review" || reasons.isNotEmpty() || countNames.filterNot { it in setOf("unitCount", "pathCount", "resourceScopeCount", "toolPermissionCount", "candidateDefinedCount") }.sumOf { counts.getValue(it) } > 0)) throw invalidResponse()
+        return ControlledClaudeImplementationProjection(productId, productRevision, productDigest, initiativeId, initiativeRevision, initiativeDigest, initiativeState, state, reviewState, reasons,
             counts.getValue("unitCount"), counts.getValue("pathCount"), counts.getValue("resourceScopeCount"), counts.getValue("toolPermissionCount"), counts.getValue("candidateDefinedCount"), counts.getValue("gapCount"), counts.getValue("staleBindingCount"), counts.getValue("providerGapCount"), counts.getValue("scopeGapCount"), counts.getValue("planGapCount"), counts.getValue("prerequisiteGapCount"), counts.getValue("recoveryGapCount"), counts.getValue("evidenceGapCount"), counts.getValue("invalidCandidateCount"), counts.getValue("unresolvedQuestionCount"), candidate, snapshotDigest)
     }
 
