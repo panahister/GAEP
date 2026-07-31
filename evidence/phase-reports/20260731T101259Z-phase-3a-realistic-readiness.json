@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase-acceptance-report-v1",
+  "phase": "phase-3a-delivery-planning",
+  "evidenceScope": "phase-3a-realistic-readiness-example-local",
+  "recordedAt": "2026-07-31T10:20:07Z",
+  "sourceCommit": "65671e40a305a7b978b18b49804ac9e86ab6d070",
+  "verificationResult": "pass",
+  "reportingStatus": "current-local-evidence-bound",
+  "phaseGate": "incomplete",
+  "acceptance": "not-established",
+  "readiness": "not-established",
+  "securityReview": "not-completed-explicitly-skipped",
+  "releaseAuthorization": "not-authorized",
+  "summary": {
+    "packagesExpected": 4,
+    "packagesProduced": 3,
+    "hosts": 4,
+    "hostCapabilities": 97,
+    "hostAssessments": 388,
+    "hostAssessmentsImplemented": 388,
+    "hostAssessmentsPartial": 0,
+    "hostAssessmentsNotImplemented": 0,
+    "hostsAccepted": 0,
+    "providers": 2,
+    "providersAccepted": 0,
+    "validationGatesPassed": 7,
+    "validationGatesFailed": 0,
+    "exampleSummaryDigest": "sha256:bc2ca1564b2996ef772e71a05950f80ba55c3c38e5e8fec7cb397ba9bd063298",
+    "knownGaps": 6
+  },
+  "sources": [
+    {
+      "id": "ide-contract",
+      "path": "conformance/phase-0-ide-contract.json",
+      "bytes": 276201,
+      "digest": "sha256:c4a6239e1a9706174e2059f6e59f96e6db7a14c71d05f53b13dee5003139d780",
+      "kind": "gaep-phase-0-ide-conformance-contract-v1"
+    },
+    {
+      "id": "package-report",
+      "path": "evidence/local-packages/20260731T101209Z-phase-3a-realistic-readiness-packages.json",
+      "bytes": 2820,
+      "digest": "sha256:e27839bf228c2c0301a806ea7430ba42259a7af143a6ecd30263e7d4e9598c03",
+      "kind": "gaep-local-ide-package-report-v1"
+    },
+    {
+      "id": "host-behavior",
+      "path": "evidence/ide-smokes/20260731T101057Z-phase-3a-realistic-readiness-host-behavior.json",
+      "bytes": 3576,
+      "digest": "sha256:acb37406ad001223a5cb34c0567f67b051d1b603aa913e46f596c94ae1fc6250",
+      "kind": "gaep-phase-0-host-behavior-evidence-v1"
+    },
+    {
+      "id": "provider-behavior",
+      "path": "evidence/ide-smokes/2026-07-27T105431Z-phase-1-p5-handoff-package-provider-behavior.json",
+      "bytes": 2134,
+      "digest": "sha256:7886fff71f592e6b41913fc0162fc6f5202e6bb7e533a8dd122f6bb29fd056d4",
+      "kind": "gaep-phase-0-provider-behavior-evidence-v1"
+    },
+    {
+      "id": "ide-conformance",
+      "path": "evidence/ide-conformance/20260731T101209Z-phase-3a-realistic-readiness.json",
+      "bytes": 63727,
+      "digest": "sha256:5fc61a9d9a692476ee74068730e8ee3e00559dff92bff0daa580b53dcf545a26",
+      "kind": "gaep-phase-0-ide-conformance-report-v1"
+    },
+    {
+      "id": "canonical-example",
+      "path": "evidence/examples/20260731T100836Z-phase-3a-realistic-readiness-example/receipt.json",
+      "bytes": 6811,
+      "digest": "sha256:2d6579a5befd48c8a959a452f0f72afedad1ee8682b2015f3178ecad409fc5b1",
+      "kind": "gaep-phase3a-realistic-readiness-example-receipt"
+    }
+  ],
+  "tests": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "result": "pass",
+      "summary": {
+        "projects": "workspace-build-graph",
+        "errors": 0
+      },
+      "outputDigest": "sha256:07dbde76f6e37932afb6c4e50e39094bd81f1f0cb8b09b218face3f6f3559272"
+    },
+    {
+      "id": "repository-tests",
+      "command": "npm run test",
+      "result": "pass",
+      "summary": {
+        "filesPassed": 134,
+        "testsPassed": 1031,
+        "testsSkipped": 1,
+        "testsFailed": 0
+      },
+      "outputDigest": "sha256:4b20cc572a624b83a6c4b05aa29e26a9540e8182896c46479dff63c00c79b364"
+    },
+    {
+      "id": "windows-ci-contract",
+      "command": "npm run test:ci-contract",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:d5875d308aca3fe77f68033f997e3ce6f377ab535a040187b40852977f03815f"
+    },
+    {
+      "id": "canonical-example",
+      "command": "npm run test:example",
+      "result": "pass",
+      "summary": {
+        "tests": 41,
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:50d289bbb4adfd784c86b14cf7555f9126ff344fe09f0053bdbf6ee19582b37d"
+    },
+    {
+      "id": "documentation",
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "summary": {
+        "documents": 83,
+        "requirements": 868,
+        "warnings": 0
+      },
+      "outputDigest": "sha256:0b72cf1985cc9d285d26bec8b177d92e50d689b43ac4be33a8d12ab7bc7f1bda"
+    },
+    {
+      "id": "ide-conformance",
+      "command": "npm run test:ide-conformance",
+      "result": "pass",
+      "summary": {
+        "tests": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:fed35e5ce25fc64ce416d133ae2ade3fbb996fcfe6c2494768d2a26ec51234ae"
+    },
+    {
+      "id": "phase-report-contract",
+      "command": "npm run test:phase-report",
+      "result": "pass",
+      "summary": {
+        "tests": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "outputDigest": "sha256:b69c0722863f25c6e91f5456aff31852affa5f8397cd2ea021558c8b096b5326"
+    }
+  ],
+  "testsDigest": "sha256:f4a79085d58ca4153af42f47c957d138d92caf7c8dd3d82716f11a3bdaff7a0f",
+  "knownGaps": [
+    {
+      "id": "native-package-and-host-acceptance",
+      "state": "open",
+      "basis": "1 native package missing; 0/4 hosts accepted"
+    },
+    {
+      "id": "live-provider-acceptance",
+      "state": "open",
+      "basis": "0/2 providers live accepted"
+    },
+    {
+      "id": "product-owner-acceptance",
+      "state": "not-established",
+      "basis": "local implementation approval does not grant feature, phase, readiness, release, or deployment acceptance"
+    },
+    {
+      "id": "security-review",
+      "state": "not-completed",
+      "basis": "the limited Codex Security scan was explicitly skipped and no final security result exists"
+    },
+    {
+      "id": "release-controls",
+      "state": "not-established",
+      "basis": "signing, publication, supported-platform certification, release approval, deployment, and rollback acceptance are absent"
+    },
+    {
+      "id": "phase-3a-realistic-readiness-example-closure",
+      "state": "not-established",
+      "basis": "the exact deterministic realistic Phase 3A readiness example byte-binds 20 current governed candidates, 81 evidence-reference metadata entries, five canonical dashboard views, two sealed offline Codex and Claude provider workflows, two reopen observations, three fail-closed recovery cases and four current host projections; fixture evidence does not establish real Product, artifact, evidence or semantic truth, completeness, priority, waiver or owner authority, implementation readiness, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion, release authorization or deployment approval"
+    }
+  ],
+  "knownGapsDigest": "sha256:0a57e30f1ebb04ff2d4e68c4a331585f4c4b7509981dcd1d1a4f4669657984bb",
+  "claimBoundary": "This report binds the exact deterministic realistic Phase 3A readiness example: 20 current governed candidate projections, 81 bounded evidence-reference metadata entries, five canonical dashboard views, two byte-bound sealed offline Codex and Claude provider workflows, two exact reopen observations, three fail-closed stale, gap and conflict recovery cases, exact current Product and Initiative bindings, privacy-safe Product Studio state and four current local host projections to current package, test, host, conformance and artifact evidence. This report does not establish real Product, backlog, design, boilerplate, test, risk, security, artifact, evidence or semantic truth or completeness; priority, approval, waiver or owner authority; implementation readiness, assignment, execution, native-host interaction, live-provider acceptance, Product Owner acceptance, security completion, release authorization or deployment approval."
+}
