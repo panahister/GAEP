@@ -103,6 +103,7 @@ import { ApprovedFigmaContextRetrievalService } from "./approved-figma-context-r
 import { ControlledDesignToCodeGenerationService } from "./controlled-design-to-code-generation.js"
 import { DesignToCodeTraceabilityService } from "./design-to-code-traceability.js"
 import { BoilerplateConstraintEnforcementService } from "./boilerplate-constraint-enforcement.js"
+import { BacklogToCodeTraceabilityService } from "./backlog-to-code-traceability.js"
 import { BusinessArchitectureBaselineService } from "./business-architecture-baseline.js"
 import { BusinessRuleCatalogService } from "./business-rule-catalog.js"
 import { BusinessUnderstandingService } from "./business-understanding.js"
@@ -339,6 +340,7 @@ export class GaepEngine {
   readonly controlledDesignToCodeGeneration: ControlledDesignToCodeGenerationService
   readonly designToCodeTraceability: DesignToCodeTraceabilityService
   readonly boilerplateConstraintEnforcement: BoilerplateConstraintEnforcementService
+  readonly backlogToCodeTraceability: BacklogToCodeTraceabilityService
   readonly valueStreamModel: ValueStreamModelService
   readonly operatingModel: OperatingModelService
   readonly businessRuleCatalog: BusinessRuleCatalogService
@@ -1178,6 +1180,20 @@ export class GaepEngine {
         designToCodeTraceability: this.designToCodeTraceability,
       },
     )
+    this.backlogToCodeTraceability = new BacklogToCodeTraceabilityService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      {
+        backlogHierarchy: this.backlogHierarchy,
+        changedUnitInventory: this.changedUnitInventory,
+        proposedChangePreview: this.proposedChangePreview,
+        controlledDesignToCodeGeneration: this.controlledDesignToCodeGeneration,
+        designToCodeTraceability: this.designToCodeTraceability,
+        boilerplateConstraintEnforcement: this.boilerplateConstraintEnforcement,
+        testInventory: this.testInventory,
+      },
+    )
     this.designDriftDetection = new DesignDriftDetectionService(
       this.repository,
       () => this.readProduct(),
@@ -1283,7 +1299,7 @@ export class GaepEngine {
     if (!health.initialized || health.status === "invalid") return health
     let domainIssues
     try {
-      const [acceptanceCriteriaIssues, definitionOfReadyIssues, definitionOfDoneIssues, implementationUnitModelIssues, dependencyMappingIssues, technologyProfileIssues, boilerplateRegistryIssues, boilerplateSelectionBindingIssues, boilerplateCompatibilityValidationIssues, routeScreenComponentMappingIssues, testMethodologyIssues, testInventoryIssues, highLevelDesignIssues, lowLevelDesignIssues, implementationReadinessGateIssues, changedUnitInventoryIssues, proposedChangePreviewIssues, stagingWorkspaceIssues, controlledCodexImplementationIssues, controlledClaudeImplementationIssues, providerSwitchImplementationIssues, modelSwitchImplementationIssues, approvedFigmaContextRetrievalIssues, controlledDesignToCodeGenerationIssues, designToCodeTraceabilityIssues, boilerplateConstraintEnforcementIssues] = await Promise.all([
+      const [acceptanceCriteriaIssues, definitionOfReadyIssues, definitionOfDoneIssues, implementationUnitModelIssues, dependencyMappingIssues, technologyProfileIssues, boilerplateRegistryIssues, boilerplateSelectionBindingIssues, boilerplateCompatibilityValidationIssues, routeScreenComponentMappingIssues, testMethodologyIssues, testInventoryIssues, highLevelDesignIssues, lowLevelDesignIssues, implementationReadinessGateIssues, changedUnitInventoryIssues, proposedChangePreviewIssues, stagingWorkspaceIssues, controlledCodexImplementationIssues, controlledClaudeImplementationIssues, providerSwitchImplementationIssues, modelSwitchImplementationIssues, approvedFigmaContextRetrievalIssues, controlledDesignToCodeGenerationIssues, designToCodeTraceabilityIssues, boilerplateConstraintEnforcementIssues, backlogToCodeTraceabilityIssues] = await Promise.all([
         this.acceptanceCriteria.healthIssues(),
         this.definitionOfReady.healthIssues(),
         this.definitionOfDone.healthIssues(),
@@ -1310,6 +1326,7 @@ export class GaepEngine {
         this.controlledDesignToCodeGeneration.healthIssues(),
         this.designToCodeTraceability.healthIssues(),
         this.boilerplateConstraintEnforcement.healthIssues(),
+        this.backlogToCodeTraceability.healthIssues(),
       ])
       const [productIssues, backlogHierarchyIssues, mvpSliceDefinitionIssues, prioritizationModelIssues, sourceIssues, businessIssues, capabilityMapIssues, valueStreamIssues, operatingModelIssues, businessRuleIssues, businessArchitectureIssues, systemSolutionArchitectureIssues, boundedContextModelIssues, securityPrivacyAssessmentIssues, processModelIssues, dataModelIssues, authorizationModelIssues, eventIntegrationModelIssues, failureRecoveryModelIssues, architectureChallengeModelIssues, decisionRegisterIssues, riskRegisterIssues, evidenceRegistryIssues, traceabilityIssues, p0P4ReadinessGateIssues, p5HandoffPackageIssues, designApplicabilityIssues, designPersonaRoleIssues, userJourneyIssues, informationArchitectureIssues, screenStateInventoryIssues, designRequirementsIssues, designSystemTokenContractIssues, accessibilityDesignRulesIssues, responsiveMultiPlatformTargetsIssues, manualFigmaExecutionPathIssues, figmaMcpCapabilityDiscoveryIssues, figmaReadSnapshotIssues, figmaContextImportIssues, outboundDesignBriefPackageIssues, governedFigmaWriteIssues, finalizedFigmaSnapshotImportIssues, designToRequirementBindingIssues, designerReadyGateIssues, designDeltaIssues, designConflictResolutionIssues, humanDesignApprovalIssues, designBaselineIssues, designDriftDetectionIssues, figmaToBoilerplateMappingIssues, designToCodeBindingRegistryIssues] = await Promise.all([
         this.productStudio.healthIssues(),
@@ -1397,6 +1414,7 @@ export class GaepEngine {
         ...controlledDesignToCodeGenerationIssues,
         ...designToCodeTraceabilityIssues,
         ...boilerplateConstraintEnforcementIssues,
+        ...backlogToCodeTraceabilityIssues,
         ...sourceIssues,
         ...businessIssues,
         ...capabilityMapIssues,
