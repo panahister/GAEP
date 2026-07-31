@@ -913,6 +913,15 @@ class GaepToolWindowFactory : ToolWindowFactory {
         buttons += providerSwitchImplementationButton
         actions.add(providerSwitchImplementationButton)
 
+        val modelSwitchImplementationButton = JButton("Inspect Model Switching Within One Provider…").apply {
+            addActionListener {
+                val initiativeId = promptManagedUuid(project, "Inspect Model Switching Within One Provider", "Enter the exact Initiative UUID. Model availability, capability refresh, model transition, context transfer, handoff recording, resume, stage ownership transfer, mutation, apply/discard, acceptance, release, deployment, and authority are withheld.", "Initiative ID")?.let(UUID::fromString) ?: return@addActionListener
+                runRequest("Inspect Model Switching Within One Provider", status, output, buttons) { controller.readModelSwitchImplementation(initiativeId) }
+            }
+        }
+        buttons += modelSwitchImplementationButton
+        actions.add(modelSwitchImplementationButton)
+
         val designSystemTokenContractButton = JButton("Inspect Design System and Token Contract…").apply {
             addActionListener {
                 val initiativeId = promptManagedUuid(

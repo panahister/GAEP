@@ -585,6 +585,15 @@ class GaepEngineClient(
     }
 
     @Synchronized
+    fun readModelSwitchImplementation(initiativeId: UUID): ModelSwitchImplementationProjection {
+        require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
+        val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }
+        return portableRequest("delivery.modelSwitchImplementation.snapshot", params) { envelope ->
+            PortableDesignProtocol.parseModelSwitchImplementationEnvelope(envelope, initiativeId)
+        }
+    }
+
+    @Synchronized
     fun readDesignSystemTokenContract(initiativeId: UUID): DesignSystemTokenContractProjection {
         require(initiativeId != UUID(0, 0)) { "Initiative ID must be a non-empty UUID" }
         val params = JsonObject().apply { addProperty("initiativeId", initiativeId.toString()) }

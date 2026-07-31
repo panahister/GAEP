@@ -3141,6 +3141,37 @@ internal class RiderProductController(private val client: GaepEngineClient) {
         appendLine("Snapshot digest: ${projection.snapshotDigest}")
     }
 
+    fun readModelSwitchImplementation(initiativeId: UUID): String {
+        val product = client.readProductBinding(); val initiative = client.readInitiative(initiativeId)
+        val projection = client.readModelSwitchImplementation(initiativeId)
+        require(projection.productId == product.id && projection.productRevision == product.revision && projection.productDigest == product.digest &&
+            projection.initiativeId == initiative.id && projection.initiativeRevision == initiative.revision && projection.initiativeDigest == initiative.digest && projection.initiativeState == initiative.state) {
+            "Model Switch Implementation projection does not match exact current Product and Initiative"
+        }
+        return renderModelSwitchImplementation(projection)
+    }
+
+    fun renderModelSwitchImplementation(projection: ModelSwitchImplementationProjection): String = buildString {
+        appendLine("GAEP governed Model Switching Within One Provider candidate"); appendLine()
+        appendLine("Initiative: ${projection.initiativeId} · revision ${projection.initiativeRevision} · ${projection.initiativeState}")
+        appendLine("Candidate assessment: ${projection.state} · review state: ${projection.reviewState}")
+        appendLine("Continuity: ${projection.unitCount} units · ${projection.pathCount} paths · ${projection.continuityGapCount} gaps")
+        appendLine("Gaps: ${projection.staleBindingCount} stale · ${projection.providerGapCount} provider · ${projection.modelGapCount} model · ${projection.continuityGapCount} continuity · ${projection.transitionGapCount} transition · ${projection.prerequisiteGapCount} prerequisite · ${projection.evidenceGapCount} evidence")
+        projection.reasons.forEach { appendLine("  - $it") }; appendLine()
+        appendLine("Candidate record: ${projection.candidate?.let { "${it.id}@${it.revision} · candidate · ${it.digest}" } ?: "not recorded"}")
+        projection.candidate?.let {
+            appendLine("Provider and role: ${it.provider} · ${it.providerSwitchRole}")
+            appendLine("Models: ${it.adapterId}/${it.agentId}/${it.sourceModelId} → ${it.targetModelId}")
+            appendLine("Capability snapshot: ${it.capabilityDigest}")
+            appendLine("Transition stop lines: ${it.transitionState} · target availability ${it.targetModelAvailabilityState} · refresh ${it.capabilityRefreshState} · context transfer ${it.contextTransferState}")
+            appendLine("Lifecycle: model transition ${it.modelTransitionState} · provider execution ${it.providerExecutionState} · handoff ${it.handoffState} · stage ownership ${it.stageOwnershipState} · resume ${it.resumeState}")
+            appendLine("Effects: source mutation ${it.sourceMutationState} · apply ${it.applyState} · discard ${it.discardState} · recovery ${it.recoveryState}")
+            appendLine("Candidate units: ${it.unitCount} · paths: ${it.pathCount} · prerequisites: ${it.prerequisiteCount}")
+        }
+        appendLine(); appendLine("Privacy-safe same-provider model-switch candidate metadata only. This inspection does not establish model availability, refresh capabilities, execute a provider or model transition, transfer context, record a handoff, transfer stage ownership, resume work, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.")
+        appendLine("Snapshot digest: ${projection.snapshotDigest}")
+    }
+
     fun renderTestInventory(projection: TestInventoryProjection): String = buildString {
         appendLine("GAEP governed Test Inventory candidate")
         appendLine()

@@ -257,6 +257,7 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         LoadControlledCodexImplementationCommand = new AsyncCommand(LoadControlledCodexImplementationAsync);
         LoadControlledClaudeImplementationCommand = new AsyncCommand(LoadControlledClaudeImplementationAsync);
         LoadProviderSwitchImplementationCommand = new AsyncCommand(LoadProviderSwitchImplementationAsync);
+        LoadModelSwitchImplementationCommand = new AsyncCommand(LoadModelSwitchImplementationAsync);
         LoadDesignSystemTokenContractCommand = new AsyncCommand(LoadDesignSystemTokenContractAsync);
         LoadAccessibilityDesignRulesCommand = new AsyncCommand(LoadAccessibilityDesignRulesAsync);
         LoadResponsiveMultiPlatformTargetsCommand = new AsyncCommand(LoadResponsiveMultiPlatformTargetsAsync);
@@ -482,6 +483,9 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
 
     [DataMember]
     public IAsyncCommand LoadProviderSwitchImplementationCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand LoadModelSwitchImplementationCommand { get; }
 
     [DataMember]
     public IAsyncCommand LoadDesignSystemTokenContractCommand { get; }
@@ -1242,6 +1246,12 @@ internal sealed class GaepToolWindowData : NotifyPropertyChangedObject
         RunRequestAsync(
             "Loading exact governed Provider Switching During Implementation candidate",
             (controller, _, token) => controller.ReadProviderSwitchImplementationAsync(ParseInitiativeId(InitiativeId), token),
+            cancellationToken);
+
+    private Task LoadModelSwitchImplementationAsync(object? commandParameter, CancellationToken cancellationToken) =>
+        RunRequestAsync(
+            "Loading exact governed Model Switching Within One Provider candidate",
+            (controller, _, token) => controller.ReadModelSwitchImplementationAsync(ParseInitiativeId(InitiativeId), token),
             cancellationToken);
 
     private Task LoadDesignSystemTokenContractAsync(object? commandParameter, CancellationToken cancellationToken) =>

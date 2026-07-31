@@ -3631,6 +3631,38 @@ public sealed class ProductWorkflowController(EngineClient client)
             .Append("Authority boundary: privacy-safe provider-switch candidate metadata only. This inspection does not transition or execute either provider, record a handoff, transfer stage ownership, resume work, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.").ToString();
     }
 
+    public async Task<string> ReadModelSwitchImplementationAsync(Guid initiativeId, CancellationToken cancellationToken = default)
+    {
+        if (initiativeId == Guid.Empty) throw new ArgumentException("Initiative ID must not be empty.", nameof(initiativeId));
+        var product = await client.ReadProductBindingAsync(cancellationToken); var initiative = await client.ReadInitiativeAsync(initiativeId, cancellationToken);
+        var projection = await client.ReadModelSwitchImplementationAsync(initiativeId, cancellationToken);
+        if (projection.ProductId != product.Id || projection.ProductRevision != product.Revision || projection.ProductDigest != product.Digest || projection.InitiativeId != initiative.Id || projection.InitiativeRevision != initiative.Revision || projection.InitiativeDigest != initiative.Digest || projection.InitiativeState != initiative.State)
+            throw new ArgumentException("The Product or Initiative changed while Model Switch Implementation was read. Refresh the exact records.");
+        return RenderModelSwitchImplementation(projection);
+    }
+
+    public static string RenderModelSwitchImplementation(ModelSwitchImplementationProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        var output = new StringBuilder().AppendLine("GAEP governed Model Switching Within One Provider candidate").AppendLine()
+            .AppendLine($"Initiative: {projection.InitiativeId:D} · revision {projection.InitiativeRevision} · {projection.InitiativeState}")
+            .AppendLine($"Candidate assessment: {projection.State} · review state: {projection.ReviewState}")
+            .AppendLine($"Continuity: {projection.UnitCount} units · {projection.PathCount} paths · {projection.ContinuityGapCount} gaps")
+            .AppendLine($"Gaps: {projection.StaleBindingCount} stale · {projection.ProviderGapCount} provider · {projection.ModelGapCount} model · {projection.ContinuityGapCount} continuity · {projection.TransitionGapCount} transition · {projection.PrerequisiteGapCount} prerequisite · {projection.EvidenceGapCount} evidence");
+        foreach (var reason in projection.Reasons) output.AppendLine($"  - {reason}"); output.AppendLine();
+        if (projection.Candidate is { } candidate) output.AppendLine($"Model Switch candidate: {candidate.Id:D}@{candidate.Revision} · candidate · {candidate.Digest}")
+            .AppendLine($"Provider and role: {candidate.Provider} · {candidate.ProviderSwitchRole}")
+            .AppendLine($"Models: {candidate.AdapterId}/{candidate.AgentId}/{candidate.SourceModelId} → {candidate.TargetModelId}")
+            .AppendLine($"Capability snapshot: {candidate.CapabilityDigest}")
+            .AppendLine($"Transition stop lines: {candidate.TransitionState} · target availability {candidate.TargetModelAvailabilityState} · refresh {candidate.CapabilityRefreshState} · context transfer {candidate.ContextTransferState}")
+            .AppendLine($"Lifecycle: model transition {candidate.ModelTransitionState} · provider execution {candidate.ProviderExecutionState} · handoff {candidate.HandoffState} · stage ownership {candidate.StageOwnershipState} · resume {candidate.ResumeState}")
+            .AppendLine($"Effects: source mutation {candidate.SourceMutationState} · apply {candidate.ApplyState} · discard {candidate.DiscardState} · recovery {candidate.RecoveryState}")
+            .AppendLine($"Candidate units: {candidate.UnitCount} · paths: {candidate.PathCount} · prerequisites: {candidate.PrerequisiteCount}");
+        else output.AppendLine("Model Switch candidate: not recorded");
+        return output.AppendLine().AppendLine($"Snapshot digest: {projection.SnapshotDigest}")
+            .Append("Authority boundary: privacy-safe same-provider model-switch candidate metadata only. This inspection does not establish model availability, refresh capabilities, execute a provider or model transition, transfer context, record a handoff, transfer stage ownership, resume work, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.").ToString();
+    }
+
     public async Task<string> ReadDesignSystemTokenContractAsync(
         Guid initiativeId,
         CancellationToken cancellationToken = default)

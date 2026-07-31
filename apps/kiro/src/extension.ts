@@ -56,6 +56,7 @@ import {
   type ControlledCodexImplementationProjection,
   type ControlledClaudeImplementationProjection,
   type ProviderSwitchImplementationProjection,
+  type ModelSwitchImplementationProjection,
   type DesignSystemTokenContractProjection,
   type AccessibilityDesignRulesProjection,
   type ResponsiveMultiPlatformTargetsProjection,
@@ -206,6 +207,7 @@ const commandIds = {
   controlledCodexImplementation: "gaepKiro.controlledCodexImplementation.inspect",
   controlledClaudeImplementation: "gaepKiro.controlledClaudeImplementation.inspect",
   providerSwitchImplementation: "gaepKiro.providerSwitchImplementation.inspect",
+  modelSwitchImplementation: "gaepKiro.modelSwitchImplementation.inspect",
   designSystemTokenContract: "gaepKiro.designSystemTokenContract.inspect",
   accessibilityDesignRules: "gaepKiro.accessibilityDesignRules.inspect",
   responsiveMultiPlatformTargets: "gaepKiro.responsiveMultiPlatformTargets.inspect",
@@ -372,6 +374,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(commandIds.controlledCodexImplementation, (input?: unknown) => runUserCommand(() => showControlledCodexImplementation(pool, input))),
     vscode.commands.registerCommand(commandIds.controlledClaudeImplementation, (input?: unknown) => runUserCommand(() => showControlledClaudeImplementation(pool, input))),
     vscode.commands.registerCommand(commandIds.providerSwitchImplementation, (input?: unknown) => runUserCommand(() => showProviderSwitchImplementation(pool, input))),
+    vscode.commands.registerCommand(commandIds.modelSwitchImplementation, (input?: unknown) => runUserCommand(() => showModelSwitchImplementation(pool, input))),
     vscode.commands.registerCommand(commandIds.designSystemTokenContract, (input?: unknown) => runUserCommand(() => showDesignSystemTokenContract(pool, input))),
     vscode.commands.registerCommand(commandIds.accessibilityDesignRules, (input?: unknown) => runUserCommand(() => showAccessibilityDesignRules(pool, input))),
     vscode.commands.registerCommand(commandIds.responsiveMultiPlatformTargets, (input?: unknown) => runUserCommand(() => showResponsiveMultiPlatformTargets(pool, input))),
@@ -2897,6 +2900,42 @@ async function showProviderSwitchImplementation(
       `Effects: source mutation ${record.lifecycle.sourceMutationState} · apply ${record.lifecycle.applyState} · discard ${record.lifecycle.discardState} · recovery ${record.lifecycle.recoveryState}`,
       `Candidate units: ${record.unitCount} · paths: ${record.pathCount} · prerequisites: ${record.prerequisiteCount}`, `Updated: ${record.updatedAt}`] : []), "",
     "Privacy-safe candidate metadata only. This inspection does not transition or execute either provider, record a handoff, transfer stage ownership, resume work, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.",
+    `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
+  ]
+  const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })
+  await vscode.window.showTextDocument(document, { preview: true })
+  return projection
+}
+
+async function showModelSwitchImplementation(
+  pool: EngineClientPool,
+  input: unknown,
+): Promise<ModelSwitchImplementationProjection> {
+  requireTrustedWorkspace()
+  const folder = await selectWorkspaceFolder()
+  const client = await pool.get(folder.uri.fsPath)
+  const normalized = initiativeInput(input)
+  const initiativeId = normalized.initiativeId ??
+    await collectUuid("Enter the exact Initiative UUID for Model Switch Implementation inspection", "Initiative ID")
+  const projection = await client.readModelSwitchImplementation(initiativeId)
+  const status = projection.status
+  const record = projection.candidate
+  const lines = [
+    "GAEP governed Model Switching Within One Provider candidate", "",
+    `Initiative: ${projection.initiative.id} · revision ${projection.initiative.revision} · ${projection.initiative.state}`,
+    `Candidate assessment: ${status.state} · review state: ${status.reviewState}`,
+    `Continuity: ${status.unitCount} units · ${status.pathCount} paths · ${status.continuityGapCount} gaps`,
+    `Gaps: ${status.staleBindingCount} stale · ${status.providerGapCount} provider · ${status.modelGapCount} model · ${status.continuityGapCount} continuity · ${status.transitionGapCount} transition · ${status.prerequisiteGapCount} prerequisite · ${status.evidenceGapCount} evidence`,
+    ...status.reasons.map((reason) => `  - ${reason}`), "",
+    `Candidate record: ${record ? `${record.id}@${record.revision} · ${record.state} · ${record.digest}` : "not recorded"}`,
+    ...(record ? [`Provider and role: ${record.provider} · ${record.providerSwitchRole}`,
+      `Models: ${record.sourceSelection.adapterId}/${record.sourceSelection.agentId}/${record.sourceSelection.modelId} → ${record.targetSelection.modelId}`,
+      `Capability snapshot: ${record.sourceSelection.capabilityDigest}`,
+      `Transition stop lines: ${record.transition.state} · target availability ${record.transition.targetModelAvailabilityState} · refresh ${record.transition.capabilityRefreshState} · context transfer ${record.transition.contextTransferState}`,
+      `Lifecycle: model transition ${record.lifecycle.modelTransitionState} · provider execution ${record.lifecycle.providerExecutionState} · handoff ${record.lifecycle.handoffState} · stage ownership ${record.lifecycle.stageOwnershipState} · resume ${record.lifecycle.resumeState}`,
+      `Effects: source mutation ${record.lifecycle.sourceMutationState} · apply ${record.lifecycle.applyState} · discard ${record.lifecycle.discardState} · recovery ${record.lifecycle.recoveryState}`,
+      `Candidate units: ${record.unitCount} · paths: ${record.pathCount} · prerequisites: ${record.prerequisiteCount}`, `Updated: ${record.updatedAt}`] : []), "",
+    "Privacy-safe same-provider model-switch candidate metadata only. This inspection does not establish model availability, refresh capabilities, execute a provider or model transition, transfer context, record a handoff, transfer stage ownership, resume work, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.",
     `Snapshot digest: ${projection.snapshotDigest}`, `Privacy boundary: ${projection.privacyBoundary}`, `Authority boundary: ${projection.authorityBoundary}`,
   ]
   const document = await vscode.workspace.openTextDocument({ language: "plaintext", content: `${lines.join("\n")}\n` })

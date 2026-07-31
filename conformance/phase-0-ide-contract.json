@@ -404,6 +404,10 @@
           { "path": "packages/engine/src/provider-switch-implementation.ts", "contains": ["class ProviderSwitchImplementationService", "handoffReceiptDigest", "provider-switch-implementation-projection-is-read-only"] },
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["providerSwitchImplementation?: {", "engine.providerSwitchImplementation!.project(initiative.id)", "id: \"provider-switch-implementation\"", "does not transition or execute either provider"] }
         ] },
+        { "capabilityId": "model-switch-implementation", "state": "implemented", "probes": [
+          { "path": "packages/engine/src/model-switch-implementation.ts", "contains": ["class ModelSwitchImplementationService", "transitionReceiptDigestVerified", "model-switch-implementation-projection-is-read-only"] },
+          { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["modelSwitchImplementation?: {", "engine.modelSwitchImplementation!.project(initiative.id)", "id: \"model-switch-implementation\"", "does not establish target-model availability"] }
+        ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/vscode/src/current-engine-studio-data-source.ts", "contains": ["designSystemTokenContract?: {", "engine.designSystemTokenContract!.project(initiative.id)", "id: \"design-system-token-contract\"", "no system, token, variable, or component validity, ownership authority, accessibility validation, design approval, baseline, readiness, implementation, write, or action authority."] }
         ] },
@@ -788,6 +792,10 @@
         { "capabilityId": "provider-switch-implementation", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readProviderSwitchImplementation(", "this.request(\"delivery.providerSwitchImplementation.snapshot\"", "providerSwitchImplementationProjectionSchema.safeParse"] },
           { "path": "apps/kiro/src/extension.ts", "contains": ["async function showProviderSwitchImplementation", "GAEP governed Provider Switching During Implementation candidate", "does not transition or execute either provider"] }
+        ] },
+        { "capabilityId": "model-switch-implementation", "state": "implemented", "probes": [
+          { "path": "apps/kiro/src/engine-client.ts", "contains": ["readModelSwitchImplementation(", "this.request(\"delivery.modelSwitchImplementation.snapshot\"", "modelSwitchImplementationProjectionSchema.safeParse"] },
+          { "path": "apps/kiro/src/extension.ts", "contains": ["async function showModelSwitchImplementation", "GAEP governed Model Switching Within One Provider candidate", "does not establish model availability"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/kiro/src/engine-client.ts", "contains": ["readDesignSystemTokenContract(", "this.request(\"design.systemTokenContract.snapshot\"", "designSystemTokenContractProjectionSchema.safeParse"] },
@@ -1259,6 +1267,11 @@
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readProviderSwitchImplementation(", "portableRequest(\"delivery.providerSwitchImplementation.snapshot\"", "parseProviderSwitchImplementationEnvelope"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Provider Switching During Implementation candidate", "stage ownership", "does not transition or execute either provider"] },
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["ProviderSwitchImplementationProjection", "PROVIDER_SWITCH_IMPLEMENTATION_PROJECTION_AUTHORITY_BOUNDARY"] }
+        ] },
+        { "capabilityId": "model-switch-implementation", "state": "implemented", "probes": [
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readModelSwitchImplementation(", "portableRequest(\"delivery.modelSwitchImplementation.snapshot\"", "parseModelSwitchImplementationEnvelope"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/RiderProductController.kt", "contains": ["GAEP governed Model Switching Within One Provider candidate", "target availability", "does not establish model availability"] },
+          { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/PortableDesignProtocol.kt", "contains": ["ModelSwitchImplementationProjection", "MODEL_SWITCH_IMPLEMENTATION_PROJECTION_AUTHORITY_BOUNDARY"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/rider/src/main/kotlin/dev/gaep/rider/GaepEngineClient.kt", "contains": ["fun readDesignSystemTokenContract(", "portableRequest(\"design.systemTokenContract.snapshot\"", "parseDesignSystemTokenContractEnvelope"] },
@@ -1759,6 +1772,11 @@
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadProviderSwitchImplementationAsync(", "\"delivery.providerSwitchImplementation.snapshot\"", "ParseProviderSwitchImplementationResponse"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Provider Switching During Implementation candidate", "stage ownership", "does not transition or execute either provider"] },
           { "path": "apps/visual-studio/Gaep.HostClient/ProviderSwitchImplementationProtocol.cs", "contains": ["ProviderSwitchImplementationProjection", "ProviderSwitchImplementationProjectionAuthorityBoundary"] }
+        ] },
+        { "capabilityId": "model-switch-implementation", "state": "implemented", "probes": [
+          { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadModelSwitchImplementationAsync(", "\"delivery.modelSwitchImplementation.snapshot\"", "ParseModelSwitchImplementationResponse"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ProductWorkflowController.cs", "contains": ["GAEP governed Model Switching Within One Provider candidate", "target availability", "does not establish model availability"] },
+          { "path": "apps/visual-studio/Gaep.HostClient/ModelSwitchImplementationProtocol.cs", "contains": ["ModelSwitchImplementationProjection", "ModelSwitchImplementationProjectionAuthorityBoundary"] }
         ] },
         { "capabilityId": "design-system-token-contract", "state": "implemented", "probes": [
           { "path": "apps/visual-studio/Gaep.HostClient/EngineClient.cs", "contains": ["ReadDesignSystemTokenContractAsync(", "\"design.systemTokenContract.snapshot\"", "ParseDesignSystemTokenContractResponse"] },

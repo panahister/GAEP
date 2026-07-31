@@ -34,6 +34,7 @@ import type {
   ControlledCodexImplementationProjection,
   ControlledClaudeImplementationProjection,
   ProviderSwitchImplementationProjection,
+  ModelSwitchImplementationProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -285,6 +286,9 @@ export interface CurrentStudioEngineReader {
   providerSwitchImplementation?: {
     project(initiativeId: string): Promise<ProviderSwitchImplementationProjection>
   }
+  modelSwitchImplementation?: {
+    project(initiativeId: string): Promise<ModelSwitchImplementationProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -480,6 +484,7 @@ interface ObservedStudioState {
   controlledCodexImplementationProjections: Map<string, ControlledCodexImplementationProjection>
   controlledClaudeImplementationProjections: Map<string, ControlledClaudeImplementationProjection>
   providerSwitchImplementationProjections: Map<string, ProviderSwitchImplementationProjection>
+  modelSwitchImplementationProjections: Map<string, ModelSwitchImplementationProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3922,6 +3927,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     controlledCodexImplementations: controlledCodexImplementationTable(state),
     controlledClaudeImplementations: controlledClaudeImplementationTable(state),
     providerSwitchImplementations: providerSwitchImplementationTable(state),
+    modelSwitchImplementations: modelSwitchImplementationTable(state),
   }
 }
 
@@ -5307,6 +5313,40 @@ function providerSwitchImplementationTable(state: ObservedStudioState): StudioTa
       { key: "boundary", label: "Privacy and authority boundary" },
     ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Provider Switch Implementation candidate",
       "Create the candidate through the governed engine only after exact current Controlled Codex and Controlled Claude candidates exist. This view cannot transition a provider, record a handoff, resume, transfer stage ownership, apply, discard, or mutate source.") } : {}) }
+}
+
+function modelSwitchImplementationTable(state: ObservedStudioState): StudioTableSnapshot {
+  const rows = [...state.modelSwitchImplementationProjections.values()].flatMap((projection) => {
+    const record = projection.candidate
+    if (!record) return []
+    const status = projection.status
+    return [{ id: record.id, cells: {
+      initiative: projection.initiative.id, record: record.id, revision: String(record.revision), digest: record.digest,
+      provider: `${record.provider} · ${record.providerSwitchRole}`,
+      models: `${record.sourceSelection.adapterId}/${record.sourceSelection.agentId}/${record.sourceSelection.modelId} → ${record.targetSelection.modelId}`,
+      capability: `${record.sourceSelection.capabilityDigest} · ${status.continuityGapCount} continuity gaps`,
+      transition: `${record.transition.state} · target availability ${record.transition.targetModelAvailabilityState} · capability refresh ${record.transition.capabilityRefreshState} · context transfer ${record.transition.contextTransferState}`,
+      lifecycle: `${record.lifecycle.planningState} · model transition ${record.lifecycle.modelTransitionState} · provider execution ${record.lifecycle.providerExecutionState} · handoff ${record.lifecycle.handoffState} · stage ownership ${record.lifecycle.stageOwnershipState} · resume ${record.lifecycle.resumeState}`,
+      prerequisites: `${record.prerequisiteCount} required · approval ${record.lifecycle.approvalState} · authorization ${record.lifecycle.authorizationState}`,
+      effects: `source mutation ${record.lifecycle.sourceMutationState} · apply ${record.lifecycle.applyState} · discard ${record.lifecycle.discardState} · recovery ${record.lifecycle.recoveryState}`,
+      gaps: `${status.staleBindingCount} stale · ${status.providerGapCount} provider · ${status.modelGapCount} model · ${status.continuityGapCount} continuity · ${status.transitionGapCount} transition · ${status.prerequisiteGapCount} prerequisite · ${status.evidenceGapCount} evidence`,
+      receipts: `${record.bindingReceiptDigest} · ${record.modelReceiptDigest} · ${record.continuityReceiptDigest} · ${record.transitionReceiptDigest}`,
+      assessment: `${status.state} · ${status.reviewState}`,
+      boundary: "Privacy-safe same-provider model-switch candidate metadata only. This view does not establish target-model availability, refresh capabilities, execute a provider or model transition, transfer context, record a handoff, transfer stage ownership, resume work, approve, authorize, mutate source, apply/discard, recover, accept, release, deploy, or grant action authority.",
+    }, state: status.state, actions: [] }]
+  })
+  return { id: "model-switch-implementation", title: "Governed Model Switching Within One Provider Candidates",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true }, { key: "record", label: "Candidate" },
+      { key: "revision", label: "Revision" }, { key: "digest", label: "Exact digest" },
+      { key: "provider", label: "Provider and P3B-06 role" }, { key: "models", label: "Exact source and target models" },
+      { key: "capability", label: "Capability snapshot continuity" }, { key: "transition", label: "Transition stop lines" },
+      { key: "lifecycle", label: "Distinct lifecycle states" }, { key: "prerequisites", label: "Approval prerequisites" },
+      { key: "effects", label: "Effect stop lines" }, { key: "gaps", label: "Candidate gaps" },
+      { key: "receipts", label: "Deterministic receipts" }, { key: "assessment", label: "Candidate assessment" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ], rows, actions: [], ...(rows.length === 0 ? { emptyState: emptySurface("No governed Model Switch Implementation candidate",
+      "Create the candidate through the governed engine only after an exact current Provider Switch Implementation candidate exists. This view cannot establish model availability, refresh capabilities, transition a model, transfer context, record a handoff, resume, apply, discard, or mutate source.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7218,6 +7258,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       controlledCodexImplementationProjections: new Map(),
       controlledClaudeImplementationProjections: new Map(),
       providerSwitchImplementationProjections: new Map(),
+      modelSwitchImplementationProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -8817,6 +8858,43 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         })
       } else if (empty.initiatives.length > 0) {
         empty.issues.push(issue("provider-switch-implementation-unavailable", "Provider Switch Implementation metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+      }
+    }
+    if (route === "delivery" && engine.modelSwitchImplementation) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map((initiative) => engine.modelSwitchImplementation!.project(initiative.id)))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value
+            const providerSwitch = empty.providerSwitchImplementationProjections.get(initiative.id)?.candidate
+            const codex = empty.controlledCodexImplementationProjections.get(initiative.id)?.candidate
+            const claude = empty.controlledClaudeImplementationProjections.get(initiative.id)?.candidate
+            const { snapshotDigest, ...projectionBody } = value
+            const exactProviderSwitch = providerSwitch !== undefined && value.status.providerSwitchImplementation !== undefined &&
+              value.status.providerSwitchImplementation.recordId === providerSwitch.id && value.status.providerSwitchImplementation.revision === providerSwitch.revision &&
+              value.status.providerSwitchImplementation.digest === providerSwitch.digest
+            const exactCodex = codex !== undefined && value.status.controlledCodexImplementation !== undefined &&
+              value.status.controlledCodexImplementation.recordId === codex.id && value.status.controlledCodexImplementation.revision === codex.revision &&
+              value.status.controlledCodexImplementation.digest === codex.digest
+            const exactClaude = claude !== undefined && value.status.controlledClaudeImplementation !== undefined &&
+              value.status.controlledClaudeImplementation.recordId === claude.id && value.status.controlledClaudeImplementation.revision === claude.revision &&
+              value.status.controlledClaudeImplementation.digest === claude.digest
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id &&
+                value.initiative.revision === (initiative.revision ?? 1) && value.initiative.digest === canonicalDigest(initiative) &&
+                exactProviderSwitch && exactCodex && exactClaude && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.modelSwitchImplementationProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Model Switch Implementation projection was unavailable or did not bind exact current Provider Switch, Controlled Codex, and Controlled Claude candidates",
+            projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`model-switch-implementation-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Model Switch Implementation metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) {
+        empty.issues.push(issue("model-switch-implementation-unavailable", "Model Switch Implementation metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
       }
     }
     if (
