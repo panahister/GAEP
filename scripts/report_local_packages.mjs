@@ -22,7 +22,7 @@ const definitions = [
     path: "apps/vscode/dist/gaep-vscode.vsix",
     maximumBytes: 32 * 1024 * 1024,
     requiredHere: true,
-    verification: "exact-local-package-build-bundled-engine-and-accessible-phase-3b-model-switch-implementation-product-studio-projection; target-model-availability-capability-refresh-supported-runtime-authentication-effective-policy-credential-access-administrator-policy-workspace-tool-access-provider-execution-model-transition-context-transfer-handoff-stage-ownership-transfer-resume-stage-creation-native-install-reinstall-and-interaction-acceptance-remain-pending",
+    verification: "exact-local-package-build-bundled-engine-and-accessible-phase-3b-approved-figma-context-retrieval-product-studio-projection; actual-figma-access-remote-fetch-content-materialization-context-transfer-generation-provider-execution-stage-effect-source-mutation-design-approval-design-baseline-generation-readiness-native-install-reinstall-and-interaction-acceptance-remain-pending",
   },
   {
     host: "kiro",
@@ -30,7 +30,7 @@ const definitions = [
     path: "apps/kiro/dist/gaep-kiro.vsix",
     maximumBytes: 8 * 1024 * 1024,
     requiredHere: true,
-    verification: "package-build-digest-bound-engine-and-private-safe-phase-3b-model-switch-implementation-command-projection; target-model-availability-capability-refresh-supported-runtime-authentication-effective-policy-credential-access-administrator-policy-workspace-tool-access-provider-execution-model-transition-context-transfer-handoff-stage-ownership-transfer-resume-stage-creation-native-compatible-host-install-and-interaction-acceptance-remain-pending",
+    verification: "package-build-digest-bound-engine-and-private-safe-phase-3b-approved-figma-context-retrieval-command-projection; actual-figma-access-remote-fetch-content-materialization-context-transfer-generation-provider-execution-stage-effect-source-mutation-design-approval-design-baseline-generation-readiness-native-compatible-host-install-and-interaction-acceptance-remain-pending",
   },
   {
     host: "rider",
@@ -38,7 +38,7 @@ const definitions = [
     path: "apps/rider/build/distributions/gaep-rider-0.1.0.zip",
     maximumBytes: 64 * 1024 * 1024,
     requiredHere: true,
-    verification: "clean-kotlin-compile-instrumented-plugin-build-structure-check-digest-bound-engine-and-phase-3b-model-switch-implementation-projection; target-model-availability-capability-refresh-supported-runtime-authentication-effective-policy-credential-access-administrator-policy-workspace-tool-access-provider-execution-model-transition-context-transfer-handoff-stage-ownership-transfer-resume-stage-creation-native-Rider-install-startup-and-interaction-acceptance-remain-pending",
+    verification: "clean-kotlin-compile-instrumented-plugin-build-structure-check-digest-bound-engine-and-phase-3b-approved-figma-context-retrieval-projection; actual-figma-access-remote-fetch-content-materialization-context-transfer-generation-provider-execution-stage-effect-source-mutation-design-approval-design-baseline-generation-readiness-native-Rider-install-startup-and-interaction-acceptance-remain-pending",
   },
   {
     host: "visual-studio",
@@ -46,7 +46,7 @@ const definitions = [
     path: "apps/visual-studio/Gaep.VisualStudio/bin/Release/net8.0-windows8.0/Gaep.VisualStudio.vsix",
     maximumBytes: 128 * 1024 * 1024,
     requiredHere: process.platform === "win32",
-    verification: "cross-platform-hostclient-build-and-phase-3b-model-switch-implementation-protocol-controller-projection; target-model-availability-capability-refresh-supported-runtime-authentication-effective-policy-credential-access-administrator-policy-workspace-tool-access-provider-execution-model-transition-context-transfer-handoff-stage-ownership-transfer-resume-stage-creation-Windows-VSIX-container-install-startup-and-interaction-acceptance-remain-pending",
+    verification: "cross-platform-hostclient-build-and-phase-3b-approved-figma-context-retrieval-protocol-controller-projection; actual-figma-access-remote-fetch-content-materialization-context-transfer-generation-provider-execution-stage-effect-source-mutation-design-approval-design-baseline-generation-readiness-Windows-VSIX-container-install-startup-and-interaction-acceptance-remain-pending",
   },
 ]
 
