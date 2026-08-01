@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-vscode-security-report",
+  "scope": {
+    "host": "vscode",
+    "execution": "local-offline",
+    "scanTargetRevision": "3537391af50962ba46fd94882cfcbab34556ce44",
+    "remediationRevision": "a6ff5f36f160e370bde0944329f91fb1353c9c52",
+    "observedAt": "2026-08-01T08:36:25Z",
+    "otherHostMatrices": "not-run",
+    "normalProfile": "not-touched",
+    "externalSystems": "not-used"
+  },
+  "result": "passed-with-open-acceptance-gates",
+  "scan": {
+    "id": "6c84d5af-dd61-47bd-b787-92946f276462",
+    "targetId": "target_sha256_a20bf741e334c3b9fe3d947511c3eddf83abb82dd2fb41962888b77516f140d8",
+    "producer": "codex-security-plugin@0.1.15",
+    "status": "completed",
+    "coverage": {
+      "repositoryFilesReviewed": 2941,
+      "unreadableFiles": 0,
+      "candidateFindings": 29,
+      "reportableFindings": 6,
+      "suppressedFindings": 16,
+      "notApplicableFindings": 7,
+      "deferredFindings": 0
+    },
+    "severity": {
+      "high": 1,
+      "medium": 3,
+      "low": 2
+    },
+    "artifactDigests": {
+      "findings": "6e09d70a3115371051c7ee6a05f81ad3e49bdd07b471e9fb42cedaf62c71809e",
+      "coverage": "ff8863965bc0dd6311a66396932b45a39624ca323dbbc5a9e8674ca1f1232678",
+      "candidateLedger": "5556f7a46f8d9a9989775a625309f549aca851d9d9cbef05cd3abed0c0c50b1b"
+    }
+  },
+  "remediations": [
+    {
+      "findingId": "csf_91581b3c0a3753de273f38d1",
+      "severity": "high",
+      "title": "Credential files can enter provider-visible staging",
+      "status": "remediated-local",
+      "controls": ["credential-path-exclusions", "negative-staging-regression"]
+    },
+    {
+      "findingId": "csf_ea655532fa3110f352991852",
+      "severity": "medium",
+      "title": "Native extension-host output is persisted without an exact field projection",
+      "status": "remediated-local",
+      "controls": ["exact-native-schema", "unknown-field-rejection", "bounded-projection"]
+    },
+    {
+      "findingId": "csf_0e62a8590b13281a7b5d1809",
+      "severity": "medium",
+      "title": "VSIX lifecycle evidence does not bind installed bytes to the tested archive",
+      "status": "remediated-local",
+      "controls": ["pre-lifecycle-vsix-hash", "canonical-content-manifest", "installed-content-equality"]
+    },
+    {
+      "findingId": "csf_92a52e49137725ba00130ea3",
+      "severity": "medium",
+      "title": "Product initialization persists secret-shaped narrative data",
+      "status": "remediated-local",
+      "controls": ["product-schema-secret-rejection", "host-input-secret-rejection", "pre-persistence-engine-regression"]
+    },
+    {
+      "findingId": "csf_a1953bb1977120bcfbf0f5ee",
+      "severity": "low",
+      "title": "Package receipts can digest artifacts through a symlinked ancestor",
+      "status": "remediated-local",
+      "controls": ["canonical-ancestor-validation", "no-follow-open", "stable-file-identity"]
+    },
+    {
+      "findingId": "csf_36ede8158b432d0d52a666a6",
+      "severity": "low",
+      "title": "Local VS Code report output follows repository symlinks",
+      "status": "remediated-local",
+      "controls": ["non-symlink-ancestors", "exclusive-no-follow-output", "no-overwrite"]
+    }
+  ],
+  "coverage": [
+    { "id": "contract-fail-closed", "status": "passed-local" },
+    { "id": "path-traversal-symlink-confinement", "status": "passed-local" },
+    { "id": "secret-shaped-value-rejection", "status": "passed-local" },
+    { "id": "archive-package-integrity", "status": "passed-local" },
+    { "id": "dependency-lockfile-review", "status": "passed-offline-with-freshness-limit" },
+    { "id": "webview-protocol-csp-local-resource-command-authority", "status": "passed-static-and-local-tests" },
+    { "id": "tamper-stale-binding-evidence-privacy", "status": "passed-local" },
+    { "id": "workspace-trust", "status": "not-established-native" },
+    { "id": "security-approval", "status": "not-granted" }
+  ],
+  "verification": {
+    "focusedNodeTests": { "files": 1, "tests": 5, "status": "passed" },
+    "focusedContractAndStagingTests": { "files": 2, "tests": 47, "status": "passed" },
+    "focusedEngineTests": { "files": 1, "tests": 27, "status": "passed" },
+    "typecheck": "passed",
+    "sharedAndVsCode": { "files": 165, "passed": 1071, "skipped": 1, "status": "passed" },
+    "isolatedExtensionHost": {
+      "status": "passed",
+      "phases": ["open", "reopen", "multi-root", "installed"],
+      "workspaceFingerprint": "unchanged"
+    },
+    "packageLifecycle": {
+      "status": "passed",
+      "exactPackage": "gaep.gaep-vscode@0.1.0",
+      "previousPackage": "gaep.gaep-vscode@0.0.9",
+      "bytes": 1232270,
+      "sha256": "a6e80b43362f8c960a2fe483a744c6ed2d7ba873a5bccecf61706ef0045db318",
+      "contentFiles": 8,
+      "contentManifestSha256": "033d4a485067d3c8dd6740ff79b1a37b4e3f64f9639a11dae9fad7073d08222a",
+      "operations": ["previous-install", "upgrade", "reinstall", "rollback", "uninstall", "absence", "final-install"]
+    }
+  },
+  "sourceDigests": [
+    { "path": "apps/vscode/test/e2e/package-content.mjs", "sha256": "1a4578a5fc82bf65d304148f9e6ca656958815ef0450d832abf1a1ea9ddd85a2" },
+    { "path": "apps/vscode/test/e2e/run.mjs", "sha256": "aab0bb20b4c9048f4fef96a16e5fc794b12588b8a0e3c81d23bcd93d045f02ea" },
+    { "path": "packages/agent-sdk/src/workspace-staging.ts", "sha256": "4488dc00699fda9fb157dc4071a93e9410ac73b02d2733c225498e0bb4057df7" },
+    { "path": "packages/contracts/src/privacy.ts", "sha256": "7b27e72b8678e93cb9aba3274b21df4156fa2e2684bce847eda4663047c64fbb" },
+    { "path": "packages/contracts/src/product.ts", "sha256": "3579611d9395191f9b95238f7028fa76f8fc4e30780eb96daefc8cfa5a45742d" },
+    { "path": "packages/contracts/src/host.ts", "sha256": "7f4c0ea8591b7063ce160a192b76173ae965fc71a6ba103f3119ba4c12124005" },
+    { "path": "scripts/lib/repository-files.mjs", "sha256": "cb379fcc8a89cfbaeb092850bacd46f1ac9691e45727adceea95417996e6d9ac" },
+    { "path": "scripts/report_local_packages.mjs", "sha256": "366020754f42c3ea87152e79d25dc015cecdcf98a01d238b023bfaf20225e42b" },
+    { "path": "scripts/vscode_local_e2e_report.mjs", "sha256": "516f7edef9e194a7c18b0177b2c905a87a2cd695c7428df55a0f0abacd8f2065" }
+  ],
+  "privacy": {
+    "rawCommandOutputIncluded": false,
+    "absoluteMachinePathsIncluded": false,
+    "promptsIncluded": false,
+    "sourceBytesIncluded": false,
+    "environmentValuesIncluded": false,
+    "secretsIncluded": false
+  },
+  "authorityBoundary": "This report establishes completed automated offline assessment and local remediation evidence only. It grants no security approval, risk acceptance, Product Owner acceptance, native-manual acceptance, release, publication, deployment, provider, Figma, or other-host authority.",
+  "limitations": [
+    "The extension-host harness disables workspace-trust enforcement; native untrusted-workspace behavior is not established.",
+    "The dependency audit used locally available offline advisory data and cannot establish freshness.",
+    "The historical repository threat model does not fully describe the current engine, adapters, staging, IDE host, packaging and update surfaces.",
+    "Packaged binary provenance was inventoried but not independently reproduced or decompiled.",
+    "No live provider, Figma, credential, network service, external system, normal-profile extension, release, publication or deployment action was used."
+  ]
+}
