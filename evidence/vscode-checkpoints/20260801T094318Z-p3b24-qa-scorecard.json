@@ -1,0 +1,389 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-vscode-multi-dimensional-qa-scorecard-report",
+  "scope": {
+    "host": "vscode",
+    "execution": "local-deterministic-evidence-composition",
+    "repositoryCheckpoint": "ff60524512f857cbf9665eb0907d5d7ea95a2099",
+    "observedAt": "2026-08-01T09:43:18Z",
+    "normalProfile": "not-touched",
+    "otherHostMatrices": "not-run",
+    "externalSystems": "not-used"
+  },
+  "result": "local-automation-current-human-and-external-gates-pending",
+  "scorecard": {
+    "dimensions": [
+      {
+        "id": "functional",
+        "ordinal": 1,
+        "state": "success",
+        "evidence": [
+          {
+            "id": "evidence.functional",
+            "dimensionId": "functional",
+            "kind": "local-functional-gate",
+            "artifactPath": "evidence/vscode-checkpoints/20260801T072843Z-p3b18-unit-integration-testing.json",
+            "artifactDigest": "sha256:543ba7c2f92194ce2ee356739ca7335454d27dc89d0e823d59fc0401fb90903d",
+            "sourceCheckpoint": "746d253",
+            "observedAt": "2026-08-01T09:43:18Z",
+            "outcome": "success",
+            "freshness": "current",
+            "testCount": 1068,
+            "skippedCount": 1,
+            "limitationCount": 1,
+            "localExecutionOnly": true,
+            "acceptanceState": "not-established"
+          }
+        ],
+        "gapKeys": [],
+        "localAutomationState": "passed",
+        "humanValidationState": "not-established",
+        "productOwnerAcceptanceState": "not-established"
+      },
+      {
+        "id": "unit-integration",
+        "ordinal": 2,
+        "state": "success",
+        "evidence": [
+          {
+            "id": "evidence.unit-integration",
+            "dimensionId": "unit-integration",
+            "kind": "local-unit-integration-gate",
+            "artifactPath": "evidence/vscode-checkpoints/20260801T072843Z-p3b18-unit-integration-testing.json",
+            "artifactDigest": "sha256:543ba7c2f92194ce2ee356739ca7335454d27dc89d0e823d59fc0401fb90903d",
+            "sourceCheckpoint": "746d253",
+            "observedAt": "2026-08-01T09:43:18Z",
+            "outcome": "success",
+            "freshness": "current",
+            "testCount": 148,
+            "skippedCount": 0,
+            "limitationCount": 1,
+            "localExecutionOnly": true,
+            "acceptanceState": "not-established"
+          }
+        ],
+        "gapKeys": [],
+        "localAutomationState": "passed",
+        "humanValidationState": "not-established",
+        "productOwnerAcceptanceState": "not-established"
+      },
+      {
+        "id": "e2e",
+        "ordinal": 3,
+        "state": "success",
+        "evidence": [
+          {
+            "id": "evidence.e2e",
+            "dimensionId": "e2e",
+            "kind": "local-e2e-receipt",
+            "artifactPath": "evidence/vscode-checkpoints/20260801T074130Z-p3b19-local-vscode-e2e.json",
+            "artifactDigest": "sha256:30ed85aaba43a8c472da8b3dd723fb87a002d50f2aeb659e5a77ea6bb71e17d9",
+            "sourceCheckpoint": "0bd9ed8",
+            "observedAt": "2026-08-01T09:43:18Z",
+            "outcome": "success",
+            "freshness": "current",
+            "testCount": 158,
+            "skippedCount": 0,
+            "limitationCount": 1,
+            "localExecutionOnly": true,
+            "acceptanceState": "not-established"
+          }
+        ],
+        "gapKeys": [],
+        "localAutomationState": "passed",
+        "humanValidationState": "not-established",
+        "productOwnerAcceptanceState": "not-established"
+      },
+      {
+        "id": "security",
+        "ordinal": 4,
+        "state": "success",
+        "evidence": [
+          {
+            "id": "evidence.security",
+            "dimensionId": "security",
+            "kind": "local-security-report",
+            "artifactPath": "evidence/vscode-checkpoints/20260801T083625Z-p3b20-local-security.json",
+            "artifactDigest": "sha256:2b0635c0f3b609fa34f22d109b42e352ac1a14a36814543cf3123668746b9332",
+            "sourceCheckpoint": "a6ff5f3",
+            "observedAt": "2026-08-01T09:43:18Z",
+            "outcome": "success",
+            "freshness": "current",
+            "testCount": 0,
+            "skippedCount": 0,
+            "limitationCount": 1,
+            "localExecutionOnly": true,
+            "acceptanceState": "not-established"
+          }
+        ],
+        "gapKeys": [],
+        "localAutomationState": "passed",
+        "humanValidationState": "not-established",
+        "productOwnerAcceptanceState": "not-established"
+      },
+      {
+        "id": "accessibility",
+        "ordinal": 5,
+        "state": "success",
+        "evidence": [
+          {
+            "id": "evidence.accessibility",
+            "dimensionId": "accessibility",
+            "kind": "local-accessibility-report",
+            "artifactPath": "evidence/vscode-checkpoints/20260801T084802Z-p3b21-accessibility.json",
+            "artifactDigest": "sha256:d8de6da63840164110ea8db0e93a5985387127cd6f12276c2c1b9020031fafe3",
+            "sourceCheckpoint": "78b9d9a",
+            "observedAt": "2026-08-01T09:43:18Z",
+            "outcome": "success",
+            "freshness": "current",
+            "testCount": 41,
+            "skippedCount": 0,
+            "limitationCount": 1,
+            "localExecutionOnly": true,
+            "acceptanceState": "not-established"
+          }
+        ],
+        "gapKeys": [],
+        "localAutomationState": "passed",
+        "humanValidationState": "not-established",
+        "productOwnerAcceptanceState": "not-established"
+      },
+      {
+        "id": "visual-fixture",
+        "ordinal": 6,
+        "state": "success",
+        "evidence": [
+          {
+            "id": "evidence.visual-fixture",
+            "dimensionId": "visual-fixture",
+            "kind": "local-visual-fixture-report",
+            "artifactPath": "apps/vscode/test/visual/baselines/p3b22/manifest.json",
+            "artifactDigest": "sha256:7d946cfe9b72536aa239be9d69ed51199a9bea28fbeac63f5e5ab950f80f3320",
+            "sourceCheckpoint": "bf15fd1",
+            "observedAt": "2026-08-01T09:43:18Z",
+            "outcome": "success",
+            "freshness": "current",
+            "testCount": 0,
+            "skippedCount": 0,
+            "limitationCount": 1,
+            "localExecutionOnly": true,
+            "acceptanceState": "not-established"
+          }
+        ],
+        "gapKeys": [],
+        "localAutomationState": "passed",
+        "humanValidationState": "not-established",
+        "productOwnerAcceptanceState": "not-established"
+      },
+      {
+        "id": "performance",
+        "ordinal": 7,
+        "state": "success",
+        "evidence": [
+          {
+            "id": "evidence.performance",
+            "dimensionId": "performance",
+            "kind": "local-performance-report",
+            "artifactPath": "evidence/vscode-checkpoints/20260801T092415Z-p3b23-performance-reliability.json",
+            "artifactDigest": "sha256:564d291c069028f7bea2f9277699c9833c658812b72890b8f17ef0af44792d71",
+            "sourceCheckpoint": "063e5d12",
+            "observedAt": "2026-08-01T09:43:18Z",
+            "outcome": "success",
+            "freshness": "current",
+            "testCount": 217,
+            "skippedCount": 1,
+            "limitationCount": 1,
+            "localExecutionOnly": true,
+            "acceptanceState": "not-established"
+          }
+        ],
+        "gapKeys": [],
+        "localAutomationState": "passed",
+        "humanValidationState": "not-established",
+        "productOwnerAcceptanceState": "not-established"
+      },
+      {
+        "id": "reliability",
+        "ordinal": 8,
+        "state": "success",
+        "evidence": [
+          {
+            "id": "evidence.reliability",
+            "dimensionId": "reliability",
+            "kind": "local-reliability-report",
+            "artifactPath": "evidence/vscode-checkpoints/20260801T092415Z-p3b23-performance-reliability.json",
+            "artifactDigest": "sha256:564d291c069028f7bea2f9277699c9833c658812b72890b8f17ef0af44792d71",
+            "sourceCheckpoint": "063e5d12",
+            "observedAt": "2026-08-01T09:43:18Z",
+            "outcome": "success",
+            "freshness": "current",
+            "testCount": 217,
+            "skippedCount": 1,
+            "limitationCount": 1,
+            "localExecutionOnly": true,
+            "acceptanceState": "not-established"
+          }
+        ],
+        "gapKeys": [],
+        "localAutomationState": "passed",
+        "humanValidationState": "not-established",
+        "productOwnerAcceptanceState": "not-established"
+      },
+      {
+        "id": "trace-coverage",
+        "ordinal": 9,
+        "state": "success",
+        "evidence": [
+          {
+            "id": "evidence.trace-coverage",
+            "dimensionId": "trace-coverage",
+            "kind": "trace-coverage-candidate",
+            "artifactPath": "evidence/vscode-checkpoints/20260731T213608Z-p3b17-test-generation.json",
+            "artifactDigest": "sha256:b2c7c8e956c15ddc0dc74c479e26a6aabbc18946ecdae407ba884104403ff0f2",
+            "sourceCheckpoint": "8784262",
+            "observedAt": "2026-08-01T09:43:18Z",
+            "outcome": "success",
+            "freshness": "current",
+            "testCount": 146,
+            "skippedCount": 0,
+            "limitationCount": 1,
+            "localExecutionOnly": true,
+            "acceptanceState": "not-established"
+          }
+        ],
+        "gapKeys": [],
+        "localAutomationState": "passed",
+        "humanValidationState": "not-established",
+        "productOwnerAcceptanceState": "not-established"
+      },
+      {
+        "id": "unresolved-gaps",
+        "ordinal": 10,
+        "state": "not-assessed",
+        "evidence": [
+          {
+            "id": "evidence.unresolved-gaps",
+            "dimensionId": "unresolved-gaps",
+            "kind": "gap-register",
+            "artifactPath": "docs/06_Roadmap/054_GAEP_FEATURE_DELIVERY_TRACKER.md",
+            "artifactDigest": "sha256:735e2117fddb719007230e85ba3ebab520b5d9fb3e3311e5d2bbf23c36746bb8",
+            "sourceCheckpoint": "26108a6",
+            "observedAt": "2026-08-01T09:43:18Z",
+            "outcome": "not-assessed",
+            "freshness": "current",
+            "testCount": 0,
+            "skippedCount": 0,
+            "limitationCount": 12,
+            "localExecutionOnly": true,
+            "acceptanceState": "not-established"
+          }
+        ],
+        "gapKeys": [
+          "gap.current-figma",
+          "gap.hostile-same-uid",
+          "gap.human-accessibility",
+          "gap.human-design",
+          "gap.live-provider",
+          "gap.native-power-loss",
+          "gap.native-untrusted-workspace",
+          "gap.product-owner-acceptance",
+          "gap.release-authority",
+          "gap.security-approval",
+          "gap.supported-platform",
+          "gap.sustained-production"
+        ],
+        "localAutomationState": "not-run",
+        "humanValidationState": "not-established",
+        "productOwnerAcceptanceState": "not-established"
+      }
+    ],
+    "successCount": 9,
+    "failureCount": 0,
+    "missingCount": 0,
+    "staleCount": 0,
+    "notAssessedCount": 1,
+    "unresolvedGapKeys": [
+      "gap.current-figma",
+      "gap.hostile-same-uid",
+      "gap.human-accessibility",
+      "gap.human-design",
+      "gap.live-provider",
+      "gap.native-power-loss",
+      "gap.native-untrusted-workspace",
+      "gap.product-owner-acceptance",
+      "gap.release-authority",
+      "gap.security-approval",
+      "gap.supported-platform",
+      "gap.sustained-production"
+    ],
+    "state": "attention-required",
+    "releaseReadiness": "not-established"
+  },
+  "focusedVerification": {
+    "status": "passed",
+    "files": 5,
+    "tests": 40,
+    "skipped": 0
+  },
+  "visualVerification": {
+    "status": "passed",
+    "scenarios": 6,
+    "deliveryTables": 45
+  },
+  "sourceDigests": [
+    {
+      "path": "apps/vscode/test/visual/baselines/p3b22/manifest.json",
+      "bytes": 4346,
+      "sha256": "7d946cfe9b72536aa239be9d69ed51199a9bea28fbeac63f5e5ab950f80f3320"
+    },
+    {
+      "path": "docs/06_Roadmap/054_GAEP_FEATURE_DELIVERY_TRACKER.md",
+      "bytes": 490314,
+      "sha256": "735e2117fddb719007230e85ba3ebab520b5d9fb3e3311e5d2bbf23c36746bb8"
+    },
+    {
+      "path": "evidence/vscode-checkpoints/20260731T213608Z-p3b17-test-generation.json",
+      "bytes": 4855,
+      "sha256": "b2c7c8e956c15ddc0dc74c479e26a6aabbc18946ecdae407ba884104403ff0f2"
+    },
+    {
+      "path": "evidence/vscode-checkpoints/20260801T072843Z-p3b18-unit-integration-testing.json",
+      "bytes": 5424,
+      "sha256": "543ba7c2f92194ce2ee356739ca7335454d27dc89d0e823d59fc0401fb90903d"
+    },
+    {
+      "path": "evidence/vscode-checkpoints/20260801T074130Z-p3b19-local-vscode-e2e.json",
+      "bytes": 7635,
+      "sha256": "30ed85aaba43a8c472da8b3dd723fb87a002d50f2aeb659e5a77ea6bb71e17d9"
+    },
+    {
+      "path": "evidence/vscode-checkpoints/20260801T083625Z-p3b20-local-security.json",
+      "bytes": 7392,
+      "sha256": "2b0635c0f3b609fa34f22d109b42e352ac1a14a36814543cf3123668746b9332"
+    },
+    {
+      "path": "evidence/vscode-checkpoints/20260801T084802Z-p3b21-accessibility.json",
+      "bytes": 5716,
+      "sha256": "d8de6da63840164110ea8db0e93a5985387127cd6f12276c2c1b9020031fafe3"
+    },
+    {
+      "path": "evidence/vscode-checkpoints/20260801T092415Z-p3b23-performance-reliability.json",
+      "bytes": 7102,
+      "sha256": "564d291c069028f7bea2f9277699c9833c658812b72890b8f17ef0af44792d71"
+    }
+  ],
+  "privacy": {
+    "rawTestOutputIncluded": false,
+    "absoluteMachinePathsIncluded": false,
+    "environmentValuesIncluded": false,
+    "sourceBytesIncluded": false,
+    "secretsIncluded": false
+  },
+  "authorityBoundary": "This scorecard summarizes bounded local VS Code automation only. It grants no Product truth, native human validation, security approval, Product Owner acceptance, release, publication, deployment, provider, Figma or other-host authority.",
+  "limitations": [
+    "Local automation success is not Product truth, semantic quality, human validation or supported-platform acceptance.",
+    "Security automation is not accountable security approval or risk acceptance.",
+    "Visual fixtures are renderer-bound and do not establish current Figma, native display or perceptual quality.",
+    "Performance and reliability measurements are one-machine regression budgets, not production capacity, power-loss or hostile same-UID guarantees."
+  ]
+}
