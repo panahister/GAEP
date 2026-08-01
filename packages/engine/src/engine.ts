@@ -111,6 +111,7 @@ import { ChangeConflictDetectionService } from "./change-conflict-detection.js"
 import { TestGenerationService } from "./test-generation.js"
 import { UnitIntegrationTestingService } from "./unit-integration-testing.js"
 import { QaScorecardService } from "./qa-scorecard.js"
+import { LocalUatService } from "./local-uat.js"
 import { BusinessArchitectureBaselineService } from "./business-architecture-baseline.js"
 import { BusinessRuleCatalogService } from "./business-rule-catalog.js"
 import { BusinessUnderstandingService } from "./business-understanding.js"
@@ -355,6 +356,7 @@ export class GaepEngine {
   readonly testGeneration: TestGenerationService
   readonly unitIntegrationTesting: UnitIntegrationTestingService
   readonly qaScorecard: QaScorecardService
+  readonly localUat: LocalUatService
   readonly valueStreamModel: ValueStreamModelService
   readonly operatingModel: OperatingModelService
   readonly businessRuleCatalog: BusinessRuleCatalogService
@@ -1299,6 +1301,12 @@ export class GaepEngine {
       this.repository,
       () => this.readProduct(),
       (id) => this.readInitiative(id),
+    )
+    this.localUat = new LocalUatService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
+      this.qaScorecard,
     )
     this.designDriftDetection = new DesignDriftDetectionService(
       this.repository,
