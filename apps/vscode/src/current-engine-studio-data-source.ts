@@ -45,6 +45,7 @@ import type {
   RollbackRecoveryProjection,
   ChangeConflictDetectionProjection,
   TestGenerationProjection,
+  UnitIntegrationTestingProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -329,6 +330,9 @@ export interface CurrentStudioEngineReader {
   testGeneration?: {
     project(initiativeId: string): Promise<TestGenerationProjection>
   }
+  unitIntegrationTesting?: {
+    project(initiativeId: string): Promise<UnitIntegrationTestingProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -535,6 +539,7 @@ interface ObservedStudioState {
   rollbackRecoveryProjections: Map<string, RollbackRecoveryProjection>
   changeConflictDetectionProjections: Map<string, ChangeConflictDetectionProjection>
   testGenerationProjections: Map<string, TestGenerationProjection>
+  unitIntegrationTestingProjections: Map<string, UnitIntegrationTestingProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3988,6 +3993,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     rollbackRecoveries: rollbackRecoveryTable(state.rollbackRecoveryProjections.values()),
     changeConflictDetections: changeConflictDetectionTable(state.changeConflictDetectionProjections.values()),
     testGenerations: testGenerationTable(state.testGenerationProjections.values()),
+    unitIntegrationTestings: unitIntegrationTestingTable(state.unitIntegrationTestingProjections.values()),
   }
 }
 
@@ -5693,6 +5699,31 @@ export function testGenerationTable(projections: Iterable<TestGenerationProjecti
     { key: "boundary", label: "Privacy and authority boundary" }], rows, actions: [],
     ...(rows.length === 0 ? { emptyState: emptySurface("No governed Test Generation candidate",
       "Create the metadata-only plan through the governed engine after the exact current acceptance, methodology, inventory, implementation, design trace, backlog trace, controlled generation, preview, stage and conflict-detection predecessors exist. Refresh Product Studio after a superseding revision. This view cannot inspect source, generate or execute tests, mutate files, establish results, coverage, quality, approval or acceptance, or grant action authority.") } : {}) }
+}
+
+export function unitIntegrationTestingTable(projections: Iterable<UnitIntegrationTestingProjection>): StudioTableSnapshot {
+  const rows = [...projections].flatMap((projection) => projection.candidate?.suites.map((suite) => ({
+    id: suite.id, cells: { initiative: projection.initiative.id, suite: suite.suiteKey, implementationUnit: suite.implementationUnitId,
+      sourcePath: suite.sourcePathCandidate, testPath: suite.testPathCandidate, unitCases: String(suite.unitCaseCount),
+      integrationCases: String(suite.integrationCaseCount), frameworks: suite.frameworkCandidates.join(", ") || "not-assessed",
+      environments: suite.environmentCandidates.join(", ") || "not-assessed", fixtures: String(suite.fixtureCandidateCount),
+      oracles: String(suite.oracleCandidateCount), coverage: String(suite.coverageCandidateCount), state: suite.state,
+      assessment: `${projection.status.state} · ${projection.status.definedSuiteCount} defined · ${projection.status.gapSuiteCount} gaps · ${projection.status.conflictSuiteCount} conflicts · ${projection.status.staleBindingCount} stale bindings`,
+      receipts: `${projection.candidate!.dependencyReceiptDigest} · ${projection.candidate!.suiteReceiptDigest} · ${projection.candidate!.caseReceiptDigest} · ${projection.candidate!.fixtureOracleReceiptDigest} · ${projection.candidate!.coverageReceiptDigest}`,
+      boundary: "Unit and Integration Testing suite metadata only. Paths, cases, frameworks, environments, fixtures, oracles, coverage and risk traces are candidates. Local GAEP harness evidence remains separate from Product test truth. This view does not inspect source, create or mutate tests, execute Product tests, establish results, coverage, quality, approval, acceptance or security approval, or grant action authority." },
+    state: suite.state, actions: [],
+  })) ?? [])
+  return { id: "unit-integration-testing", title: "Governed Unit and Integration Testing", columns: [
+    { key: "initiative", label: "Initiative", identifier: true }, { key: "suite", label: "Suite", identifier: true },
+    { key: "implementationUnit", label: "Implementation Unit" }, { key: "sourcePath", label: "Source path candidate" },
+    { key: "testPath", label: "Test path candidate" }, { key: "unitCases", label: "Unit cases" },
+    { key: "integrationCases", label: "Integration cases" }, { key: "frameworks", label: "Framework candidates" },
+    { key: "environments", label: "Environment candidates" }, { key: "fixtures", label: "Fixture candidates" },
+    { key: "oracles", label: "Oracle candidates" }, { key: "coverage", label: "Coverage candidates" },
+    { key: "state", label: "Candidate state" }, { key: "assessment", label: "Fail-closed assessment" },
+    { key: "receipts", label: "Deterministic receipts" }, { key: "boundary", label: "Privacy and authority boundary" }], rows, actions: [],
+    ...(rows.length === 0 ? { emptyState: emptySurface("No governed Unit and Integration Testing candidate",
+      "Create the metadata-only suite candidate through the governed engine after the exact current Test Generation, methodology, inventory, acceptance, implementation-unit, changed-unit, preview, stage, conflict, risk and evidence predecessors exist. Refresh Product Studio after a superseding revision. This view cannot inspect source, create or execute Product tests, establish results, coverage, quality, approval, acceptance or security approval, or grant action authority.") } : {}) }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7615,6 +7646,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       rollbackRecoveryProjections: new Map(),
       changeConflictDetectionProjections: new Map(),
       testGenerationProjections: new Map(),
+      unitIntegrationTestingProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -9685,6 +9717,62 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
           empty.issues.push(issue(`test-generation-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Test Generation metadata is unavailable.`, "warning", initiative.id))
         })
       } else if (empty.initiatives.length > 0) empty.issues.push(issue("test-generation-unavailable", "Test Generation metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+    }
+    if (route === "delivery" && engine.unitIntegrationTesting) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map(async (initiative) => {
+          if (!engine.riskRegister || !engine.evidenceRegistry) throw new Error("Risk and Evidence Registry readers are unavailable")
+          const [testing, risk, evidence] = await Promise.all([
+            engine.unitIntegrationTesting!.project(initiative.id),
+            engine.riskRegister.project(initiative.id),
+            engine.evidenceRegistry.project(initiative.id),
+          ])
+          return { testing, risk, evidence }
+        }))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const { testing: value, risk, evidence } = projection.value
+            const candidates = {
+              testGeneration: empty.testGenerationProjections.get(initiative.id)?.candidate,
+              testMethodology: empty.testMethodologyProjections.get(initiative.id)?.candidate,
+              testInventory: empty.testInventoryProjections.get(initiative.id)?.candidate,
+              acceptanceCriteria: empty.acceptanceCriteriaProjections.get(initiative.id)?.candidate,
+              implementationUnitModel: empty.implementationUnitModelProjections.get(initiative.id)?.candidate,
+              changedUnitInventory: empty.changedUnitInventoryProjections.get(initiative.id)?.candidate,
+              proposedChangePreview: empty.proposedChangePreviewProjections.get(initiative.id)?.candidate,
+              stagingWorkspace: empty.stagingWorkspaceProjections.get(initiative.id)?.candidate,
+              changeConflictDetection: empty.changeConflictDetectionProjections.get(initiative.id)?.candidate,
+              riskRegister: risk.register,
+              evidenceRegistry: evidence.registry,
+            }
+            const { snapshotDigest, ...projectionBody } = value
+            const { snapshotDigest: riskDigest, ...riskBody } = risk
+            const { snapshotDigest: evidenceDigest, ...evidenceBody } = evidence
+            const exactDependencies = value.status.dependencies !== undefined && (Object.keys(candidates) as (keyof typeof candidates)[]).every((key) => {
+              const reference = value.status.dependencies?.[key], candidate = candidates[key]
+              return reference !== undefined && candidate !== undefined && reference.recordId === candidate.id && reference.revision === candidate.revision && reference.digest === candidate.digest
+            })
+            const exactRisk = risk.product.id === empty.product?.id && risk.product.revision === (empty.product.revision ?? 1) &&
+              risk.product.digest === canonicalDigest(empty.product) && risk.initiative.id === initiative.id &&
+              risk.initiative.revision === (initiative.revision ?? 1) && risk.initiative.digest === canonicalDigest(initiative) &&
+              riskDigest === canonicalDigest(riskBody)
+            const exactEvidence = evidence.product.id === empty.product?.id && evidence.product.revision === (empty.product.revision ?? 1) &&
+              evidence.product.digest === canonicalDigest(empty.product) && evidence.initiative.id === initiative.id &&
+              evidence.initiative.revision === (initiative.revision ?? 1) && evidence.initiative.digest === canonicalDigest(initiative) &&
+              evidenceDigest === canonicalDigest(evidenceBody)
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id && value.initiative.revision === (initiative.revision ?? 1) &&
+                value.initiative.digest === canonicalDigest(initiative) && exactDependencies && exactRisk && exactEvidence &&
+                snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.unitIntegrationTestingProjections.set(initiative.id, value); return
+            }
+          }
+          this.context.logDiagnostic("Product Studio Unit and Integration Testing projection was unavailable or did not bind all exact current test-plan, methodology, inventory, acceptance, implementation, change, risk, and evidence predecessors", projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`unit-integration-testing-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Unit and Integration Testing metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) empty.issues.push(issue("unit-integration-testing-unavailable", "Unit and Integration Testing metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
     }
     if (
       (route === "direction" || route === "users-jobs" || route === "outcomes") &&

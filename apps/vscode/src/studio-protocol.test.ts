@@ -330,7 +330,7 @@ describe("Product Studio protocol", () => {
   })
 
   it("defines one exhaustive accessible Delivery-table order and validates every optional table", () => {
-    expect(deliveryTableKeys).toHaveLength(43)
+    expect(deliveryTableKeys).toHaveLength(44)
     expect(deliveryTableKeys.slice(0, 6)).toEqual([
       "initiatives", "sources", "sourceBaselines", "sourceProvenance", "changes", "workItems",
     ])
@@ -355,6 +355,7 @@ describe("Product Studio protocol", () => {
       "rollbackRecoveries",
       "changeConflictDetections",
       "testGenerations",
+      "unitIntegrationTestings",
     ])
 
     const complete = snapshot("delivery")
