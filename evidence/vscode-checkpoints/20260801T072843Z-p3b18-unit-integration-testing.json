@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "kind": "vscode-local-implementation-checkpoint",
+  "feature": { "id": "P3B-18", "title": "Unit and Integration Testing", "implementationScope": "shared-contract-engine-and-vscode-product-studio" },
+  "recordedAt": "2026-08-01T07:28:43.000Z",
+  "branch": "codex/gaep-hardwork-completion",
+  "source": { "contractCommit": "746d253", "engineCommit": "f39bf3f", "productStudioCommit": "00a0b0f", "deliveryRendererCorrectionCommit": "565d032" },
+  "implementation": {
+    "contract": "packages/contracts/src/unit-integration-testing.ts",
+    "engine": "packages/engine/src/unit-integration-testing.ts",
+    "productStudioDataSource": "apps/vscode/src/current-engine-studio-data-source.ts",
+    "vscodeProtocol": "apps/vscode/src/studio-protocol.ts",
+    "surface": "Product Studio Delivery route",
+    "lifecycle": [
+      "immutable versioned Unit and Integration Testing candidate history",
+      "exact eleven-predecessor current revision and digest validation across Test Generation, methodology, inventory, acceptance, implementation unit, changed unit, preview, stage, conflict, risk, and evidence candidates",
+      "one bounded suite per exact Test Generation and change-conflict subject with exact repository-relative source and test path candidates",
+      "unit and integration case identities with exact inventory, methodology, acceptance, requirement, risk, framework, environment, fixture, oracle, coverage, and evidence continuity",
+      "candidate repeatability and isolation metadata with explicit Product execution and result absence",
+      "deterministic dependency, suite, case, fixture-oracle, coverage, evidence, and assessment receipts",
+      "fail-closed unavailable, gap, conflict, stale, not-assessed, invalid, forged, traversal, secret-shaped, and stale-predecessor handling",
+      "bounded privacy-safe Product Studio projection with no source inspection, test creation, mutation, execution, approval, acceptance, security approval, or action authority",
+      "P3B-17 Test Generation and P3B-18 services wired into the actual GaepEngine and workspace health aggregation"
+    ]
+  },
+  "verification": {
+    "typecheck": { "command": "npm run typecheck", "status": "passed" },
+    "focused": { "command": "npx vitest run packages/contracts/src/unit-integration-testing.test.ts packages/engine/src/unit-integration-testing.test.ts apps/vscode/src/unit-integration-testing-product-studio.test.ts apps/vscode/src/studio-protocol.test.ts apps/vscode/src/studio-accessibility.test.ts apps/vscode/src/current-engine-studio-data-source.test.ts", "status": "passed", "testFilesPassed": 6, "testsPassed": 148, "testsSkipped": 0 },
+    "sharedAndVscode": { "command": "npx vitest run packages apps/vscode --maxWorkers=4", "status": "passed", "testFilesPassed": 165, "testsPassed": 1068, "testsSkipped": 1 },
+    "vscodePackage": { "command": "npm run test:vscode:extension-host", "status": "passed", "path": "apps/vscode/dist/gaep-vscode.vsix", "bytes": 1231756,
+      "sha256": "19cd8ccacf1ac45f28c3aa27ec1977d1243be4fb938a1f762f201a2a6e1c01e8", "published": false,
+      "limitation": "This is the exact post-lifecycle P3B-18 checkpoint artifact. It is not the final roadmap package and later included-input changes require a new lifecycle run and hash. Repeated vsce builds also vary ZIP timestamps." },
+    "isolatedExtensionHost": { "command": "npm run test:vscode:extension-host", "status": "passed", "normalProfileUsed": false,
+      "checks": ["development activation, contributed commands, four native views, and Product Studio open", "explicit two-root Product context without silent Product-root mutation", "isolated previous-version install, upgrade, reinstall, rollback, uninstall, absence, and final install", "exact VSIX activation, commands, views, Product Studio, bundled-engine empty recovery/evidence workflow, and no workspace mutation"],
+      "limitation": "The test harness disables workspace trust, so untrusted-host behavior is not established by this receipt." }
+  },
+  "acceptanceBoundary": {
+    "candidateSuiteMetadataOnly": true,
+    "localGaepHarnessExecutionEvidence": "passed-separately-not-Product-test-truth",
+    "repositoryInspection": "not-performed",
+    "sourceInspection": "not-performed",
+    "testAssetTruth": "not-established",
+    "productTestExecution": "not-performed",
+    "productTestResultTruth": "not-established",
+    "productCoverageTruth": "not-established",
+    "qualityTruth": "not-established",
+    "approval": "not-established",
+    "nativeVscodeAcceptance": "not-established",
+    "productOwnerAcceptance": "not-established",
+    "securityAutomation": "not-performed-at-this-checkpoint",
+    "securityApproval": "not-established",
+    "releaseAuthorization": "not-granted",
+    "publicationAuthorization": "not-granted",
+    "deploymentAuthorization": "not-granted",
+    "actionAuthority": "not-granted"
+  },
+  "externalEffects": { "credentialAccess": false, "externalProviderCalls": 0, "figmaCalls": 0, "sourceInspection": false,
+    "testCreationOrMutation": false, "productTestExecution": false, "sourceMutation": false, "externalSystemMutations": 0,
+    "normalProfileExtensionMutation": false, "packagePublished": false, "releaseOrDeploymentPerformed": false },
+  "conformanceBoundary": "This scoped VS Code checkpoint does not refresh, weaken, or reinterpret the historical full four-host conformance checkpoint."
+}
