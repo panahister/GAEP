@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-vscode-fixture-visual-regression-report",
+  "scope": {
+    "host": "vscode",
+    "execution": "local-offline-loopback-browser",
+    "repositoryCheckpoint": "b11014022c0a3440cadce706ab983fea0a58c3cb",
+    "observedAt": "2026-08-01T09:11:08Z",
+    "normalProfile": "not-touched",
+    "otherHostMatrices": "not-run",
+    "externalSystems": "not-used",
+    "liveFigma": "not-used"
+  },
+  "result": "fixture-baselines-exact-human-design-acceptance-pending",
+  "renderer": {
+    "name": "chrome-headless",
+    "product": "Google Chrome",
+    "version": "150.0.7871.187",
+    "fingerprint": "google-chrome-150.0.7871.187-headless-dsf1"
+  },
+  "baseline": {
+    "path": "apps/vscode/test/visual/baselines/p3b22/manifest.json",
+    "manifestSha256": "9a4afb5bb32d7b9ad1784e8d2c2d6b0229d4f8b4540a600ffd4a7d3ddd7a3879",
+    "comparison": "exact-png-bytes",
+    "environmentBound": true
+  },
+  "focusedVerification": {
+    "status": "passed",
+    "files": [
+      "apps/vscode/src/studio-document.test.ts",
+      "apps/vscode/src/studio-visual-fixtures.test.ts",
+      "apps/vscode/src/studio-accessibility.test.ts"
+    ],
+    "fileCount": 3,
+    "tests": 27,
+    "skipped": 0
+  },
+  "captures": [
+    {
+      "id": "overview-ready-wide",
+      "route": "overview",
+      "surface": "ready",
+      "theme": "light",
+      "width": 1280,
+      "height": 900,
+      "bytes": 128303,
+      "sha256": "915af73d632827209be0119b7b1d47b9491c16363f3220d264da27167f068caa",
+      "tableCount": 0,
+      "status": "exact-match"
+    },
+    {
+      "id": "delivery-tables-wide",
+      "route": "delivery",
+      "surface": "ready",
+      "theme": "dark",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 153844,
+      "sha256": "97bb54f531579c64762e2d25732b02f2d498ce2d25a9f15f8d346987e0c84f1f",
+      "tableCount": 44,
+      "status": "exact-match"
+    },
+    {
+      "id": "scope-form-compact",
+      "route": "scope",
+      "surface": "ready",
+      "theme": "light",
+      "width": 500,
+      "height": 844,
+      "bytes": 60831,
+      "sha256": "c9aa775957f72e41acdb07a57574ae67b0472fbf7c619e1bcfe2931b74b8482f",
+      "tableCount": 1,
+      "status": "exact-match"
+    },
+    {
+      "id": "trace-inspector-responsive",
+      "route": "trace",
+      "surface": "ready",
+      "theme": "dark",
+      "width": 680,
+      "height": 900,
+      "bytes": 104153,
+      "sha256": "0b260df09a14570666c0dbcc7002a5c09ed17e7a77766d3483939c308d503728",
+      "tableCount": 5,
+      "status": "exact-match"
+    },
+    {
+      "id": "overview-empty-wide",
+      "route": "overview",
+      "surface": "empty",
+      "theme": "light",
+      "width": 1280,
+      "height": 720,
+      "bytes": 70142,
+      "sha256": "02fb3f644e3b0849058a16f8c0d1f9a116a91765d5b840ec012e97969cbb498c",
+      "tableCount": 0,
+      "status": "exact-match"
+    },
+    {
+      "id": "overview-error-wide",
+      "route": "overview",
+      "surface": "invalid",
+      "theme": "dark",
+      "width": 1280,
+      "height": 720,
+      "bytes": 91732,
+      "sha256": "5da62fb93590594badc7f3f206a54cac9a30514b570b2c716ba95f5d7a0e4b31",
+      "tableCount": 0,
+      "status": "exact-match"
+    }
+  ],
+  "coverage": {
+    "scenarios": 6,
+    "routes": [
+      "overview",
+      "delivery",
+      "scope",
+      "trace"
+    ],
+    "workflowStates": [
+      "ready",
+      "empty",
+      "invalid"
+    ],
+    "responsiveClasses": [
+      "compact-under-720",
+      "wide-at-least-1200"
+    ],
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "deliveryTablesBound": 44
+  },
+  "sourceDigests": [
+    {
+      "path": "apps/vscode/src/studio-client.ts",
+      "bytes": 96382,
+      "sha256": "636a9bc5ae938f9b5ab2c1ae94562106349037c4dbd5dfc130e96aeca8aa057b"
+    },
+    {
+      "path": "apps/vscode/src/studio-document.ts",
+      "bytes": 4309,
+      "sha256": "d3cbee69642ba67bc56303e027acff4d61ee3806a864c2ec8c38a8f006658d7e"
+    },
+    {
+      "path": "apps/vscode/src/studio-protocol.ts",
+      "bytes": 96302,
+      "sha256": "a57cc6f79dd5ce53b0fe4e7e176b589e50d6a2d2c3722f32f01995d36fa7b296"
+    },
+    {
+      "path": "apps/vscode/src/studio-styles.ts",
+      "bytes": 10885,
+      "sha256": "16de8c720819c63f432a89989dac7c03431780598de1109a67814ff9f8081ab8"
+    },
+    {
+      "path": "apps/vscode/src/studio-visual-fixtures.test.ts",
+      "bytes": 2331,
+      "sha256": "db444b9675f9c3624d9eb836ac8837a2e218181da7936640e6b88c87110ca801"
+    },
+    {
+      "path": "apps/vscode/src/studio-visual-fixtures.ts",
+      "bytes": 12105,
+      "sha256": "0bd77e62c39084acd1c34f0abe1b9890e1c26c2c6f3debd7139e5f4b8b7917bd"
+    },
+    {
+      "path": "apps/vscode/src/studio-visual-scenarios.json",
+      "bytes": 1441,
+      "sha256": "90a2c11f6a7b8b3bb96f501521178b5a27cb62c7f7a10580ab53c2d8249ac2ad"
+    },
+    {
+      "path": "apps/vscode/test/visual/baselines/p3b22/manifest.json",
+      "bytes": 4346,
+      "sha256": "9a4afb5bb32d7b9ad1784e8d2c2d6b0229d4f8b4540a600ffd4a7d3ddd7a3879"
+    },
+    {
+      "path": "apps/vscode/test/visual/browser-entry.ts",
+      "bytes": 4359,
+      "sha256": "88b4858f06a8b833d21b3ec0ec47ff20e756caa26e4f166ca88fbea05714be46"
+    },
+    {
+      "path": "scripts/vscode_visual_regression.mjs",
+      "bytes": 29012,
+      "sha256": "91acfaf4730cf46250583d1aea996c6f4606dd2ca76bf1e786c56537b0b7317b"
+    },
+    {
+      "path": "scripts/vscode_visual_regression.test.mjs",
+      "bytes": 5147,
+      "sha256": "168d25b851e5dea2122d9d6576914b3beb29f6c226bcf5d0ffa1ea5737240e7b"
+    }
+  ],
+  "privacy": {
+    "loopbackOnly": true,
+    "externalNetworkDisabled": true,
+    "rawBrowserOutputIncluded": false,
+    "absoluteMachinePathsIncluded": false,
+    "environmentValuesIncluded": false,
+    "secretsIncluded": false
+  },
+  "authorityBoundary": "This report establishes exact offline fixture PNG equality for one recorded local Chrome renderer only. It grants no Figma, semantic, perceptual, native-display, human design, Product Owner, security, release, publication, deployment, provider, or other-host acceptance authority.",
+  "limitations": [
+    "Exact PNG bytes are intentionally renderer, operating-system, font, and scale-factor bound; a renderer change requires explicit baseline review rather than automatic acceptance.",
+    "The fixtures exercise the real Product Studio client with deterministic metadata, not current live Figma content or real Product source truth.",
+    "Viewport screenshots do not prove every scroll position, display scale, VS Code theme, GPU path, native webview, or perceptual quality outcome.",
+    "No human visual review or Product Owner acceptance is recorded."
+  ]
+}
