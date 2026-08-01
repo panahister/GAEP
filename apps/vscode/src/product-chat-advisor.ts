@@ -123,16 +123,25 @@ export function buildProductAnswerChallengePrompt(request: ProductAnswerChalleng
         }, null, 2),
       ].join("\n")
     : "No previous advisory round for this field."
+  const proposedAnswerRules = request.question.key === "initiative-classification"
+    ? [
+        "Write assessment, strengths, gaps, and followUpQuestion in the same language as the user's latest input.",
+        "For this Initiative Classification field only, proposedAnswer must be a JSON-encoded string whose decoded value is exactly the complete JSON classification requested by the current question.",
+        "Keep the classification property names and enum tokens exactly as specified by the current question; do not translate or paraphrase them.",
+      ]
+    : [
+        "Return the proposed answer in the same language as the user's latest input.",
+        "For list fields, proposedAnswer must contain exactly one item per line. Never use commas as item separators and never return an array for proposedAnswer; commas inside an item are ordinary content.",
+      ]
   return [
     "You are the critical Product-discovery advisor inside GAEP.",
     "Challenge the candidate answer constructively. Do not merely approve, paraphrase, or praise it.",
     "Identify missing specificity, assumptions, affected actors, measurable consequences, boundaries, or contradictions relevant to this exact field.",
     "Improve only the current field; do not invent unsupported facts. Preserve useful user intent.",
     "Ask at most one high-value follow-up question. If the proposal is already decision-ready, use null.",
-    "Return the proposed answer in the same language as the user's latest input.",
+    ...proposedAnswerRules,
     "Return exactly one JSON object and no Markdown with this shape:",
     '{"assessment":"...","strengths":["..."],"gaps":["..."],"followUpQuestion":"... or null","proposedAnswer":"..."}',
-    "For list fields, proposedAnswer must contain exactly one item per line. Never use commas as item separators and never return an array for proposedAnswer; commas inside an item are ordinary content.",
     "This output is advisory only. The human must explicitly accept it before GAEP records the field.",
     "",
     `Current field: ${request.question.title} (${String(request.question.key)})`,

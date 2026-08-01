@@ -891,17 +891,45 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     currentInitiative: async () => {
       const runtime = await requireRuntime()
       const initiative = currentInitiative(await readInitiatives(runtime.path))
-      return initiative ? {
+      if (!initiative) return undefined
+      const assessment = await runtime.engine.assessInitiativeEntry(initiative.id)
+      return {
+        id: initiative.id,
         title: initiative.title,
+        outcome: initiative.outcome,
+        scope: [...initiative.scope],
+        exclusions: [...initiative.exclusions],
         state: initiative.state,
         revision: initiative.revision ?? 1,
-      } : undefined
+        classificationStatus: assessment.classification.status,
+        applicabilityStatus: assessment.applicability.status,
+      }
     },
     commitInitiative: async (input) => {
       const runtime = await requireRuntime()
       const initiative = await withProductDomainMutation(() => runtime.engine.createInitiative(input, actorId))
       refresh()
       return { title: initiative.title, state: initiative.state, revision: initiative.revision ?? 1 }
+    },
+    commitInitiativeClassification: async (initiativeId, input, expectedRevision) => {
+      const runtime = await requireRuntime()
+      if (containsSecretShapedValue(input)) {
+        throw new Error("The Initiative classification contains a secret-shaped value and was not persisted.")
+      }
+      const initiative = await withProductDomainMutation(() => runtime.engine.classifyInitiative(
+        initiativeId,
+        input,
+        expectedRevision,
+        actorId,
+      ))
+      const assessment = await runtime.engine.assessInitiativeEntry(initiative.id)
+      refresh()
+      return {
+        title: initiative.title,
+        revision: initiative.revision ?? 1,
+        primaryType: initiative.classification!.primaryType,
+        entryState: assessment.state,
+      }
     },
     currentAdvisor: currentProductChatAdvisor,
     selectAdvisor: selectProductChatAdvisor,

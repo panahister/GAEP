@@ -104,6 +104,20 @@ describe("Product Chat AI advisor", () => {
     expect(prompt).toContain("same language")
   })
 
+  it("requires a complete JSON string proposal for Initiative Classification without the ordinary list-field rule", () => {
+    const prompt = buildProductAnswerChallengePrompt({
+      ...request(codex),
+      question: {
+        key: "initiative-classification",
+        title: "Initiative classification brief",
+        prompt: "Return the complete classification contract with exact enum tokens.",
+      },
+    })
+    expect(prompt).toContain("proposedAnswer must be a JSON-encoded string")
+    expect(prompt).toContain("property names and enum tokens exactly")
+    expect(prompt).not.toContain("proposedAnswer must contain exactly one item per line")
+  })
+
   it("parses only the governed structured response shape", () => {
     expect(parseProductAnswerAssessment(`\n\`\`\`json\n${assessmentJson}\n\`\`\``)).toMatchObject({
       gaps: ["The affected actor is missing."],

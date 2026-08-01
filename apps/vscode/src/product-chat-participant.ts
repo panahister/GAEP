@@ -1,5 +1,6 @@
 import { basename, relative, sep } from "node:path"
 
+import type { InitiativeClassificationInput } from "@gaep/contracts"
 import type { InitiativeInput, ProductInput } from "@gaep/engine"
 import * as vscode from "vscode"
 
@@ -36,6 +37,18 @@ import {
   startInitiativeChat,
   type InitiativeChatState,
 } from "./interactive-initiative-chat.js"
+import {
+  acceptInitiativeClassification,
+  answerInitiativeClassification,
+  assessInitiativeClassification,
+  backInitiativeClassification,
+  changeInitiativeClassificationAdvisor,
+  initiativeClassificationInput,
+  initiativeClassificationQuestion,
+  isInitiativeClassificationChatState,
+  startInitiativeClassificationChat,
+  type InitiativeClassificationChatState,
+} from "./interactive-initiative-classification-chat.js"
 
 export type GovernedProductState =
   | { state: "uninitialized" }
@@ -47,8 +60,23 @@ export interface GaepProductChatOptions {
   commitProduct(input: ProductInput): Promise<{ name: string }>
   reviseProduct(input: ProductInput, expectedRevision: number): Promise<{ name: string; revision: number }>
   selectRevisionField(): Promise<keyof ProductInitializationChatState["answers"] | undefined>
-  currentInitiative(): Promise<{ title: string; state: string; revision: number } | undefined>
+  currentInitiative(): Promise<{
+    id: string
+    title: string
+    outcome: string
+    scope: string[]
+    exclusions: string[]
+    state: string
+    revision: number
+    classificationStatus: "missing" | "stale" | "current"
+    applicabilityStatus: "missing" | "stale" | "current"
+  } | undefined>
   commitInitiative(input: InitiativeInput): Promise<{ title: string; state: string; revision: number }>
+  commitInitiativeClassification(
+    initiativeId: string,
+    input: InitiativeClassificationInput,
+    expectedRevision: number,
+  ): Promise<{ title: string; revision: number; primaryType: string; entryState: string }>
   currentAdvisor(): ProductChatAdvisorSelection | undefined
   selectAdvisor(current?: ProductChatAdvisorSelection): Promise<ProductChatAdvisorSelection | undefined>
   selectAgent(current?: ProductChatAdvisorSelection): Promise<ProductChatAdvisorSelection | undefined>
@@ -84,6 +112,19 @@ function latestInitiativeState(context: vscode.ChatContext): InitiativeChatState
     if (!("result" in turn)) continue
     const candidate = turn.result.metadata?.gaepInitiative
     if (isInitiativeChatState(candidate)) return candidate
+  }
+  return undefined
+}
+
+function classificationMetadata(state: InitiativeClassificationChatState): vscode.ChatResult {
+  return { metadata: { gaepInitiativeClassification: state } }
+}
+
+function latestClassificationState(context: vscode.ChatContext): InitiativeClassificationChatState | undefined {
+  for (const turn of [...context.history].reverse()) {
+    if (!("result" in turn)) continue
+    const candidate = turn.result.metadata?.gaepInitiativeClassification
+    if (isInitiativeClassificationChatState(candidate)) return candidate
   }
   return undefined
 }
@@ -251,6 +292,94 @@ function initiativeReviewMarkdown(state: InitiativeChatState): string {
   ].join("\n")
 }
 
+function classificationSummary(input: InitiativeClassificationInput): string {
+  const list = (values: readonly string[]) => values.length > 0 ? values.map(markdownValue).join(", ") : "none"
+  return [
+    `**Primary / secondary types:** \`${input.primaryType}\` / ${list(input.secondaryTypes)}`,
+    `**System / change:** \`${input.systemState}\` / \`${input.changePosture}\``,
+    `**Motivations:** ${list(input.motivations)}`,
+    `**UI / data / integration / exposure:** \`${input.characteristics.userInterface}\` / \`${input.characteristics.data}\` / \`${input.characteristics.integration}\` / \`${input.characteristics.exposure}\``,
+    `**Interaction modes:** ${list(input.characteristics.interactionModes)}`,
+    `**Regulated / policy domains:** ${input.regulated ? "yes" : "no"} / ${list(input.policyDomains)}`,
+    `**Sensitivities:** ${list(input.sensitivities)}`,
+    `**Lifetime / maintenance:** \`${input.expectedLifetime}\` / ${markdownValue(input.maintenanceHorizon)}`,
+    `**Risk:** blast radius \`${input.risk.blastRadius}\`, reversibility \`${input.risk.reversibility}\`, urgency \`${input.risk.urgency}\`, cost of failure \`${input.risk.costOfFailure}\``,
+    `**Dependencies / affected assets:** ${list(input.dependencies)} / ${list(input.affectedAssets)}`,
+    `**Owner / accountable authority:** ${markdownValue(input.owner)} / ${markdownValue(input.accountableAuthority)}`,
+    `**Confidence:** \`${input.confidence.level}\` — ${markdownValue(input.confidence.basis)}`,
+    `**Evidence:** ${input.evidence.map((entry) => `${entry.kind}: ${markdownValue(entry.reference)}`).join("; ")}`,
+    `**Unresolved questions:** ${list(input.unresolvedQuestions)}`,
+    `**Rationale:** ${markdownValue(input.rationale)}`,
+  ].join("\n\n")
+}
+
+function classificationQuestionMarkdown(state: InitiativeClassificationChatState, challenge?: string): string {
+  return [
+    "## Initiative Classification",
+    "",
+    `Initiative: **${markdownValue(state.initiative.title)}** · revision ${state.initiativeRevision}`,
+    `Product: **${markdownValue(state.product.name)}** · revision ${state.productRevision} · profile \`${state.product.profile}\``,
+    `Advisor: **${markdownValue(state.advisor.agentLabel)} · ${markdownValue(state.advisor.modelLabel)}** (${state.advisor.modelTruthClass})`,
+    "",
+    ...(challenge ? [`> ${challenge}`, ""] : []),
+    "Describe the classification in natural language. Include what is known about:",
+    "",
+    "- primary/secondary Initiative type and whether this is greenfield or brownfield;",
+    "- change posture and motivations;",
+    "- UI, data, integrations, interaction modes, and exposure;",
+    "- regulation, policy domains, sensitivities, lifetime, and maintenance horizon;",
+    "- blast radius, reversibility, urgency, cost of failure, dependencies, and affected assets;",
+    "- human owner, accountable authority, evidence basis, confidence, and unresolved questions.",
+    "",
+    "The selected advisor will challenge the brief and propose the complete governed classification. GAEP will not persist it without `/accept` followed by `/commit CONFIRM`.",
+  ].join("\n")
+}
+
+function classificationAssessedMarkdown(state: InitiativeClassificationChatState): string {
+  const pending = state.pending
+  if (!pending) return "No assessed Initiative classification is awaiting approval."
+  const items = (values: readonly string[], empty: string) => values.length > 0
+    ? values.map((value) => `- ${markdownValue(value)}`).join("\n")
+    : `- ${empty}`
+  return [
+    `## Initiative Classification — advisory round ${pending.round}`,
+    "",
+    `Advisor: **${markdownValue(pending.advisor.agentLabel)} · ${markdownValue(pending.advisor.modelLabel)}**`,
+    "",
+    `**Assessment:** ${markdownValue(pending.assessment)}`,
+    "",
+    "**Strengths retained:**",
+    items(pending.strengths, "No distinct strength was identified."),
+    "",
+    "**Gaps or assumptions:**",
+    items(pending.gaps, "No material gap was identified."),
+    ...(pending.followUpQuestion ? ["", `**Challenge question:** ${markdownValue(pending.followUpQuestion)}`] : []),
+    "",
+    "### Proposed governed classification",
+    "",
+    classificationSummary(pending.classification),
+    "",
+    "> This is an AI proposal. It grants no approval, applicability decision, activation, execution, or implementation authority.",
+    "",
+    "Send **`@gaep /accept`** to move to exact review, or reply naturally with corrections for another advisory round.",
+  ].join("\n")
+}
+
+function classificationReviewMarkdown(state: InitiativeClassificationChatState): string {
+  const input = initiativeClassificationInput(state)
+  return [
+    "## Initiative Classification review",
+    "",
+    classificationSummary(input),
+    "",
+    `Bound to Initiative revision **${state.initiativeRevision}** and Product revision **${state.productRevision}**.`,
+    "",
+    "> Commit records human-attributed classification only. It does not resolve applicability or activate the Initiative.",
+    "",
+    "Send **`@gaep /commit CONFIRM`** to record it, `/back` to revise the brief, or `/cancel` to discard the draft.",
+  ].join("\n")
+}
+
 function reviewMarkdown(state: ProductInitializationChatState): string {
   const input = productInitializationInput(state)
   const items = (values: readonly string[]) => values.length > 0
@@ -324,6 +453,7 @@ export function registerGaepProductChat(
     const attached = attachments(request, response)
     let state = latestState(chatContext)
     let initiativeState = latestInitiativeState(chatContext)
+    let classificationState = latestClassificationState(chatContext)
     const sessionAdvisor = options.currentAdvisor()
     if (state && sessionAdvisor && !sameAdvisor(state.advisor, sessionAdvisor)) {
       state = changeProductChatAdvisor(state, sessionAdvisor, true)
@@ -331,30 +461,46 @@ export function registerGaepProductChat(
     if (initiativeState && sessionAdvisor && !sameAdvisor(initiativeState.advisor, sessionAdvisor)) {
       initiativeState = changeInitiativeAdvisor(initiativeState, sessionAdvisor, true)
     }
+    if (classificationState && sessionAdvisor && !sameAdvisor(classificationState.advisor, sessionAdvisor)) {
+      classificationState = changeInitiativeClassificationAdvisor(classificationState, sessionAdvisor, true)
+    }
 
     if (command === "help") {
       response.markdown(helpMarkdown())
-      return initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
+      return classificationState ? classificationMetadata(classificationState)
+        : initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
     }
     if (command === "status") {
       const product = await options.productState()
-      const advisor = preferredProductChatAdvisor(options.currentAdvisor(), initiativeState?.advisor, state?.advisor)
+      const advisor = preferredProductChatAdvisor(
+        options.currentAdvisor(),
+        classificationState?.advisor ?? initiativeState?.advisor,
+        state?.advisor,
+      )
       const advisorStatus = advisor
         ? `${markdownValue(advisor.agentLabel)} · ${markdownValue(advisor.modelLabel)} (${advisor.modelTruthClass})`
         : "not selected"
-      const draftStatus = initiativeState && !["committed", "cancelled"].includes(initiativeState.phase)
-        ? `Initiative ${initiativeState.phase} (${initiativeProgress(initiativeState)})`
-        : state ? `Product ${state.phase} (${productInitializationProgress(state)})` : "none"
+      const draftStatus = classificationState && !["committed", "cancelled"].includes(classificationState.phase)
+        ? `Initiative classification ${classificationState.phase} (Initiative revision ${classificationState.initiativeRevision})`
+        : initiativeState && !["committed", "cancelled"].includes(initiativeState.phase)
+          ? `Initiative ${initiativeState.phase} (${initiativeProgress(initiativeState)})`
+          : state ? `Product ${state.phase} (${productInitializationProgress(state)})` : "none"
       response.markdown(product.state === "initialized"
         ? `Governed Product: **${markdownValue(product.name)}** at revision ${product.revision}. Chat draft: ${draftStatus}. Advisor: **${advisorStatus}**.`
         : `Governed Product: **${product.state}**. Chat draft: ${draftStatus}. Advisor: **${advisorStatus}**.`)
-      return initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
+      return classificationState ? classificationMetadata(classificationState)
+        : initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
     }
     const productDraftActive = Boolean(state && !["committed", "cancelled"].includes(state.phase))
     const initiativeDraftActive = Boolean(initiativeState && !["committed", "cancelled"].includes(initiativeState.phase))
+    const classificationDraftActive = Boolean(classificationState && !["committed", "cancelled"].includes(classificationState.phase))
     if ((command === "advisor" || command === "agent" || command === "model") &&
-        !productDraftActive && !initiativeDraftActive) {
-      const current = preferredProductChatAdvisor(options.currentAdvisor(), initiativeState?.advisor, state?.advisor)
+        !productDraftActive && !initiativeDraftActive && !classificationDraftActive) {
+      const current = preferredProductChatAdvisor(
+        options.currentAdvisor(),
+        classificationState?.advisor ?? initiativeState?.advisor,
+        state?.advisor,
+      )
       const advisor = await selectProductChatAdvisorForCommand(command, current, {
         advisor: options.selectAdvisor,
         agent: options.selectAgent,
@@ -362,7 +508,8 @@ export function registerGaepProductChat(
       })
       if (!advisor) {
         response.markdown("Agent/model selection was cancelled. The current Product Chat selection was preserved.")
-        return initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
+        return classificationState ? classificationMetadata(classificationState)
+          : initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
       }
       response.markdown([
         `Product Chat advisor changed to **${markdownValue(advisor.agentLabel)} · ${markdownValue(advisor.modelLabel)}** (${advisor.modelTruthClass}).`,
@@ -371,7 +518,8 @@ export function registerGaepProductChat(
         "",
         "Use **`@gaep /status`** to verify the active selection, then **`@gaep /continue`** to resume the lifecycle.",
       ].join("\n"))
-      return initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
+      return classificationState ? classificationMetadata(classificationState)
+        : initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
     }
     if (command === "initialize") {
       const product = await options.productState()
@@ -434,6 +582,14 @@ export function registerGaepProductChat(
           : "No governed Product exists yet. Start with **`@gaep /initialize`**.")
         return state ? metadata(state) : undefined
       }
+      if (classificationState && !["committed", "cancelled"].includes(classificationState.phase)) {
+        response.markdown(classificationState.phase === "review"
+          ? classificationReviewMarkdown(classificationState)
+          : classificationState.phase === "awaiting-approval"
+            ? classificationAssessedMarkdown(classificationState)
+            : classificationQuestionMarkdown(classificationState, "Resumed the current uncommitted Initiative classification."))
+        return classificationMetadata(classificationState)
+      }
       if (initiativeState && !["committed", "cancelled"].includes(initiativeState.phase)) {
         response.markdown(initiativeState.phase === "review"
           ? initiativeReviewMarkdown(initiativeState)
@@ -442,12 +598,49 @@ export function registerGaepProductChat(
       }
       const current = await options.currentInitiative()
       if (current) {
+        if (current.classificationStatus === "current") {
+          response.markdown([
+            `Current Initiative: **${markdownValue(current.title)}** · ${markdownValue(current.state)} · revision ${current.revision}.`,
+            "",
+            "Its governed classification is current. The next step is conversational applicability resolution, which will be installed in the next independently testable checkpoint.",
+          ].join("\n"))
+          return classificationState ? classificationMetadata(classificationState)
+            : initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
+        }
+        const advisor = preferredProductChatAdvisor(
+          options.currentAdvisor(),
+          classificationState?.advisor ?? initiativeState?.advisor,
+          state?.advisor,
+        ) ?? await options.selectAdvisor()
+        if (!advisor) {
+          response.markdown("Initiative classification did not start because no executable Codex or Claude Code advisor/model was selected.")
+          return classificationState ? classificationMetadata(classificationState)
+            : initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
+        }
+        classificationState = startInitiativeClassificationChat(advisor, {
+          initiativeId: current.id,
+          initiativeRevision: current.revision,
+          productRevision: product.revision,
+          product: {
+            name: product.name,
+            profile: product.input.profile,
+            summary: product.input.summary,
+          },
+          initiative: {
+            title: current.title,
+            outcome: current.outcome,
+            scope: [...current.scope],
+            exclusions: [...current.exclusions],
+          },
+        })
         response.markdown([
-          `Current Initiative: **${markdownValue(current.title)}** · ${markdownValue(current.state)} · revision ${current.revision}.`,
+          "# GAEP Initiative classification",
           "",
-          "The next valid action is governed Initiative classification and applicability resolution. Its conversational checkpoint is not installed yet; GAEP will not silently fall back to opaque forms.",
+          `The proposed Initiative **${markdownValue(current.title)}** is bound to Product revision ${product.revision}. **${markdownValue(advisor.agentLabel)} · ${markdownValue(advisor.modelLabel)}** will challenge one natural-language classification brief and map it to the complete governed contract. No classification is recorded until /accept and /commit CONFIRM.`,
+          "",
+          classificationQuestionMarkdown(classificationState),
         ].join("\n"))
-        return initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
+        return classificationMetadata(classificationState)
       }
       const advisor = preferredProductChatAdvisor(options.currentAdvisor(), initiativeState?.advisor, state?.advisor) ?? await options.selectAdvisor()
       if (!advisor) {
@@ -463,6 +656,149 @@ export function registerGaepProductChat(
         initiativeQuestionMarkdown(initiativeState),
       ].join("\n"))
       return initiativeMetadata(initiativeState)
+    }
+    if (classificationState && !["committed", "cancelled"].includes(classificationState.phase)) {
+      if (command === "cancel") {
+        classificationState = { ...classificationState, phase: "cancelled" }
+        response.markdown("The Initiative classification draft was discarded. No governed Initiative record was changed.")
+        return classificationMetadata(classificationState)
+      }
+      if (command === "advisor" || command === "agent" || command === "model") {
+        const advisor = command === "model"
+          ? await options.selectModel(classificationState.advisor)
+          : command === "agent"
+            ? await options.selectAgent(classificationState.advisor)
+            : await options.selectAdvisor(classificationState.advisor)
+        if (!advisor) {
+          response.markdown("Agent/model selection was cancelled. The classification draft was preserved.")
+          return classificationMetadata(classificationState)
+        }
+        if (sameAdvisor(classificationState.advisor, advisor)) {
+          response.markdown(classificationState.phase === "awaiting-approval"
+            ? classificationAssessedMarkdown(classificationState)
+            : classificationQuestionMarkdown(classificationState, "The selected agent and model are already active."))
+          return classificationMetadata(classificationState)
+        }
+        const pending = classificationState.pending
+        classificationState = changeInitiativeClassificationAdvisor(classificationState, advisor, true)
+        if (pending && !sameAdvisor(pending.advisor, advisor)) {
+          response.progress(`Re-evaluating the Initiative classification with ${advisor.agentLabel} · ${advisor.modelLabel}`)
+          const abort = new AbortController()
+          const cancellation = token.onCancellationRequested(() => abort.abort())
+          try {
+            const assessment = await options.challengeAnswer({
+              advisor,
+              question: initiativeClassificationQuestion(classificationState),
+              acceptedAnswers: {
+                product: classificationState.product,
+                initiative: classificationState.initiative,
+                revisionBinding: {
+                  initiativeRevision: classificationState.initiativeRevision,
+                  productRevision: classificationState.productRevision,
+                },
+              },
+              userAnswer: pending.originalAnswer,
+              previousAssessment: pending,
+            }, abort.signal)
+            classificationState = assessInitiativeClassification(classificationState, pending.originalAnswer, assessment)
+            response.markdown(classificationAssessedMarkdown(classificationState))
+          } catch {
+            response.markdown(`${classificationAssessedMarkdown(classificationState)}\n\nRe-evaluation failed; the prior unaccepted proposal remains visible and GAEP did not advance.`)
+            response.button({ command: "gaep.showDiagnostics", title: "Show Diagnostics" })
+          } finally {
+            cancellation.dispose()
+          }
+          return classificationMetadata(classificationState)
+        }
+        classificationState = changeInitiativeClassificationAdvisor(classificationState, advisor)
+        response.markdown(classificationQuestionMarkdown(classificationState, "The new advisor applies to the unaccepted classification brief."))
+        return classificationMetadata(classificationState)
+      }
+      if (command === "back") {
+        classificationState = backInitiativeClassification(classificationState)
+        response.markdown(classificationQuestionMarkdown(classificationState, "The accepted classification proposal was reopened for revision."))
+        return classificationMetadata(classificationState)
+      }
+      if (command === "review") {
+        response.markdown(classificationState.phase === "review"
+          ? classificationReviewMarkdown(classificationState)
+          : classificationState.phase === "awaiting-approval"
+            ? classificationAssessedMarkdown(classificationState)
+            : classificationQuestionMarkdown(classificationState, "Provide and accept a classification brief before review."))
+        return classificationMetadata(classificationState)
+      }
+      if (command === "accept") {
+        if (!classificationState.pending) {
+          response.markdown(classificationQuestionMarkdown(classificationState, "There is no Initiative classification proposal awaiting acceptance."))
+          return classificationMetadata(classificationState)
+        }
+        classificationState = acceptInitiativeClassification(classificationState)
+        response.markdown(classificationReviewMarkdown(classificationState))
+        return classificationMetadata(classificationState)
+      }
+      if (command === "commit") {
+        if (classificationState.phase !== "review") {
+          response.markdown(classificationState.phase === "awaiting-approval"
+            ? `${classificationAssessedMarkdown(classificationState)}\n\nAccept the exact proposal before commit.`
+            : classificationQuestionMarkdown(classificationState, "The classification draft is incomplete."))
+          return classificationMetadata(classificationState)
+        }
+        if (request.prompt.trim() !== "CONFIRM") {
+          response.markdown(`${classificationReviewMarkdown(classificationState)}\n\nCommit was not performed. Send exactly **\`@gaep /commit CONFIRM\`**.`)
+          return classificationMetadata(classificationState)
+        }
+        response.progress("Recording the revision-bound Initiative classification")
+        const committed = await options.commitInitiativeClassification(
+          classificationState.initiativeId,
+          initiativeClassificationInput(classificationState),
+          classificationState.initiativeRevision,
+        )
+        classificationState = { ...classificationState, phase: "committed" }
+        response.markdown([
+          `Initiative **${markdownValue(committed.title)}** was classified as **${markdownValue(committed.primaryType)}** at revision ${committed.revision}.`,
+          "",
+          `Entry state: **${markdownValue(committed.entryState)}**. The classification grants no approval, applicability decision, activation, execution, or implementation authority.`,
+          "",
+          "Next: use **`@gaep /continue`** after the conversational applicability checkpoint is installed.",
+        ].join("\n"))
+        return classificationMetadata(classificationState)
+      }
+      const candidate = answerInitiativeClassification(classificationState, request.prompt)
+      classificationState = candidate.state
+      if (candidate.challenge) {
+        response.markdown(classificationQuestionMarkdown(classificationState, candidate.challenge))
+        return classificationMetadata(classificationState)
+      }
+      response.progress(`Asking ${classificationState.advisor.agentLabel} · ${classificationState.advisor.modelLabel} to challenge and structure this Initiative classification`)
+      const abort = new AbortController()
+      const cancellation = token.onCancellationRequested(() => abort.abort())
+      try {
+        const assessment = await options.challengeAnswer({
+          advisor: classificationState.advisor,
+          question: initiativeClassificationQuestion(classificationState),
+          acceptedAnswers: {
+            product: classificationState.product,
+            initiative: classificationState.initiative,
+            revisionBinding: {
+              initiativeRevision: classificationState.initiativeRevision,
+              productRevision: classificationState.productRevision,
+            },
+          },
+          userAnswer: request.prompt,
+          previousAssessment: classificationState.pending,
+        }, abort.signal)
+        classificationState = assessInitiativeClassification(classificationState, request.prompt, assessment)
+        response.markdown(classificationAssessedMarkdown(classificationState))
+      } catch {
+        response.markdown(classificationQuestionMarkdown(
+          classificationState,
+          "The selected advisor did not return a valid governed classification. Nothing was accepted or persisted. Add detail, retry, or switch `/agent` or `/model`.",
+        ))
+        response.button({ command: "gaep.showDiagnostics", title: "Show Diagnostics" })
+      } finally {
+        cancellation.dispose()
+      }
+      return classificationMetadata(classificationState)
     }
     if (initiativeState && !["committed", "cancelled"].includes(initiativeState.phase)) {
       if (command === "cancel") {
@@ -551,7 +887,7 @@ export function registerGaepProductChat(
           "",
           "It remains proposed and grants no execution or implementation authority.",
           "",
-          "Next: run **`@gaep /continue`** after the classification/applicability checkpoint is installed.",
+          "Next: run **`@gaep /continue`** to classify this Initiative conversationally.",
         ].join("\n"))
         return initiativeMetadata(initiativeState)
       }
@@ -743,6 +1079,24 @@ export function registerGaepProductChat(
   participant.iconPath = vscode.Uri.joinPath(context.extensionUri, "media", "gaep.svg")
   participant.followupProvider = {
     provideFollowups: (result) => {
+      const classification = result.metadata?.gaepInitiativeClassification
+      if (isInitiativeClassificationChatState(classification)) {
+        if (classification.phase === "review") return [
+          { prompt: "/commit CONFIRM", label: "Record exact classification" },
+          { prompt: "/back", label: "Revise classification" },
+        ]
+        if (classification.phase === "awaiting-approval") return [
+          { prompt: "/accept", label: "Accept classification" },
+          { prompt: "/agent", label: "Switch agent" },
+          { prompt: "/model", label: "Switch model" },
+        ]
+        if (classification.phase === "collecting") return [
+          { prompt: "/agent", label: "Switch agent" },
+          { prompt: "/model", label: "Switch model" },
+          { prompt: "/continue", label: "Resume classification" },
+        ]
+        return [{ prompt: "/continue", label: "Continue lifecycle" }]
+      }
       const initiative = result.metadata?.gaepInitiative
       if (isInitiativeChatState(initiative)) {
         if (initiative.phase === "review") return [

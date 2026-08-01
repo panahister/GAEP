@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "vscode-initiative-classification-checkpoint",
+  "observedAt": "2026-08-01T14:19:27.000Z",
+  "featureIds": ["PLT-36", "P1-02"],
+  "status": "ready-for-product-owner-classification-test",
+  "scope": {
+    "host": "vscode",
+    "workflow": "state-aware-conversational-initiative-classification",
+    "productOwnerWorkspaceMutationDuringVerification": false
+  },
+  "behavior": {
+    "continuesExistingInitiativeWithoutReinitialization": true,
+    "naturalLanguageBrief": true,
+    "selectedAdvisorChallenge": true,
+    "strictContractParsing": true,
+    "explicitAcceptRequired": true,
+    "explicitCommitConfirmationRequired": true,
+    "initiativeRevisionBound": true,
+    "productRevisionContextBound": true,
+    "grantsApplicabilityOrExecutionAuthority": false
+  },
+  "verification": {
+    "focusedTests": { "passed": 9, "failed": 0 },
+    "repositoryTests": { "filesPassed": 175, "testsPassed": 1132, "testsSkipped": 1 },
+    "typecheck": "pass",
+    "build": "pass",
+    "documentation": "pass-zero-warnings",
+    "extensionHost": "pass",
+    "packageLifecycle": "pass",
+    "normalProfileInstall": "pass",
+    "gitDiffCheck": "pass"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "sizeBytes": 1252230,
+    "sha256": "63081643f1846a3eb72b6666da5cd18079db8d6d4fef7d10ed427bff81f18ddc"
+  },
+  "roadmapBoundary": {
+    "currentCheckpoint": "P1-02 conversational Initiative Classification installed",
+    "nextCheckpoint": "P1-03 conversational Applicability Resolution",
+    "afterNext": "P1-04 through P1-06 governed Source Intake, Baseline, and Provenance",
+    "implementationAndRelease": "deferred until explicit authority"
+  },
+  "productOwnerTest": {
+    "host": "vscode",
+    "provider": "Claude Code",
+    "model": "opus",
+    "result": "pass",
+    "productRevision": 2,
+    "initiativeRevisionBefore": 1,
+    "initiativeRevisionAfter": 2,
+    "primaryType": "feature",
+    "classificationStatus": "current",
+    "auditSequence": 5,
+    "auditEventType": "initiative.classified",
+    "auditEventHash": "sha256:d941c88562e74b57bd4fa7e4cd56206db840a6d509e5e6e9a8f97a0f928fc73d",
+    "explicitAcceptance": "P1-02 مورد تأیید است؛ P1-03 را پیاده کن."
+  },
+  "acceptance": {
+    "productOwner": "accepted",
+    "nextTest": "Regression-only while P1-03 conversational Applicability Resolution is implemented."
+  }
+}
