@@ -841,7 +841,44 @@ describe("Product Studio rendered accessibility", () => {
     }
   }, 30_000)
 
-  it("renders explicit empty, loading, error, offline, and interrupted workflow states", () => {
+  it("uses native keyboard controls for route changes and focuses the new page heading", async () => {
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: snapshot("overview", 80) })
+    const delivery = Array.from(dom.window.document.querySelectorAll<HTMLButtonElement>(".studio-nav button"))
+      .find((button) => button.querySelector(".nav-label")?.textContent === studioRouteLabels.delivery)
+    expect(delivery?.type).toBe("button")
+    expect(delivery?.tabIndex).toBeGreaterThanOrEqual(0)
+    delivery?.focus()
+    expect(dom.window.document.activeElement).toBe(delivery)
+    delivery?.click()
+    expect(captured.messages.at(-1)).toMatchObject({ type: "studio.navigate", route: "delivery" })
+
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: snapshot("delivery", 81) })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(dom.window.document.activeElement).toBe(dom.window.document.getElementById("studio-page-title"))
+    expect(dom.window.document.querySelector('.studio-nav button[aria-current="page"] .nav-label')?.textContent)
+      .toBe(studioRouteLabels.delivery)
+
+    const routeSelect = dom.window.document.getElementById("studio-route-select") as HTMLSelectElement | null
+    expect(routeSelect).not.toBeNull()
+    routeSelect!.value = "trace"
+    routeSelect!.focus()
+    routeSelect!.dispatchEvent(new dom.window.Event("change", { bubbles: true }))
+    expect(captured.messages.at(-1)).toMatchObject({ type: "studio.navigate", route: "trace" })
+  })
+
+  it("restores an edited record with Escape and returns focus to the page heading", () => {
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: snapshot("direction", 82) })
+    const input = dom.window.document.getElementById("studio-field-direction-summary") as HTMLInputElement | null
+    expect(input?.value).toBe("A bounded, attributable statement.")
+    input!.value = "Unsaved accessible edit"
+    input!.dispatchEvent(new dom.window.Event("input", { bubbles: true }))
+    dom.window.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
+    expect((dom.window.document.getElementById("studio-field-direction-summary") as HTMLInputElement | null)?.value)
+      .toBe("A bounded, attributable statement.")
+    expect(dom.window.document.activeElement).toBe(dom.window.document.getElementById("studio-page-title"))
+  })
+
+  it("renders explicit empty, loading, error, offline, and interrupted workflow states", async () => {
     const cases = [
       { kind: "empty", title: "No local records", connectivity: "online", role: null },
       { kind: "loading", title: "Loading Product context", connectivity: "online", role: null },
@@ -868,7 +905,22 @@ describe("Product Studio rendered accessibility", () => {
       else expect(dom.window.document.querySelector("progress"), candidate.title).toBeNull()
       expect(heading?.closest("section")?.getAttribute("role"), candidate.title).toBe(candidate.role)
       expect(dom.window.document.body.textContent, candidate.title).toContain("No private path")
+      const result = await axe.run(dom.window.document.documentElement, {
+        rules: { "color-contrast": { enabled: false } },
+      })
+      expect(result.violations.map((violation) => violation.id), candidate.title).toEqual([])
     }
+  }, 30_000)
+
+  it("exposes disabled-action explanations without making the action focusable", () => {
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: snapshot("delivery", 88) })
+    const previous = Array.from(dom.window.document.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent === "Previous Changes page")
+    expect(previous?.disabled).toBe(true)
+    expect(previous?.title).toBe("This is the first page.")
+    expect(previous?.getAttribute("aria-label")).toBe("Previous Changes page. Unavailable: This is the first page.")
+    previous?.focus()
+    expect(dom.window.document.activeElement).not.toBe(previous)
   })
 
   it("renders every declared Delivery table once in protocol order and omits unavailable optional tables", () => {
@@ -1192,5 +1244,13 @@ describe("Product Studio rendered accessibility", () => {
     expect(tablet?.cssText).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/i)
     expect(narrow?.cssText).toMatch(/\.record-field[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/i)
     expect(narrow?.cssText).toMatch(/\.action-row button\s*{[^}]*width:\s*100%/i)
+
+    const forcedColors = mediaRules.find((rule) => rule.conditionText === "(forced-colors: active)")
+    expect(forcedColors?.cssText).toMatch(/border-color:\s*CanvasText/i)
+    expect(forcedColors?.cssText).toMatch(/outline-color:\s*Highlight/i)
+    const reducedMotion = mediaRules.find((rule) => rule.conditionText === "(prefers-reduced-motion: reduce)")
+    expect(reducedMotion?.cssText).toMatch(/scroll-behavior:\s*auto\s*!important/i)
+    expect(reducedMotion?.cssText).toMatch(/transition:\s*none\s*!important/i)
+    expect(reducedMotion?.cssText).toMatch(/animation:\s*none\s*!important/i)
   })
 })
