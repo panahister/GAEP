@@ -1,9 +1,11 @@
 import { spawn } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { readFile } from "node:fs/promises"
 import { dirname, isAbsolute, relative, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+
+import { writeExclusiveRepositoryFile } from "./lib/repository-files.mjs"
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const ansiPattern = /\u001b\[[0-?]*[ -/]*[@-~]/gu
@@ -48,27 +50,101 @@ export function parseVitestSummary(output) {
   }
 }
 
+function assertExactKeys(value, expected, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`)
+  }
+  const actual = Object.keys(value).sort()
+  const wanted = [...expected].sort()
+  if (JSON.stringify(actual) !== JSON.stringify(wanted)) {
+    throw new Error(`${label} fields differ from the exact supported schema`)
+  }
+}
+
+function assertExactString(value, expected, label) {
+  if (value !== expected) throw new Error(`${label} has an unsupported value`)
+  return expected
+}
+
+function parsePackageLifecycle(value) {
+  assertExactKeys(value, value?.status === "passed"
+    ? ["status", "exactPackage", "previousPackage", "bytes", "sha256", "contentManifestSha256", "contentFiles", "operations"]
+    : ["status"], "Native package lifecycle")
+  if (value.status === "unverified") return { status: "unverified" }
+  assertExactString(value.status, "passed", "Native package lifecycle status")
+  assertExactString(value.exactPackage, "gaep.gaep-vscode@0.1.0", "Native exact package")
+  assertExactString(value.previousPackage, "gaep.gaep-vscode@0.0.9", "Native previous package")
+  if (!Number.isSafeInteger(value.bytes) || value.bytes < 1 || value.bytes > 32 * 1024 * 1024) {
+    throw new Error("Native package byte count is outside the supported bound")
+  }
+  if (!Number.isSafeInteger(value.contentFiles) || value.contentFiles < 1 || value.contentFiles > 512) {
+    throw new Error("Native installed content file count is outside the supported bound")
+  }
+  if (typeof value.sha256 !== "string" || !/^[0-9a-f]{64}$/u.test(value.sha256) ||
+      typeof value.contentManifestSha256 !== "string" || !/^[0-9a-f]{64}$/u.test(value.contentManifestSha256)) {
+    throw new Error("Native package digests are invalid")
+  }
+  const operations = ["previous-install", "upgrade", "reinstall", "rollback", "uninstall", "absence", "final-install"]
+  if (!Array.isArray(value.operations) || JSON.stringify(value.operations) !== JSON.stringify(operations)) {
+    throw new Error("Native package lifecycle operations differ")
+  }
+  return {
+    status: "passed",
+    exactPackage: value.exactPackage,
+    previousPackage: value.previousPackage,
+    bytes: value.bytes,
+    sha256: value.sha256,
+    contentManifestSha256: value.contentManifestSha256,
+    contentFiles: value.contentFiles,
+    operations: [...operations],
+  }
+}
+
 export function parseNativeResult(output) {
   const line = stripAnsi(output).split(/\r?\n/u).findLast((candidate) => candidate.startsWith("GAEP_LOCAL_VSCODE_NATIVE_RESULT="))
   if (!line) throw new Error("Extension-host output did not contain the bounded native result")
   const result = JSON.parse(line.slice("GAEP_LOCAL_VSCODE_NATIVE_RESULT=".length))
-  if (result?.schemaVersion !== 1 || result.scope !== "local-isolated-vscode") {
+  assertExactKeys(result, [
+    "schemaVersion",
+    "scope",
+    "phases",
+    "packageLifecycle",
+    "workspaceFingerprint",
+    "restartReopen",
+    "normalProfileTouched",
+    "externalSystemsUsed",
+    "otherHostMatricesRun",
+  ], "Extension-host result")
+  if (result.schemaVersion !== 1 || result.scope !== "local-isolated-vscode") {
     throw new Error("Extension-host result has an unsupported schema or scope")
   }
-  for (const phase of ["open", "reopen", "multi-root"]) {
-    if (!result.phases?.includes(phase)) throw new Error(`Extension-host result omitted required ${phase} phase`)
+  const packageLifecycle = parsePackageLifecycle(result.packageLifecycle)
+  const phases = packageLifecycle.status === "passed"
+    ? ["open", "reopen", "multi-root", "installed"]
+    : ["open", "reopen", "multi-root"]
+  if (!Array.isArray(result.phases) || JSON.stringify(result.phases) !== JSON.stringify(phases)) {
+    throw new Error("Extension-host result phases differ from the exact supported lifecycle")
   }
-  if (result.packageLifecycle?.status === "passed" && !result.phases.includes("installed")) {
-    throw new Error("Extension-host result passed package lifecycle without exact installed-package activation")
-  }
-  if (result.workspaceFingerprint !== "unchanged") throw new Error("Extension-host result did not preserve the fixture fingerprint")
-  if (result.restartReopen !== "explicit-command-after-isolated-restart") {
-    throw new Error("Extension-host result did not verify the bounded restart and explicit reopen workflow")
-  }
+  assertExactString(result.workspaceFingerprint, "unchanged", "Native workspace fingerprint")
+  assertExactString(
+    result.restartReopen,
+    "explicit-command-after-isolated-restart",
+    "Native restart and reopen result",
+  )
   if (result.normalProfileTouched !== false || result.externalSystemsUsed !== false || result.otherHostMatricesRun !== false) {
     throw new Error("Extension-host result exceeded the local VS Code-only scope")
   }
-  return result
+  return {
+    schemaVersion: 1,
+    scope: "local-isolated-vscode",
+    phases,
+    packageLifecycle,
+    workspaceFingerprint: "unchanged",
+    restartReopen: "explicit-command-after-isolated-restart",
+    normalProfileTouched: false,
+    externalSystemsUsed: false,
+    otherHostMatricesRun: false,
+  }
 }
 
 export function composeReport({ checkpoint, observedAt, focused, native, sourceDigests }) {
@@ -212,13 +288,11 @@ export async function runLocalVsCodeReport(args = process.argv.slice(2)) {
   assertPrivacySafeReport(report)
   const serialized = `${JSON.stringify(report, null, 2)}\n`
   if (options.output) {
-    const outputPath = resolve(repositoryRoot, options.output)
-    const repositoryRelativeOutput = relative(repositoryRoot, outputPath)
-    if (repositoryRelativeOutput.startsWith("..") || isAbsolute(repositoryRelativeOutput)) {
-      throw new Error("--output must stay within the repository")
-    }
-    await mkdir(dirname(outputPath), { recursive: true })
-    await writeFile(outputPath, serialized, "utf8")
+    const repositoryRelativeOutput = await writeExclusiveRepositoryFile(
+      repositoryRoot,
+      options.output,
+      serialized,
+    )
     process.stdout.write(`GAEP local VS Code end-to-end report written: ${repositoryRelativeOutput}\n`)
   } else {
     process.stdout.write(serialized)

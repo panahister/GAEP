@@ -146,6 +146,22 @@ describe("GAEP local engine", () => {
     return { product, initiative }
   }
 
+  it("rejects secret-shaped Product input before creating governed storage", async () => {
+    await expect(engine.createProduct({
+      name: "Atlas",
+      summary: "api_key=abcdefghijklmnopqrstuvwxyz123456",
+      problem: "Product decisions and implementation context become disconnected.",
+      affectedUsers: "Founders and product engineering teams",
+      desiredOutcome: "Every implementation step remains linked to explicit product intent.",
+      successSignals: ["A complete trace exists"],
+      firstWorkflow: "Define a Product, select an agent, and execute a bounded Initiative.",
+      exclusions: ["Automatic deployment"],
+      profile: "software",
+    }, "founder")).rejects.toThrow(/secret-shaped values/i)
+
+    await expect(readdir(workspace)).resolves.toEqual([])
+  })
+
   const classificationInput: InitiativeClassificationInput = {
     primaryType: "service",
     secondaryTypes: ["api", "modernization"],

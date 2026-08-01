@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { containsSecretShapedValue } from "./privacy.js"
+
 export const productProfileSchema = z.enum([
   "software",
   "saas",
@@ -33,6 +35,8 @@ export const productSchema = z.object({
   }).optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+}).refine((product) => !containsSecretShapedValue(product), {
+  message: "Product records cannot contain secret-shaped values",
 })
 
 const initiativeBoundedTextSchema = z.string().trim().min(2).max(2_000)

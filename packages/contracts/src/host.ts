@@ -50,6 +50,7 @@ import {
   initiativeSchema,
   productSchema,
 } from "./product.js"
+import { containsSecretShapedValue } from "./privacy.js"
 import { productDomainRecordKindSchema, productExportBundleSchema } from "./product-studio.js"
 import {
   sourceBaselineInputSchema,
@@ -103,17 +104,19 @@ export const hostRequestIdSchema = z.union([z.string().min(1).max(128), z.number
 export const hostActorIdSchema = z.string().trim().min(1).max(256).optional()
 export const hostNoParamsSchema = z.object({}).strict()
 
-export const hostProductInputSchema = productSchema.pick({
-  name: true,
-  summary: true,
-  problem: true,
-  affectedUsers: true,
-  desiredOutcome: true,
-  successSignals: true,
-  firstWorkflow: true,
-  exclusions: true,
-  profile: true,
-}).strict()
+export const hostProductInputSchema = z.object({
+  name: productSchema.shape.name,
+  summary: productSchema.shape.summary,
+  problem: productSchema.shape.problem,
+  affectedUsers: productSchema.shape.affectedUsers,
+  desiredOutcome: productSchema.shape.desiredOutcome,
+  successSignals: productSchema.shape.successSignals,
+  firstWorkflow: productSchema.shape.firstWorkflow,
+  exclusions: productSchema.shape.exclusions,
+  profile: productSchema.shape.profile,
+}).strict().refine((product) => !containsSecretShapedValue(product), {
+  message: "Product input cannot contain secret-shaped values",
+})
 
 export const hostInitiativeInputSchema = initiativeSchema.pick({
   title: true,

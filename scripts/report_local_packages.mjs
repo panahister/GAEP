@@ -1,18 +1,17 @@
 import { createHash } from "node:crypto"
-import { createReadStream } from "node:fs"
-import { lstat, writeFile } from "node:fs/promises"
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
+import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import {
+  readRepositoryRegularFile,
+  writeExclusiveRepositoryFile,
+} from "./lib/repository-files.mjs"
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
-let outputPath
+let outputRelativePath
 if (process.argv.length > 2) {
   if (process.argv.length !== 4 || process.argv[2] !== "--output") throw new Error("Usage: report_local_packages.mjs [--output <repository-relative-path>]")
-  outputPath = resolve(repositoryRoot, process.argv[3])
-  const outputRelative = relative(repositoryRoot, outputPath)
-  if (outputRelative === "" || outputRelative === ".." || outputRelative.startsWith(`..${sep}`) || isAbsolute(outputRelative)) {
-    throw new Error("Local package report output must stay inside the repository")
-  }
+  outputRelativePath = process.argv[3]
 }
 
 const definitions = [
@@ -50,17 +49,17 @@ const definitions = [
   },
 ]
 
-async function digest(path) {
-  const hash = createHash("sha256")
-  for await (const chunk of createReadStream(path)) hash.update(chunk)
-  return `sha256:${hash.digest("hex")}`
+function digest(bytes) {
+  return `sha256:${createHash("sha256").update(bytes).digest("hex")}`
 }
 
 async function inspect(definition) {
-  const path = join(repositoryRoot, definition.path)
-  let metadata
+  let artifact
   try {
-    metadata = await lstat(path)
+    artifact = await readRepositoryRegularFile(repositoryRoot, definition.path, {
+      minimumBytes: 1,
+      maximumBytes: definition.maximumBytes,
+    })
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
       if (definition.requiredHere) throw new Error(`Required local package is missing: ${definition.path}`)
@@ -75,19 +74,13 @@ async function inspect(definition) {
     }
     throw error
   }
-  if (!metadata.isFile() || metadata.isSymbolicLink() || metadata.size < 1 || metadata.size > definition.maximumBytes) {
-    throw new Error(`Local package is unsafe or outside its size bound: ${definition.path}`)
-  }
-  if (basename(path) !== basename(definition.path) || relative(repositoryRoot, path).startsWith("..")) {
-    throw new Error(`Local package path escaped the repository: ${definition.path}`)
-  }
   return {
     host: definition.host,
     packageId: definition.packageId,
     artifactPath: definition.path,
     status: "produced",
-    bytes: metadata.size,
-    digest: await digest(path),
+    bytes: artifact.bytes.byteLength,
+    digest: digest(artifact.bytes),
     verification: definition.verification,
   }
 }
@@ -109,5 +102,7 @@ const report = {
 }
 
 const serialized = `${JSON.stringify(report, null, 2)}\n`
-if (outputPath) await writeFile(outputPath, serialized, { encoding: "utf8", flag: "wx" })
+if (outputRelativePath) {
+  await writeExclusiveRepositoryFile(repositoryRoot, outputRelativePath, serialized)
+}
 process.stdout.write(serialized)

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 
+import { hostProductInputSchema } from "./host.js"
 import {
   initiativeApplicabilityDecisionInputSchema,
   initiativeApplicabilityMatrixInputSchema,
@@ -8,6 +9,7 @@ import {
   initiativeClassificationCompletenessDimensionIds,
   initiativeClassificationCompletenessPolicySchema,
   initiativeClassificationInputSchema,
+  productSchema,
 } from "./product.js"
 
 export const classificationInput = {
@@ -60,6 +62,44 @@ export const applicabilityDecisionInput = {
 } as const
 
 describe("Initiative classification and applicability contracts", () => {
+  it("rejects secret-shaped Product narrative data while preserving ordinary Product records", () => {
+    const product = {
+      schemaVersion: 1,
+      id: "11111111-1111-4111-8111-111111111111",
+      kind: "product",
+      revision: 1,
+      name: "Payments",
+      summary: "A governed payments Product.",
+      problem: "Payment operations need a bounded and reviewable workflow.",
+      affectedUsers: "Payments operators",
+      desiredOutcome: "Payments work remains governed and reviewable.",
+      successSignals: ["Governed changes are reviewable"],
+      firstWorkflow: "Review a bounded payments change.",
+      exclusions: [],
+      profile: "security-sensitive",
+      lifecycleState: "active",
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    } as const
+
+    expect(productSchema.parse(product)).toEqual(product)
+    expect(productSchema.safeParse({
+      ...product,
+      summary: "api_key=abcdefghijklmnopqrstuvwxyz123456",
+    }).success).toBe(false)
+    expect(productSchema.safeParse({
+      ...product,
+      successSignals: ["Bearer abcdefghijklmnopqrstuvwxyz123456"],
+    }).success).toBe(false)
+    const { schemaVersion: _schemaVersion, id: _id, kind: _kind, revision: _revision,
+      lifecycleState: _lifecycleState, createdAt: _createdAt, updatedAt: _updatedAt, ...input } = product
+    expect(hostProductInputSchema.parse(input)).toEqual(input)
+    expect(hostProductInputSchema.safeParse({
+      ...input,
+      problem: "client_secret=abcdefghijklmnopqrstuvwxyz123456",
+    }).success).toBe(false)
+  })
+
   it("binds the exact Product-scoped classification completeness policy", () => {
     const policy = {
       schemaVersion: 1,

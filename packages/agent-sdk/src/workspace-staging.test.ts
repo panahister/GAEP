@@ -50,20 +50,43 @@ describe("isolated workspace staging", () => {
     await writeFile(join(source, ".GAEP", "runtime", "case-insensitive.json"), "{}")
     await mkdir(join(source, ".codex"), { recursive: true })
     await writeFile(join(source, ".codex", "config.toml"), "danger_full_access = true")
+    await mkdir(join(source, ".docker"), { recursive: true })
+    await writeFile(join(source, ".docker", "config.json"), "{\"auths\":{}}")
+    await mkdir(join(source, ".gcloud"), { recursive: true })
+    await writeFile(join(source, ".gcloud", "application_default_credentials.json"), "{}")
     await mkdir(join(source, "secrets"), { recursive: true })
     await writeFile(join(source, "secrets", "provider.txt"), "TOKEN=secret")
     await writeFile(join(source, ".env"), "TOKEN=secret")
+    await writeFile(join(source, ".netrc"), "machine example.invalid login user password placeholder")
+    await writeFile(join(source, ".git-credentials"), "https://user:placeholder@example.invalid")
+    await writeFile(join(source, "service-account.json"), "{\"private_key\":\"placeholder\"}")
+    await writeFile(join(source, "client.jks"), "synthetic-keystore")
     const service = new WorkspaceStagingService()
     const stage = await service.create(source)
 
     await expect(readFile(join(stage.root, ".env"))).rejects.toMatchObject({ code: "ENOENT" })
+    for (const path of [".netrc", ".git-credentials", "service-account.json", "client.jks", ".docker", ".gcloud"]) {
+      await expect(readFile(join(stage.root, path))).rejects.toMatchObject({ code: "ENOENT" })
+    }
     await writeFile(join(stage.root, "src", "a.txt"), "changed")
     await rm(join(stage.root, "src", "b.txt"))
     await writeFile(join(stage.root, "src", "c.txt"), "added")
     const inspection = await service.inspect(stage)
 
     expect(inspection.baselineDigest).not.toBe(inspection.finalDigest)
-    expect(inspection.excludedPaths).toEqual(expect.arrayContaining([".git", ".env", ".GAEP", ".codex", "secrets"]))
+    expect(inspection.excludedPaths).toEqual(expect.arrayContaining([
+      ".git",
+      ".env",
+      ".GAEP",
+      ".codex",
+      ".docker",
+      ".gcloud",
+      ".netrc",
+      ".git-credentials",
+      "service-account.json",
+      "client.jks",
+      "secrets",
+    ]))
     expect(inspection.changes.map(({ path, kind }) => ({ path, kind }))).toEqual([
       { path: "src/a.txt", kind: "modified" },
       { path: "src/b.txt", kind: "deleted" },

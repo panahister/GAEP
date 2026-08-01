@@ -9,6 +9,10 @@ import { promisify } from "node:util"
 
 import { runTests } from "@vscode/test-electron"
 import { createVsixLifecycleFixture } from "../../../../scripts/create_vsix_lifecycle_fixture.mjs"
+import {
+  assertInstalledVsixContent,
+  readVsixContentManifest,
+} from "./package-content.mjs"
 
 const extensionDevelopmentPath = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const extensionTestsPath = join(extensionDevelopmentPath, "test/e2e/suite/index.cjs")
@@ -129,12 +133,16 @@ async function installPackagedVsix(profile, extensions) {
   const packageId = "gaep.gaep-vscode"
   const exactPackage = `${packageId}@0.1.0`
   const packagePath = join(extensionDevelopmentPath, "dist/gaep-vscode.vsix")
+  const packageBytes = await readFile(packagePath)
+  const packageSha256 = createHash("sha256").update(packageBytes).digest("hex")
+  const packageContent = await readVsixContentManifest(packagePath)
   const previousPackage = await createVsixLifecycleFixture({
     temporaryRoot,
     packageName: "gaep-vscode",
     displayName: "GAEP for VS Code",
     engineRange: "^1.103.0",
   })
+  const previousContent = await readVsixContentManifest(previousPackage.path)
   const cliEnvironment = {
     ...process.env,
     ELECTRON_RUN_AS_NODE: "1",
@@ -168,24 +176,59 @@ async function installPackagedVsix(profile, extensions) {
 
   await executeCli(["--install-extension", previousPackage.path, "--force"])
   await assertInventory(previousPackage.exactPackage)
+  await assertInstalledVsixContent({
+    extensionsRoot: extensions,
+    packageId,
+    version: "0.0.9",
+    expected: previousContent,
+  })
   await executeCli(["--install-extension", packagePath, "--force"])
   await assertInventory(exactPackage)
+  await assertInstalledVsixContent({
+    extensionsRoot: extensions,
+    packageId,
+    version: "0.1.0",
+    expected: packageContent,
+  })
   await executeCli(["--install-extension", packagePath, "--force"])
   await assertInventory(exactPackage)
+  await assertInstalledVsixContent({
+    extensionsRoot: extensions,
+    packageId,
+    version: "0.1.0",
+    expected: packageContent,
+  })
   await executeCli(["--install-extension", previousPackage.path, "--force"])
   await assertInventory(previousPackage.exactPackage)
+  await assertInstalledVsixContent({
+    extensionsRoot: extensions,
+    packageId,
+    version: "0.0.9",
+    expected: previousContent,
+  })
   await executeCli(["--uninstall-extension", packageId])
   await assertInventory(undefined)
   await executeCli(["--install-extension", packagePath, "--force"])
   await assertInventory(exactPackage)
+  await assertInstalledVsixContent({
+    extensionsRoot: extensions,
+    packageId,
+    version: "0.1.0",
+    expected: packageContent,
+  })
   process.stdout.write(`PASS isolated VSIX previous-version install/upgrade/reinstall/rollback/uninstall/absence/final install: ${previousPackage.exactPackage} -> ${exactPackage}\n`)
-  const packageBytes = await readFile(packagePath)
+  const packageBytesAfter = await readFile(packagePath)
+  if (createHash("sha256").update(packageBytesAfter).digest("hex") !== packageSha256) {
+    throw new Error("Source VSIX changed during the isolated package lifecycle")
+  }
   return {
     status: "passed",
     exactPackage,
     previousPackage: previousPackage.exactPackage,
     bytes: packageBytes.byteLength,
-    sha256: createHash("sha256").update(packageBytes).digest("hex"),
+    sha256: packageSha256,
+    contentManifestSha256: packageContent.contentManifestSha256,
+    contentFiles: packageContent.contentFiles,
     operations: ["previous-install", "upgrade", "reinstall", "rollback", "uninstall", "absence", "final-install"],
   }
 }

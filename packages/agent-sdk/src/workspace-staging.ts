@@ -318,13 +318,27 @@ function isExcluded(relativePath: string, directory: boolean): boolean {
     ".azure",
     ".gnupg",
     ".kube",
+    ".docker",
+    ".gcloud",
     ".secrets",
     "secrets",
   ].includes(segment))) return true
   if (directory) return false
   if (name === ".env" || (name.startsWith(".env.") && !name.endsWith(".example"))) return true
-  if ([".npmrc", ".pypirc", "credentials.json", "id_rsa", "id_ed25519"].includes(name)) return true
-  if (/\.(?:pem|key|p12|pfx)$/i.test(name) || /(?:^|[._-])secrets?(?:[._-]|$)/i.test(name)) return true
+  if ([
+    ".npmrc",
+    ".pypirc",
+    ".netrc",
+    "_netrc",
+    ".git-credentials",
+    "credentials.json",
+    "service-account.json",
+    "application_default_credentials.json",
+    "id_rsa",
+    "id_ed25519",
+  ].includes(name)) return true
+  if (/\.(?:pem|key|p12|pfx|jks|keystore)$/i.test(name) ||
+      /(?:^|[._-])secrets?(?:[._-]|$)/i.test(name)) return true
   return false
 }
 
