@@ -110,6 +110,7 @@ import { RollbackRecoveryService } from "./rollback-recovery.js"
 import { ChangeConflictDetectionService } from "./change-conflict-detection.js"
 import { TestGenerationService } from "./test-generation.js"
 import { UnitIntegrationTestingService } from "./unit-integration-testing.js"
+import { QaScorecardService } from "./qa-scorecard.js"
 import { BusinessArchitectureBaselineService } from "./business-architecture-baseline.js"
 import { BusinessRuleCatalogService } from "./business-rule-catalog.js"
 import { BusinessUnderstandingService } from "./business-understanding.js"
@@ -353,6 +354,7 @@ export class GaepEngine {
   readonly changeConflictDetection: ChangeConflictDetectionService
   readonly testGeneration: TestGenerationService
   readonly unitIntegrationTesting: UnitIntegrationTestingService
+  readonly qaScorecard: QaScorecardService
   readonly valueStreamModel: ValueStreamModelService
   readonly operatingModel: OperatingModelService
   readonly businessRuleCatalog: BusinessRuleCatalogService
@@ -1292,6 +1294,11 @@ export class GaepEngine {
         riskRegister: this.riskRegister,
         evidenceRegistry: this.evidenceRegistry,
       },
+    )
+    this.qaScorecard = new QaScorecardService(
+      this.repository,
+      () => this.readProduct(),
+      (id) => this.readInitiative(id),
     )
     this.designDriftDetection = new DesignDriftDetectionService(
       this.repository,
