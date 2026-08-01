@@ -335,6 +335,7 @@ export interface DeliveryPageSnapshot extends StudioPageBase {
   changeConflictDetections?: StudioTableSnapshot
   testGenerations?: StudioTableSnapshot
   unitIntegrationTestings?: StudioTableSnapshot
+  qaScorecards?: StudioTableSnapshot
   transitionPreview?: {
     recordType: "initiative" | "change" | "work-item"
     recordId: string
@@ -392,6 +393,7 @@ const deliveryTableOrder = {
   changeConflictDetections: true,
   testGenerations: true,
   unitIntegrationTestings: true,
+  qaScorecards: true,
 } as const satisfies Readonly<Record<DeliveryTableKey, true>>
 
 export const deliveryTableKeys = Object.freeze(Object.keys(deliveryTableOrder) as DeliveryTableKey[])

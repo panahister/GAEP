@@ -136,7 +136,7 @@ export function validateVisualBaselineManifest(manifest, rendererFingerprint, sc
     if (entry.route !== expected.route || entry.surface !== expected.surface || entry.theme !== expected.theme ||
         entry.viewport.width !== expected.width || entry.viewport.height !== expected.height ||
         entry.image.width !== expected.width || entry.image.height !== expected.height ||
-        (entry.route === "delivery" && entry.dom.tableCount !== 44)) {
+        (entry.route === "delivery" && entry.dom.tableCount !== 45)) {
       throw new Error("Visual baseline scenario differs from the exact fixture catalog")
     }
     expectedById.delete(entry.id)
@@ -219,7 +219,7 @@ export function composeVisualRegressionReport({
       workflowStates: ["ready", "empty", "invalid"],
       responsiveClasses: ["compact-under-720", "wide-at-least-1200"],
       themes: ["light", "dark"],
-      deliveryTablesBound: 44,
+      deliveryTablesBound: 45,
     },
     sourceDigests,
     privacy: {
@@ -438,7 +438,7 @@ function parseRenderedDom(dom, scenario) {
     )
   }
   const tableCount = Number(tableMatch[1])
-  if (!Number.isInteger(tableCount) || tableCount < 0 || (scenario.route === "delivery" && tableCount !== 44)) {
+  if (!Number.isInteger(tableCount) || tableCount < 0 || (scenario.route === "delivery" && tableCount !== 45)) {
     throw new Error(`Product Studio fixture table projection is incomplete: ${scenario.id}`)
   }
   return { ready: true, tableCount }

@@ -53,7 +53,7 @@ function manifest(rendererFingerprint = "google-chrome-1.2.3.4-headless-dsf1") {
           width: scenario.width,
           height: scenario.height,
         },
-        dom: { ready: true, tableCount: scenario.route === "delivery" ? 44 : 0 },
+        dom: { ready: true, tableCount: scenario.route === "delivery" ? 45 : 0 },
       }
     }),
     authorityBoundary: "Fixture only.",

@@ -46,6 +46,7 @@ import type {
   ChangeConflictDetectionProjection,
   TestGenerationProjection,
   UnitIntegrationTestingProjection,
+  QaScorecardProjection,
   BusinessRuleCatalogProjection,
   BusinessUnderstandingProjection,
   Change,
@@ -333,6 +334,9 @@ export interface CurrentStudioEngineReader {
   unitIntegrationTesting?: {
     project(initiativeId: string): Promise<UnitIntegrationTestingProjection>
   }
+  qaScorecard?: {
+    project(initiativeId: string): Promise<QaScorecardProjection>
+  }
   valueStreamModel?: {
     project(initiativeId: string): Promise<ValueStreamModelProjection>
   }
@@ -540,6 +544,7 @@ interface ObservedStudioState {
   changeConflictDetectionProjections: Map<string, ChangeConflictDetectionProjection>
   testGenerationProjections: Map<string, TestGenerationProjection>
   unitIntegrationTestingProjections: Map<string, UnitIntegrationTestingProjection>
+  qaScorecardProjections: Map<string, QaScorecardProjection>
   valueStreamModelProjections: Map<string, ValueStreamModelProjection>
   operatingModelProjections: Map<string, OperatingModelProjection>
   businessRuleCatalogProjections: Map<string, BusinessRuleCatalogProjection>
@@ -3994,6 +3999,7 @@ function deliveryPage(state: ObservedStudioState): DeliveryPageSnapshot {
     changeConflictDetections: changeConflictDetectionTable(state.changeConflictDetectionProjections.values()),
     testGenerations: testGenerationTable(state.testGenerationProjections.values()),
     unitIntegrationTestings: unitIntegrationTestingTable(state.unitIntegrationTestingProjections.values()),
+    qaScorecards: qaScorecardTable(state.qaScorecardProjections.values()),
   }
 }
 
@@ -5724,6 +5730,48 @@ export function unitIntegrationTestingTable(projections: Iterable<UnitIntegratio
     { key: "receipts", label: "Deterministic receipts" }, { key: "boundary", label: "Privacy and authority boundary" }], rows, actions: [],
     ...(rows.length === 0 ? { emptyState: emptySurface("No governed Unit and Integration Testing candidate",
       "Create the metadata-only suite candidate through the governed engine after the exact current Test Generation, methodology, inventory, acceptance, implementation-unit, changed-unit, preview, stage, conflict, risk and evidence predecessors exist. Refresh Product Studio after a superseding revision. This view cannot inspect source, create or execute Product tests, establish results, coverage, quality, approval, acceptance or security approval, or grant action authority.") } : {}) }
+}
+
+export function qaScorecardTable(projections: Iterable<QaScorecardProjection>): StudioTableSnapshot {
+  const rows = [...projections].flatMap((projection) => projection.candidate?.dimensions.map((dimension) => ({
+    id: `${projection.candidate!.id}-${dimension.id}`,
+    cells: {
+      initiative: projection.initiative.id,
+      dimension: dimension.id,
+      state: dimension.state,
+      localAutomation: dimension.localAutomationState,
+      evidence: String(dimension.evidenceCount),
+      gaps: String(dimension.gapCount),
+      limitations: String(dimension.limitationCount),
+      humanValidation: dimension.humanValidationState,
+      assessment: `${projection.status.state} · ${projection.status.successCount} success · ${projection.status.failureCount} failed · ${projection.status.missingCount} missing · ${projection.status.staleCount} stale · ${projection.status.notAssessedCount} not assessed · ${projection.status.unresolvedGapCount} unresolved gaps`,
+      receipts: `${projection.candidate!.evidenceCatalogDigest} · ${projection.candidate!.dimensionReceiptDigest} · ${projection.candidate!.gapReceiptDigest} · ${projection.candidate!.assessmentReceiptDigest}`,
+      boundary: "Bounded local QA evidence metadata only. Success means current local automated evidence for this dimension, not Product truth, human validation, security approval, Product Owner acceptance, release readiness, deployment readiness or action authority.",
+    },
+    state: dimension.state,
+    actions: [],
+  })) ?? [])
+  return {
+    id: "qa-scorecard",
+    title: "Multi-Dimensional QA Scorecard",
+    columns: [
+      { key: "initiative", label: "Initiative", identifier: true },
+      { key: "dimension", label: "QA dimension", identifier: true },
+      { key: "state", label: "Evidence state" },
+      { key: "localAutomation", label: "Local automation" },
+      { key: "evidence", label: "Evidence items" },
+      { key: "gaps", label: "Unresolved gaps" },
+      { key: "limitations", label: "Recorded limitations" },
+      { key: "humanValidation", label: "Human validation" },
+      { key: "assessment", label: "Fail-closed assessment" },
+      { key: "receipts", label: "Deterministic receipts" },
+      { key: "boundary", label: "Privacy and authority boundary" },
+    ],
+    rows,
+    actions: [],
+    ...(rows.length === 0 ? { emptyState: emptySurface("No governed multi-dimensional QA scorecard",
+      "Create a versioned local evidence scorecard through the governed engine after exact current functional, unit/integration, E2E, security, accessibility, visual-fixture, performance, reliability, trace/coverage and gap evidence is available. Refresh Product Studio after a superseding revision. Missing, failed, stale and not-assessed evidence remain distinct; this view cannot grant human validation, security approval, Product Owner acceptance, release, deployment or action authority.") } : {}),
+  }
 }
 
 function requirementsTable(records: Requirement[]): StudioTableSnapshot {
@@ -7647,6 +7695,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       changeConflictDetectionProjections: new Map(),
       testGenerationProjections: new Map(),
       unitIntegrationTestingProjections: new Map(),
+      qaScorecardProjections: new Map(),
       businessCapabilityMapProjections: new Map(),
       valueStreamModelProjections: new Map(),
       operatingModelProjections: new Map(),
@@ -9773,6 +9822,27 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
           empty.issues.push(issue(`unit-integration-testing-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe Unit and Integration Testing metadata is unavailable.`, "warning", initiative.id))
         })
       } else if (empty.initiatives.length > 0) empty.issues.push(issue("unit-integration-testing-unavailable", "Unit and Integration Testing metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
+    }
+    if (route === "delivery" && engine.qaScorecard) {
+      if (auditSemanticsVerified) {
+        const projections = await Promise.allSettled(empty.initiatives.map((initiative) => engine.qaScorecard!.project(initiative.id)))
+        projections.forEach((projection, index) => {
+          const initiative = empty.initiatives[index]
+          if (!initiative) return
+          if (projection.status === "fulfilled") {
+            const value = projection.value
+            const { snapshotDigest, ...projectionBody } = value
+            if (value.candidate !== undefined && value.product.id === empty.product?.id && value.product.revision === (empty.product.revision ?? 1) &&
+                value.product.digest === canonicalDigest(empty.product) && value.initiative.id === initiative.id && value.initiative.revision === (initiative.revision ?? 1) &&
+                value.initiative.digest === canonicalDigest(initiative) && snapshotDigest === canonicalDigest(projectionBody)) {
+              empty.qaScorecardProjections.set(initiative.id, value)
+              return
+            }
+          }
+          this.context.logDiagnostic("Product Studio QA scorecard projection was unavailable or did not bind the exact current Product, Initiative, evidence catalog and snapshot", projection.status === "rejected" ? projection.reason : undefined)
+          empty.issues.push(issue(`qa-scorecard-${initiative.id}-unavailable`, `${initiative.title}: exact privacy-safe QA scorecard metadata is unavailable.`, "warning", initiative.id))
+        })
+      } else if (empty.initiatives.length > 0) empty.issues.push(issue("qa-scorecard-unavailable", "QA scorecard metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
     }
     if (
       (route === "direction" || route === "users-jobs" || route === "outcomes") &&

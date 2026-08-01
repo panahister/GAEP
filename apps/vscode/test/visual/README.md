@@ -1,6 +1,6 @@
 # Product Studio offline visual fixtures
 
-P3B-22 renders the real Product Studio browser client from deterministic local snapshots. The harness binds six fixed scenarios, exact viewport PNG bytes, DOM readiness, all 44 Delivery tables, the scenario catalog, and the generated browser bundle to one recorded Chrome renderer fingerprint.
+P3B-22 renders the real Product Studio browser client from deterministic local snapshots. The harness binds six fixed scenarios, exact viewport PNG bytes, DOM readiness, every declared Delivery table, the scenario catalog, and the generated browser bundle to one recorded Chrome renderer fingerprint.
 
 Run the current gate from the repository root:
 

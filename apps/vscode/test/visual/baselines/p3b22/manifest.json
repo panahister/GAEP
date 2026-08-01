@@ -8,7 +8,7 @@
     "fingerprint": "google-chrome-150.0.7871.187-headless-dsf1"
   },
   "source": {
-    "bundleSha256": "efd412f9c4472ce7b87a3b064c425c09deb4fa7c08f0e8f5c3cafd276dce4c84",
+    "bundleSha256": "de285955c392fb0c33178ba11c57a00e3395f0dc044dee0be7d88cfb9e986d6b",
     "scenarioCatalogSha256": "90a2c11f6a7b8b3bb96f501521178b5a27cb62c7f7a10580ab53c2d8249ac2ad"
   },
   "scenarios": [
@@ -51,7 +51,7 @@
       },
       "dom": {
         "ready": true,
-        "tableCount": 44
+        "tableCount": 45
       }
     },
     {

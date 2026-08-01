@@ -109,7 +109,7 @@ export function composeAccessibilityReport({ checkpoint, observedAt, focused, ma
       { id: "keyboard-route-and-native-controls", status: "passed-automated" },
       { id: "focus-route-edit-pagination-sort-filter", status: "passed-automated" },
       { id: "screen-reader-labels-live-announcements", status: "passed-automated" },
-      { id: "delivery-table-order-and-completeness", status: "passed-automated", routes: 12, deliveryTables: 44 },
+      { id: "delivery-table-order-and-completeness", status: "passed-automated", routes: 12, deliveryTables: 45 },
       { id: "sorting-filtering-visible-metadata-export", status: "passed-automated" },
       { id: "disabled-action-explanations", status: "passed-automated" },
       { id: "empty-loading-error-offline-interrupted", status: "passed-automated" },
