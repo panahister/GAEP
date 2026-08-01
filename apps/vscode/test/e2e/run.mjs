@@ -1,8 +1,9 @@
 import { execFile } from "node:child_process"
+import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises"
+import { lstat, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { dirname, join, resolve } from "node:path"
+import { basename, dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 
@@ -16,6 +17,7 @@ const testHarnessPath = join(extensionDevelopmentPath, "test/e2e/harness")
 const temporaryRoot = await mkdtemp(join(process.platform === "darwin" ? "/tmp" : tmpdir(), "gaep-e2e-"))
 const runCli = promisify(execFile)
 const installation = installedInstallation()
+const completedPhases = []
 
 function installedInstallation() {
   const configuredExecutable = process.env.GAEP_VSCODE_EXECUTABLE
@@ -82,10 +84,48 @@ async function runPhase({
   if (installation) options.vscodeExecutablePath = installation.executable
   else options.version = "1.103.0"
   await runTests(options)
+  completedPhases.push(phase)
+}
+
+async function inventoryEntry(target, inventoryRoot) {
+  const metadata = await lstat(target)
+  const name = relative(inventoryRoot, target) || "."
+  if (metadata.isDirectory()) {
+    const children = await readdir(target)
+    const entries = [{ path: name, kind: "directory" }]
+    for (const child of children.sort()) entries.push(...await inventoryEntry(join(target, child), inventoryRoot))
+    return entries
+  }
+  if (!metadata.isFile()) throw new Error(`Unexpected non-file fixture entry: ${basename(target)}`)
+  const bytes = await readFile(target)
+  return [{
+    path: name,
+    kind: "file",
+    bytes: bytes.byteLength,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+  }]
+}
+
+async function workspaceInventory(workspace) {
+  const roots = [workspace.singleRoot, workspace.multiRootA, workspace.multiRootB, workspace.multiRootWorkspace]
+  const entries = []
+  for (const [index, root] of roots.entries()) {
+    const inventoryRoot = index === roots.length - 1 ? dirname(root) : root
+    for (const entry of await inventoryEntry(root, inventoryRoot)) entries.push({ fixture: index, ...entry })
+  }
+  return entries
+}
+
+async function assertWorkspaceUnchanged(workspace, expected, phase) {
+  const actual = await workspaceInventory(workspace)
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(`Isolated workspace fixture changed during ${phase}`)
+  }
+  process.stdout.write(`PASS ${phase}: exact isolated workspace tree and content fingerprint unchanged\n`)
 }
 
 async function installPackagedVsix(profile, extensions) {
-  if (!installation) return false
+  if (!installation) return { status: "unverified" }
   const packageId = "gaep.gaep-vscode"
   const exactPackage = `${packageId}@0.1.0`
   const packagePath = join(extensionDevelopmentPath, "dist/gaep-vscode.vsix")
@@ -139,10 +179,19 @@ async function installPackagedVsix(profile, extensions) {
   await executeCli(["--install-extension", packagePath, "--force"])
   await assertInventory(exactPackage)
   process.stdout.write(`PASS isolated VSIX previous-version install/upgrade/reinstall/rollback/uninstall/absence/final install: ${previousPackage.exactPackage} -> ${exactPackage}\n`)
-  return true
+  const packageBytes = await readFile(packagePath)
+  return {
+    status: "passed",
+    exactPackage,
+    previousPackage: previousPackage.exactPackage,
+    bytes: packageBytes.byteLength,
+    sha256: createHash("sha256").update(packageBytes).digest("hex"),
+    operations: ["previous-install", "upgrade", "reinstall", "rollback", "uninstall", "absence", "final-install"],
+  }
 }
 
 const workspace = await createWorkspace()
+const initialWorkspaceInventory = await workspaceInventory(workspace)
 const restoreProfile = join(temporaryRoot, "restore-profile")
 const restoreExtensions = join(temporaryRoot, "restore-extensions")
 const multiRootProfile = join(temporaryRoot, "multi-root-profile")
@@ -158,6 +207,15 @@ try {
     extensions: restoreExtensions,
     expectedRoots: [workspace.singleRoot],
   })
+  await assertWorkspaceUnchanged(workspace, initialWorkspaceInventory, "open")
+  await runPhase({
+    phase: "reopen",
+    target: workspace.singleRoot,
+    profile: restoreProfile,
+    extensions: restoreExtensions,
+    expectedRoots: [workspace.singleRoot],
+  })
+  await assertWorkspaceUnchanged(workspace, initialWorkspaceInventory, "reopen")
   await runPhase({
     phase: "multi-root",
     target: workspace.multiRootWorkspace,
@@ -165,8 +223,10 @@ try {
     extensions: multiRootExtensions,
     expectedRoots: [workspace.multiRootA, workspace.multiRootB],
   })
+  await assertWorkspaceUnchanged(workspace, initialWorkspaceInventory, "multi-root")
   await Promise.all([installedProfile, installedExtensions].map((path) => mkdir(path, { recursive: true })))
-  if (await installPackagedVsix(installedProfile, installedExtensions)) {
+  const packageLifecycle = await installPackagedVsix(installedProfile, installedExtensions)
+  if (packageLifecycle.status === "passed") {
     await runPhase({
       phase: "installed",
       target: workspace.singleRoot,
@@ -176,9 +236,21 @@ try {
       developmentPath: testHarnessPath,
       disableExtensions: false,
     })
+    await assertWorkspaceUnchanged(workspace, initialWorkspaceInventory, "installed")
   } else {
     process.stdout.write("Exact installed VSIX activation: UNVERIFIED because no local VS Code installation is available.\n")
   }
+  process.stdout.write(`GAEP_LOCAL_VSCODE_NATIVE_RESULT=${JSON.stringify({
+    schemaVersion: 1,
+    scope: "local-isolated-vscode",
+    phases: completedPhases,
+    packageLifecycle,
+    workspaceFingerprint: "unchanged",
+    restartReopen: "explicit-command-after-isolated-restart",
+    normalProfileTouched: false,
+    externalSystemsUsed: false,
+    otherHostMatricesRun: false,
+  })}\n`)
   process.stdout.write("GAEP VS Code extension-host verification: PASS\n")
   process.stdout.write("Workspace-trust limitation: @vscode/test-electron forces --disable-workspace-trust; untrusted-host behavior remains outside this harness.\n")
 } finally {

@@ -32,15 +32,20 @@ async function assertAbsent(target) {
 }
 
 function studioTab() {
+  return studioTabs()[0]
+}
+
+function studioTabs() {
+  const tabs = []
   for (const group of vscode.window.tabGroups.all) {
     for (const tab of group.tabs) {
       if (tab.input instanceof vscode.TabInputWebview && [
         studioViewType,
         `mainThreadWebview-${studioViewType}`,
-      ].includes(tab.input.viewType)) return tab
+      ].includes(tab.input.viewType)) tabs.push(tab)
     }
   }
-  return undefined
+  return tabs
 }
 
 async function activateExtension() {
@@ -89,16 +94,17 @@ async function assertCommandsAndViews(extension) {
   for (const viewId of viewIds) await vscode.commands.executeCommand(`${viewId}.focus`)
 }
 
-async function openStudio() {
+async function openStudio(route = "trace") {
   if (process.env.GAEP_E2E_LOG_CSP === "1") {
     const diagnosticPanel = vscode.window.createWebviewPanel("gaep.cspDiagnostic", "GAEP CSP diagnostic", vscode.ViewColumn.Active, {})
     process.stdout.write(`GAEP host CSP source: ${JSON.stringify(diagnosticPanel.webview.cspSource)}\n`)
     diagnosticPanel.dispose()
   }
-  await vscode.commands.executeCommand("gaep.openProductStudio", "trace")
+  await vscode.commands.executeCommand("gaep.openProductStudio", route)
   const tab = await waitFor(studioTab, "Product Studio did not open")
   assert.equal(tab.label, "GAEP Product Studio")
   assert.equal(tab.isDirty, false)
+  assert.equal(studioTabs().length, 1, "Product Studio must reuse one panel")
   await new Promise((resolve) => setTimeout(resolve, 1_000))
   return tab
 }
@@ -108,9 +114,23 @@ async function runOpenPhase() {
   const extension = await activateExtension()
   await assertCommandsAndViews(extension)
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
-  await openStudio()
+  const opened = await openStudio("trace")
+  const refreshed = await openStudio("delivery")
+  assert.equal(refreshed, opened, "refresh navigation must reuse the existing Product Studio panel")
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
-  process.stdout.write("PASS open: activation, all contributed commands, four native views, and Product Studio open\n")
+  process.stdout.write("PASS open: activation, all contributed commands, four native views, Product Studio open, refresh, and single-panel reuse\n")
+}
+
+async function runReopenPhase() {
+  await assertWorkspace(1)
+  const extension = await activateExtension()
+  await assertCommandsAndViews(extension)
+  await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
+  const restored = await openStudio("delivery")
+  const reopened = await openStudio("runs-evidence")
+  assert.equal(reopened, restored, "reopen navigation must reuse the panel opened after restart")
+  await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
+  process.stdout.write("PASS reopen: same isolated profile restart, explicit Product Studio reopen, navigation refresh, single-panel reuse, and no workspace mutation\n")
 }
 
 async function runInstalledPhase() {
@@ -152,6 +172,7 @@ async function runMultiRootPhase() {
 async function run() {
   const phase = process.env.GAEP_E2E_PHASE
   if (phase === "open") return runOpenPhase()
+  if (phase === "reopen") return runReopenPhase()
   if (phase === "installed") return runInstalledPhase()
   if (phase === "multi-root") return runMultiRootPhase()
   throw new Error(`Unknown GAEP_E2E_PHASE: ${String(phase)}`)

@@ -841,6 +841,36 @@ describe("Product Studio rendered accessibility", () => {
     }
   }, 30_000)
 
+  it("renders explicit empty, loading, error, offline, and interrupted workflow states", () => {
+    const cases = [
+      { kind: "empty", title: "No local records", connectivity: "online", role: null },
+      { kind: "loading", title: "Loading Product context", connectivity: "online", role: null },
+      { kind: "invalid", title: "Product Studio error", connectivity: "online", role: "alert" },
+      { kind: "offline", title: "Provider offline", connectivity: "offline", role: null },
+      { kind: "interrupted", title: "Local workflow interrupted", connectivity: "provider-absent", role: null },
+    ] as const
+
+    for (const [index, candidate] of cases.entries()) {
+      const stateSnapshot = snapshot("overview", 100 + index)
+      stateSnapshot.workspace = { ...stateSnapshot.workspace, connectivity: candidate.connectivity }
+      stateSnapshot.surface = {
+        kind: candidate.kind,
+        title: candidate.title,
+        detail: "No private path, raw provider output, prompt, source bytes, environment value, or secret is exposed.",
+        issues: [],
+        actions: [],
+      }
+      expect(isStudioSnapshot(stateSnapshot), candidate.title).toBe(true)
+      send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: stateSnapshot })
+      const heading = dom.window.document.getElementById("studio-page-title")
+      expect(heading?.textContent, candidate.title).toBe(candidate.title)
+      if (candidate.kind === "loading") expect(dom.window.document.querySelector("progress"), candidate.title).not.toBeNull()
+      else expect(dom.window.document.querySelector("progress"), candidate.title).toBeNull()
+      expect(heading?.closest("section")?.getAttribute("role"), candidate.title).toBe(candidate.role)
+      expect(dom.window.document.body.textContent, candidate.title).toContain("No private path")
+    }
+  })
+
   it("renders every declared Delivery table once in protocol order and omits unavailable optional tables", () => {
     const complete = snapshot("delivery", 89)
     expect(isStudioSnapshot(complete)).toBe(true)
