@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-vscode-accessibility-report",
+  "scope": {
+    "host": "vscode",
+    "execution": "local-automated",
+    "repositoryCheckpoint": "78b9d9ade907934e7c9d6d61d395e472e214cf4c",
+    "observedAt": "2026-08-01T08:48:02Z",
+    "otherHostMatrices": "not-run",
+    "normalProfile": "not-touched",
+    "externalSystems": "not-used"
+  },
+  "result": "automated-passed-manual-pending",
+  "focusedVerification": {
+    "status": "passed",
+    "files": [
+      "apps/vscode/src/studio-document.test.ts",
+      "apps/vscode/src/studio-protocol.test.ts",
+      "apps/vscode/src/studio-accessibility.test.ts",
+      "apps/vscode/src/studio-command-registration.test.ts",
+      "apps/vscode/src/studio-session.test.ts"
+    ],
+    "fileCount": 5,
+    "tests": 41,
+    "skipped": 0
+  },
+  "manifestVerification": {
+    "commands": 54,
+    "views": 4,
+    "commandTitles": "bounded-and-nonempty",
+    "viewNames": "exact-and-nonempty",
+    "activationEvents": "complete"
+  },
+  "coverage": [
+    {
+      "id": "keyboard-route-and-native-controls",
+      "status": "passed-automated"
+    },
+    {
+      "id": "focus-route-edit-pagination-sort-filter",
+      "status": "passed-automated"
+    },
+    {
+      "id": "screen-reader-labels-live-announcements",
+      "status": "passed-automated"
+    },
+    {
+      "id": "delivery-table-order-and-completeness",
+      "status": "passed-automated",
+      "routes": 12,
+      "deliveryTables": 44
+    },
+    {
+      "id": "sorting-filtering-visible-metadata-export",
+      "status": "passed-automated"
+    },
+    {
+      "id": "disabled-action-explanations",
+      "status": "passed-automated"
+    },
+    {
+      "id": "empty-loading-error-offline-interrupted",
+      "status": "passed-automated"
+    },
+    {
+      "id": "axe-core-dom-rules",
+      "status": "passed-automated",
+      "colorContrast": "not-computable-in-jsdom"
+    },
+    {
+      "id": "forced-colors-and-reduced-motion-rules",
+      "status": "passed-static-css"
+    },
+    {
+      "id": "manual-native-accessibility",
+      "status": "pending-human"
+    }
+  ],
+  "manualChecklist": {
+    "path": "evidence/manual-checklists/p3b21-vscode-accessibility.md",
+    "status": "pending-human",
+    "signed": false
+  },
+  "sourceDigests": [
+    {
+      "path": "apps/vscode/package.json",
+      "bytes": 11628,
+      "sha256": "4f27f05ffd0713616a08e39a22e2301b085e138aa84906b38b0aca5bb3f1f7ad"
+    },
+    {
+      "path": "apps/vscode/src/studio-accessibility.test.ts",
+      "bytes": 61156,
+      "sha256": "14c144cca1d8ba2141ddc5f69928419486fbd02c561257188460ab99f133a2e9"
+    },
+    {
+      "path": "apps/vscode/src/studio-client.ts",
+      "bytes": 96339,
+      "sha256": "a9f7f871092e087f009bef4fd0a645879488d4394cb4c983dfe7003d15b27b42"
+    },
+    {
+      "path": "apps/vscode/src/studio-command-registration.test.ts",
+      "bytes": 2724,
+      "sha256": "b4b5ef78e79d107a9e3f9643dda3ccb406bd93a0af1f91288cf09aebe9fef76f"
+    },
+    {
+      "path": "apps/vscode/src/studio-document.test.ts",
+      "bytes": 2958,
+      "sha256": "40f1544c3f4de13aa8efa082c17a0f86f069d158797bdfe1ba1db22de2f9247f"
+    },
+    {
+      "path": "apps/vscode/src/studio-document.ts",
+      "bytes": 4309,
+      "sha256": "d3cbee69642ba67bc56303e027acff4d61ee3806a864c2ec8c38a8f006658d7e"
+    },
+    {
+      "path": "apps/vscode/src/studio-protocol.test.ts",
+      "bytes": 34926,
+      "sha256": "447c63d55321a9cf10de3cb71e749c942e213537b9de8362a5c68a3c6206b732"
+    },
+    {
+      "path": "apps/vscode/src/studio-protocol.ts",
+      "bytes": 96302,
+      "sha256": "a57cc6f79dd5ce53b0fe4e7e176b589e50d6a2d2c3722f32f01995d36fa7b296"
+    },
+    {
+      "path": "apps/vscode/src/studio-session.test.ts",
+      "bytes": 5054,
+      "sha256": "f7872b6cadac0f2a24fc26d45073badb2b31977756642a412bff21c73affa4ac"
+    },
+    {
+      "path": "apps/vscode/src/studio-session.ts",
+      "bytes": 2413,
+      "sha256": "b2f4f83fd94899ee8b43074d8fbb5aafe5c522aebc627bdb80e2a9164eb38490"
+    },
+    {
+      "path": "apps/vscode/src/studio-styles.ts",
+      "bytes": 10885,
+      "sha256": "16de8c720819c63f432a89989dac7c03431780598de1109a67814ff9f8081ab8"
+    },
+    {
+      "path": "evidence/manual-checklists/p3b21-vscode-accessibility.md",
+      "bytes": 3365,
+      "sha256": "6f7d1fc44c31f7a2fba6cffe6f624a07e64ba344ce536f5c75e31bd958b8a1bb"
+    },
+    {
+      "path": "scripts/vscode_accessibility_report.mjs",
+      "bytes": 10381,
+      "sha256": "bc567cc196cff662117c916c773dc81db0d4fa4c3402d361ff8133a4438c326c"
+    },
+    {
+      "path": "scripts/vscode_accessibility_report.test.mjs",
+      "bytes": 2075,
+      "sha256": "e6a97829422df401bcbd5144d3cfd0ae8d56ef319673e91e7160c4ab5cc265dc"
+    }
+  ],
+  "privacy": {
+    "rawCommandOutputIncluded": false,
+    "absoluteMachinePathsIncluded": false,
+    "sourceBytesIncluded": false,
+    "environmentValuesIncluded": false,
+    "secretsIncluded": false
+  },
+  "authorityBoundary": "This report establishes deterministic local automated accessibility checks only. It grants no manual, assistive-technology, native-platform, Product Owner, security, release, publication, deployment, provider, Figma, or other-host acceptance authority.",
+  "limitations": [
+    "JSDOM cannot calculate native theme color contrast, layout, zoom reflow, platform focus rendering, or assistive-technology speech output.",
+    "Forced-colors and reduced-motion coverage verifies executable CSS rules, not every native OS and VS Code theme combination.",
+    "The manual checklist remains unsigned and no human accessibility acceptance is established.",
+    "No live provider, Figma, normal-profile extension, external system, publication, release or deployment action is used."
+  ]
+}
