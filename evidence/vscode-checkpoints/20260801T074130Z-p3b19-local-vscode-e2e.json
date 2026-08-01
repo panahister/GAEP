@@ -1,0 +1,249 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-vscode-end-to-end-report",
+  "scope": {
+    "host": "vscode",
+    "execution": "local-isolated",
+    "repositoryCheckpoint": "0bd9ed82caf406a83e7972df9e7a026818abe174",
+    "observedAt": "2026-08-01T07:41:30Z",
+    "otherHostMatrices": "not-run",
+    "normalProfile": "not-touched",
+    "externalSystems": "not-used"
+  },
+  "result": "passed",
+  "focusedVerification": {
+    "status": "passed",
+    "files": [
+      "packages/contracts/src/test-generation.test.ts",
+      "packages/contracts/src/unit-integration-testing.test.ts",
+      "packages/engine/src/test-generation.test.ts",
+      "packages/engine/src/unit-integration-testing.test.ts",
+      "apps/vscode/src/test-generation-product-studio.test.ts",
+      "apps/vscode/src/unit-integration-testing-product-studio.test.ts",
+      "apps/vscode/src/current-engine-studio-data-source.test.ts",
+      "apps/vscode/src/studio-protocol.test.ts",
+      "apps/vscode/src/studio-accessibility.test.ts",
+      "apps/vscode/src/studio-session.test.ts"
+    ],
+    "tests": 158,
+    "skipped": 0
+  },
+  "nativeVerification": {
+    "schemaVersion": 1,
+    "scope": "local-isolated-vscode",
+    "phases": [
+      "open",
+      "reopen",
+      "multi-root",
+      "installed"
+    ],
+    "packageLifecycle": {
+      "status": "passed",
+      "exactPackage": "gaep.gaep-vscode@0.1.0",
+      "previousPackage": "gaep.gaep-vscode@0.0.9",
+      "bytes": 1231926,
+      "sha256": "68cf7d440ced3b20dc494a6ae3e4f6879d4155f578864dac511bef1ca2e833e8",
+      "operations": [
+        "previous-install",
+        "upgrade",
+        "reinstall",
+        "rollback",
+        "uninstall",
+        "absence",
+        "final-install"
+      ]
+    },
+    "workspaceFingerprint": "unchanged",
+    "restartReopen": "explicit-command-after-isolated-restart",
+    "normalProfileTouched": false,
+    "externalSystemsUsed": false,
+    "otherHostMatricesRun": false
+  },
+  "coverage": [
+    {
+      "id": "extension-activation",
+      "status": "passed",
+      "evidence": [
+        "native:open",
+        "native:installed"
+      ]
+    },
+    {
+      "id": "product-studio-open-refresh",
+      "status": "passed",
+      "evidence": [
+        "native:open",
+        "native:reopen",
+        "studio-session"
+      ]
+    },
+    {
+      "id": "surface-states",
+      "status": "passed",
+      "states": [
+        "empty",
+        "loading",
+        "error-as-invalid",
+        "offline",
+        "interrupted"
+      ]
+    },
+    {
+      "id": "exact-product-initiative-binding",
+      "status": "passed",
+      "evidence": [
+        "test-generation-engine",
+        "unit-integration-engine",
+        "current-engine-product-studio"
+      ]
+    },
+    {
+      "id": "p3b-candidate-continuity",
+      "status": "passed",
+      "evidence": [
+        "test-generation-contract-engine",
+        "unit-integration-contract-engine"
+      ]
+    },
+    {
+      "id": "test-plan-suite-projection",
+      "status": "passed",
+      "evidence": [
+        "test-generation-product-studio",
+        "unit-integration-product-studio"
+      ]
+    },
+    {
+      "id": "restart-explicit-reopen",
+      "status": "passed",
+      "evidence": [
+        "native:reopen",
+        "studio-session"
+      ]
+    },
+    {
+      "id": "isolated-package-lifecycle",
+      "status": "passed",
+      "evidence": [
+        "previous-install",
+        "upgrade",
+        "reinstall",
+        "rollback",
+        "uninstall",
+        "absence",
+        "final-install"
+      ]
+    },
+    {
+      "id": "workspace-mutation",
+      "status": "passed",
+      "evidence": [
+        "exact-tree-and-content-fingerprint",
+        "single-root",
+        "multi-root",
+        "installed-package"
+      ]
+    },
+    {
+      "id": "privacy-safe-evidence",
+      "status": "passed",
+      "evidence": [
+        "relative-source-digests",
+        "bounded-counts",
+        "no-raw-output"
+      ]
+    }
+  ],
+  "sourceDigests": [
+    {
+      "path": "apps/vscode/package.json",
+      "bytes": 11628,
+      "sha256": "4f27f05ffd0713616a08e39a22e2301b085e138aa84906b38b0aca5bb3f1f7ad"
+    },
+    {
+      "path": "apps/vscode/src/current-engine-studio-data-source.test.ts",
+      "bytes": 492122,
+      "sha256": "393ee243aefbd194ad39384674af368fbf708cc78924b08a35d1e25169afdee5"
+    },
+    {
+      "path": "apps/vscode/src/studio-accessibility.test.ts",
+      "bytes": 57122,
+      "sha256": "c1a31eaac272619f63d715ac660d82e9d8fb39d6c5ac26e66097e599b2d6f5b0"
+    },
+    {
+      "path": "apps/vscode/src/studio-protocol.test.ts",
+      "bytes": 34926,
+      "sha256": "447c63d55321a9cf10de3cb71e749c942e213537b9de8362a5c68a3c6206b732"
+    },
+    {
+      "path": "apps/vscode/src/studio-session.test.ts",
+      "bytes": 5054,
+      "sha256": "f7872b6cadac0f2a24fc26d45073badb2b31977756642a412bff21c73affa4ac"
+    },
+    {
+      "path": "apps/vscode/src/test-generation-product-studio.test.ts",
+      "bytes": 2668,
+      "sha256": "de847a1f37998b23ea67d9346cd981bd89836824555dd14d7adeea6456591e7e"
+    },
+    {
+      "path": "apps/vscode/src/unit-integration-testing-product-studio.test.ts",
+      "bytes": 3042,
+      "sha256": "d32980f31f04ef093cd304f753ce01f80ad889814207ddc5e62f74ea34128435"
+    },
+    {
+      "path": "apps/vscode/test/e2e/README.md",
+      "bytes": 4138,
+      "sha256": "d6cfb59c60529942a4ef12cd9846585468078e15ab05b032d25032c68cc10867"
+    },
+    {
+      "path": "apps/vscode/test/e2e/run.mjs",
+      "bytes": 11059,
+      "sha256": "9fa234622f75dfa0082763264cdd85b5f29edca2114368e6e20b5f9599ce78b0"
+    },
+    {
+      "path": "apps/vscode/test/e2e/suite/index.cjs",
+      "bytes": 7983,
+      "sha256": "6e87f53f0da03198c846e5df67a0ab7f26cc734e43a1e299d89cf3a1425e354d"
+    },
+    {
+      "path": "package.json",
+      "bytes": 5976,
+      "sha256": "ea5f59e75c80113b8d25e36931bf62db46b388894c416b7b94b5b6e335770d54"
+    },
+    {
+      "path": "packages/contracts/src/test-generation.test.ts",
+      "bytes": 5276,
+      "sha256": "95aefde428997e998ad7d95a78730e28cfb66d607f0929e63c863bbce67783aa"
+    },
+    {
+      "path": "packages/contracts/src/unit-integration-testing.test.ts",
+      "bytes": 5750,
+      "sha256": "1fdc6a6a2089b61312fadd0cb48f963d464496d9b0279bdbf068c5f141bd6767"
+    },
+    {
+      "path": "packages/engine/src/test-generation.test.ts",
+      "bytes": 10752,
+      "sha256": "fd87bf9cab489086fe1276c2b1cb8760c049a34df2a77d0296df45a4b483b77f"
+    },
+    {
+      "path": "packages/engine/src/unit-integration-testing.test.ts",
+      "bytes": 12092,
+      "sha256": "467a7e5813671d4d3114e0b2fb4674907e1addec6b684467db66cfa40c764f8a"
+    }
+  ],
+  "privacy": {
+    "rawCommandOutputIncluded": false,
+    "absoluteMachinePathsIncluded": false,
+    "promptsIncluded": false,
+    "sourceBytesIncluded": false,
+    "environmentValuesIncluded": false,
+    "secretsIncluded": false
+  },
+  "authorityBoundary": "This report establishes deterministic local candidate behavior only. It grants no Product, Product Owner, security, release, publication, deployment, provider, native-manual, or other-host acceptance authority.",
+  "limitations": [
+    "The extension-host harness disables workspace-trust enforcement; native untrusted-workspace behavior is not established.",
+    "The controlled extension-host shutdown verifies restart with the same isolated profile and explicit reopen; automatic native window or webview restoration is not established.",
+    "The isolated package lifecycle is conditional on a local VS Code installation.",
+    "No live provider, Figma, credential, network service, normal-profile extension, release, publication, or deployment action is used."
+  ]
+}
