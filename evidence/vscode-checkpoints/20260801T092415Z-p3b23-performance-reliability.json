@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-local-vscode-performance-reliability-report",
+  "scope": {
+    "host": "vscode",
+    "execution": "local-bounded-fixtures-and-isolated-host",
+    "repositoryCheckpoint": "063e5d12aab49361840550eb50496a88d1de8209",
+    "observedAt": "2026-08-01T09:24:15Z",
+    "normalProfile": "not-touched",
+    "otherHostMatrices": "not-run",
+    "externalSystems": "not-used"
+  },
+  "result": "local-budgets-passed-native-power-loss-pending",
+  "focusedVerification": {
+    "status": "passed",
+    "files": [
+      "apps/vscode/src/studio-performance.test.ts",
+      "apps/vscode/src/studio-session.test.ts",
+      "apps/vscode/src/studio-data-source.test.ts",
+      "apps/vscode/src/current-engine-studio-data-source.test.ts",
+      "apps/vscode/src/managed-run-session.test.ts",
+      "packages/agent-sdk/src/managed-stage-registry.test.ts",
+      "packages/engine/src/managed-execution.test.ts"
+    ],
+    "fileCount": 7,
+    "tests": 217,
+    "skipped": 1
+  },
+  "budgets": {
+    "largeTableRows": 1000,
+    "protocolTableRowLimit": 10000,
+    "operationMs": 10000,
+    "exportMs": 2000,
+    "heapDeltaBytes": 268435456,
+    "csvBytes": 4194304,
+    "activationMs": 10000,
+    "hostPhaseMs": 120000,
+    "packageArchiveBytes": 16777216,
+    "packageContentFiles": 512,
+    "packageContentBytes": 33554432
+  },
+  "measurements": {
+    "studio": {
+      "largeTableRows": 1000,
+      "protocolTableRowLimit": 10000,
+      "renderMs": 56,
+      "sortMs": 69,
+      "exportMs": 15,
+      "filterMs": 18,
+      "heapDeltaBytes": 50377056,
+      "csvBytes": 83534
+    },
+    "native": {
+      "open": {
+        "activationMs": 283,
+        "hostPhaseMs": 4073
+      },
+      "reopen": {
+        "activationMs": 265,
+        "hostPhaseMs": 3799
+      },
+      "multi-root": {
+        "activationMs": 253,
+        "hostPhaseMs": 2835
+      },
+      "installed": {
+        "activationMs": 272,
+        "hostPhaseMs": 2908
+      }
+    }
+  },
+  "reliabilityContracts": {
+    "managedStageReadConcurrency": 32,
+    "managedExecutionReadConcurrency": 64,
+    "parallelReadOnlyConcurrency": 4,
+    "reviewManifestBytes": 16777216,
+    "shutdownTimeoutMs": 10000,
+    "staleProjectionRejection": true,
+    "packageContentFiles": 512,
+    "packageContentBytes": 33554432
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "archiveBytes": 1232286,
+    "archiveSha256": "b3e4468141417b8380f01746007d0c982cd2e0e64dcff38154e6169f5dabb80e",
+    "contentFiles": 8,
+    "contentBytes": 10079671,
+    "contentManifestSha256": "2da6cb4b0a9d5c69d0329bf1abe0e71dea3f4c944f4ab2385b17cfe3ae85219d",
+    "exactInstalledLifecycle": "passed"
+  },
+  "coverage": [
+    {
+      "id": "large-table-inventory",
+      "status": "passed-local",
+      "rows": 1000,
+      "protocolLimit": 10000
+    },
+    {
+      "id": "filter-sort-export-bounds",
+      "status": "passed-local"
+    },
+    {
+      "id": "bounded-read-concurrency",
+      "status": "passed-contract-and-focused"
+    },
+    {
+      "id": "cancellation-timeout-partial-failure",
+      "status": "passed-focused"
+    },
+    {
+      "id": "restart-reopen-and-crash-window",
+      "status": "passed-isolated-and-focused"
+    },
+    {
+      "id": "stale-projection-rejection",
+      "status": "passed-focused"
+    },
+    {
+      "id": "isolated-activation-time",
+      "status": "passed-measured"
+    },
+    {
+      "id": "heap-file-count-file-size-bounds",
+      "status": "passed-local"
+    },
+    {
+      "id": "native-power-loss-hostile-same-uid",
+      "status": "not-established"
+    }
+  ],
+  "sourceDigests": [
+    {
+      "path": "apps/vscode/src/current-engine-studio-data-source.ts",
+      "bytes": 699308,
+      "sha256": "5c599e28eb5bec75c58ae6cbad5b78421dd816e9aa1f407253f353d2af794092"
+    },
+    {
+      "path": "apps/vscode/src/managed-run-session.test.ts",
+      "bytes": 2937,
+      "sha256": "45ba0d0527dd052b9a77cf590d429a94063b585bb3b63bec73692bfeaa1135f9"
+    },
+    {
+      "path": "apps/vscode/src/managed-run-session.ts",
+      "bytes": 2231,
+      "sha256": "e7777eeb1f7f32f1991c4e15eb2adfc8144bbab29c42ea421eed83d719e21fef"
+    },
+    {
+      "path": "apps/vscode/src/studio-performance.test.ts",
+      "bytes": 7259,
+      "sha256": "32e070105c830700cdc14b25b8241553e543e4f2875af28d49bc090aaabc35ee"
+    },
+    {
+      "path": "apps/vscode/src/studio-session.test.ts",
+      "bytes": 5054,
+      "sha256": "f7872b6cadac0f2a24fc26d45073badb2b31977756642a412bff21c73affa4ac"
+    },
+    {
+      "path": "apps/vscode/test/e2e/package-content.mjs",
+      "bytes": 7382,
+      "sha256": "1a4578a5fc82bf65d304148f9e6ca656958815ef0450d832abf1a1ea9ddd85a2"
+    },
+    {
+      "path": "apps/vscode/test/e2e/run.mjs",
+      "bytes": 12683,
+      "sha256": "94114f22c8b612909b870c30a763143e17d1344ec20c9040afbc4f78fbcfd316"
+    },
+    {
+      "path": "apps/vscode/test/e2e/suite/index.cjs",
+      "bytes": 8280,
+      "sha256": "9d9430411144cb8b47dd49711bfc4ed5fe022fc0d3ddeaa3de0bf383a187b5de"
+    },
+    {
+      "path": "apps/vscode/test/performance/README.md",
+      "bytes": 1137,
+      "sha256": "7dee9c034587fdc0dbf0d1aa876bfc3abb944482906fe612dd7b8cf41feb6f1f"
+    },
+    {
+      "path": "packages/agent-sdk/src/managed-stage-registry.ts",
+      "bytes": 169518,
+      "sha256": "e037eeda124ddfe1657c658fe22df0647f4b5dc10377cfad72359d1d0a18fde9"
+    },
+    {
+      "path": "packages/engine/src/managed-execution.ts",
+      "bytes": 197742,
+      "sha256": "da22acea5c0b5f942a215094f61e5908b2865de61bd1133aac30132cec632c2e"
+    },
+    {
+      "path": "scripts/vscode_performance_reliability_report.mjs",
+      "bytes": 15711,
+      "sha256": "053ff228c22be909916ffd1c45fc2aa74c8c6698573cd7ea0046aae56d4eeec0"
+    },
+    {
+      "path": "scripts/vscode_performance_reliability_report.test.mjs",
+      "bytes": 4235,
+      "sha256": "338cbc9703cb371cec211ea194a8d8dc3ccdf49d4306f307e31664b70e7d549f"
+    }
+  ],
+  "privacy": {
+    "rawTestOutputIncluded": false,
+    "absoluteMachinePathsIncluded": false,
+    "environmentValuesIncluded": false,
+    "sourceBytesIncluded": false,
+    "secretsIncluded": false
+  },
+  "authorityBoundary": "This report establishes bounded local fixture and isolated VS Code performance/reliability budgets only. It grants no sustained-production-load, native power-loss, hostile same-UID, supported-platform, live-provider, Figma, security, human, Product Owner, release, publication, deployment, or other-host acceptance authority.",
+  "limitations": [
+    "Measured timings and heap deltas are machine-local observations with generous regression budgets, not production capacity or service-level objectives.",
+    "The isolated host measures activation and phase duration on one local macOS/VS Code environment; supported-platform and normal-profile behavior remain untested.",
+    "Deterministic fixtures cover cancellation, timeout, partial failure, restart/reopen, crash-window and stale-binding behavior but not physical power loss or hostile same-UID interference.",
+    "No live provider, Figma, external system, publication, release or deployment action is used."
+  ]
+}
