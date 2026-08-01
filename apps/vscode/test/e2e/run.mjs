@@ -68,6 +68,7 @@ async function runPhase({
   developmentPath = extensionDevelopmentPath,
   disableExtensions = true,
 }) {
+  const started = performance.now()
   const options = {
     extensionDevelopmentPath: developmentPath,
     extensionTestsPath,
@@ -88,6 +89,9 @@ async function runPhase({
   if (installation) options.vscodeExecutablePath = installation.executable
   else options.version = "1.103.0"
   await runTests(options)
+  const durationMs = Math.ceil(performance.now() - started)
+  if (durationMs > 120_000) throw new Error(`${phase} exceeded the 120000 ms isolated host phase budget`)
+  process.stdout.write(`GAEP_PERFORMANCE_METRIC phase=${phase} hostPhaseMs=${durationMs}\n`)
   completedPhases.push(phase)
 }
 

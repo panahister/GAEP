@@ -51,8 +51,12 @@ function studioTabs() {
 async function activateExtension() {
   const extension = vscode.extensions.getExtension(extensionId)
   assert.ok(extension, `${extensionId} must be available in the clean Extension Development Host`)
+  const started = Date.now()
   await extension.activate()
+  const activationMs = Date.now() - started
   assert.equal(extension.isActive, true, "GAEP must activate")
+  assert.ok(activationMs <= 10_000, `GAEP activation exceeded the 10000 ms local budget: ${activationMs}`)
+  process.stdout.write(`GAEP_PERFORMANCE_METRIC phase=${process.env.GAEP_E2E_PHASE} activationMs=${activationMs}\n`)
   return extension
 }
 
