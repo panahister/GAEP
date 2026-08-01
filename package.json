@@ -36,6 +36,8 @@
     "test:vscode:accessibility": "node scripts/vscode_accessibility_report.mjs",
     "test:vscode:visual": "node scripts/vscode_visual_regression.mjs --verify",
     "test:vscode:performance": "node scripts/vscode_performance_reliability_report.mjs",
+    "test:vscode:qa-scorecard": "npx vitest run packages/contracts/src/qa-scorecard.test.ts packages/engine/src/qa-scorecard.test.ts apps/vscode/src/qa-scorecard-product-studio.test.ts apps/vscode/src/studio-protocol.test.ts apps/vscode/src/studio-accessibility.test.ts && node --test scripts/vscode_qa_scorecard_report.test.mjs",
+    "test:vscode:qa-scorecard-report": "node scripts/vscode_qa_scorecard_report.mjs",
     "test:vscode:extension-host": "npm run test:extension-host -w gaep-vscode",
     "test:kiro:extension-host": "npm --prefix apps/kiro run test:extension-host",
     "test:rider:package": "./apps/rider/gradlew -p apps/rider --no-daemon clean test buildPlugin verifyPluginStructure verifyInstalledSandbox --no-parallel && node apps/rider/test/archive-install-smoke.mjs",
