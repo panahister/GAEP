@@ -830,6 +830,7 @@ class StudioShell {
 
   private renderTable(table: StudioTableSnapshot, includeHeading = true): HTMLElement {
     const section = element("section", "section")
+    section.dataset.studioTable = table.id
     const heading = includeHeading ? element("h3", undefined, table.title) : undefined
     if (heading) section.append(heading)
     if (table.truncation) {

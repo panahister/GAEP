@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-vscode-product-studio-visual-baseline",
+  "renderer": {
+    "name": "chrome-headless",
+    "product": "Google Chrome",
+    "version": "150.0.7871.187",
+    "fingerprint": "google-chrome-150.0.7871.187-headless-dsf1"
+  },
+  "source": {
+    "bundleSha256": "efd412f9c4472ce7b87a3b064c425c09deb4fa7c08f0e8f5c3cafd276dce4c84",
+    "scenarioCatalogSha256": "90a2c11f6a7b8b3bb96f501521178b5a27cb62c7f7a10580ab53c2d8249ac2ad"
+  },
+  "scenarios": [
+    {
+      "id": "overview-ready-wide",
+      "route": "overview",
+      "surface": "ready",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "image": {
+        "path": "apps/vscode/test/visual/baselines/p3b22/overview-ready-wide.png",
+        "bytes": 128303,
+        "sha256": "915af73d632827209be0119b7b1d47b9491c16363f3220d264da27167f068caa",
+        "width": 1280,
+        "height": 900
+      },
+      "dom": {
+        "ready": true,
+        "tableCount": 0
+      }
+    },
+    {
+      "id": "delivery-tables-wide",
+      "route": "delivery",
+      "surface": "ready",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "image": {
+        "path": "apps/vscode/test/visual/baselines/p3b22/delivery-tables-wide.png",
+        "bytes": 153844,
+        "sha256": "97bb54f531579c64762e2d25732b02f2d498ce2d25a9f15f8d346987e0c84f1f",
+        "width": 1440,
+        "height": 1000
+      },
+      "dom": {
+        "ready": true,
+        "tableCount": 44
+      }
+    },
+    {
+      "id": "scope-form-compact",
+      "route": "scope",
+      "surface": "ready",
+      "theme": "light",
+      "viewport": {
+        "width": 500,
+        "height": 844
+      },
+      "image": {
+        "path": "apps/vscode/test/visual/baselines/p3b22/scope-form-compact.png",
+        "bytes": 60831,
+        "sha256": "c9aa775957f72e41acdb07a57574ae67b0472fbf7c619e1bcfe2931b74b8482f",
+        "width": 500,
+        "height": 844
+      },
+      "dom": {
+        "ready": true,
+        "tableCount": 1
+      }
+    },
+    {
+      "id": "trace-inspector-responsive",
+      "route": "trace",
+      "surface": "ready",
+      "theme": "dark",
+      "viewport": {
+        "width": 680,
+        "height": 900
+      },
+      "image": {
+        "path": "apps/vscode/test/visual/baselines/p3b22/trace-inspector-responsive.png",
+        "bytes": 104153,
+        "sha256": "0b260df09a14570666c0dbcc7002a5c09ed17e7a77766d3483939c308d503728",
+        "width": 680,
+        "height": 900
+      },
+      "dom": {
+        "ready": true,
+        "tableCount": 5
+      }
+    },
+    {
+      "id": "overview-empty-wide",
+      "route": "overview",
+      "surface": "empty",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "image": {
+        "path": "apps/vscode/test/visual/baselines/p3b22/overview-empty-wide.png",
+        "bytes": 70142,
+        "sha256": "02fb3f644e3b0849058a16f8c0d1f9a116a91765d5b840ec012e97969cbb498c",
+        "width": 1280,
+        "height": 720
+      },
+      "dom": {
+        "ready": true,
+        "tableCount": 0
+      }
+    },
+    {
+      "id": "overview-error-wide",
+      "route": "overview",
+      "surface": "invalid",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "image": {
+        "path": "apps/vscode/test/visual/baselines/p3b22/overview-error-wide.png",
+        "bytes": 91732,
+        "sha256": "5da62fb93590594badc7f3f206a54cac9a30514b570b2c716ba95f5d7a0e4b31",
+        "width": 1280,
+        "height": 720
+      },
+      "dom": {
+        "ready": true,
+        "tableCount": 0
+      }
+    }
+  ],
+  "authorityBoundary": "This manifest binds deterministic offline Product Studio fixture PNGs for one exact local Chrome renderer. It is not Figma, perceptual, native-display, human design, Product Owner, release, publication, deployment, provider, or other-host acceptance.",
+  "limitations": [
+    "Baselines are renderer, operating-system, font, and scale-factor bound.",
+    "Fixtures are deterministic local metadata, not current live Figma or real Product source truth.",
+    "Viewport captures do not prove every scroll position, theme, display, GPU, or native webview path.",
+    "Human visual and Product Owner acceptance remain pending."
+  ]
+}

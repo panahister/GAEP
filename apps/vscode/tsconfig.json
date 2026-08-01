@@ -14,5 +14,5 @@
     { "path": "../../packages/adapters/codex" },
     { "path": "../../packages/adapters/claude" }
   ],
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.json"]
 }

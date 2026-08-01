@@ -1,0 +1,56 @@
+[
+  {
+    "id": "overview-ready-wide",
+    "route": "overview",
+    "surface": "ready",
+    "width": 1280,
+    "height": 900,
+    "theme": "light",
+    "purpose": "Wide Product overview with navigation, progress, actions, and footer."
+  },
+  {
+    "id": "delivery-tables-wide",
+    "route": "delivery",
+    "surface": "ready",
+    "width": 1440,
+    "height": 1000,
+    "theme": "dark",
+    "purpose": "Wide Delivery inventory with sortable, filterable, exportable tables."
+  },
+  {
+    "id": "scope-form-compact",
+    "route": "scope",
+    "surface": "ready",
+    "width": 500,
+    "height": 844,
+    "theme": "light",
+    "purpose": "Compact record form with responsive navigation below the wide-layout breakpoint."
+  },
+  {
+    "id": "trace-inspector-responsive",
+    "route": "trace",
+    "surface": "ready",
+    "width": 680,
+    "height": 900,
+    "theme": "dark",
+    "purpose": "Responsive trace tables and relationship inspector below the breakpoint."
+  },
+  {
+    "id": "overview-empty-wide",
+    "route": "overview",
+    "surface": "empty",
+    "width": 1280,
+    "height": 720,
+    "theme": "light",
+    "purpose": "Empty Product state with a bounded local initialization action."
+  },
+  {
+    "id": "overview-error-wide",
+    "route": "overview",
+    "surface": "invalid",
+    "width": 1280,
+    "height": 720,
+    "theme": "dark",
+    "purpose": "Fail-closed invalid state with diagnostics and no synthesized readiness."
+  }
+]
