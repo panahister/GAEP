@@ -342,6 +342,58 @@ export interface DeliveryPageSnapshot extends StudioPageBase {
   }
 }
 
+export type DeliveryTableKey = {
+  [Key in keyof DeliveryPageSnapshot]-?: NonNullable<DeliveryPageSnapshot[Key]> extends StudioTableSnapshot ? Key : never
+}[keyof DeliveryPageSnapshot]
+
+const deliveryTableOrder = {
+  initiatives: true,
+  sources: true,
+  sourceBaselines: true,
+  sourceProvenance: true,
+  changes: true,
+  workItems: true,
+  backlogHierarchy: true,
+  mvpSliceDefinitions: true,
+  prioritizationModels: true,
+  acceptanceCriteria: true,
+  definitionOfReady: true,
+  definitionOfDone: true,
+  implementationUnits: true,
+  dependencyMappings: true,
+  technologyProfiles: true,
+  boilerplateRegistries: true,
+  boilerplateSelectionBindings: true,
+  boilerplateCompatibilityValidations: true,
+  figmaToBoilerplateMappings: true,
+  designToCodeBindingRegistries: true,
+  routeScreenComponentMappings: true,
+  testMethodologies: true,
+  testInventories: true,
+  highLevelDesigns: true,
+  lowLevelDesigns: true,
+  implementationReadinessGates: true,
+  changedUnitInventories: true,
+  proposedChangePreviews: true,
+  stagingWorkspaces: true,
+  controlledCodexImplementations: true,
+  controlledClaudeImplementations: true,
+  providerSwitchImplementations: true,
+  modelSwitchImplementations: true,
+  approvedFigmaContextRetrievals: true,
+  controlledDesignToCodeGenerations: true,
+  designToCodeTraceability: true,
+  boilerplateConstraintEnforcements: true,
+  backlogToCodeTraceability: true,
+  applyDiscardFoundations: true,
+  scopedApplies: true,
+  rollbackRecoveries: true,
+  changeConflictDetections: true,
+  testGenerations: true,
+} as const satisfies Readonly<Record<DeliveryTableKey, true>>
+
+export const deliveryTableKeys = Object.freeze(Object.keys(deliveryTableOrder) as DeliveryTableKey[])
+
 export interface RisksDecisionsPageSnapshot extends StudioPageBase {
   kind: "risks-decisions"
   route: "risks-decisions"
@@ -1402,49 +1454,14 @@ function isRecordFormPage(page: Record<string, unknown>, route: RecordFormRoute)
 
 function isDeliveryPage(page: Record<string, unknown>): boolean {
   if (!hasOnlyKeys(page, [
-    "kind", "route", "title", "purpose", "source", "actions", "design", "initiatives", "sources",
-    "sourceBaselines", "sourceProvenance", "changes", "workItems", "backlogHierarchy", "mvpSliceDefinitions", "prioritizationModels", "acceptanceCriteria", "definitionOfReady", "definitionOfDone", "implementationUnits", "dependencyMappings", "technologyProfiles", "boilerplateRegistries", "boilerplateSelectionBindings", "boilerplateCompatibilityValidations", "figmaToBoilerplateMappings", "designToCodeBindingRegistries", "routeScreenComponentMappings", "testMethodologies", "testInventories", "highLevelDesigns", "lowLevelDesigns", "implementationReadinessGates", "changedUnitInventories", "proposedChangePreviews", "stagingWorkspaces", "controlledCodexImplementations", "controlledClaudeImplementations", "providerSwitchImplementations", "modelSwitchImplementations", "approvedFigmaContextRetrievals", "controlledDesignToCodeGenerations", "designToCodeTraceability", "boilerplateConstraintEnforcements", "backlogToCodeTraceability", "applyDiscardFoundations", "scopedApplies", "rollbackRecoveries", "changeConflictDetections", "testGenerations", "transitionPreview",
+    "kind", "route", "title", "purpose", "source", "actions", "design", ...deliveryTableKeys, "transitionPreview",
   ]) || !isPageBase(page, "delivery") || page.kind !== "delivery" || !isTableSnapshot(page.initiatives) ||
     !isTableSnapshot(page.sources) || !isTableSnapshot(page.sourceBaselines) ||
     !isTableSnapshot(page.sourceProvenance) || !isTableSnapshot(page.changes) ||
-    !isTableSnapshot(page.workItems) ||
-    (page.backlogHierarchy !== undefined && !isTableSnapshot(page.backlogHierarchy)) ||
-    (page.mvpSliceDefinitions !== undefined && !isTableSnapshot(page.mvpSliceDefinitions)) ||
-    (page.prioritizationModels !== undefined && !isTableSnapshot(page.prioritizationModels)) ||
-    (page.acceptanceCriteria !== undefined && !isTableSnapshot(page.acceptanceCriteria)) ||
-    (page.definitionOfReady !== undefined && !isTableSnapshot(page.definitionOfReady)) ||
-    (page.definitionOfDone !== undefined && !isTableSnapshot(page.definitionOfDone)) ||
-    (page.implementationUnits !== undefined && !isTableSnapshot(page.implementationUnits)) ||
-    (page.dependencyMappings !== undefined && !isTableSnapshot(page.dependencyMappings)) ||
-    (page.technologyProfiles !== undefined && !isTableSnapshot(page.technologyProfiles)) ||
-    (page.boilerplateRegistries !== undefined && !isTableSnapshot(page.boilerplateRegistries)) ||
-    (page.boilerplateSelectionBindings !== undefined && !isTableSnapshot(page.boilerplateSelectionBindings)) ||
-    (page.boilerplateCompatibilityValidations !== undefined && !isTableSnapshot(page.boilerplateCompatibilityValidations)) ||
-    (page.figmaToBoilerplateMappings !== undefined && !isTableSnapshot(page.figmaToBoilerplateMappings)) ||
-    (page.designToCodeBindingRegistries !== undefined && !isTableSnapshot(page.designToCodeBindingRegistries)) ||
-    (page.routeScreenComponentMappings !== undefined && !isTableSnapshot(page.routeScreenComponentMappings)) ||
-    (page.testMethodologies !== undefined && !isTableSnapshot(page.testMethodologies)) ||
-    (page.testInventories !== undefined && !isTableSnapshot(page.testInventories)) ||
-    (page.highLevelDesigns !== undefined && !isTableSnapshot(page.highLevelDesigns)) ||
-    (page.lowLevelDesigns !== undefined && !isTableSnapshot(page.lowLevelDesigns)) ||
-    (page.implementationReadinessGates !== undefined && !isTableSnapshot(page.implementationReadinessGates)) ||
-    (page.changedUnitInventories !== undefined && !isTableSnapshot(page.changedUnitInventories)) ||
-    (page.proposedChangePreviews !== undefined && !isTableSnapshot(page.proposedChangePreviews)) ||
-    (page.stagingWorkspaces !== undefined && !isTableSnapshot(page.stagingWorkspaces)) ||
-    (page.controlledCodexImplementations !== undefined && !isTableSnapshot(page.controlledCodexImplementations)) ||
-    (page.controlledClaudeImplementations !== undefined && !isTableSnapshot(page.controlledClaudeImplementations)) ||
-    (page.providerSwitchImplementations !== undefined && !isTableSnapshot(page.providerSwitchImplementations)) ||
-    (page.modelSwitchImplementations !== undefined && !isTableSnapshot(page.modelSwitchImplementations)) ||
-    (page.approvedFigmaContextRetrievals !== undefined && !isTableSnapshot(page.approvedFigmaContextRetrievals)) ||
-    (page.controlledDesignToCodeGenerations !== undefined && !isTableSnapshot(page.controlledDesignToCodeGenerations)) ||
-    (page.designToCodeTraceability !== undefined && !isTableSnapshot(page.designToCodeTraceability)) ||
-    (page.boilerplateConstraintEnforcements !== undefined && !isTableSnapshot(page.boilerplateConstraintEnforcements)) ||
-    (page.backlogToCodeTraceability !== undefined && !isTableSnapshot(page.backlogToCodeTraceability)) ||
-    (page.applyDiscardFoundations !== undefined && !isTableSnapshot(page.applyDiscardFoundations)) ||
-    (page.scopedApplies !== undefined && !isTableSnapshot(page.scopedApplies)) ||
-    (page.rollbackRecoveries !== undefined && !isTableSnapshot(page.rollbackRecoveries)) ||
-    (page.changeConflictDetections !== undefined && !isTableSnapshot(page.changeConflictDetections)) ||
-    (page.testGenerations !== undefined && !isTableSnapshot(page.testGenerations))) return false
+    !isTableSnapshot(page.workItems)) return false
+  for (const key of deliveryTableKeys) {
+    if (page[key] !== undefined && !isTableSnapshot(page[key])) return false
+  }
   if (page.transitionPreview === undefined) return true
   return isRecord(page.transitionPreview) && hasOnlyKeys(page.transitionPreview, [
     "recordType", "recordId", "currentState", "allowedNextStates",

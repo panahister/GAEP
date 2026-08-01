@@ -16,11 +16,14 @@ import {
 import { installStudioClient } from "./studio-client.js"
 import { createStudioDocument } from "./studio-document.js"
 import {
+  deliveryTableKeys,
   isStudioSnapshot,
   runStageLabels,
   studioProtocolVersion,
   studioRouteLabels,
   studioRoutes,
+  type DeliveryPageSnapshot,
+  type DeliveryTableKey,
   type StudioPageSnapshot,
   type StudioRoute,
   type StudioSnapshot,
@@ -127,13 +130,13 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         draft: { state: "saved-locally", materialChange: true, validation: "valid" },
       }
     case "delivery":
+      const deliveryTables = Object.fromEntries(
+        deliveryTableKeys.map((key) => [key, table(key)]),
+      ) as Pick<DeliveryPageSnapshot, DeliveryTableKey>
       return {
         ...baseFor(route),
         kind: "delivery",
-        initiatives: table("initiatives"),
-        sources: table("sources"),
-        sourceBaselines: table("source-baselines"),
-        sourceProvenance: table("source-provenance"),
+        ...deliveryTables,
         changes: {
           ...table("changes"),
           pagination: { offset: 0, limit: 50, total: 75, hasPrevious: false, hasNext: true },
@@ -142,7 +145,6 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
             { label: "Next Changes page", enabled: true, action: { kind: "domain-page", recordKind: "change", offset: 50, limit: 50 } },
           ],
         },
-        workItems: table("work-items"),
       }
     case "risks-decisions":
       return { ...baseFor(route), kind: "risks-decisions", risks: table("risks"), recommendations: table("recommendations"), decisions: table("decisions"), decisionRegisters: table("decision-registers"), riskRegisters: table("risk-registers"), evidenceRegistries: table("evidence-registries") }
@@ -838,6 +840,34 @@ describe("Product Studio rendered accessibility", () => {
       expect(result.violations.map((violation) => ({ id: violation.id, nodes: violation.nodes.map((node) => node.target) })), route).toEqual([])
     }
   }, 30_000)
+
+  it("renders every declared Delivery table once in protocol order and omits unavailable optional tables", () => {
+    const complete = snapshot("delivery", 89)
+    expect(isStudioSnapshot(complete)).toBe(true)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: complete })
+
+    const expectedLabels = deliveryTableKeys.map((key) => key.replaceAll("-", " "))
+    const renderedLabels = Array.from(
+      dom.window.document.querySelectorAll<HTMLElement>(".table-region"),
+      (region) => region.getAttribute("aria-label") ?? "",
+    ).filter((label) => expectedLabels.includes(label))
+    expect(renderedLabels).toEqual(expectedLabels)
+    expect(new Set(renderedLabels).size).toBe(deliveryTableKeys.length)
+
+    const minimal = structuredClone(complete)
+    if (minimal.page.kind !== "delivery") throw new Error("Expected Delivery page")
+    const mutableMinimal = minimal.page as Partial<Record<DeliveryTableKey, unknown>>
+    for (const key of deliveryTableKeys.slice(6)) delete mutableMinimal[key]
+    minimal.snapshotRevision = 90
+    expect(isStudioSnapshot(minimal)).toBe(true)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: minimal })
+
+    const minimalLabels = Array.from(
+      dom.window.document.querySelectorAll<HTMLElement>(".table-region"),
+      (region) => region.getAttribute("aria-label") ?? "",
+    ).filter((label) => expectedLabels.includes(label))
+    expect(minimalLabels).toEqual(expectedLabels.slice(0, 6))
+  })
 
   it("gives durable run events semantic time values and a truthful empty state", () => {
     const populated = snapshot("runs-evidence", 90)

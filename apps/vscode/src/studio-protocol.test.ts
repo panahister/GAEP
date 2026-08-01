@@ -4,6 +4,7 @@ import type { Initiative, Product } from "@gaep/contracts"
 import { composePhase2UxFigmaDashboard, composePhase3aDashboard } from "@gaep/engine"
 
 import {
+  deliveryTableKeys,
   isStudioAction,
   isStudioSnapshot,
   parseHostToStudioMessage,
@@ -14,6 +15,8 @@ import {
   studioRouteLabels,
   studioRoutes,
   studioSurfaceKinds,
+  type DeliveryPageSnapshot,
+  type DeliveryTableKey,
   type StudioPageSnapshot,
   type StudioRoute,
   type StudioSnapshot,
@@ -57,15 +60,13 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         draft: { state: "clean", materialChange: false, validation: "not-validated" },
       }
     case "delivery":
+      const deliveryTables = Object.fromEntries(
+        deliveryTableKeys.map((key) => [key, table(key)]),
+      ) as unknown as Pick<DeliveryPageSnapshot, DeliveryTableKey>
       return {
         ...baseFor(route),
         kind: "delivery",
-        initiatives: table("initiatives"),
-        sources: table("sources"),
-        sourceBaselines: table("source-baselines"),
-        sourceProvenance: table("source-provenance"),
-        changes: table("changes"),
-        workItems: table("work-items"),
+        ...deliveryTables,
       }
     case "risks-decisions":
       return { ...baseFor(route), kind: "risks-decisions", risks: table("risks"), recommendations: table("recommendations"), decisions: table("decisions"), decisionRegisters: table("decision-registers"), riskRegisters: table("risk-registers"), evidenceRegistries: table("evidence-registries") }
@@ -326,6 +327,52 @@ describe("Product Studio protocol", () => {
       "uninitialized", "loading", "empty", "ready", "invalid", "blocked", "interrupted", "offline",
     ])
     expect(studioDraftStates).toEqual(["clean", "unsaved", "saved-locally", "revision-ready", "revision-created"])
+  })
+
+  it("defines one exhaustive accessible Delivery-table order and validates every optional table", () => {
+    expect(deliveryTableKeys).toHaveLength(43)
+    expect(deliveryTableKeys.slice(0, 6)).toEqual([
+      "initiatives", "sources", "sourceBaselines", "sourceProvenance", "changes", "workItems",
+    ])
+    expect(deliveryTableKeys.slice(23)).toEqual([
+      "highLevelDesigns",
+      "lowLevelDesigns",
+      "implementationReadinessGates",
+      "changedUnitInventories",
+      "proposedChangePreviews",
+      "stagingWorkspaces",
+      "controlledCodexImplementations",
+      "controlledClaudeImplementations",
+      "providerSwitchImplementations",
+      "modelSwitchImplementations",
+      "approvedFigmaContextRetrievals",
+      "controlledDesignToCodeGenerations",
+      "designToCodeTraceability",
+      "boilerplateConstraintEnforcements",
+      "backlogToCodeTraceability",
+      "applyDiscardFoundations",
+      "scopedApplies",
+      "rollbackRecoveries",
+      "changeConflictDetections",
+      "testGenerations",
+    ])
+
+    const complete = snapshot("delivery")
+    expect(isStudioSnapshot(complete)).toBe(true)
+    if (complete.page.kind !== "delivery") throw new Error("Expected Delivery page")
+    for (const key of deliveryTableKeys) expect(complete.page[key], key).toBeDefined()
+
+    const minimal = structuredClone(complete)
+    if (minimal.page.kind !== "delivery") throw new Error("Expected Delivery page")
+    const mutableMinimal = minimal.page as Partial<Record<DeliveryTableKey, unknown>>
+    for (const key of deliveryTableKeys.slice(6)) delete mutableMinimal[key]
+    expect(isStudioSnapshot(minimal)).toBe(true)
+
+    const malformed = structuredClone(complete)
+    if (malformed.page.kind !== "delivery") throw new Error("Expected Delivery page")
+    const mutableMalformed = malformed.page as unknown as Record<DeliveryTableKey, unknown>
+    mutableMalformed.highLevelDesigns = { id: "omitted-table-shape" }
+    expect(isStudioSnapshot(malformed)).toBe(false)
   })
 
   it("accepts route-matched snapshots for all twelve surfaces", () => {

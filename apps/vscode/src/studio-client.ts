@@ -13,6 +13,7 @@ import type {
 } from "@gaep/contracts"
 
 import {
+  deliveryTableKeys,
   isStudioAction,
   parseHostToStudioMessage,
   runStageLabels,
@@ -597,32 +598,10 @@ class StudioShell {
     const container = element("div")
     container.append(this.renderPageHeader(page))
     if (page.design) container.append(this.renderDesignSection(page.design, page.route))
-    for (const table of [
-      page.initiatives,
-      page.sources,
-      page.sourceBaselines,
-      page.sourceProvenance,
-      page.changes,
-      page.workItems,
-      ...(page.backlogHierarchy ? [page.backlogHierarchy] : []),
-      ...(page.mvpSliceDefinitions ? [page.mvpSliceDefinitions] : []),
-      ...(page.prioritizationModels ? [page.prioritizationModels] : []),
-      ...(page.acceptanceCriteria ? [page.acceptanceCriteria] : []),
-      ...(page.definitionOfReady ? [page.definitionOfReady] : []),
-      ...(page.definitionOfDone ? [page.definitionOfDone] : []),
-      ...(page.implementationUnits ? [page.implementationUnits] : []),
-      ...(page.dependencyMappings ? [page.dependencyMappings] : []),
-      ...(page.technologyProfiles ? [page.technologyProfiles] : []),
-      ...(page.boilerplateRegistries ? [page.boilerplateRegistries] : []),
-      ...(page.boilerplateSelectionBindings ? [page.boilerplateSelectionBindings] : []),
-      ...(page.boilerplateCompatibilityValidations ? [page.boilerplateCompatibilityValidations] : []),
-      ...(page.figmaToBoilerplateMappings ? [page.figmaToBoilerplateMappings] : []),
-      ...(page.designToCodeBindingRegistries ? [page.designToCodeBindingRegistries] : []),
-      ...(page.routeScreenComponentMappings ? [page.routeScreenComponentMappings] : []),
-      ...(page.testMethodologies ? [page.testMethodologies] : []),
-      ...(page.testInventories ? [page.testInventories] : []),
-      ...(page.testGenerations ? [page.testGenerations] : []),
-    ]) container.append(this.renderTable(table))
+    for (const key of deliveryTableKeys) {
+      const table = page[key]
+      if (table) container.append(this.renderTable(table))
+    }
     if (page.transitionPreview) {
       const preview = element("section", "section grouped-section")
       preview.append(element("h3", undefined, page.transitionPreview.currentState))
