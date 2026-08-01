@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "vscode-product-revision-checkpoint",
+  "observedAt": "2026-08-01T12:52:00.000Z",
+  "featureIds": ["PLT-36"],
+  "status": "ready-for-product-owner-test",
+  "scope": {
+    "host": "vscode",
+    "workflow": "interactive-product-revision",
+    "productMutationDuringVerification": false
+  },
+  "behavior": {
+    "listItems": "newline-or-explicit-bullet-delimited",
+    "commasInsideItems": "preserved",
+    "revisionBase": "exact-current-product-revision",
+    "productIdentity": "preserved",
+    "priorRevision": "retained",
+    "auditEvent": "product.revised",
+    "humanGates": ["/accept", "/commit CONFIRM"]
+  },
+  "verification": {
+    "focusedTests": { "passed": 40, "failed": 0 },
+    "repositoryTests": { "filesPassed": 173, "testsPassed": 1123, "testsSkipped": 1 },
+    "ciContractTests": { "passed": 4, "failed": 0 },
+    "examples": { "passed": 41, "failed": 0 },
+    "documentation": "pass-zero-warnings",
+    "extensionHost": "pass",
+    "packageLifecycle": "pass",
+    "normalProfileInstall": "pass",
+    "gitDiffCheck": "pass"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "sizeBytes": 1243995,
+    "sha256": "19ff4ab1bff601014a3da6e1e70b476b74defdde5a8e7c5ea76b4784ecea241f"
+  },
+  "acceptance": {
+    "productOwner": "pending",
+    "nextTest": "Revise successSignals and exclusions in the existing Test GAEP Product, then confirm Product revision 2 and preserved list items."
+  }
+}

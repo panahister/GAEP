@@ -10,11 +10,14 @@ import type { ManagedRuntimeEvent } from "./managed-runtime.js"
 import { WorkspaceStagingService } from "./workspace-staging.js"
 
 const fixture = fileURLToPath(new URL("../test/fixtures/fake-claude-stream.mjs", import.meta.url))
+const authenticationFailureFixture = fileURLToPath(
+  new URL("../test/fixtures/fake-claude-auth-failure.mjs", import.meta.url),
+)
 
-async function collect(model: string) {
+async function collect(model: string, executableFixture = fixture) {
   const handle = await startManagedClaudeContextRun({
     executable: process.execPath,
-    executableArguments: [fixture],
+    executableArguments: [executableFixture],
     model,
     objective: "Assess the supplied evidence",
     contextPack: "governed fixture context",
@@ -49,6 +52,22 @@ describe("managed Claude context runtime", () => {
     expect(completion.result.portable.terminalDisposition).toBe(disposition)
     expect(completion.terminationCause).toBe(cause)
     expect(completion.result.portable.postconditionStatus).toBe("not-assessed")
+  })
+
+  it("classifies authentication failure without persisting raw provider text", async () => {
+    const { completion, events } = await collect("auth-failure", authenticationFailureFixture)
+    expect(completion.terminationCause).toBe("provider-failure")
+    expect(completion.result.portable.terminalDisposition).toBe("failed")
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "error",
+      code: "GAEP_CLAUDE_AUTH_UNAVAILABLE",
+      message: "Claude authentication is unavailable for the managed runtime.",
+      retryable: false,
+    }))
+    const persisted = JSON.stringify(completion.result.portable)
+    expect(persisted).not.toContain("Not logged in")
+    expect(persisted).not.toContain("/Users/alice/private")
+    expect(persisted).not.toContain("abc123456789")
   })
 
   it("cancels the whole managed process group", async () => {

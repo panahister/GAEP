@@ -37,6 +37,11 @@
     "onView:gaep.governance",
     "onView:gaep.runs",
     "onWebviewPanel:gaep.productStudio",
+    "onChatParticipant:gaep.product",
+    "onLanguageModelChat:gaep-workflow",
+    "onCommand:gaep.openInteractiveChat",
+    "onCommand:gaep.selectProductChatAgent",
+    "onCommand:gaep.selectProductChatModel",
     "onCommand:gaep.openProductStudio",
     "onCommand:gaep.initializeProduct",
     "onCommand:gaep.selectWorkspaceRoot",
@@ -67,6 +72,19 @@
   },
   "contributes": {
     "commands": [
+      {
+        "command": "gaep.openInteractiveChat",
+        "title": "GAEP: Open Interactive Product Chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "gaep.selectProductChatAgent",
+        "title": "GAEP: Switch Product Chat Agent"
+      },
+      {
+        "command": "gaep.selectProductChatModel",
+        "title": "GAEP: Switch Product Chat Model"
+      },
       {
         "command": "gaep.initializeProduct",
         "title": "GAEP: Initialize Product"
@@ -283,6 +301,75 @@
       {
         "command": "gaep.productStudio.workspace.health",
         "title": "GAEP Product Studio: Inspect Workspace Health"
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "gaep.product",
+        "name": "gaep",
+        "fullName": "GAEP Product Workspace",
+        "description": "Governed, multi-turn Product and engineering lifecycle workflows.",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "initialize",
+            "description": "Start a challenged, review-before-commit Product initialization"
+          },
+          {
+            "name": "revise",
+            "description": "Revise existing Product fields with AI challenge and an audited commit"
+          },
+          {
+            "name": "continue",
+            "description": "Inspect governed state and start or resume the next valid workflow"
+          },
+          {
+            "name": "advisor",
+            "description": "Select or change the Codex/Claude Code Product advisor and model"
+          },
+          {
+            "name": "agent",
+            "description": "Switch between Codex and Claude Code, then select its model"
+          },
+          {
+            "name": "model",
+            "description": "Switch models within the current Product Chat agent"
+          },
+          {
+            "name": "accept",
+            "description": "Explicitly accept the current AI-assisted proposal and continue"
+          },
+          {
+            "name": "status",
+            "description": "Show governed Product and conversational draft status"
+          },
+          {
+            "name": "review",
+            "description": "Review the exact completed initialization draft"
+          },
+          {
+            "name": "back",
+            "description": "Return to and replace the previous answer"
+          },
+          {
+            "name": "commit",
+            "description": "Explicitly commit a reviewed Product draft"
+          },
+          {
+            "name": "cancel",
+            "description": "Discard the current conversational draft"
+          },
+          {
+            "name": "help",
+            "description": "Show GAEP interactive Product workspace commands"
+          }
+        ]
+      }
+    ],
+    "languageModelChatProviders": [
+      {
+        "vendor": "gaep-workflow",
+        "displayName": "GAEP Local Workflow"
       }
     ],
     "viewsContainers": {

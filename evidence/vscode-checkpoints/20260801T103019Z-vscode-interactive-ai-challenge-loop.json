@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-vscode-checkpoint",
+  "checkpointId": "20260801T103019Z-vscode-interactive-ai-challenge-loop",
+  "recordedAt": "2026-08-01T10:30:19Z",
+  "featureIds": ["PLT-07", "PLT-08", "PLT-09", "PLT-14", "PLT-36"],
+  "outcome": "implementation-verified-awaiting-product-owner-ux-test",
+  "implemented": {
+    "workflow": "For every Product initialization field, GAEP locally validates the candidate, invokes the session-selected Codex or Claude Code model, renders structured critique and an improved proposal, and advances only after the human sends /accept.",
+    "advisorSelection": "The /initialize and /advisor flows probe configured machine-local executables and let the human select an advertised or explicitly entered model without requiring an initialized .gaep Product.",
+    "revisionLoop": "A normal reply while a proposal is pending is additional revision context and triggers another advisory round; it does not accept or advance the field.",
+    "providerBoundaries": {
+      "claudeCode": "Managed context-only execution from an empty temporary directory with no tools, MCP, browser, settings, slash commands, session persistence, or workspace access.",
+      "codex": "Managed execution in an empty isolated stage with shell commands and file changes denied and web, MCP, apps, memories, goals, hooks, collaboration, and remote plugins disabled. The stage is discarded after assessment."
+    },
+    "authority": "Advisor output remains a proposal. Provider failure, cancellation, malformed JSON, field-contract failure, advisor change, or ordinary user text cannot accept a field, mutate Product state, or move to the next question."
+  },
+  "verification": {
+    "vscodeTypecheck": "passed",
+    "focusedTests": { "files": 3, "passed": 13, "failed": 0 },
+    "repositoryTests": {
+      "files": 172,
+      "passed": 1115,
+      "skipped": 1,
+      "failedBeforeCorrection": 1,
+      "finalFullRun": "passed",
+      "correction": "The new executable binding read was changed to destructuring so the existing portable/local source-boundary invariant remains intact; its regression test then passed."
+    },
+    "extensionHost": {
+      "result": "passed-on-clean-rerun",
+      "details": "Activation, exact native chat commands including advisor and accept, local workflow-model discovery, multi-root behavior, prior-version upgrade, reinstall, rollback, uninstall, final install, packaged activation, and no implicit workspace mutation passed.",
+      "transient": "The first Electron launch terminated with SIGABRT before assertions; a complete clean rerun passed every phase."
+    },
+    "gitDiffCheck": "passed"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "extensionId": "gaep.gaep-vscode",
+    "version": "0.1.0",
+    "sha256": "17fb14aa6240a487f7f6829a5b1195abae1750baef2eee4590d190d6db4f4af5",
+    "bytes": 1239548,
+    "normalProfileInstall": "passed"
+  },
+  "observedInstalledExtensions": [
+    "anthropic.claude-code@2.1.220",
+    "gaep.gaep-vscode@0.1.0",
+    "ms-vscode.vscode-speech@0.16.0",
+    "openai.chatgpt@26.5727.51351"
+  ],
+  "remaining": [
+    "Product Owner interactive acceptance of a real multi-round challenge and /accept transition",
+    "Governed attachment-content Source Intake",
+    "Native microphone acceptance in the Product Owner session",
+    "Conversational lifecycle coverage beyond Product initialization"
+  ],
+  "claimBoundary": "This checkpoint verifies implementation, automated dispatch boundaries, package lifecycle, and installation. It does not claim Product Owner UX acceptance, semantic quality of any specific provider answer, attachment authority, feature completion, Product readiness, implementation authority, release, or deployment."
+}

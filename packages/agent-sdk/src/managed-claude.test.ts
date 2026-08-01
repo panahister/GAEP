@@ -39,6 +39,8 @@ describe("managed Claude tool-free analysis", () => {
       expect(managed.invocation.environment).not.toHaveProperty("ANTHROPIC_API_KEY")
       expect(managed.invocation.environmentPolicy).toBeDefined()
       expect(managed.invocation.environmentPolicy!.allowedKeys).toContain("CLAUDE_CONFIG_DIR")
+      expect(managed.invocation.environmentPolicy!.allowedKeys).toContain("USER")
+      expect(managed.invocation.environmentPolicy!.allowedKeys).toContain("LOGNAME")
       expect(managed.invocation.environmentPolicy!.allowedKeys).not.toContain("CODEX_HOME")
       await managed.cleanup()
       await expect(readdir(managed.invocation.cwd)).rejects.toMatchObject({ code: "ENOENT" })

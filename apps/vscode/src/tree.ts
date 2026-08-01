@@ -20,6 +20,11 @@ export interface GaepViewContext {
   workspaceName?: string
   trusted: boolean
   recoveryDiagnostic?: string
+  productChatAdvisor?: {
+    agentLabel: string
+    modelLabel: string
+    modelTruthClass: string
+  }
 }
 
 interface TreeEntry {
@@ -145,6 +150,16 @@ function studioEntry(route: "overview" | "agents-tools" | "runs-evidence" | "rea
   }
 }
 
+function productChatEntry(): TreeEntry {
+  return {
+    label: "Open Interactive Product Chat",
+    description: "@gaep",
+    tooltip: "Use native VS Code Chat for multi-turn GAEP workflows, attachments, voice input, review, and explicit governed commits.",
+    icon: "comment-discussion",
+    command: { command: "gaep.openInteractiveChat", title: "Open Interactive Product Chat" },
+  }
+}
+
 export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
   private readonly changes = new vscode.EventEmitter<TreeEntry | undefined>()
   readonly onDidChangeTreeData = this.changes.event
@@ -210,7 +225,7 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
             : "The .gaep directory exists but product.json is missing. Initialization is disabled to preserve existing state."
           return [...recovery, diagnosticEntry("Product State Needs Repair", reason)]
         }
-        return [...recovery, {
+        return [...recovery, productChatEntry(), {
           label: "Initialize Product",
           description: context.workspaceName,
           icon: "add",
@@ -222,6 +237,7 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
       const selected = currentInitiative(initiatives)
       return [
         ...recovery,
+        productChatEntry(),
         studioEntry("overview"),
         {
           label: String(product.name),
@@ -254,14 +270,38 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
     }
 
     if (this.view === "agent") {
+      const chatAdvisorEntries: TreeEntry[] = context.productChatAdvisor
+        ? [
+            {
+              label: "Product Chat Agent",
+              description: context.productChatAdvisor.agentLabel,
+              tooltip: "Session-local Product-discovery advisor. Select to switch between Codex and Claude Code without starting a provider process.",
+              icon: "hubot",
+              command: { command: "gaep.selectProductChatAgent", title: "Change Product Chat Agent" },
+            },
+            {
+              label: "Advisory Model",
+              description: context.productChatAdvisor.modelLabel,
+              tooltip: `${context.productChatAdvisor.modelTruthClass}. Select to change the current advisor's model without advancing the Chat workflow.`,
+              icon: "symbol-variable",
+              command: { command: "gaep.selectProductChatModel", title: "Change Product Chat Model" },
+            },
+          ]
+        : [{
+            label: "Select Product Chat Agent and Model",
+            description: "Codex or Claude Code",
+            tooltip: "Creates only a machine-local advisory selection. No provider process starts until a Product answer is submitted for challenge.",
+            icon: "comment-discussion",
+            command: { command: "gaep.selectProductChatAgent", title: "Select Product Chat Agent and Model" },
+          }]
       const selectionResult = await readJson(join(root, "runtime", "selection.json"))
       if (selectionResult.kind === "invalid") {
-        return [...recovery, diagnosticEntry("Agent Selection Needs Repair", selectionResult.error)]
+        return [...recovery, ...chatAdvisorEntries, diagnosticEntry("Agent Selection Needs Repair", selectionResult.error)]
       }
       if (selectionResult.kind === "missing") {
-        return [...recovery, {
-          label: "Select Agent and Model",
-          description: "no process starts during selection",
+        return [...recovery, ...chatAdvisorEntries, {
+          label: "Select Governed Run Agent and Model",
+          description: "available after Product initialization",
           icon: "hubot",
           command: { command: "gaep.selectAgent", title: "Select Agent and Model" },
         }]
@@ -274,6 +314,7 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
           : "The stored selection is not a valid portable selection. Automatic trust or overwrite is disabled; inspect diagnostics before changing state."
         return [
           ...recovery,
+          ...chatAdvisorEntries,
           studioEntry("agents-tools"),
           diagnosticEntry(legacy.success ? "Legacy Agent Selection Blocked" : "Agent Selection Needs Repair", detail),
           ...(legacy.success ? [{
@@ -303,6 +344,7 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         : `permission mode=${String(settings.permissionMode ?? "default")}`
       return [
         ...recovery,
+        ...chatAdvisorEntries,
         studioEntry("agents-tools"),
         ...(unsafe.length > 0 ? [diagnosticEntry("Unsafe Stored Selection", unsafe.join("; "))] : []),
         { label: selection.agentId, description: runtimeVersion ? `v${String(runtimeVersion)}` : "agent", icon: "hubot" },

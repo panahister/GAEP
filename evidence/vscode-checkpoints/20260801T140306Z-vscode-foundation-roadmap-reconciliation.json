@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "vscode-foundation-roadmap-reconciliation",
+  "observedAt": "2026-08-01T14:03:06.000Z",
+  "featureIds": ["PLT-07", "PLT-08", "PLT-09", "PLT-11", "PLT-12", "PLT-13", "PLT-14", "PLT-15", "PLT-36", "P1-01"],
+  "status": "ready-for-product-owner-foundation-test",
+  "scope": {
+    "host": "vscode",
+    "workflow": "agent-model-routing-and-roadmap-reconciliation",
+    "productOwnerWorkspaceMutationDuringVerification": false
+  },
+  "routing": {
+    "workspaceSessionSelectionOverridesStaleChatMetadata": true,
+    "postCommitAgentAndModelCommandsAvailable": true,
+    "privacySafeProviderModelDiagnostics": true,
+    "liveProbes": [
+      { "provider": "Claude Code", "model": "sonnet", "status": "completed", "elapsedMs": 22118 },
+      { "provider": "Codex", "model": "gpt-5.6-sol", "status": "completed", "elapsedMs": 14598 }
+    ]
+  },
+  "voice": {
+    "owner": "VS Code host speech provider",
+    "installedExtension": "ms-vscode.vscode-speech@0.16.0",
+    "macosMicrophonePermission": "allowed",
+    "bundledRecognitionLocaleCount": 26,
+    "persianLocaleAvailable": false,
+    "humanAudioInputTest": "pending"
+  },
+  "verification": {
+    "focusedTests": { "passed": 14, "failed": 0 },
+    "repositoryTests": { "filesPassed": 174, "testsPassed": 1127, "testsSkipped": 1 },
+    "ciContractTests": { "passed": 4, "failed": 0 },
+    "typecheck": "pass",
+    "build": "pass",
+    "documentation": "pass-zero-warnings",
+    "extensionHost": "pass",
+    "packageLifecycle": "pass",
+    "normalProfileInstall": "pass",
+    "gitDiffCheck": "pass"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "sizeBytes": 1247675,
+    "sha256": "c39379d5ab815e31d78bee1df56b1ab31535391b9a19d64e528c1576a2fc35df"
+  },
+  "roadmapBoundary": {
+    "currentCheckpoint": "proposed Initiative committed",
+    "nextCheckpoint": "P1-02 Initiative Classification and P1-03 Applicability Resolution",
+    "afterNext": "P1-04 through P1-06 governed Source Intake, Baseline, and Provenance",
+    "implementationAndRelease": "deferred until explicit authority"
+  },
+  "acceptance": {
+    "productOwner": "pending-current-package-test",
+    "nextTest": "Reload VS Code; switch Claude/Codex and models with /agent and /model; verify /status and privacy-safe GAEP Diagnostics."
+  }
+}

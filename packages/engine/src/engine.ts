@@ -1345,6 +1345,76 @@ export class GaepEngine {
     return product
   }
 
+  async reviseProduct(
+    input: ProductInput,
+    expectedRevision: number,
+    reason: string,
+    actorId: string,
+  ): Promise<Product> {
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+      throw new Error("Expected Product revision must be a positive integer")
+    }
+    const revisionReason = reason.trim()
+    if (revisionReason.length < 2 || revisionReason.length > 4_096) {
+      throw new Error("A bounded Product revision reason is required")
+    }
+    return this.repository.withLock(async () => {
+      await this.assertAuditIntegrity()
+      const product = await this.readProduct()
+      const currentRevision = revisionOf(product)
+      if (currentRevision !== expectedRevision) {
+        throw new Error(`Product revision changed: expected ${expectedRevision}, current ${currentRevision}`)
+      }
+      const now = new Date().toISOString()
+      const sourceId = randomUUID()
+      const revised = productSchema.parse({
+        ...product,
+        ...input,
+        revision: currentRevision + 1,
+        updatedAt: now,
+      })
+      const history = productRevisionSchema.parse({
+        schemaVersion: 1,
+        kind: "product-revision",
+        productId: revised.id,
+        revision: revised.revision,
+        product: revised,
+        source: { kind: "manual-revision", id: sourceId },
+        productDigest: canonicalDigest(revised),
+        recordedAt: now,
+      })
+      await this.repository.commitMutation({
+        writes: [
+          {
+            path: this.repository.resolve("product.json"),
+            value: revised,
+            schema: productSchema,
+            governed: true,
+          },
+          {
+            path: this.repository.resolve("product-history", `product-${revised.id}-r${revised.revision}.json`),
+            value: history,
+            schema: productRevisionSchema,
+            governed: true,
+          },
+        ],
+        audit: {
+          eventType: "product.revised",
+          actor: { kind: "human", id: actorId },
+          subjectId: revised.id,
+          payload: {
+            fromRevision: currentRevision,
+            toRevision: revised.revision,
+            reason: revisionReason,
+            sourceId,
+            recordDigest: canonicalDigest(revised),
+          },
+        },
+      })
+      return revised
+    })
+  }
+
   async readProduct(): Promise<Product> {
     const [manifest, product] = await Promise.all([
       this.repository.readJson(this.repository.resolve("manifest.json"), repositoryManifestSchema),

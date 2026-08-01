@@ -42,6 +42,8 @@ describe("agent process safety", () => {
     const environment = filterChildEnvironment({
       PATH: "/bin",
       HOME: "/home/founder",
+      USER: "founder",
+      LOGNAME: "founder",
       CODEX_HOME: "/private/codex",
       CLAUDE_CONFIG_DIR: "/private/claude",
       GITHUB_TOKEN: "must-not-pass",
@@ -51,6 +53,8 @@ describe("agent process safety", () => {
     expect(environment).toEqual({
       PATH: "/bin",
       HOME: "/home/founder",
+      USER: "founder",
+      LOGNAME: "founder",
       PROVIDER_OPT_IN: "allowed",
     })
     expect(environment).not.toHaveProperty("GITHUB_TOKEN")

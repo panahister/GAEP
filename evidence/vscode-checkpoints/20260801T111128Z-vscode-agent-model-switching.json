@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-vscode-checkpoint",
+  "checkpointId": "20260801T111128Z-vscode-agent-model-switching",
+  "recordedAt": "2026-08-01T11:11:28Z",
+  "featureIds": ["PLT-07", "PLT-08", "PLT-09", "PLT-14", "PLT-36"],
+  "outcome": "implementation-verified-installed-awaiting-product-owner-switching-test",
+  "implemented": {
+    "chatCommands": {
+      "/agent": "Shows Codex and Claude Code, then the selected agent's model catalog.",
+      "/model": "Changes only the current Product Chat agent's model.",
+      "/advisor": "Preserved as the combined agent-and-model compatibility selector.",
+      "/status": "Reports the current Product Chat agent, model, model truth class, draft phase, and progress."
+    },
+    "sidebar": "The GAEP Agent view exposes Product Chat Agent and Advisory Model as independent selectable rows backed by the same workspace-scoped session.",
+    "session": "The advisory selection is stored in VS Code workspaceState, keyed by selected Product root. It is machine-local, contains no executable path, and is not written to .gaep.",
+    "pendingSwitch": "An in-Chat switch during an unaccepted proposal re-evaluates the original candidate with the new agent/model. The Product step remains unchanged; only /accept advances.",
+    "availability": "Both supported agents remain visible. An unavailable agent shows a reason plus Configure Executable and Diagnostics recovery actions instead of disappearing.",
+    "codexDiscovery": "On macOS the host honors an explicit machine setting, then PATH, then the regular Codex executable distributed in the official ChatGPT desktop application. No path enters portable state."
+  },
+  "liveProbe": {
+    "codex": {
+      "detected": true,
+      "executionInterface": "stdio-rpc",
+      "runtimeVersion": "0.146.0-alpha.9.2",
+      "models": ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.2"],
+      "runtimeBinding": "executable"
+    },
+    "claudeCode": {
+      "detected": true,
+      "executionInterface": "cli-stream-json",
+      "runtimeVersion": "2.1.218",
+      "models": ["sonnet", "opus"],
+      "runtimeBinding": "executable"
+    },
+    "claimBoundary": "Probe verifies the local executable/interface/catalog contract only; it is not a provider request or account entitlement claim."
+  },
+  "verification": {
+    "focused": "4 files, 18 passed",
+    "fullUnit": "173 files, 1120 passed, 1 skipped",
+    "ciContracts": "4 passed",
+    "realisticExamples": "41 passed",
+    "documentation": "passed with zero warnings",
+    "extensionHost": "passed: activation, exact command contribution/registration, native views, multi-root, VSIX upgrade/reinstall/rollback/uninstall/final install, installed-package activation, and no implicit workspace mutation",
+    "gitDiffCheck": "passed"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "extensionId": "gaep.gaep-vscode",
+    "version": "0.1.0",
+    "sha256": "220799b7844e5caca4ea8af2574e56fe6b7d7100b4e57bbc9797893ba4326c56",
+    "bytes": 1242114,
+    "normalProfileInstall": "passed"
+  },
+  "remaining": [
+    "Product Owner confirmation that /agent visibly lists both local agents",
+    "Product Owner confirmation of Claude model switching and Codex model switching",
+    "Product Owner confirmation that switching a pending answer re-evaluates without advancing",
+    "Governed attachment-content Source Intake and later conversational lifecycle commands"
+  ],
+  "claimBoundary": "This checkpoint establishes implementation, probe truth, automated regression, package lifecycle, and installation. It does not claim Product Owner UX acceptance, semantic preference between providers/models, feature completion, Product readiness, implementation authority, release, or deployment."
+}

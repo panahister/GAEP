@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "kind": "vscode-interactive-product-chat-checkpoint",
+  "recordedAt": "2026-08-01T09:23:35.000Z",
+  "branch": "codex/gaep-hardwork-completion-v2",
+  "featureId": "PLT-36",
+  "scope": "VS Code native conversational Product initialization vertical slice",
+  "experience": {
+    "participantId": "gaep.product",
+    "mention": "@gaep",
+    "entryCommand": "gaep.openInteractiveChat",
+    "slashCommands": [
+      "initialize",
+      "status",
+      "review",
+      "back",
+      "commit",
+      "cancel",
+      "help"
+    ],
+    "initializationQuestions": 9,
+    "multiLineInput": "provided-by-native-vscode-chat",
+    "fileReferences": "candidate-references-only",
+    "speechToText": "provided-by-vscode-speech-when-microphone-permission-is-granted",
+    "rawAudioStoredByGaep": false,
+    "governedWriteBoundary": "@gaep /commit CONFIRM",
+    "implicitProductMutation": false
+  },
+  "verification": {
+    "focusedStateMachineTests": "7/7 passed",
+    "repositoryVitestFiles": 170,
+    "repositoryVitestPassed": 1107,
+    "repositoryVitestSkipped": 1,
+    "ciContractTests": "4/4 passed",
+    "realisticExampleTests": "41/41 passed",
+    "documentationValidation": "passed-with-zero-warnings",
+    "vscodeTypecheck": "passed",
+    "vscodeExtensionHost": "passed",
+    "vsixLifecycle": "previous-version-install-upgrade-reinstall-rollback-uninstall-absence-final-install-passed",
+    "nativeChatRegistration": "passed",
+    "normalProfileGaepInstallation": "gaep.gaep-vscode@0.1.0",
+    "normalProfileSpeechInstallation": "ms-vscode.vscode-speech@0.16.0",
+    "productOwnerChatOpeningAndMicrophoneCheck": "not-executed"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "version": "0.1.0",
+    "bytes": 1232857,
+    "sha256": "3ca9d27bf9bc323cbd5d69d3091984e962d53f9e0405642a6aef7ac975ad049b"
+  },
+  "speechDependency": {
+    "extensionId": "ms-vscode.vscode-speech",
+    "version": "0.16.0",
+    "target": "darwin-arm64",
+    "downloadedBytes": 174604695,
+    "downloadedVsixSha256": "261656365197963b23993dffc438bd67b2386b6bec8bff4491661b9e5b5e13df",
+    "audioProcessingClaim": "host-extension-provided-local-processing",
+    "gaepAudioAccess": "none"
+  },
+  "openAcceptanceItems": [
+    "Product Owner opens the GAEP Activity Bar entry and confirms @gaep /initialize is usable in the normal VS Code profile.",
+    "Product Owner confirms file attachment references are visible in the conversation.",
+    "Product Owner grants macOS microphone permission if prompted and confirms speech-to-text in the native Chat input.",
+    "Governed Source Intake consumes attachment contents with identity, digest, authority and trace rather than only candidate labels.",
+    "The selected Codex or Claude Code model performs evidence-bounded challenge without turning model output into Product truth.",
+    "Additional P0-P7 lifecycle commands become available through the same conversational surface."
+  ],
+  "acceptanceBoundary": {
+    "featureStatus": "in-progress",
+    "productOwnerAcceptance": "not-established",
+    "attachmentContentAuthority": "not-established",
+    "providerAssistedChallenge": "not-implemented",
+    "implementationAuthority": "not-granted",
+    "sourceMutationAuthority": "not-granted",
+    "releaseAuthorization": "not-granted"
+  }
+}

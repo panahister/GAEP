@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "kind": "vscode-foundation-authenticated-claude-checkpoint",
+  "recordedAt": "2026-08-01T08:20:54.000Z",
+  "branch": "codex/gaep-hardwork-completion-v2",
+  "scope": "VS Code Pre-Implementation MVP foundation on the current macOS machine",
+  "providers": {
+    "codex": {
+      "adapterId": "gaep.codex-cli",
+      "runtimeVersion": "0.146.0-alpha.9.2",
+      "selectedModel": "gpt-5.6-terra",
+      "liveOutcome": "passed",
+      "terminalDisposition": "completed",
+      "normalizedEventCount": 16,
+      "expectedResponseObserved": true,
+      "shellToolEnabled": false,
+      "fileChangesAllowed": false,
+      "workspaceChangeCount": 0
+    },
+    "claude": {
+      "adapterId": "gaep.claude-code-cli",
+      "runtimeVersion": "2.1.218",
+      "authenticationStatus": "logged-in",
+      "authenticationMethod": "claude.ai",
+      "executionInterface": "cli-stream-json",
+      "interfaceMaturity": "stable",
+      "toolsEnabled": false,
+      "workspaceAccess": false,
+      "sourceMutation": false,
+      "models": {
+        "sonnet": {
+          "liveOutcome": "passed",
+          "terminalDisposition": "completed",
+          "terminationCause": "normal",
+          "normalizedEventCount": 4,
+          "expectedResponseObserved": true
+        },
+        "opus": {
+          "liveOutcome": "passed",
+          "terminalDisposition": "completed",
+          "terminationCause": "normal",
+          "normalizedEventCount": 4,
+          "expectedResponseObserved": true
+        }
+      }
+    }
+  },
+  "defectCorrection": {
+    "rootCause": "The least-authority child environment omitted USER and LOGNAME, preventing the authenticated Claude CLI from resolving its macOS credential-store identity even though claude auth status reported loggedIn=true.",
+    "correction": "USER and LOGNAME are now retained as non-secret identity keys while ambient provider tokens and unrelated environment variables remain filtered.",
+    "files": [
+      "packages/agent-sdk/src/process.ts",
+      "packages/agent-sdk/src/process.test.ts",
+      "packages/agent-sdk/src/managed-claude.test.ts",
+      "packages/agent-sdk/src/managed-claude-run.ts",
+      "packages/agent-sdk/src/managed-claude-run.test.ts",
+      "packages/agent-sdk/test/fixtures/fake-claude-auth-failure.mjs"
+    ],
+    "focusedVerification": "19 passed",
+    "portableAuthenticationFailureRedaction": "passed"
+  },
+  "verification": {
+    "repositoryGate": "passed-before-bounded-product-initialization-ux-correction",
+    "vitestFiles": 168,
+    "vitestPassed": 1100,
+    "vitestSkipped": 1,
+    "exampleTests": "41/41 passed",
+    "documentationValidation": "passed",
+    "productInitializationFocusedTests": "3/3 passed",
+    "vsCodeTypecheckAfterUxCorrection": "passed",
+    "vsCodeExtensionHost": "passed",
+    "normalVsCodeProfileInstallation": "gaep.gaep-vscode@0.1.0-passed",
+    "vsixLifecycle": "previous-version-install-upgrade-reinstall-rollback-uninstall-absence-final-install-passed"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "version": "0.1.0",
+    "bytes": 1227285,
+    "sha256": "08131b35022ea1c58522d9b3ea406df00cb8fd48cfb5ca26353e5d19575ef08b"
+  },
+  "modelAndHandoff": {
+    "liveClaudeModelExecution": "sonnet-and-opus-passed",
+    "persistedModelSelectionSwitch": "not-executed",
+    "liveProviderHandoff": "not-executed",
+    "productOwnerUiAcceptance": "not-established"
+  },
+  "gate": {
+    "status": "ready-for-product-owner-test",
+    "remainingHumanChecks": [
+      "Initialize or open one governed Product and select Claude Code with sonnet.",
+      "Run one bounded analysis, switch to opus, and inspect the Agent and Model dashboard.",
+      "Switch between Claude Code and Codex through the governed handoff path and explicitly accept or reject the Foundation workflow."
+    ]
+  },
+  "acceptanceBoundary": {
+    "codexLiveRuntime": "observed-on-current-machine",
+    "claudeLiveRuntime": "sonnet-and-opus-observed-on-current-machine",
+    "crossIdeAcceptance": "deferred",
+    "productOwnerAcceptance": "not-established",
+    "implementationAuthority": "not-granted",
+    "sourceMutationAuthority": "not-granted",
+    "releaseAuthorization": "not-granted",
+    "deploymentAuthorization": "not-granted"
+  }
+}

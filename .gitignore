@@ -19,3 +19,11 @@ coverage/
 **/build/
 **/bin/
 **/obj/
+
+# Machine-local IDE state and shareable release bundles
+.idea/claudeCodeEditorTabs.xml
+local-release-bundles/
+
+# Runtime-only example diagnostics (canonical acceptance receipts live under evidence/)
+examples/phase0-provider-model/evidence/
+examples/phase0-readiness/evidence/

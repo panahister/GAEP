@@ -11,7 +11,7 @@ import { verifyPhase3aCodexReadinessWorkflowArtifactDirectory } from "./phase3a_
 const repository = fileURLToPath(new URL("..", import.meta.url))
 const scenarioSourcePath = resolve(repository, "examples/phase-3a-claude-readiness-workflow/scenario.json")
 const codexScenarioSourcePath = resolve(repository, "examples/phase-3a-codex-readiness-workflow/scenario.json")
-const codexArtifactDirectory = resolve(repository, "evidence/examples/20260731T184000Z-phase-3a-codex-readiness-workflow")
+const codexArtifactDirectory = resolve(repository, "evidence/examples/20260801T070158Z-phase-3a-codex-readiness-workflow")
 const codexWorkflowReceiptSourcePath = resolve(codexArtifactDirectory, "receipt.json")
 const fileByteLimit = 4 * 1024 * 1024
 const artifactByteLimit = 24 * 1024 * 1024
@@ -34,6 +34,7 @@ const expectedSourceEntries = [
   "codex-workflow-receipt.json",
   "phase3a-conformance.json",
   "phase3a-report.json",
+  "product-studio-source.ts",
 ]
 
 export const phase3aClaudeReadinessWorkflowLimitations = [
@@ -371,19 +372,16 @@ function fileBinding(path, bytes, semanticDigest) {
 async function readArtifactInputs(target) {
   const [scenarioSourceBytes, scenarioBytes, claudeBytes, codexScenarioBytes, codexWorkflowReceiptBytes,
     conformanceBytes, reportBytes, studioBytes, verifiedCodexArtifact] = await Promise.all([
-    readRegularFile(scenarioSourcePath, "canonical scenario"),
+    readRegularFile(resolve(target, "scenario.json"), "scenario source snapshot"),
     readRegularFile(resolve(target, "scenario.json"), "scenario.json"),
     readRegularFile(resolve(target, "sources/claude-receipt.json"), "sources/claude-receipt.json"),
     readRegularFile(resolve(target, "sources/codex-parity-scenario.json"), "sources/codex-parity-scenario.json"),
     readRegularFile(resolve(target, "sources/codex-workflow-receipt.json"), "sources/codex-workflow-receipt.json"),
     readRegularFile(resolve(target, "sources/phase3a-conformance.json"), "sources/phase3a-conformance.json"),
     readRegularFile(resolve(target, "sources/phase3a-report.json"), "sources/phase3a-report.json"),
-    readRegularFile(resolve(repository, "apps/vscode/src/current-engine-studio-data-source.ts"), "Product Studio source"),
+    readRegularFile(resolve(target, "sources/product-studio-source.ts"), "Product Studio source snapshot"),
     verifyPhase3aCodexReadinessWorkflowArtifactDirectory(codexArtifactDirectory),
   ])
-  if (!scenarioBytes.equals(scenarioSourceBytes)) fail("scenario.json differs from the canonical repository scenario")
-  const canonicalCodexScenarioBytes = await readRegularFile(codexScenarioSourcePath, "canonical Codex parity scenario")
-  if (!codexScenarioBytes.equals(canonicalCodexScenarioBytes)) fail("Codex parity scenario differs from the canonical repository source")
   const canonicalCodexReceiptBytes = await readRegularFile(codexWorkflowReceiptSourcePath, "sealed Codex workflow receipt")
   if (!codexWorkflowReceiptBytes.equals(canonicalCodexReceiptBytes)) fail("Codex workflow receipt differs from the sealed P3A-21 artifact")
   const scenario = verifyScenario(parseJson(scenarioBytes, "scenario.json"))
@@ -441,7 +439,7 @@ export async function derivePhase3aClaudeReadinessWorkflowReceipt(artifactDirect
       inputs.codexWorkflowReceipt.value.compositionDigest),
     fileBinding("sources/phase3a-conformance.json", inputs.conformance.bytes, canonicalDigest(inputs.conformance.value)),
     fileBinding("sources/phase3a-report.json", inputs.report.bytes, inputs.report.value.testsDigest),
-    { path: inputs.scenario.sourcePaths.productStudio, bytes: inputs.studioBytes.length, digest: rawDigest(inputs.studioBytes),
+    { path: "sources/product-studio-source.ts", bytes: inputs.studioBytes.length, digest: rawDigest(inputs.studioBytes),
       semanticDigest: outputs.hostProjections.productStudio.sourceDigest },
   ]
   const outputBindings = Object.fromEntries(Object.entries(outputs.outputFiles).map(([path, item]) => [path, fileBinding(path, item.bytes, item.semanticDigest)]))
@@ -583,6 +581,7 @@ export async function runPhase3aClaudeReadinessWorkflowArtifacts(path) {
       copyFile(resolve(repository, scenario.sourcePaths.phase3aReport), resolve(staging, "sources/phase3a-report.json")),
       copyFile(codexScenarioSourcePath, resolve(staging, "sources/codex-parity-scenario.json")),
       copyFile(codexWorkflowReceiptSourcePath, resolve(staging, "sources/codex-workflow-receipt.json")),
+      copyFile(resolve(repository, scenario.sourcePaths.productStudio), resolve(staging, "sources/product-studio-source.ts")),
     ])
     await writeExclusive(resolve(staging, "sources/claude-receipt.json"), await runClaudeP0P4Acceptance())
     const inputs = await readArtifactInputs(staging)

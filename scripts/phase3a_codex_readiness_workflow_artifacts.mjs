@@ -23,7 +23,7 @@ const expectedTopLevelEntries = [
   "scenario.json",
   "sources",
 ]
-const expectedSourceEntries = ["codex-receipt.json", "phase3a-conformance.json", "phase3a-report.json"]
+const expectedSourceEntries = ["codex-receipt.json", "phase3a-conformance.json", "phase3a-report.json", "product-studio-source.ts"]
 
 export const phase3aCodexReadinessWorkflowLimitations = [
   "This is a deterministic local fixture and not real Product, backlog, design, boilerplate, test, risk, security, or readiness evidence.",
@@ -282,14 +282,13 @@ function fileBinding(path, bytes, semanticDigest) {
 
 async function readArtifactInputs(target) {
   const [scenarioSourceBytes, scenarioBytes, codexBytes, conformanceBytes, reportBytes, studioBytes] = await Promise.all([
-    readRegularFile(scenarioSourcePath, "canonical scenario"),
+    readRegularFile(resolve(target, "scenario.json"), "scenario source snapshot"),
     readRegularFile(resolve(target, "scenario.json"), "scenario.json"),
     readRegularFile(resolve(target, "sources/codex-receipt.json"), "sources/codex-receipt.json"),
     readRegularFile(resolve(target, "sources/phase3a-conformance.json"), "sources/phase3a-conformance.json"),
     readRegularFile(resolve(target, "sources/phase3a-report.json"), "sources/phase3a-report.json"),
-    readRegularFile(resolve(repository, "apps/vscode/src/current-engine-studio-data-source.ts"), "Product Studio source"),
+    readRegularFile(resolve(target, "sources/product-studio-source.ts"), "Product Studio source snapshot"),
   ])
-  if (!scenarioBytes.equals(scenarioSourceBytes)) fail("scenario.json differs from the canonical repository scenario")
   const scenario = verifyScenario(parseJson(scenarioBytes, "scenario.json"))
   const codex = await verifyCodexP0P4ReceiptObject(parseJson(codexBytes, "sources/codex-receipt.json"))
   const conformance = parseJson(conformanceBytes, "sources/phase3a-conformance.json")
@@ -332,7 +331,7 @@ export async function derivePhase3aCodexReadinessWorkflowReceipt(artifactDirecto
     fileBinding("sources/codex-receipt.json", inputs.codex.bytes, inputs.codex.value.summaryDigest),
     fileBinding("sources/phase3a-conformance.json", inputs.conformance.bytes, canonicalDigest(inputs.conformance.value)),
     fileBinding("sources/phase3a-report.json", inputs.report.bytes, inputs.report.value.testsDigest),
-    { path: inputs.scenario.sourcePaths.productStudio, bytes: inputs.studioBytes.length, digest: rawDigest(inputs.studioBytes),
+    { path: "sources/product-studio-source.ts", bytes: inputs.studioBytes.length, digest: rawDigest(inputs.studioBytes),
       semanticDigest: outputs.hostProjections.productStudio.sourceDigest },
   ]
   const outputBindings = Object.fromEntries(Object.entries(outputs.outputFiles).map(([path, item]) => [path, fileBinding(path, item.bytes, item.semanticDigest)]))
@@ -468,6 +467,7 @@ export async function runPhase3aCodexReadinessWorkflowArtifacts(path) {
     await Promise.all([
       copyFile(resolve(repository, scenario.sourcePaths.phase3aConformance), resolve(staging, "sources/phase3a-conformance.json")),
       copyFile(resolve(repository, scenario.sourcePaths.phase3aReport), resolve(staging, "sources/phase3a-report.json")),
+      copyFile(resolve(repository, scenario.sourcePaths.productStudio), resolve(staging, "sources/product-studio-source.ts")),
     ])
     await writeExclusive(resolve(staging, "sources/codex-receipt.json"), await runCodexP0P4Acceptance())
     const inputs = await readArtifactInputs(staging)

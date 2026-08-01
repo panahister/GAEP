@@ -143,6 +143,54 @@ function textParts(value: unknown): string[] {
   })
 }
 
+function managedClaudeAuthenticationUnavailable(value: string): boolean {
+  return [
+    /\bnot logged in\b/iu,
+    /\bplease (?:run|use)\s+\/?login\b/iu,
+    /\blogin required\b/iu,
+    /\bauthentication (?:is )?required\b/iu,
+    /\bunauthori[sz]ed\b/iu,
+  ].some((pattern) => pattern.test(value))
+}
+
+function managedClaudeFailure(record: Record<string, unknown>): {
+  code: "GAEP_CLAUDE_AUTH_UNAVAILABLE" | "GAEP_CLAUDE_PROVIDER_FAILURE"
+  message: string
+} {
+  const details = [
+    typeof record.result === "string" ? record.result : "",
+    ...(Array.isArray(record.errors) ? record.errors.filter((item): item is string => typeof item === "string") : []),
+  ].join("\n")
+  return managedClaudeAuthenticationUnavailable(details)
+    ? {
+        code: "GAEP_CLAUDE_AUTH_UNAVAILABLE",
+        message: "Claude authentication is unavailable for the managed runtime.",
+      }
+    : {
+        code: "GAEP_CLAUDE_PROVIDER_FAILURE",
+        message: "Claude returned a managed provider failure.",
+      }
+}
+
+function sanitizePortableProviderText(value: string): string {
+  if (managedClaudeAuthenticationUnavailable(value)) {
+    return "Claude authentication is unavailable for the managed runtime."
+  }
+  const maximumBytes = 64 * 1024
+  let sanitized = value
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/gu, "")
+    .replace(/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/giu, "Bearer [REDACTED]")
+    .replace(/\b(?:sk|rk|pk)-[A-Za-z0-9_-]{8,}\b/gu, "[REDACTED_API_KEY]")
+    .replace(/\b(token|secret|password|api[_-]?key|authorization)\s*[:=]\s*[^\s,;]+/giu, "$1=[REDACTED]")
+    .replace(/\b[A-Za-z]:\\[^\s"'<>]*/gu, "[ABSOLUTE_PATH]")
+    .replace(/(^|[\s(="'])\/(?:Users|home|tmp|private|var|opt|etc)\/[^\s"'<>)]*/gu, "$1[ABSOLUTE_PATH]")
+  if (Buffer.byteLength(sanitized) <= maximumBytes) return sanitized
+  const suffix = "...[TRUNCATED]"
+  const budget = maximumBytes - Buffer.byteLength(suffix)
+  while (Buffer.byteLength(sanitized) > budget) sanitized = sanitized.slice(0, Math.floor(sanitized.length * 0.9))
+  return `${sanitized}${suffix}`
+}
+
 function signalProcessTree(child: ChildProcessWithoutNullStreams, signal: NodeJS.Signals): void {
   if (!child.pid) return
   if (process.platform !== "win32") {
@@ -259,7 +307,9 @@ async function startManagedClaudeInvocationRun(
           return
         }
         if (record.type === "assistant") {
-          for (const text of textParts(record.message)) emit({ type: "output-delta", channel: "assistant", text })
+          for (const text of textParts(record.message)) {
+            emit({ type: "output-delta", channel: "assistant", text: sanitizePortableProviderText(text) })
+          }
           return
         }
         if (record.type === "result") {
@@ -267,6 +317,7 @@ async function startManagedClaudeInvocationRun(
           const isError = record.is_error === true || record.subtype === "error"
           terminalDisposition = isError ? "failed" : "completed"
           terminationCause = isError ? "provider-failure" : "normal"
+          if (isError) emit({ type: "error", ...managedClaudeFailure(record), retryable: false })
           emit({ type: "lifecycle", phase: "turn-completed", turnStatus: isError ? "failed" : "completed" })
         }
       }

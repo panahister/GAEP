@@ -2,9 +2,9 @@
 
 **Product:** Governed AI Engineering Platform (GAEP)  
 **Document ID:** GAEP-PID-001  
-**Version:** 0.4.2<br>
+**Version:** 0.4.8<br>
 **Status:** Draft — Shareable Product Identity  
-**Last updated:** 2026-07-23  
+**Last updated:** 2026-08-01
 **Intended audience:** Executives, product leaders, engineering leaders, architects, designers, quality and security leaders, software engineers, operators, governance participants, AI-platform evaluators, and AI agents  
 **Intended use:** Product orientation, stakeholder alignment, independent product evaluation, partnership discussion, roadmap framing, role guidance, and AI context  
 **Authority:** Informative Product-direction synthesis; it does not replace approved constitutional, governance, architecture, assurance, lifecycle, or implementation specifications  
@@ -441,7 +441,35 @@ GAEP's required first cross-host matrix consists of **Visual Studio Code, Micros
 - **Visual Studio** uses a native Visual Studio extension and the shared versioned Engine Host protocol.
 - **Rider** uses a native JetBrains plugin and the same Engine Host protocol.
 
-Every phase release must produce installable, version-aligned artifacts for all four IDEs, exercise the applicable phase dashboard and example in each host, and prove Codex and Claude Code selection, Model selection, switching, handoff, capability truth, and evidence behavior. Platform-specific limitations must be visible and must fail closed; an inert command, hook, or view must not be reported as supported.
+The target cross-host release must produce installable, version-aligned artifacts for all four IDEs, exercise the applicable phase dashboard and example in each host, and prove Codex and Claude Code selection, Model selection, switching, handoff, capability truth, and evidence behavior. Platform-specific limitations must be visible and must fail closed; an inert command, hook, or view must not be reported as supported.
+
+### 10.1 Reference-host delivery sequencing decision
+
+The active first exploitable Product slice is the **VS Code Pre-Implementation MVP**. It may be accepted as a reference-host release without waiting for Visual Studio, Rider, or Kiro acceptance, provided that no cross-IDE parity or cross-host release claim is made. The shared Engine, contracts, portable `.gaep` state, provider semantics, evidence, authority, and dashboard projections must remain host-independent so that later host adoption does not require a second Product implementation.
+
+This MVP covers the Product Development Profile from `P0` through `P7`: governed inputs and baseline, business and Product architecture, process/data/rule/event architecture, applicable Experience and Figma design, backlog and MVP finalization, and engineering preparation through an explicit Implementation Readiness decision. It stops before `P8 Implementation` and therefore grants no code-generation, source-mutation, release, or deployment authority.
+
+The active VS Code slice must support both Codex and Claude Code, model discovery and switching, versioned handoff, Product Studio dashboards, realistic Product evidence, and the complete governed Figma round trip when design is applicable: capability discovery, read/import, outbound context, controlled write or manual handoff, finalized snapshot return, delta reconciliation, human design approval, Design Baseline, and backlog finalization. Visual Studio, Rider, and Kiro remain required Target Platform Architecture hosts, but their acceptance is deferred to a separately named Cross-IDE Release milestone.
+
+### 10.2 Native conversational Product workspace
+
+The VS Code reference host must provide a first-class native conversational workspace as the primary entry point for Product and pre-implementation work. A user opens GAEP from the Activity Bar or addresses `@gaep` in VS Code Chat, starts bounded workflows through slash commands such as `/initialize`, and continues through multi-turn questions, challenges, revisions, review, and explicit commit. The experience must provide a normal multi-line prompt surface, native file references, visible progress and recovery controls. When the installed VS Code host exposes speech-to-text for Chat, the same input surface may accept voice; GAEP must not record raw audio.
+
+The conversational surface is an interaction layer over GAEP, not a replacement for the governed system of record. Conversation history, inferred intent, attached files, and model output remain non-authoritative until the applicable GAEP operation validates and records them. Creating or changing governed state requires an explicit action at a visible commit boundary. Attachments begin as candidate inputs and may affect governed reasoning only after Source Intake establishes identity, digest, scope, owner, authority, sensitivity, and trace. Machine-local paths, raw audio, secrets, and private provider diagnostics must not enter portable state.
+
+The workspace must make the next valid action understandable, challenge answers that are too vague to verify, allow the user to go back without corrupting prior governed state, and distinguish draft, reviewed, committed, blocked, and cancelled outcomes. Provider and Model selection, handoff, dashboards, Source Intake, lifecycle scripts, and later Figma workflows should progressively become available through this same interaction model without changing their existing Engine contracts or human-approval rules. Structured Product Studio and Command Palette forms remain available for inspection, accessibility, recovery, and expert direct use; they are not the intended primary onboarding experience.
+
+The interaction contract must preserve the semantic boundaries of accepted answers. List fields use one explicit item per line or structured list controls; commas inside an item are content and must not silently create additional governed items. After initialization, `/revise` must allow a human to correct selected Product fields through the same advisor challenge and `/accept` loop, review multiple draft corrections together, and explicitly commit one exact Product revision. Revision preserves Product identity and history, rejects stale base revisions, creates an audit event, and never overwrites prior governed Product truth in place.
+
+The workspace must expose `/continue` as the stable state-aware lifecycle navigator. It reads governed state rather than relying on Chat history, resumes an existing uncommitted workflow when present, and starts only the next valid workflow. For a Product without an Initiative, it conducts a bounded conversational Initiative draft covering title, observable outcome, included scope, and exclusions. Every answer follows the same effect-free advisor challenge and explicit `/accept` rule; `/commit CONFIRM` creates only a proposed Initiative. Creation does not classify, activate, execute, implement, or grant Source authority, and subsequent `/continue` calls must stop truthfully at the next unavailable conversational checkpoint rather than silently routing the user into an opaque or weaker-authority flow.
+
+Question completion must be a governed human-AI loop, not a form submission disguised as Chat. Before Product discovery starts, the user selects a detected Codex or Claude Code advisor and an advertised or explicitly entered model. For every field, GAEP validates the candidate locally, invokes the selected advisor through an effect-free bounded execution path, and presents the critique, retained strengths, unresolved gaps or assumptions, at most one high-value follow-up question, and a proposed improved answer. A normal reply is revision context and triggers another advisory round; it never advances the workflow. Only an explicit `/accept` records the current proposal and opens the next question. Changing the advisor discards any unaccepted proposal. Provider failure, cancellation, malformed output, or a proposal that violates the field contract leaves the current step unchanged.
+
+The Chat model that hosts the participant and the Product advisor are distinct trust roles. `GAEP Governed Workflow` may act as a local non-generative VS Code Chat orchestrator so the workflow does not depend on GitHub Copilot. It must not be represented as the critic. The chosen Codex or Claude Code process performs the advisory critique under the existing machine-local authentication, executable-probing, output-bound, cancellation, timeout, no-Tool/no-command/no-file-change, and sanitized-error controls. Advisor output grants no truth, approval, Product-state mutation, implementation, or execution authority.
+
+Agent and Model switching must remain obvious and productive throughout the conversation. The Chat surface must expose separate `/agent` and `/model` actions plus a combined compatibility selector, display the current Agent and Model on every question, and expose the same session-local selection in the host's GAEP navigation. Both supported Agents remain visible during selection; an unavailable Agent is labeled with its truthful reason and configuration recovery rather than being omitted. Switching during an unaccepted proposal re-evaluates the original candidate with the new selection when execution is available, preserves the Product step, and never converts either proposal into accepted truth. The workspace-scoped advisory choice is machine-local; it is distinct from a governed Run selection and must not enter portable `.gaep` state merely because the user changes the conversational critic.
+
+The first implementation is the VS Code `@gaep` participant. Later hosts may use their native conversational APIs or a GAEP-owned equivalent surface, but must preserve the same commands, state transitions, evidence boundaries, and authority semantics rather than reproducing chat transcripts as Product truth.
 
 ---
 
@@ -768,7 +796,7 @@ The required host delivery targets are VS Code, Visual Studio, Rider, and Kiro. 
 - Visual Studio requires a native VSIX, a Windows build and test environment, Visual Studio extension-host validation, and shared Engine protocol conformance;
 - Rider requires a native JetBrains plugin package, Rider sandbox or installed-profile validation, and shared Engine protocol conformance.
 
-A phase is not cross-IDE complete merely because its Engine contract or one reference host works. Phase closure requires an artifact, installation evidence, phase-example execution, dashboard verification, Agent/Model switching verification, and a disclosed limitation matrix for every required host.
+A Cross-IDE Release is not complete merely because its Engine contract or one reference host works. Cross-IDE closure requires an artifact, installation evidence, phase-example execution, dashboard verification, Agent/Model switching verification, and a disclosed limitation matrix for every required host. A separately scoped reference-host release may close on VS Code under Section 10.1 without implying cross-IDE completeness.
 
 Installation and activation should include:
 
@@ -2454,7 +2482,16 @@ The roadmap is evidence-gated, not a promise that every target capability should
 
 ### 33.2 Proof slices
 
-**Slice 1 — Brownfield non-Product change — first.** This is the FCR and the cheapest falsifiable test of GAEP's continuity-and-authority thesis.
+**Slice 0 — VS Code Pre-Implementation Product MVP — active first.** This is the shortest route to Product-side value before implementation begins.
+
+- **User and scope:** a Product Owner and the applicable analysts, architects, designers, security and QA participants preparing one real Product for implementation inside VS Code.
+- **Lifecycle boundary:** Product Development Profile `P0` through `P7`, ending at an explicit Implementation Readiness decision and stopping before `P8` source implementation.
+- **Required capabilities:** Product Studio; governed sources, decisions, risks, architecture and evidence; both AI providers and model handoff; applicable Figma capability discovery and governed round trip; Design Baseline; finalized traceable backlog/MVP; technology, boilerplate, HLD/LLD, test and security preparation; readiness dashboard and change/impact views.
+- **Required evidence:** an installable VSIX, clean-profile and upgrade/rollback tests, one realistic Product, real Product Owner review, live-provider evidence or explicit environment blockers, Figma synchronization evidence when applicable, exact backlog/design/architecture/test traceability, and a private-safe acceptance report.
+- **Non-goals:** `P8` implementation, source mutation, implementation QA, release, deployment, four-IDE acceptance, marketplace publication, Data Fabric, federation, or portfolio management.
+- **Exit:** the Product Owner can use GAEP in VS Code to reach and inspect a trustworthy pre-implementation package and explicitly accept or reject Implementation Readiness.
+
+**Slice 1 — Brownfield non-Product change — after Slice 0.** This remains the first effectful implementation proof and the cheapest falsifiable test of GAEP's continuity-and-authority thesis.
 
 - **User and scope:** an engineering lead or senior developer performing a defect fix or bounded change in an existing repository; no Product Discovery or Figma.
 - **Minimal packages:** Initiative Intake and Classification, Assurance, Managed Execution, and Impact and Drift, using fixed wiring and the Minimal Package Contract.
@@ -2474,16 +2511,20 @@ The roadmap is evidence-gated, not a promise that every target capability should
 
 **Now — Pilot and FCR**
 
-- deliver the minimum safe runtime and Slice 1;
+- deliver the VS Code Pre-Implementation Product MVP and Slice 0;
+- complete `P0` through `P7`, including the applicable Figma round trip, Design Baseline, finalized backlog, engineering preparation, and explicit Implementation Readiness without entering `P8`;
+- retain the minimum safe runtime for provider execution, but do not authorize source mutation or implementation;
 - expose the seven-concept first-use model and opinionated, overridable applicability defaults;
 - run the baseline study and activate the falsifiable scorecard in Section 30;
 - use direct reads of authoritative artifacts;
 - keep early package wiring internal and intentionally narrow.
 
-**SC-1:** if Slice 1 fails its ceremony-time or voluntary-repeat-use thresholds, stop lifecycle expansion and narrow or redesign the workflow. **SC-2:** if any self-approval or unauthorized-effect incident occurs, stop effectful expansion until the control failure is corrected and independently revalidated.
+**SC-1:** if Slice 0 fails its ceremony-time, comprehension, or voluntary-repeat-use thresholds, stop lifecycle expansion and narrow or redesign the workflow. **SC-2:** if any self-approval or unauthorized-effect incident occurs, stop effectful expansion until the control failure is corrected and independently revalidated.
 
 **Next — FPR, only after Now's evidence gates pass**
 
+- execute Slice 1 as the first effectful implementation proof only after explicit Product Owner activation;
+- deliver the separately named Cross-IDE Release for Kiro, Rider, and Visual Studio without changing Core Product semantics;
 - resolve DG-1 before treating the Lifecycle and Applicability Kernel as effective;
 - implement profiles, applicability, baselines, RACI, explicit approval, and Slice 2;
 - harden the internal Minimal Package Contract across real, materially different packages without publishing a generalized ABI;

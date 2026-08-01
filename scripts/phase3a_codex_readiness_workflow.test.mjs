@@ -40,7 +40,7 @@ test("creates and independently verifies the deterministic Codex Phase 3A readin
   assert.equal(receipt.summary.implementationEffectsApplied, 0)
   assert.equal(receipt.authority.readinessAuthority, "not-established")
   assert.equal(receipt.authority.productOwnerAcceptance, "not-established")
-  assert.equal(manifest.inventory.fileCount, 9)
+  assert.equal(manifest.inventory.fileCount, 10)
 })
 
 test("is byte-deterministic for the exact scenario and current bound evidence", async () => {

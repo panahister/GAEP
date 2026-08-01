@@ -601,6 +601,45 @@ describe("GAEP local engine", () => {
     expect((await engine.workspaceHealth()).status).toBe("healthy")
   })
 
+  it("creates an exact audited Product revision without replacing Product identity", async () => {
+    const { product } = await initialize()
+    const revised = await engine.reviseProduct({
+      name: product.name,
+      summary: product.summary,
+      problem: product.problem,
+      affectedUsers: product.affectedUsers,
+      desiredOutcome: product.desiredOutcome,
+      successSignals: [
+        "Noon, arrival, and departure reports preserve estimates and actuals",
+        "Schedule deviations are detected, attributed, and handled traceably",
+      ],
+      firstWorkflow: product.firstWorkflow,
+      exclusions: ["Cargo booking, allocation, documentation, and customer self-service"],
+      profile: product.profile,
+    }, 1, "Correct list boundaries after Product Owner review", "founder")
+
+    expect(revised).toMatchObject({ id: product.id, revision: 2 })
+    expect(revised.successSignals[0]).toContain("Noon, arrival, and departure")
+    expect(revised.exclusions).toEqual(["Cargo booking, allocation, documentation, and customer self-service"])
+    const history = JSON.parse(await readFile(
+      join(workspace, ".gaep", "product-history", `product-${product.id}-r2.json`),
+      "utf8",
+    )) as { source: { kind: string }; product: { id: string; revision: number } }
+    expect(history).toMatchObject({ source: { kind: "manual-revision" }, product: { id: product.id, revision: 2 } })
+    await expect(engine.reviseProduct({
+      name: revised.name,
+      summary: revised.summary,
+      problem: revised.problem,
+      affectedUsers: revised.affectedUsers,
+      desiredOutcome: revised.desiredOutcome,
+      successSignals: revised.successSignals,
+      firstWorkflow: revised.firstWorkflow,
+      exclusions: revised.exclusions,
+      profile: revised.profile,
+    }, 1, "Stale overwrite", "founder")).rejects.toThrow(/revision changed/i)
+    await expect(engine.repository.verifyAudit()).resolves.toMatchObject({ valid: true })
+  })
+
   it("enforces explicit Initiative transitions and monotonically increases revisions", async () => {
     const { initiative } = await initialize()
     await expect(

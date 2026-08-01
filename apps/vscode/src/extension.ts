@@ -45,6 +45,16 @@ import {
 import { ManagedRunSession } from "./managed-run-session.js"
 import { runPortableDesignImportWorkflow } from "./portable-design-workflow.js"
 import { manualModelEntryCopy } from "./provider-truth.js"
+import { productInitializationPresentation } from "./product-initialization.js"
+import { registerGaepProductChat } from "./product-chat-participant.js"
+import {
+  isProductChatAdvisorSelection,
+  productInitializationQuestions,
+  type ProductChatAdvisorSelection,
+} from "./interactive-product-chat.js"
+import { runProductAnswerChallenge } from "./product-chat-advisor.js"
+import { resolveCodexExecutablePreference } from "./product-chat-executable-discovery.js"
+import { registerGaepWorkflowLanguageModel } from "./gaep-workflow-language-model.js"
 import {
   buildManagedWorkflowEnvelope,
   buildRunToolSelectionInput,
@@ -82,6 +92,7 @@ import {
 const selectedWorkspaceKey = "gaep.selectedWorkspaceUri"
 const runtimeBindingsKey = "gaep.runtimeBindings.v2"
 const legacyRuntimeBindingsKey = "gaep.runtimeBindings.v1"
+const productChatAdvisorSessionsKey = "gaep.productChatAdvisorSessions.v1"
 const activeAgentRuns = new ActiveRunRegistry()
 
 function sameStableFile(left: Stats, right: Stats): boolean {
@@ -292,7 +303,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   let studioProvider: StudioProvider | undefined
   let studioContextGeneration = randomUUID()
   let productDomainMutationActive = false
+  const storedAdvisorSessions = context.workspaceState.get<Record<string, unknown>>(productChatAdvisorSessionsKey) ?? {}
+  let productChatAdvisorSessions = Object.fromEntries(
+    Object.entries(storedAdvisorSessions).filter((entry): entry is [string, ProductChatAdvisorSelection] =>
+      isProductChatAdvisorSelection(entry[1])),
+  )
   const productDomainMutationWaiters = new Set<() => void>()
+
+  const currentProductChatAdvisor = (): ProductChatAdvisorSelection | undefined => selectedFolder
+    ? productChatAdvisorSessions[selectedFolder.uri.toString()]
+    : undefined
 
   const rotateStudioContext = (): void => {
     studioContextGeneration = randomUUID()
@@ -371,6 +391,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workspaceName: selectedFolder?.name,
     trusted: vscode.workspace.isTrusted,
     recoveryDiagnostic,
+    productChatAdvisor: currentProductChatAdvisor(),
   })
   const providers = [
     new GaepTreeProvider(viewContext, "product"),
@@ -517,13 +538,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     selectedFolder = folder
     recoveryDiagnostic = undefined
     lastStatusDiagnostic = undefined
+    const codexExecutable = await resolveCodexExecutablePreference(machineSetting("codex.executable", "codex"))
     engine = new GaepEngine(folder.uri.fsPath, [
-      new CodexAdapter(machineSetting("codex.executable", "codex")),
+      new CodexAdapter(codexExecutable.executable),
       new ClaudeAdapter(machineSetting("claude.executable", "claude")),
     ])
     configureWatcher(folder)
     await context.workspaceState.update(selectedWorkspaceKey, folder.uri.toString())
-    diagnostics.info(`Selected Product root: ${folder.name} (machine path withheld)`)
+    diagnostics.info(`Selected Product root: ${folder.name} (machine path withheld); Codex discovery=${codexExecutable.source}`)
     if (recover && vscode.workspace.isTrusted) {
       try {
         const recovered = await engine.recoverInterruptedRuns("gaep.vscode.restart")
@@ -595,6 +617,209 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return outcomes.filter((outcome): outcome is AdapterProbeResult => outcome !== undefined)
   }
 
+  interface ProductChatProviderCandidate {
+    adapterId: ProductChatAdvisorSelection["adapterId"]
+    agentLabel: ProductChatAdvisorSelection["agentLabel"]
+    probe?: AdapterProbeResult
+    unavailableReason?: string
+  }
+
+  const productChatProviderCandidates = async (runtimeEngine: GaepEngine): Promise<ProductChatProviderCandidate[]> =>
+    Promise.all((["gaep.codex-cli", "gaep.claude-code-cli"] as const).map(async (adapterId) => {
+      const agentLabel = adapterId === "gaep.codex-cli" ? "Codex" : "Claude Code"
+      const adapter = runtimeEngine.adapters.get(adapterId)
+      if (!adapter) return { adapterId, agentLabel, unavailableReason: "Adapter is not configured" }
+      try {
+        const probe = await adapter.probe({ refreshModels: true })
+        const unavailableReason = probe.runtimeBinding.kind === "unavailable"
+          ? probe.runtimeBinding.reason
+          : probe.capabilities.executionInterface === "unavailable"
+            ? "Managed execution interface is unavailable"
+            : undefined
+        return { adapterId, agentLabel, probe, unavailableReason }
+      } catch (error) {
+        logDiagnostic(`Product advisor probe failed for ${adapterId}`, error)
+        return { adapterId, agentLabel, unavailableReason: "Executable probe failed; inspect GAEP Diagnostics" }
+      }
+    }))
+
+  const unavailableProductChatProvider = async (candidate: ProductChatProviderCandidate): Promise<void> => {
+    const configure = await vscode.window.showWarningMessage(
+      `${candidate.agentLabel} cannot be selected: ${candidate.unavailableReason ?? "managed runtime unavailable"}.`,
+      "Configure Executable",
+      "Show Diagnostics",
+    )
+    if (configure === "Configure Executable") {
+      await vscode.commands.executeCommand(
+        "workbench.action.openSettings",
+        candidate.adapterId === "gaep.codex-cli" ? "gaep.codex.executable" : "gaep.claude.executable",
+      )
+    } else if (configure === "Show Diagnostics") {
+      diagnostics.show(true)
+    }
+  }
+
+  const pickProductChatProvider = async (
+    runtimeEngine: GaepEngine,
+    current?: ProductChatAdvisorSelection,
+  ): Promise<AdapterProbeResult | undefined> => {
+    const candidates = await productChatProviderCandidates(runtimeEngine)
+    const picked = await vscode.window.showQuickPick(candidates.map((candidate) => {
+      const available = candidate.probe?.runtimeBinding.kind === "executable" && !candidate.unavailableReason
+      return {
+        label: `${available ? "$(pass)" : "$(warning)"} ${candidate.agentLabel}`,
+        description: available
+          ? candidate.probe?.capabilities.runtimeVersion
+            ? `v${candidate.probe.capabilities.runtimeVersion}`
+            : "verified executable"
+          : "unavailable",
+        detail: [
+          candidate.adapterId === current?.adapterId ? "Current Product Chat agent" : undefined,
+          candidate.unavailableReason,
+        ].filter(Boolean).join(" · ") || "Available for bounded Product advisory turns",
+        candidate,
+      }
+    }), {
+      title: "Switch Product Chat AI agent",
+      placeHolder: "Codex and Claude Code remain visible; unavailable agents explain why",
+      ignoreFocusOut: true,
+    })
+    if (!picked) return undefined
+    if (!picked.candidate.probe || picked.candidate.unavailableReason ||
+        picked.candidate.probe.runtimeBinding.kind !== "executable") {
+      await unavailableProductChatProvider(picked.candidate)
+      return undefined
+    }
+    return picked.candidate.probe
+  }
+
+  const pickProductChatModel = async (
+    probe: AdapterProbeResult,
+    current?: ProductChatAdvisorSelection,
+  ): Promise<ProductChatAdvisorSelection | undefined> => {
+    const capabilities = probe.capabilities
+    type ModelChoice = vscode.QuickPickItem & (
+      | { choiceType: "model"; candidate: (typeof capabilities.models)[number] }
+      | { choiceType: "manual" }
+    )
+    const modelChoices: ModelChoice[] = capabilities.models.map((candidate) => ({
+      choiceType: "model",
+      label: candidate.label,
+      description: candidate.id,
+      detail: [
+        candidate.id === current?.modelId ? "Current advisory model" : undefined,
+        candidate.truthClass,
+        candidate.alias ? "provider alias" : undefined,
+      ].filter(Boolean).join(" · "),
+      candidate,
+    }))
+    const manual: ModelChoice = {
+      choiceType: "manual",
+      label: "$(edit) Enter another model ID",
+      description: "provider/account-specific",
+      detail: "Recorded as user-entered",
+    }
+    const model = await vscode.window.showQuickPick<ModelChoice>([...modelChoices, manual], {
+      title: `${capabilities.agentLabel}: switch advisory model`,
+      placeHolder: "Selecting a model does not run the provider or accept a Product answer",
+      ignoreFocusOut: true,
+    })
+    if (!model) return undefined
+    let modelId: string
+    let modelLabel: string
+    let modelTruthClass: ProductChatAdvisorSelection["modelTruthClass"]
+    if (model.choiceType === "model") {
+      modelId = model.candidate.id
+      modelLabel = model.candidate.label
+      modelTruthClass = model.candidate.truthClass === "observed" ? "observed" : "provider-declared"
+    } else {
+      const entered = await vscode.window.showInputBox({
+        title: `${capabilities.agentLabel}: advisory model`,
+        prompt: "Enter a model identifier supported by the authenticated provider account",
+        value: capabilities.adapterId === "gaep.claude-code-cli" ? "sonnet" : undefined,
+        ignoreFocusOut: true,
+        validateInput: (value) => value.trim() && Buffer.byteLength(value.trim()) <= 1_024
+          ? undefined
+          : "Enter a non-empty model identifier of at most 1024 bytes",
+      })
+      if (!entered?.trim()) return undefined
+      modelId = entered.trim()
+      modelLabel = modelId
+      modelTruthClass = "user-entered"
+    }
+    const codex = capabilities.adapterId === "gaep.codex-cli"
+    return {
+      adapterId: codex ? "gaep.codex-cli" : "gaep.claude-code-cli",
+      agentId: codex ? "codex-cli" : "claude-code-cli",
+      agentLabel: codex ? "Codex" : "Claude Code",
+      modelId,
+      modelLabel,
+      modelTruthClass,
+      runtimeVersion: capabilities.runtimeVersion,
+    }
+  }
+
+  const rememberProductChatAdvisor = async (advisor: ProductChatAdvisorSelection): Promise<void> => {
+    if (!selectedFolder) throw new Error("Select a Product root before storing a Product Chat advisor")
+    productChatAdvisorSessions = {
+      ...productChatAdvisorSessions,
+      [selectedFolder.uri.toString()]: advisor,
+    }
+    await context.workspaceState.update(productChatAdvisorSessionsKey, productChatAdvisorSessions)
+    refresh()
+  }
+
+  const selectProductChatAgent = async (
+    current?: ProductChatAdvisorSelection,
+  ): Promise<ProductChatAdvisorSelection | undefined> => {
+    const runtime = await requireRuntime()
+    const probe = await pickProductChatProvider(runtime.engine, current)
+    if (!probe) return undefined
+    const advisor = await pickProductChatModel(probe, probe.capabilities.adapterId === current?.adapterId ? current : undefined)
+    if (advisor) await rememberProductChatAdvisor(advisor)
+    return advisor
+  }
+
+  const selectProductChatModel = async (
+    current: ProductChatAdvisorSelection,
+  ): Promise<ProductChatAdvisorSelection | undefined> => {
+    const runtime = await requireRuntime()
+    const candidate = (await productChatProviderCandidates(runtime.engine)).find((item) => item.adapterId === current.adapterId)
+    if (!candidate?.probe || candidate.unavailableReason || candidate.probe.runtimeBinding.kind !== "executable") {
+      await unavailableProductChatProvider(candidate ?? {
+        adapterId: current.adapterId,
+        agentLabel: current.agentLabel,
+        unavailableReason: "Adapter is not configured",
+      })
+      return undefined
+    }
+    const advisor = await pickProductChatModel(candidate.probe, current)
+    if (advisor) await rememberProductChatAdvisor(advisor)
+    return advisor
+  }
+
+  const selectProductChatAdvisor = selectProductChatAgent
+
+  const resolveProductChatAdvisorRuntime = async (selection: ProductChatAdvisorSelection) => {
+    const runtime = await requireRuntime()
+    const adapter = runtime.engine.adapters.get(selection.adapterId)
+    if (!adapter) throw new Error("The selected Product advisor is no longer configured")
+    const probe = await adapter.probe({ refreshModels: true })
+    if (probe.runtimeBinding.kind !== "executable" || probe.capabilities.executionInterface === "unavailable") {
+      throw new Error("The selected Product advisor executable is unavailable")
+    }
+    if (selection.modelTruthClass !== "user-entered" &&
+        !probe.capabilities.models.some((model) => model.id === selection.modelId)) {
+      throw new Error("The selected Product advisor model is no longer advertised")
+    }
+    const { executablePath, executableFingerprint } = probe.runtimeBinding
+    return {
+      executable: executablePath,
+      executableFingerprint,
+      runtimeVersion: probe.capabilities.runtimeVersion,
+    }
+  }
+
   const safely = <TArgs extends unknown[], TResult>(
     operation: (...args: TArgs) => Promise<TResult>,
   ): ((...args: TArgs) => Promise<TResult | undefined>) => async (...args: TArgs) => {
@@ -609,6 +834,133 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       })
     }
   }
+
+  registerGaepWorkflowLanguageModel(context)
+  registerGaepProductChat(context, {
+    productState: async () => {
+      const runtime = await requireRuntime()
+      const gaepDirectoryExists = await exists(join(runtime.path, ".gaep"))
+      const manifestExists = await exists(join(runtime.path, ".gaep", "manifest.json"))
+      if (!manifestExists) return { state: gaepDirectoryExists ? "partial" : "uninitialized" }
+      const product = await runtime.engine.readProduct()
+      return {
+        state: "initialized",
+        name: product.name,
+        revision: product.revision ?? 1,
+        input: {
+          name: product.name,
+          summary: product.summary,
+          problem: product.problem,
+          affectedUsers: product.affectedUsers,
+          desiredOutcome: product.desiredOutcome,
+          successSignals: [...product.successSignals],
+          firstWorkflow: product.firstWorkflow,
+          exclusions: [...product.exclusions],
+          profile: product.profile,
+        },
+      }
+    },
+    commitProduct: async (input) => {
+      const runtime = await requireRuntime()
+      const product = await withProductDomainMutation(() => runtime.engine.createProduct(input, actorId))
+      refresh()
+      return { name: product.name }
+    },
+    reviseProduct: async (input, expectedRevision) => {
+      const runtime = await requireRuntime()
+      const product = await withProductDomainMutation(() => runtime.engine.reviseProduct(
+        input,
+        expectedRevision,
+        "Product Owner explicitly corrected and confirmed the interactive Product definition.",
+        actorId,
+      ))
+      refresh()
+      return { name: product.name, revision: product.revision ?? 1 }
+    },
+    selectRevisionField: async () => {
+      const selected = await vscode.window.showQuickPick(
+        productInitializationQuestions.map((question) => ({
+          label: question.title,
+          description: String(question.key),
+          key: question.key,
+        })),
+        { title: "Select the governed Product field to revise", ignoreFocusOut: true },
+      )
+      return selected?.key
+    },
+    currentInitiative: async () => {
+      const runtime = await requireRuntime()
+      const initiative = currentInitiative(await readInitiatives(runtime.path))
+      return initiative ? {
+        title: initiative.title,
+        state: initiative.state,
+        revision: initiative.revision ?? 1,
+      } : undefined
+    },
+    commitInitiative: async (input) => {
+      const runtime = await requireRuntime()
+      const initiative = await withProductDomainMutation(() => runtime.engine.createInitiative(input, actorId))
+      refresh()
+      return { title: initiative.title, state: initiative.state, revision: initiative.revision ?? 1 }
+    },
+    currentAdvisor: currentProductChatAdvisor,
+    selectAdvisor: selectProductChatAdvisor,
+    selectAgent: selectProductChatAgent,
+    selectModel: selectProductChatModel,
+    challengeAnswer: async ({ advisor, question, acceptedAnswers, userAnswer, previousAssessment }, signal) => {
+      diagnostics.info(
+        `Product advisory turn started: ${advisor.agentLabel} · ${advisor.modelLabel} (${advisor.modelTruthClass})`,
+      )
+      try {
+        const assessment = await runProductAnswerChallenge(
+          await resolveProductChatAdvisorRuntime(advisor),
+          {
+            advisor,
+            question,
+            acceptedAnswers,
+            userAnswer,
+            previousAssessment,
+          },
+          signal,
+        )
+        diagnostics.info(`Product advisory turn completed: ${advisor.agentLabel} · ${advisor.modelLabel}`)
+        return assessment
+      } catch (error) {
+        logDiagnostic(`Product advisory turn failed for ${advisor.adapterId}`, error)
+        throw error
+      }
+    },
+  })
+  context.subscriptions.push(vscode.commands.registerCommand("gaep.openInteractiveChat", async () => {
+    await vscode.commands.executeCommand("workbench.action.chat.open", {
+      query: "@gaep /initialize ",
+      isPartialQuery: true,
+      mode: "ask",
+      modelSelector: {
+        vendor: "gaep-workflow",
+        id: "governed-workflow",
+      },
+    })
+  }))
+  context.subscriptions.push(
+    vscode.commands.registerCommand("gaep.selectProductChatAgent", safely(async () => {
+      const advisor = await selectProductChatAgent(currentProductChatAdvisor())
+      if (!advisor) return
+      await vscode.window.showInformationMessage(
+        `GAEP Product Chat agent is now ${advisor.agentLabel} · ${advisor.modelLabel}. The next Chat turn will use this selection without advancing the Product step.`,
+      )
+    })),
+    vscode.commands.registerCommand("gaep.selectProductChatModel", safely(async () => {
+      const current = currentProductChatAdvisor()
+      const advisor = current
+        ? await selectProductChatModel(current)
+        : await selectProductChatAgent()
+      if (!advisor) return
+      await vscode.window.showInformationMessage(
+        `GAEP Product Chat model is now ${advisor.agentLabel} · ${advisor.modelLabel}. The next Chat turn will use this selection without advancing the Product step.`,
+      )
+    })),
+  )
 
   const studioDataSource = new CurrentEngineStudioDataSource({
     contextGeneration: () => studioContextGeneration,
@@ -1781,6 +2133,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(vscode.commands.registerCommand("gaep.selectAgent", safely(async () => {
     const runtime = await requireRuntime()
+    const initialization = productInitializationPresentation(
+      await exists(join(runtime.path, ".gaep")),
+      await exists(join(runtime.path, ".gaep", "manifest.json")),
+    )
+    if (initialization.state !== "initialized") {
+      const selected = await vscode.window.showWarningMessage(
+        initialization.message,
+        initialization.action,
+      )
+      if (selected === "Initialize Product") await vscode.commands.executeCommand("gaep.initializeProduct")
+      if (selected === "Show Diagnostics") await vscode.commands.executeCommand("gaep.showDiagnostics")
+      return
+    }
     await runtime.engine.readProduct()
     const running = (await runtime.engine.listRuns()).filter((run) => run.state === "running")
     if (running.length > 0 || activeAgentRuns.hasRoot(runtime.path)) {

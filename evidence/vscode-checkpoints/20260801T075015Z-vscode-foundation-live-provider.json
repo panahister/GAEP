@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "kind": "vscode-foundation-live-provider-checkpoint",
+  "recordedAt": "2026-08-01T07:50:15.000Z",
+  "branch": "codex/gaep-hardwork-completion-v2",
+  "scope": "VS Code Pre-Implementation MVP foundation on the current macOS machine",
+  "providers": {
+    "codex": {
+      "adapterId": "gaep.codex-cli",
+      "runtimeVersion": "0.146.0-alpha.9.2",
+      "executionInterface": "stdio-rpc",
+      "interfaceMaturity": "experimental",
+      "modelTruth": "observed",
+      "observedModels": ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.2"],
+      "selectedModel": "gpt-5.6-terra",
+      "liveOutcome": "passed",
+      "terminalDisposition": "completed",
+      "normalizedEventCount": 16,
+      "expectedResponseObserved": true,
+      "shellToolEnabled": false,
+      "fileChangesAllowed": false,
+      "workspaceChangeCount": 0,
+      "sourceMutation": false
+    },
+    "claude": {
+      "adapterId": "gaep.claude-code-cli",
+      "runtimeVersion": "2.1.218",
+      "executionInterface": "cli-stream-json",
+      "interfaceMaturity": "stable",
+      "modelTruth": "provider-declared",
+      "observedAliases": ["sonnet", "opus"],
+      "selectedModel": "sonnet",
+      "liveOutcome": "blocked-authentication",
+      "terminalDisposition": "failed",
+      "terminationCause": "provider-failure",
+      "errorCode": "GAEP_CLAUDE_AUTH_UNAVAILABLE",
+      "portableRawLoginTextPersisted": false,
+      "portableLocalPathPersisted": false,
+      "toolsEnabled": false,
+      "workspaceAccess": false,
+      "sourceMutation": false
+    }
+  },
+  "modelAndHandoff": {
+    "codexAlternateObservedModels": 4,
+    "claudeObservedAliases": 2,
+    "selectionContracts": "automated-regression-passed",
+    "liveModelSwitch": "not-executed",
+    "liveProviderHandoff": "not-executed",
+    "productOwnerUiAcceptance": "not-established"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "version": "0.1.0",
+    "bytes": 1227026,
+    "sha256": "19d8e575c8bf7bffedd1b0a42084758a55cf05497c3c0154a4d6031fec0f4cfc",
+    "isolatedExtensionHost": "passed",
+    "installUpgradeRollbackUninstall": "passed",
+    "normalProfileUsed": false
+  },
+  "defectCorrection": {
+    "files": [
+      "packages/agent-sdk/src/managed-claude-run.ts",
+      "packages/agent-sdk/src/managed-claude-run.test.ts",
+      "packages/agent-sdk/test/fixtures/fake-claude-stream.mjs"
+    ],
+    "outcome": "Claude authentication failures now emit a fixed GAEP_CLAUDE_AUTH_UNAVAILABLE code and message; raw result text, secret-shaped values, and local paths are not persisted in the portable result.",
+    "focusedVerification": "10 passed"
+  },
+  "gate": {
+    "status": "blocked",
+    "blockingItems": [
+      "Authenticate Claude Code on this machine and repeat the managed sonnet run.",
+      "Execute provider/model switching and a versioned handoff from the installed VSIX under Product Owner observation.",
+      "Record Product Owner acceptance of the VS Code Foundation workflow."
+    ]
+  },
+  "acceptanceBoundary": {
+    "codexLiveRuntime": "observed-on-current-machine",
+    "claudeLiveRuntime": "blocked-before-provider-completion-by-authentication",
+    "crossIdeAcceptance": "deferred",
+    "productOwnerAcceptance": "not-established",
+    "implementationAuthority": "not-granted",
+    "sourceMutationAuthority": "not-granted",
+    "releaseAuthorization": "not-granted",
+    "deploymentAuthorization": "not-granted"
+  }
+}

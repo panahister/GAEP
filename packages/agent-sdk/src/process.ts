@@ -9,6 +9,8 @@ import type { CommandResult } from "./types.js"
 export const DEFAULT_CHILD_ENVIRONMENT_KEYS = [
   "PATH",
   "HOME",
+  "USER",
+  "LOGNAME",
   "USERPROFILE",
   "SystemRoot",
   "WINDIR",

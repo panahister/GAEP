@@ -79,11 +79,46 @@ async function assertCommandsAndViews(extension) {
   const activationEvents = new Set(extension.packageJSON.activationEvents || [])
   for (const viewId of viewIds) assert.ok(activationEvents.has(`onView:${viewId}`), `${viewId} must activate GAEP`)
   assert.ok(activationEvents.has(`onWebviewPanel:${studioViewType}`), "serialized Product Studio panels must activate GAEP")
+  assert.ok(activationEvents.has("onChatParticipant:gaep.product"), "the native GAEP chat participant must activate GAEP")
+  assert.deepEqual(
+    (extension.packageJSON.contributes?.chatParticipants || []).map((participant) => ({
+      id: participant.id,
+      name: participant.name,
+      commands: (participant.commands || []).map((command) => command.name),
+    })),
+    [{
+      id: "gaep.product",
+      name: "gaep",
+      commands: ["initialize", "revise", "continue", "advisor", "agent", "model", "accept", "status", "review", "back", "commit", "cancel", "help"],
+    }],
+    "the package must contribute the exact stable native GAEP chat surface",
+  )
+  assert.deepEqual(
+    extension.packageJSON.contributes?.languageModelChatProviders,
+    [{ vendor: "gaep-workflow", displayName: "GAEP Local Workflow" }],
+    "GAEP must contribute its local workflow model without requiring Copilot",
+  )
 
   const registered = new Set(await vscode.commands.getCommands(true))
   for (const command of contributed) assert.ok(registered.has(command), `${command} must be registered after activation`)
   assert.ok(registered.has("workbench.view.extension.gaep"), "the GAEP Activity Bar container command must exist")
   for (const viewId of viewIds) assert.ok(registered.has(`${viewId}.focus`), `${viewId} must expose a native focus command`)
+
+  const workflowModels = await vscode.lm.selectChatModels({ vendor: "gaep-workflow" })
+  assert.equal(workflowModels.length, 1, "the GAEP local workflow model must be discoverable")
+  assert.deepEqual({
+    id: workflowModels[0].id,
+    name: workflowModels[0].name,
+    family: workflowModels[0].family,
+    version: workflowModels[0].version,
+    toolCalling: workflowModels[0].capabilities.toolCalling ?? false,
+  }, {
+    id: "governed-workflow",
+    name: "GAEP Governed Workflow",
+    family: "gaep-deterministic-workflow",
+    version: "1",
+    toolCalling: false,
+  })
 
   await vscode.commands.executeCommand("workbench.view.extension.gaep")
   for (const viewId of viewIds) await vscode.commands.executeCommand(`${viewId}.focus`)
@@ -110,7 +145,7 @@ async function runOpenPhase() {
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
   await openStudio()
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
-  process.stdout.write("PASS open: activation, all contributed commands, four native views, and Product Studio open\n")
+  process.stdout.write("PASS open: activation, native @gaep registration, all contributed commands, four native views, Product Studio open, and no implicit Product mutation\n")
 }
 
 async function runInstalledPhase() {

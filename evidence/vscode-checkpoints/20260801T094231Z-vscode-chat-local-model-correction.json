@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "kind": "vscode-chat-local-model-correction-checkpoint",
+  "recordedAt": "2026-08-01T09:42:31.000Z",
+  "branch": "codex/gaep-hardwork-completion-v2",
+  "featureId": "PLT-36",
+  "observedDefect": {
+    "source": "Product Owner normal-profile screenshot",
+    "message": "Language model unavailable",
+    "cause": "VS Code required a selectable Chat language model before dispatching a request to the deterministic @gaep participant, even though /initialize does not require model generation.",
+    "acceptanceBeforeCorrection": "failed"
+  },
+  "correction": {
+    "providerVendor": "gaep-workflow",
+    "providerDisplayName": "GAEP Local Workflow",
+    "modelId": "governed-workflow",
+    "modelName": "GAEP Governed Workflow",
+    "modelDetail": "Local · no AI request",
+    "modelFamily": "gaep-deterministic-workflow",
+    "toolCalling": false,
+    "imageInput": false,
+    "thirdPartyChatModelRequired": false,
+    "copilotRequired": false,
+    "openCommandMode": "ask",
+    "openCommandModelSelection": "gaep-workflow/governed-workflow",
+    "authority": "none"
+  },
+  "verification": {
+    "priorRepositoryFullGate": "170 files, 1107 passed, 1 skipped, 41/41 examples, documentation PASS",
+    "focusedTestsAfterCorrection": "3 files, 9/9 passed",
+    "vscodeTypecheck": "passed",
+    "languageModelProviderContribution": "passed",
+    "languageModelDiscoveryViaVscodeLm": "exactly-one-model-passed",
+    "nativeChatParticipantRegistration": "passed",
+    "vscodeExtensionHost": "passed",
+    "vsixLifecycle": "previous-version-install-upgrade-reinstall-rollback-uninstall-absence-final-install-passed",
+    "normalProfileInstallation": "gaep.gaep-vscode@0.1.0-passed",
+    "productOwnerRetry": "required"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "version": "0.1.0",
+    "bytes": 1233736,
+    "sha256": "6fd0caf92802122e6911d361094b80273f95ce104ea3ac6b3757c63a5fa53938"
+  },
+  "acceptanceBoundary": {
+    "featureStatus": "in-progress",
+    "automatedCorrectionEvidence": "passed",
+    "normalProfileRequestDispatch": "awaiting-product-owner-retry",
+    "productOwnerAcceptance": "not-established",
+    "providerAssistedChallenge": "not-implemented",
+    "implementationAuthority": "not-granted"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "vscode-initiative-continuation-checkpoint",
+  "observedAt": "2026-08-01T13:21:00.000Z",
+  "featureIds": ["PLT-36", "P1-01"],
+  "status": "ready-for-product-owner-test",
+  "scope": {
+    "host": "vscode",
+    "workflow": "state-aware-continue-and-proposed-initiative",
+    "productOwnerWorkspaceMutationDuringVerification": false
+  },
+  "behavior": {
+    "navigator": "/continue",
+    "governedStateRead": true,
+    "resumeUncommittedDraft": true,
+    "initiativeFields": ["title", "outcome", "scope", "exclusions"],
+    "advisorChallenge": true,
+    "humanGates": ["/accept", "/commit CONFIRM"],
+    "createdState": "proposed",
+    "authorityNotGranted": ["classification", "activation", "execution", "implementation", "source"]
+  },
+  "verification": {
+    "focusedTests": { "passed": 43, "failed": 0 },
+    "repositoryTests": { "filesPassed": 174, "testsPassed": 1126, "testsSkipped": 1 },
+    "ciContractTests": { "passed": 4, "failed": 0 },
+    "examples": { "passed": 41, "failed": 0 },
+    "documentation": "pass-zero-warnings",
+    "extensionHost": "pass",
+    "packageLifecycle": "pass",
+    "normalProfileInstall": "pass",
+    "gitDiffCheck": "pass"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "sizeBytes": 1247261,
+    "sha256": "fac2b2e6dc0b838c9ce1d16ce807836ef0d5fcbedf975f755f55de09275c1a20"
+  },
+  "acceptance": {
+    "productOwner": "pending",
+    "nextTest": "Reload VS Code, verify /continue is present, and start the four-step Initiative draft in Test GAEP."
+  }
+}

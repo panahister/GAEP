@@ -44,7 +44,7 @@ test("creates and independently verifies the deterministic Claude Phase 3A readi
   assert.equal(receipt.summary.implementationEffectsApplied, 0)
   assert.equal(receipt.authority.readinessAuthority, "not-established")
   assert.equal(receipt.authority.productOwnerAcceptance, "not-established")
-  assert.equal(manifest.inventory.fileCount, 12)
+  assert.equal(manifest.inventory.fileCount, 13)
 
   const parity = JSON.parse(await readFile(resolve(artifactDirectory, "provider-parity.json"), "utf8"))
   assert.equal(parity.codex.scenarioId, "phase-3a-atlas-codex-readiness-workflow-v1")
@@ -110,7 +110,7 @@ test("rejects receipt, chain, host, and Claude-source tampering", async () => {
   parityScenario.stages[0].title = "Forged Backlog"
   await writeFile(parityScenarioPath, `${JSON.stringify(parityScenario, null, 2)}\n`)
   await assert.rejects(verifyPhase3aClaudeReadinessWorkflowArtifactDirectory(forgedParityScenarioDirectory),
-    /Codex parity scenario differs/)
+    /Claude scenario differs from the exact Codex/)
 
   const forgedCodexReceiptDirectory = resolve(temporaryDirectory, "forged-codex-workflow-receipt")
   await cp(artifactDirectory, forgedCodexReceiptDirectory, { recursive: true })
