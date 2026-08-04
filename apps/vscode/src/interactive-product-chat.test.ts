@@ -5,6 +5,7 @@ import {
   answerProductInitialization,
   changeProductChatAdvisor,
   currentProductInitializationQuestion,
+  editProductField,
   editProductRevisionField,
   goBackProductInitialization,
   isProductInitializationChatState,
@@ -14,6 +15,7 @@ import {
   recordProductAnswerAssessment,
   selectProductChatAdvisorForCommand,
   startProductInitialization,
+  startProductInitializationReview,
   startProductRevision,
   type ProductChatAdvisorSelection,
 } from "./interactive-product-chat.js"
@@ -65,6 +67,30 @@ function assessAndAccept(state: ReturnType<typeof startProductInitialization>, a
 }
 
 describe("interactive Product initialization chat", () => {
+  it("starts a document-assisted Product candidate at explicit review without granting authority", () => {
+    const state = startProductInitializationReview(claude, {
+      name: answers[0],
+      summary: answers[1],
+      problem: answers[2],
+      affectedUsers: answers[3],
+      desiredOutcome: answers[4],
+      successSignals: answers[5].split("\n"),
+      firstWorkflow: answers[6],
+      exclusions: answers[7].split("\n"),
+      profile: "internal-tool",
+    }, ["Doc/requirements.md"])
+
+    expect(state).toMatchObject({ workflow: "initialization", phase: "review", step: 9 })
+    expect(state.candidateAttachments).toEqual(["Doc/requirements.md"])
+    expect(productInitializationInput(state).name).toBe(answers[0])
+    expect(isProductInitializationChatState(state)).toBe(true)
+
+    const edited = editProductField(state, "problem")
+    expect(edited).toMatchObject({ workflow: "initialization", phase: "collecting", step: 2 })
+    expect(currentProductInitializationQuestion(edited)?.key).toBe("problem")
+    expect(edited.answers.name).toBe(answers[0])
+  })
+
   it("requires an AI assessment and explicit acceptance before every step advances", () => {
     let state = startProductInitialization(claude, "Use the attached vision as candidate context.", ["Vision.md"])
     expect(productInitializationProgress(state)).toBe("0/9")

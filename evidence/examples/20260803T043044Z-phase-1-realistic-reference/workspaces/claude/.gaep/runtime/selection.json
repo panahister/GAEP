@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 2,
+  "adapterId": "gaep.claude-code-cli",
+  "agentId": "claude-code-cli",
+  "modelId": "success",
+  "modelTruthClass": "provider-declared",
+  "modelAlias": false,
+  "settings": {},
+  "selectedAt": "2026-08-03T04:31:13.619Z",
+  "capabilityDigest": "sha256:a691c7c8c856fefe61035b43f878cd1884b11663b5a86df79f8b12fd61c576be"
+}

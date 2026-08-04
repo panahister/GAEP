@@ -282,6 +282,40 @@ describe("GAEP local engine", () => {
     return { capabilityName }
   }
 
+  it("revises an Initiative as a new governed revision and invalidates dependent checkpoints", async () => {
+    const { initiative } = await initialize()
+    expect(initiative.classification).toBeDefined()
+    expect(initiative.applicability).toBeDefined()
+
+    const revised = await engine.reviseInitiative(initiative.id, {
+      title: "Build the revised first workflow",
+      outcome: "A user can review the revised governed workflow.",
+      scope: ["Local engine", "VS Code host", "Revision UX"],
+      exclusions: ["Cloud synchronization", "Automatic deployment"],
+    }, initiative.revision!, "Human edited the Initiative definition from Product Journey", "founder")
+
+    expect(revised).toMatchObject({
+      id: initiative.id,
+      revision: initiative.revision! + 1,
+      title: "Build the revised first workflow",
+      classification: undefined,
+      applicability: undefined,
+    })
+    await expect(engine.reviseInitiative(
+      initiative.id,
+      {
+        title: revised.title,
+        outcome: revised.outcome,
+        scope: revised.scope,
+        exclusions: revised.exclusions,
+      },
+      initiative.revision!,
+      "Stale retry must fail",
+      "founder",
+    )).rejects.toThrow(/revision changed/i)
+    await expect(engine.repository.verifyAudit()).resolves.toMatchObject({ valid: true })
+  })
+
   it("keeps Product and Initiative identities and lifecycle state separate", async () => {
     const { product, initiative } = await initialize()
     const productBefore = await readFile(join(workspace, ".gaep", "product.json"), "utf8")
@@ -411,6 +445,39 @@ describe("GAEP local engine", () => {
       "founder",
     )).rejects.toThrow(/changed before applicability resolution/i)
     await expect(engine.repository.verifyAudit()).resolves.toMatchObject({ valid: true })
+  })
+
+  it("records complete all-unresolved applicability without inventing a decision", async () => {
+    const { initiative } = await initialize(false)
+    const classified = await engine.classifyInitiative(
+      initiative.id,
+      classificationInput,
+      initiative.revision!,
+      "founder",
+    )
+    const resolved = await engine.resolveInitiativeApplicability(
+      initiative.id,
+      {
+        decisions: [],
+        unresolvedSubjects: initiativeApplicabilitySubjectDefinitions.map((subject) => ({
+          subject: { ...subject },
+          reason: "The governed facts do not establish this exact applicability decision.",
+          owner: "Initiative owner (human, unassigned)",
+        })),
+      },
+      classified.revision!,
+      "founder",
+    )
+    expect(resolved.applicability?.decisions).toEqual([])
+    expect(resolved.applicability?.unresolvedSubjects).toHaveLength(initiativeApplicabilitySubjectDefinitions.length)
+    await expect(engine.assessInitiativeEntry(initiative.id)).resolves.toMatchObject({
+      state: "attention-required",
+      applicability: {
+        status: "current",
+        unresolvedSubjectCount: initiativeApplicabilitySubjectDefinitions.length,
+        coverage: { status: "complete", missingSubjectCount: 0 },
+      },
+    })
   })
 
   it("marks applicability stale when Initiative classification is superseded and preserves decision lineage on re-resolution", async () => {

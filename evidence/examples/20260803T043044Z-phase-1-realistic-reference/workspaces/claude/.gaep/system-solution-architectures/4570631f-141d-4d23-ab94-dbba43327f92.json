@@ -1,0 +1,499 @@
+{
+  "initiativeId": "43635952-8bdd-454f-b10c-e2e99de63e9e",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e393d30d75e6308714a241d2bcb9349f4b36a1230ecaadec8aeaa3975fdbb2e5",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:68744953465aaadd2be5245903421834ae23a5fd1f5efc40468183799ea026fd"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed System/Solution Architecture",
+  "purpose": "Describe the candidate system boundary, exact interactions, quality attributes, decisions, and conformance expectations for accountable review.",
+  "businessArchitectureBaseline": {
+    "recordId": "acc1fe4b-8e52-4c91-abdb-68f468fc0694",
+    "revision": 1,
+    "digest": "sha256:31b4a630c96f9d32ce9d05fc472bc13b159e4b77d6ddcbd570d3861cb11c5652"
+  },
+  "scope": {
+    "included": [
+      "Governed engine, Product Studio host, and workspace store boundary"
+    ],
+    "excluded": [
+      "Provider execution, release topology, and production deployment"
+    ],
+    "boundaries": [
+      "Candidate design only with no approval, baseline, readiness, conformance, technology mandate, or action authority"
+    ]
+  },
+  "concerns": [
+    {
+      "key": "governed-system-boundary",
+      "category": "topology",
+      "statement": "The native hosts must share one governed engine and workspace-store authority boundary without inventing host-local Product semantics.",
+      "stakeholderRoleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "affectedBusinessElementKeys": [
+        "governed-context"
+      ],
+      "priority": "high",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "key": "gaep-engine",
+      "kind": "logical-component",
+      "name": "GAEP governed engine",
+      "responsibility": "Own contract validation, immutable versioning, audit events, assessments, and privacy-safe projections for the bounded Product workflow.",
+      "ownerRoleKey": "gaep-steward",
+      "boundaries": [
+        "No host-local semantic authority",
+        "No provider execution authority"
+      ],
+      "technology": {
+        "disposition": "constrained",
+        "value": "shared-local-engine",
+        "rationale": "The current Product contract requires all native hosts to delegate governed Product semantics to one shared local engine boundary."
+      },
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "product-studio-host",
+      "kind": "deployable-unit",
+      "name": "Native Product Studio host",
+      "responsibility": "Collect explicit human inputs and render privacy-safe engine projections without synthesizing Product decisions or approval authority.",
+      "ownerRoleKey": "initiative-owner",
+      "boundaries": [
+        "No direct governed-store writes",
+        "No implicit approval or readiness transition"
+      ],
+      "technology": {
+        "disposition": "candidate",
+        "value": "native-host-adapter",
+        "rationale": "Each supported IDE requires a candidate native adapter while the shared engine retains the authoritative Product behavior."
+      },
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "workspace-store",
+      "kind": "data-asset",
+      "name": "Governed workspace store",
+      "responsibility": "Persist versioned Product-domain records, exact immutable history, transactions, and audit-chain evidence inside the selected workspace.",
+      "ownerRoleKey": "gaep-steward",
+      "boundaries": [
+        "Repository-relative governed state",
+        "Secret-shaped values prohibited"
+      ],
+      "technology": {
+        "disposition": "constrained",
+        "value": "gaep-json-store",
+        "rationale": "The existing governed repository format is the exact compatibility constraint for this candidate architecture revision."
+      },
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "key": "engine-writes-store",
+      "kind": "writes",
+      "fromElementKey": "gaep-engine",
+      "toElementKey": "workspace-store",
+      "interactionStyle": "The engine performs lock-protected mutation commits through one repository transaction boundary.",
+      "contract": "Every mutation validates the exact contract, writes current and immutable-history records, and appends an attributable audit event.",
+      "failureBehavior": "Validation, binding, history, lock, or audit failure aborts the candidate mutation without a partial authoritative write.",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "host-calls-engine",
+      "kind": "calls",
+      "fromElementKey": "product-studio-host",
+      "toElementKey": "gaep-engine",
+      "interactionStyle": "The native host uses a strict versioned request and privacy-safe response contract over a bounded local process channel.",
+      "contract": "Unexpected fields, protocol downgrade, substituted bindings, digest drift, and private response fields fail closed.",
+      "failureBehavior": "The host reports a bounded non-authorizing error and exposes no private engine response details.",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "qualityAttributes": [
+    {
+      "key": "audit-integrity",
+      "attribute": "integrity",
+      "source": "An accountable reviewer or deterministic workspace-health gate",
+      "stimulus": "A governed System/Solution Architecture mutation or read is requested while the audit chain is missing or invalid.",
+      "environment": "The selected local workspace contains initialized GAEP state and the current Product Initiative.",
+      "artifactElementKeys": [
+        "gaep-engine",
+        "workspace-store"
+      ],
+      "response": "The engine refuses semantic mutation or projection and returns a bounded integrity failure without repairing authority-bearing state automatically.",
+      "measure": "Zero governed mutations or trusted semantic projections are produced after audit-chain verification fails.",
+      "target": "Every hostile audit-chain fixture fails closed before any System/Solution Architecture commit or authoritative projection.",
+      "state": "candidate",
+      "verificationApproach": "Exercise deterministic corrupted-chain fixtures and verify no current, history, transaction, or audit record is partially created.",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "host-response-integrity",
+      "attribute": "security",
+      "source": "A native Product Studio user reading one exact Initiative architecture projection",
+      "stimulus": "A host receives a response with a substituted Product binding, changed snapshot digest, or undeclared private field.",
+      "environment": "A supported local host invokes the strict protocol-v2 System/Solution Architecture snapshot method.",
+      "artifactElementKeys": [
+        "gaep-engine",
+        "product-studio-host"
+      ],
+      "response": "The host rejects the response and exposes only a bounded non-authorizing error without private payload details.",
+      "measure": "All substituted-binding, digest-drift, and private-field fixtures are rejected across each implemented host parser.",
+      "target": "Three hostile response classes fail closed in every supported native host implementation.",
+      "state": "candidate",
+      "verificationApproach": "Run deterministic host-client fixtures and verify exact response-shape, digest, binding, and privacy checks.",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "key": "shared-engine-boundary",
+      "title": "Candidate shared governed engine boundary",
+      "concernKeys": [
+        "governed-system-boundary"
+      ],
+      "disposition": "candidate",
+      "options": [
+        {
+          "key": "host-local-semantics",
+          "statement": "Each native host implements and persists its own Product semantics independently.",
+          "benefits": [
+            "Host-specific implementation freedom"
+          ],
+          "tradeoffs": [
+            "Four semantic implementations can drift and require separate authority-bearing migration paths"
+          ],
+          "risks": [
+            "Host-specific behavior may silently contradict the shared Product contract"
+          ],
+          "sources": [
+            {
+              "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        },
+        {
+          "key": "shared-governed-engine",
+          "statement": "Every native host delegates Product semantics and governed persistence to one shared engine contract.",
+          "benefits": [
+            "Exact cross-host semantic parity",
+            "One attributable governed-store boundary"
+          ],
+          "tradeoffs": [
+            "Host adapters depend on strict shared protocol compatibility"
+          ],
+          "risks": [
+            "A shared-engine defect can affect every host and therefore requires broad contract evidence"
+          ],
+          "sources": [
+            {
+              "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "candidateOptionKey": "shared-governed-engine",
+      "rationale": "The shared governed engine is the current evidence-backed candidate because it centralizes validation, audit, history, and authority boundaries.",
+      "assumptions": [
+        "Each native host can launch or connect to the exact packaged engine build"
+      ],
+      "consequences": [
+        "Host parsers must reject response drift",
+        "Shared protocol evolution requires compatibility evidence"
+      ],
+      "invalidationTriggers": [
+        "A supported host cannot satisfy the shared engine protocol",
+        "The governed repository boundary changes materially"
+      ],
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "views": [
+    {
+      "key": "governed-system-context",
+      "kind": "system-context",
+      "title": "Governed Product Studio system context candidate",
+      "audienceRoleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "concernKeys": [
+        "governed-system-boundary"
+      ],
+      "elementKeys": [
+        "gaep-engine",
+        "product-studio-host",
+        "workspace-store"
+      ],
+      "relationKeys": [
+        "engine-writes-store",
+        "host-calls-engine"
+      ],
+      "qualityAttributeKeys": [
+        "audit-integrity",
+        "host-response-integrity"
+      ],
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "scope": "The candidate view covers the native host, shared engine, governed workspace store, exact interactions, and bounded failure behavior.",
+      "notation": "structured-record",
+      "freshness": "candidate-current",
+      "regenerationTriggers": [
+        "Governed repository boundary changes",
+        "Host protocol or shared-engine packaging changes"
+      ],
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "conformanceCriteria": [
+    {
+      "key": "shared-engine-conformance",
+      "statement": "Every supported host delegates governed Product semantics to the exact shared engine and rejects substituted or private projection responses.",
+      "subjectElementKeys": [
+        "gaep-engine",
+        "product-studio-host",
+        "workspace-store"
+      ],
+      "qualityAttributeKeys": [
+        "audit-integrity",
+        "host-response-integrity"
+      ],
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "method": "Run shared contract, engine lifecycle, controlled portability, host parser, packaged workflow, and conformance-matrix gates.",
+      "evidenceExpectation": "Exact passing receipts identify source revisions, package digests, host checks, known limitations, and zero synthesized acceptance authority.",
+      "state": "candidate",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "lifecycleConsequences": [
+    {
+      "topic": "compatibility",
+      "statement": "Protocol and governed-record changes require explicit backward-compatibility analysis for every supported native host and portable store.",
+      "ownerRoleKey": "gaep-steward",
+      "state": "candidate",
+      "rationale": "Cross-host semantic parity depends on strict compatible request, response, and persisted-record contracts.",
+      "triggers": [
+        "Contract schema changes",
+        "Protocol version changes"
+      ],
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "topic": "evolution",
+      "statement": "Architecture-significant engine, host, or repository changes require a superseding candidate architecture revision and refreshed evidence.",
+      "ownerRoleKey": "initiative-owner",
+      "state": "candidate",
+      "rationale": "The candidate must remain tied to exact current constraints instead of becoming an unversioned timeless diagram.",
+      "triggers": [
+        "Authority boundary changes",
+        "New native host support"
+      ],
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "topic": "migration",
+      "statement": "Persisted schema or host-protocol migration requires explicit compatibility, integrity, rollback, and hostile-fixture evidence before adoption.",
+      "ownerRoleKey": "gaep-steward",
+      "state": "candidate",
+      "rationale": "Automatic inference or partial migration could alter governed meaning or fabricate authority-bearing state.",
+      "triggers": [
+        "Governed record schema changes",
+        "Repository format changes"
+      ],
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "topic": "recovery",
+      "statement": "Interrupted governed mutations must preserve the last complete current and history state and expose attributable recovery diagnostics.",
+      "ownerRoleKey": "gaep-steward",
+      "state": "candidate",
+      "rationale": "The Product Owner requires durable continuation without partial authority-bearing state after interruption.",
+      "triggers": [
+        "Audit or transaction recovery occurs",
+        "Process interruption during mutation"
+      ],
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "topic": "retirement",
+      "statement": "A retired architecture candidate remains in immutable history and is replaced only by a traceable superseding revision or separately governed disposition.",
+      "ownerRoleKey": "initiative-owner",
+      "state": "candidate",
+      "rationale": "Historical design context must remain reconstructable without treating retirement as deletion or approval withdrawal.",
+      "triggers": [
+        "Architecture scope is replaced",
+        "The Initiative is cancelled or completed"
+      ],
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "inconsistencies": [],
+  "unresolvedQuestions": [],
+  "governance": {
+    "ownerRoleKey": "initiative-owner",
+    "reviewerRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "approvalState": "not-granted",
+    "reviewState": "under-challenge",
+    "basis": "The candidate owner and reviewers may prepare and challenge the design, but only a separate accountable human decision can approve an exact architecture set.",
+    "sources": [
+      {
+        "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "limitations": [
+    "No realistic Product Owner architecture approval, implementation conformance, readiness, or release authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "system-solution-architecture-candidate",
+  "id": "4570631f-141d-4d23-ab94-dbba43327f92",
+  "productId": "4238d65d-bc5f-4e6c-9c34-d6fcab3694d2",
+  "revision": 1,
+  "membershipDigest": "sha256:7a3ee33d2c5ef4fe6c189694c48702506521f98337df73f21adfe6dbc8f016a1",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-08-03T04:31:11.557Z",
+  "updatedAt": "2026-08-03T04:31:11.557Z",
+  "authorityBoundary": "system-solution-architecture-is-a-candidate-design-and-does-not-approve-or-designate-an-architecture-baseline-establish-readiness-prove-conformance-mandate-technology-or-authorize-action"
+}

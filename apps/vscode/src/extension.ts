@@ -26,6 +26,7 @@ import {
   type InitiativeEntryWorkflowUi,
 } from "@gaep/contracts"
 import {
+  composeInitiativeApplicabilitySubjectCatalog,
   GaepEngine,
   initiativeTransitions,
   type ManagedExecutionReview,
@@ -47,11 +48,30 @@ import { runPortableDesignImportWorkflow } from "./portable-design-workflow.js"
 import { manualModelEntryCopy } from "./provider-truth.js"
 import { productInitializationPresentation } from "./product-initialization.js"
 import { registerGaepProductChat } from "./product-chat-participant.js"
+import { supportedProductChatAttachmentExtensions } from "./product-chat-attachments.js"
+import { ProductChatFileSelection } from "./product-chat-file-selection.js"
+import { resolveProductChatLauncherCommand } from "./product-chat-launcher.js"
+import { recordExactCandidateSources } from "./product-chat-source-recording.js"
+import {
+  candidateBaselineInput,
+  initiativeSourceProvenanceInput,
+  matchingCandidateBaseline,
+  matchingInitiativeProvenance,
+} from "./product-chat-source-baseline.js"
+import {
+  commitPhase1CanonicalDraft,
+  nextPhase1AuthoringTarget,
+  validatePhase1CanonicalDraft,
+} from "./phase1-canonical-authoring.js"
 import {
   isProductChatAdvisorSelection,
   productInitializationQuestions,
   type ProductChatAdvisorSelection,
 } from "./interactive-product-chat.js"
+import {
+  initiativeQuestions,
+  type InitiativeAnswerKey,
+} from "./interactive-initiative-chat.js"
 import { runProductAnswerChallenge } from "./product-chat-advisor.js"
 import { resolveCodexExecutablePreference } from "./product-chat-executable-discovery.js"
 import { registerGaepWorkflowLanguageModel } from "./gaep-workflow-language-model.js"
@@ -836,6 +856,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   registerGaepWorkflowLanguageModel(context)
+  const productChatFileSelection = new ProductChatFileSelection<{ productRoot: string; uri: vscode.Uri }>()
   registerGaepProductChat(context, {
     productState: async () => {
       const runtime = await requireRuntime()
@@ -893,6 +914,51 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const initiative = currentInitiative(await readInitiatives(runtime.path))
       if (!initiative) return undefined
       const assessment = await runtime.engine.assessInitiativeEntry(initiative.id)
+      let classification
+      let applicabilityCatalog
+      let applicability
+      let priorApplicability
+      if (assessment.classification.status === "current" && initiative.classification) {
+        const {
+          productProfile: _productProfile,
+          productRevision: _productRevision,
+          productDigest: _productDigest,
+          completenessPolicyVersion: _completenessPolicyVersion,
+          completenessPolicyDigest: _completenessPolicyDigest,
+          classifiedBy: _classifiedBy,
+          classifiedAt: _classifiedAt,
+          authorityBoundary: _authorityBoundary,
+          ...classificationInput
+        } = initiative.classification
+        classification = classificationInput
+        const product = await runtime.engine.readProduct()
+        const catalog = composeInitiativeApplicabilitySubjectCatalog(product, initiative.classification)
+        applicabilityCatalog = {
+          catalogVersion: catalog.catalogVersion,
+          digest: canonicalDigest(catalog),
+          subjects: catalog.subjects.map((subject) => ({ ...subject })),
+        }
+        if (initiative.applicability) {
+          const applicabilityInput = {
+            subjectCatalog: initiative.applicability.subjectCatalog,
+            decisions: initiative.applicability.decisions.map((decision) => {
+              const {
+                id: _id,
+                revision: _revision,
+                initiativeRevision: _initiativeRevision,
+                decidedBy: _decidedBy,
+                decidedAt: _decidedAt,
+                authorityBoundary: _authorityBoundary,
+                ...input
+              } = decision
+              return input
+            }),
+            unresolvedSubjects: initiative.applicability.unresolvedSubjects.map((entry) => ({ ...entry })),
+          }
+          if (assessment.applicability.status === "current") applicability = applicabilityInput
+          else priorApplicability = applicabilityInput
+        }
+      }
       return {
         id: initiative.id,
         title: initiative.title,
@@ -903,6 +969,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         revision: initiative.revision ?? 1,
         classificationStatus: assessment.classification.status,
         applicabilityStatus: assessment.applicability.status,
+        classification,
+        applicabilityCatalog,
+        applicability,
+        priorApplicability,
       }
     },
     commitInitiative: async (input) => {
@@ -910,6 +980,29 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const initiative = await withProductDomainMutation(() => runtime.engine.createInitiative(input, actorId))
       refresh()
       return { title: initiative.title, state: initiative.state, revision: initiative.revision ?? 1 }
+    },
+    reviseInitiative: async (initiativeId, input, expectedRevision) => {
+      const runtime = await requireRuntime()
+      const initiative = await withProductDomainMutation(() => runtime.engine.reviseInitiative(
+        initiativeId,
+        input,
+        expectedRevision,
+        "Product Owner explicitly corrected and confirmed the Product Journey Initiative definition.",
+        actorId,
+      ))
+      refresh()
+      return { title: initiative.title, state: initiative.state, revision: initiative.revision ?? 1 }
+    },
+    selectInitiativeRevisionField: async (): Promise<InitiativeAnswerKey | undefined> => {
+      const selected = await vscode.window.showQuickPick(
+        initiativeQuestions.map((question) => ({
+          label: question.title,
+          description: String(question.key),
+          key: question.key,
+        })),
+        { title: "Select the governed Initiative field to revise", ignoreFocusOut: true },
+      )
+      return selected?.key
     },
     commitInitiativeClassification: async (initiativeId, input, expectedRevision) => {
       const runtime = await requireRuntime()
@@ -931,10 +1024,236 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         entryState: assessment.state,
       }
     },
+    commitInitiativeApplicability: async (initiativeId, input, expectedRevision) => {
+      const runtime = await requireRuntime()
+      if (containsSecretShapedValue(input)) {
+        throw new Error("The Initiative applicability matrix contains a secret-shaped value and was not persisted.")
+      }
+      const initiative = await withProductDomainMutation(() => runtime.engine.resolveInitiativeApplicability(
+        initiativeId,
+        input,
+        expectedRevision,
+        actorId,
+      ))
+      const assessment = await runtime.engine.assessInitiativeEntry(initiative.id)
+      refresh()
+      return {
+        title: initiative.title,
+        revision: initiative.revision ?? 1,
+        decisionCount: initiative.applicability!.decisions.length,
+        unresolvedSubjectCount: initiative.applicability!.unresolvedSubjects.length,
+        entryState: assessment.state,
+      }
+    },
+    recordCandidateSources: async ({ initiativeId, sources }) => {
+      const runtime = await requireRuntime()
+      const initiative = currentInitiative(await readInitiatives(runtime.path))
+      if (!initiative || initiative.id !== initiativeId) {
+        throw new Error("The reviewed attachments no longer match the current Initiative")
+      }
+      const result = await withProductDomainMutation(async () => {
+        const existing = await runtime.engine.sourceGovernance.listSources(initiativeId)
+        return recordExactCandidateSources({
+          initiativeId,
+          sources,
+          actorId,
+          assessedAt: new Date().toISOString(),
+          existing: existing.map((source) => ({
+            id: source.id,
+            title: source.title,
+            contentDigest: source.contentDigest,
+          })),
+          create: async (input) => {
+            const source = await runtime.engine.sourceGovernance.createSource(input, actorId)
+            return { id: source.id, title: source.title, contentDigest: source.contentDigest }
+          },
+        })
+      })
+      refresh()
+      return result
+    },
+    sourceCheckpoint: async (initiativeId) => {
+      const runtime = await requireRuntime()
+      const [sources, baselines, provenance, assessment] = await Promise.all([
+        runtime.engine.sourceGovernance.listSources(initiativeId),
+        runtime.engine.sourceGovernance.listBaselines(initiativeId),
+        runtime.engine.sourceGovernance.listProvenance(initiativeId),
+        runtime.engine.sourceGovernance.assess(initiativeId),
+      ])
+      const current = assessment.currentBaseline
+      const baseline = current
+        ? baselines.find((candidate) => candidate.id === current.id && candidate.revision === current.revision)
+        : undefined
+      return {
+        sourceCount: sources.length,
+        sourceTitles: sources.map((source) => source.title),
+        ...(baseline && current ? { baseline: {
+          id: baseline.id,
+          revision: baseline.revision,
+          memberCount: baseline.members.length,
+          membershipDigest: baseline.membershipDigest,
+          status: current.status,
+        } } : {}),
+        provenanceCount: provenance.length,
+      }
+    },
+    createCandidateSourceBaseline: async (initiativeId) => {
+      const runtime = await requireRuntime()
+      const result = await withProductDomainMutation(async () => {
+        const [sources, baselines] = await Promise.all([
+          runtime.engine.sourceGovernance.listSources(initiativeId),
+          runtime.engine.sourceGovernance.listBaselines(initiativeId),
+        ])
+        const input = candidateBaselineInput(initiativeId, sources)
+        const existing = matchingCandidateBaseline(input, baselines)
+        if (existing) return { baseline: existing, reused: true }
+        const baseline = await runtime.engine.sourceGovernance.createBaseline(input, actorId)
+        return { baseline, reused: false }
+      })
+      refresh()
+      return {
+        id: result.baseline.id,
+        revision: result.baseline.revision,
+        memberCount: result.baseline.members.length,
+        membershipDigest: result.baseline.membershipDigest,
+        reused: result.reused,
+      }
+    },
+    recordInitiativeSourceProvenance: async (initiativeId) => {
+      const runtime = await requireRuntime()
+      const result = await withProductDomainMutation(async () => {
+        const [initiative, sources, provenance] = await Promise.all([
+          runtime.engine.readInitiative(initiativeId),
+          runtime.engine.sourceGovernance.listSources(initiativeId),
+          runtime.engine.sourceGovernance.listProvenance(initiativeId),
+        ])
+        const input = initiativeSourceProvenanceInput(initiative, sources, actorId)
+        const existing = matchingInitiativeProvenance(input, provenance)
+        if (existing) return { record: existing, reused: true, targetRevision: initiative.revision ?? 1 }
+        const record = await runtime.engine.sourceGovernance.recordProvenance(input, actorId)
+        return { record, reused: false, targetRevision: initiative.revision ?? 1 }
+      })
+      refresh()
+      return {
+        id: result.record.id,
+        sourceCount: result.record.sources.length,
+        targetRevision: result.targetRevision,
+        reused: result.reused,
+      }
+    },
+    phase1Checkpoint: async (initiativeId) => {
+      const runtime = await requireRuntime()
+      const [
+        discovery, capability, valueStream, operating, rules, businessBaseline,
+        solution, boundedContext, security, process, data, authorization, integration,
+        recovery, challenge, decisions, risks, evidence, traceability, readiness, handoff,
+      ] = await Promise.all([
+        runtime.engine.businessUnderstanding.project(initiativeId),
+        runtime.engine.businessCapabilityMap.project(initiativeId),
+        runtime.engine.valueStreamModel.project(initiativeId),
+        runtime.engine.operatingModel.project(initiativeId),
+        runtime.engine.businessRuleCatalog.project(initiativeId),
+        runtime.engine.businessArchitectureBaseline.project(initiativeId),
+        runtime.engine.systemSolutionArchitecture.project(initiativeId),
+        runtime.engine.boundedContextModel.project(initiativeId),
+        runtime.engine.securityPrivacyAssessment.project(initiativeId),
+        runtime.engine.processModel.project(initiativeId),
+        runtime.engine.dataModel.project(initiativeId),
+        runtime.engine.authorizationModel.project(initiativeId),
+        runtime.engine.eventIntegrationModel.project(initiativeId),
+        runtime.engine.failureRecoveryModel.project(initiativeId),
+        runtime.engine.architectureChallengeModel.project(initiativeId),
+        runtime.engine.decisionRegister.project(initiativeId),
+        runtime.engine.riskRegister.project(initiativeId),
+        runtime.engine.evidenceRegistry.project(initiativeId),
+        runtime.engine.endToEndTraceability.project(initiativeId),
+        runtime.engine.p0P4ReadinessGate.project(initiativeId),
+        runtime.engine.p5HandoffPackage.project(initiativeId),
+      ])
+      const group = <T extends string>(
+        id: T,
+        label: string,
+        present: boolean[],
+        route: "direction" | "architecture" | "risks-decisions" | "readiness",
+      ) => ({ id, label, recorded: present.filter(Boolean).length, total: present.length, complete: present.every(Boolean), route })
+      return { groups: [
+        group("product-discovery", "Product discovery", [
+          Boolean(discovery.businessUnderstanding), Boolean(discovery.stakeholderModel), Boolean(discovery.outcomeModel),
+        ], "direction"),
+        group("business-architecture", "Business architecture", [
+          Boolean(capability.capabilityMap), Boolean(valueStream.valueStreamModel), Boolean(operating.operatingModel),
+          Boolean(rules.businessRuleCatalog), Boolean(businessBaseline.baseline),
+        ], "architecture"),
+        group("solution-security-architecture", "Solution and security architecture", [
+          Boolean(solution.architecture), Boolean(boundedContext.model), Boolean(security.assessment),
+        ], "architecture"),
+        group("detailed-design-assurance", "Detailed design and assurance", [
+          Boolean(process.model), Boolean(data.model), Boolean(authorization.model), Boolean(integration.model),
+          Boolean(recovery.model), Boolean(challenge.model), Boolean(decisions.register), Boolean(risks.register),
+          Boolean(evidence.registry), Boolean(traceability.traceability),
+        ], "risks-decisions"),
+        group("p0-p4-readiness", "Design and implementation handoff", [
+          Boolean(readiness.gate), Boolean(handoff.handoff),
+        ], "readiness"),
+      ] }
+    },
+    nextPhase1AuthoringTarget: async (initiativeId) => {
+      const runtime = await requireRuntime()
+      return nextPhase1AuthoringTarget(runtime.engine, initiativeId)
+    },
+    validatePhase1CanonicalDraft: async (kind, value) => validatePhase1CanonicalDraft(kind, value),
+    commitPhase1CanonicalDraft: async (kind, value) => {
+      const runtime = await requireRuntime()
+      const result = await withProductDomainMutation(() =>
+        commitPhase1CanonicalDraft(runtime.engine, kind, value, actorId))
+      refresh()
+      return result
+    },
+    journeyMode: async () => {
+      const key = `gaep.productJourneyMode:${selectedFolder?.uri.toString() ?? "no-product"}`
+      const selected = context.workspaceState.get<"quick" | "guided" | "assured">(key)
+      return selected
+        ? { mode: selected, source: "selected" as const }
+        : { mode: "guided" as const, source: "recommended" as const }
+    },
+    selectJourneyMode: async () => {
+      const picked = await vscode.window.showQuickPick([
+        {
+          label: "Guided",
+          description: "Recommended",
+          detail: "A focused sequence with explanations, challenge, and Review and Record actions.",
+          mode: "guided" as const,
+        },
+        {
+          label: "Quick",
+          detail: "Show the next required checkpoint and material exceptions only.",
+          mode: "quick" as const,
+        },
+        {
+          label: "Assured",
+          detail: "Expose every record family, evidence gap, and consequential review boundary.",
+          mode: "assured" as const,
+        },
+      ], {
+        title: "Choose Product Journey mode",
+        placeHolder: "Presentation depth only; governance is unchanged",
+        ignoreFocusOut: true,
+      })
+      if (!picked) return undefined
+      const key = `gaep.productJourneyMode:${selectedFolder?.uri.toString() ?? "no-product"}`
+      await context.workspaceState.update(key, picked.mode)
+      return { mode: picked.mode, source: "selected" as const }
+    },
     currentAdvisor: currentProductChatAdvisor,
     selectAdvisor: selectProductChatAdvisor,
     selectAgent: selectProductChatAgent,
     selectModel: selectProductChatModel,
+    takeChosenFiles: () => {
+      const productRoot = selectedFolder?.uri.toString()
+      return productChatFileSelection.take()
+        .filter((candidate) => candidate.productRoot === productRoot)
+        .map((candidate) => candidate.uri)
+    },
     challengeAnswer: async ({ advisor, question, acceptedAnswers, userAnswer, previousAssessment }, signal) => {
       diagnostics.info(
         `Product advisory turn started: ${advisor.agentLabel} · ${advisor.modelLabel} (${advisor.modelTruthClass})`,
@@ -958,10 +1277,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         throw error
       }
     },
+    reportDiagnostic: logDiagnostic,
   })
-  context.subscriptions.push(vscode.commands.registerCommand("gaep.openInteractiveChat", async () => {
+  context.subscriptions.push(vscode.commands.registerCommand("gaep.openInteractiveChat", async (
+    requestedCommand?: unknown,
+    requestedPrompt?: unknown,
+    freshSession?: unknown,
+  ) => {
+    const command = resolveProductChatLauncherCommand(requestedCommand)
+    const prompt = typeof requestedPrompt === "string" ? requestedPrompt.trim() : ""
+    if (freshSession === true) {
+      await vscode.commands.executeCommand("workbench.action.chat.newChat")
+    }
     await vscode.commands.executeCommand("workbench.action.chat.open", {
-      query: "@gaep /initialize ",
+      query: `@gaep /${command}${prompt ? ` ${prompt}` : " "}`,
       isPartialQuery: true,
       mode: "ask",
       modelSelector: {
@@ -970,6 +1299,71 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       },
     })
   }))
+  context.subscriptions.push(vscode.commands.registerCommand("gaep.chooseFile", safely(async (requestedFlow?: unknown) => {
+    if (!vscode.workspace.isTrusted) {
+      throw new Error("Trust the intended Product workspace before choosing Source Intake files.")
+    }
+    if (!selectedFolder) throw new Error("Select the intended Product root before choosing Source Intake files.")
+    const selected = await vscode.window.showOpenDialog({
+      title: "Choose File",
+      openLabel: "Choose File",
+      canSelectFiles: true,
+      canSelectFolders: false,
+      canSelectMany: true,
+      filters: {
+        "Supported Product documents": supportedProductChatAttachmentExtensions,
+      },
+    })
+    if (!selected?.length) return
+    const productRoot = selectedFolder.uri.toString()
+    const staged = productChatFileSelection.stage(selected.map((uri) => ({ productRoot, uri })))
+    const nextCommand = requestedFlow === "adopt" ? "adopt" : "intake"
+    await vscode.commands.executeCommand("workbench.action.chat.open", {
+      query: `@gaep /${nextCommand} `,
+      isPartialQuery: true,
+      mode: "ask",
+      modelSelector: {
+        vendor: "gaep-workflow",
+        id: "governed-workflow",
+      },
+    })
+    await vscode.window.showInformationMessage(
+      requestedFlow === "adopt"
+        ? `${staged} file(s) selected. Press Enter in GAEP Chat to generate the editable Existing Product and Journey proposal.`
+        : `${staged} file(s) selected for Source Intake. Press Enter in GAEP Chat to create the advisory alignment preview.`,
+    )
+  })))
+  context.subscriptions.push(vscode.commands.registerCommand("gaep.chooseFolder", safely(async (requestedFlow?: unknown) => {
+    if (!vscode.workspace.isTrusted) {
+      throw new Error("Trust the intended Product workspace before choosing a Source Intake folder.")
+    }
+    if (!selectedFolder) throw new Error("Select the intended Product root before choosing a Source Intake folder.")
+    const selected = await vscode.window.showOpenDialog({
+      title: "Choose Folder",
+      openLabel: "Choose Folder",
+      canSelectFiles: false,
+      canSelectFolders: true,
+      canSelectMany: true,
+    })
+    if (!selected?.length) return
+    const productRoot = selectedFolder.uri.toString()
+    const staged = productChatFileSelection.stage(selected.map((uri) => ({ productRoot, uri })))
+    const nextCommand = requestedFlow === "adopt" ? "adopt" : "intake"
+    await vscode.commands.executeCommand("workbench.action.chat.open", {
+      query: `@gaep /${nextCommand} `,
+      isPartialQuery: true,
+      mode: "ask",
+      modelSelector: {
+        vendor: "gaep-workflow",
+        id: "governed-workflow",
+      },
+    })
+    await vscode.window.showInformationMessage(
+      requestedFlow === "adopt"
+        ? `${staged} folder(s) selected. Press Enter in GAEP Chat to generate the editable Existing Product and Journey proposal.`
+        : `${staged} folder(s) selected for bounded recursive Source Intake. Add an instruction if needed, then press Enter in GAEP Chat.`,
+    )
+  })))
   context.subscriptions.push(
     vscode.commands.registerCommand("gaep.selectProductChatAgent", safely(async () => {
       const advisor = await selectProductChatAgent(currentProductChatAdvisor())

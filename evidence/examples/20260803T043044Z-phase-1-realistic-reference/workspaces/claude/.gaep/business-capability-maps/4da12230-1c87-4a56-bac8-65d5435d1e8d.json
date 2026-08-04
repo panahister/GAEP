@@ -1,0 +1,148 @@
+{
+  "initiativeId": "43635952-8bdd-454f-b10c-e2e99de63e9e",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e393d30d75e6308714a241d2bcb9349f4b36a1230ecaadec8aeaa3975fdbb2e5",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:68744953465aaadd2be5245903421834ae23a5fd1f5efc40468183799ea026fd"
+  },
+  "informationClassification": "internal",
+  "businessUnderstanding": {
+    "recordId": "d9ce27a1-42b7-45fc-9e3e-2801c4147f15",
+    "revision": 1,
+    "digest": "sha256:a8bb6c54a6060002f126b499aa0f9faf3524bc69fef398e90a3df2d4ab209e77"
+  },
+  "stakeholderModel": {
+    "recordId": "bdc8dbea-adf6-477a-b475-12d324b8bc67",
+    "revision": 1,
+    "digest": "sha256:958b46a78d8d2dbb98689ee6ea182dff3da7909699b6f31aae9e64f6f0e13a6f"
+  },
+  "outcomeModel": {
+    "recordId": "6d632d39-e76c-4dcb-9e8d-87464159d47a",
+    "revision": 1,
+    "digest": "sha256:0a1ec142940b1309f3d972b598dbf35e37576c7ac4e9ef1dba6f83678e467b02"
+  },
+  "capabilities": [
+    {
+      "key": "governed-context",
+      "name": "Governed context continuity",
+      "purpose": "Preserve exact attributable Product context across bounded engineering handoffs.",
+      "category": "differentiating",
+      "placement": "gaep-native-authority",
+      "scope": {
+        "included": [
+          "Candidate context governance",
+          "Exact evidence binding"
+        ],
+        "excluded": [
+          "Approval substitution",
+          "Execution authorization"
+        ],
+        "boundaries": [
+          "Portable metadata only",
+          "Product Initiative scope"
+        ]
+      },
+      "ownerStakeholderKey": "primary-user",
+      "accountableStakeholderKeys": [
+        "primary-user"
+      ],
+      "participatingStakeholderKeys": [
+        "primary-user"
+      ],
+      "objectiveIds": [
+        "reduce-context-loss"
+      ],
+      "outcomeIds": [
+        "trusted-context"
+      ],
+      "dependencyKeys": [],
+      "currentMaturity": {
+        "level": "repeatable",
+        "basis": "The bounded workflow has a repeatable governed-record implementation and test receipt.",
+        "sources": [
+          {
+            "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "targetMaturity": {
+        "level": "managed",
+        "basis": "The candidate target is evidence-backed management across supported Product workflows.",
+        "sources": [
+          {
+            "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "performanceEvidence": {
+        "state": "observed",
+        "statement": "The bounded contract workflow preserved exact upstream and Source identities.",
+        "sources": [
+          {
+            "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "gaps": [],
+      "priority": {
+        "status": "candidate",
+        "tier": "high",
+        "rationale": "Context continuity is a candidate high priority because downstream governance depends on it.",
+        "sources": [
+          {
+            "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "dependencies": [
+        "Governed Source inventory",
+        "Versioned Product identity"
+      ],
+      "burden": "Maintaining exact bindings adds explicit review and superseding-revision work.",
+      "risk": "Overstated maturity or priority could be mistaken for an approval or implementation commitment.",
+      "exitPath": "Retire the candidate capability record through a superseding revision while preserving history.",
+      "lifecycle": "candidate",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "No realistic Product Owner acceptance or organization-wide capability baseline is represented."
+  ],
+  "schemaVersion": 1,
+  "kind": "business-capability-map",
+  "id": "4da12230-1c87-4a56-bac8-65d5435d1e8d",
+  "productId": "4238d65d-bc5f-4e6c-9c34-d6fcab3694d2",
+  "revision": 1,
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-08-03T04:31:10.946Z",
+  "updatedAt": "2026-08-03T04:31:10.946Z",
+  "authorityBoundary": "business-capability-map-records-candidate-architecture-placement-ownership-gaps-and-priority-and-does-not-approve-baseline-readiness-or-authorize-action"
+}

@@ -89,7 +89,7 @@ async function assertCommandsAndViews(extension) {
     [{
       id: "gaep.product",
       name: "gaep",
-      commands: ["initialize", "revise", "continue", "advisor", "agent", "model", "accept", "status", "review", "back", "commit", "cancel", "help"],
+      commands: ["initialize", "adopt", "revise", "initiative", "edit", "continue", "classification", "applicability", "intake", "align", "manifest", "record", "baseline", "provenance", "author", "mode", "suggest", "roles", "resolve", "advisor", "agent", "model", "accept", "status", "review", "back", "commit", "cancel", "help"],
     }],
     "the package must contribute the exact stable native GAEP chat surface",
   )

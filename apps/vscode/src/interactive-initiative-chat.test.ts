@@ -6,6 +6,7 @@ import {
   assessInitiativeAnswer,
   backInitiative,
   currentInitiativeQuestion,
+  initiativeAdvisorAcceptedAnswers,
   initiativeInput,
   initiativeProgress,
   isInitiativeChatState,
@@ -72,5 +73,35 @@ describe("interactive Initiative chat", () => {
     expect(state.step).toBe(0)
     expect(state.answers.title).toBeUndefined()
     expect(currentInitiativeQuestion(state)?.key).toBe("title")
+  })
+
+  it("rejects unresolved template placeholders in Initiative text fields", () => {
+    const state = startInitiativeChat(advisor)
+    expect(answerInitiative(state, "Improve [specific outcome] for [target actor]").challenge)
+      .toMatch(/concrete, reviewable/i)
+  })
+
+  it("projects governed Product context into Initiative advisory turns", () => {
+    expect(initiativeAdvisorAcceptedAnswers({}, {
+      revision: 3,
+      input: {
+        name: "Marine Shipping Platform",
+        summary: "Plans and monitors maritime services and voyage schedules.",
+        problem: "Schedule data is fragmented.",
+        affectedUsers: "Service planners and vessel planners",
+        desiredOutcome: "Create one traceable planning workflow.",
+        successSignals: ["A planner can produce a reviewed schedule draft"],
+        firstWorkflow: "Service-to-voyage schedule planning",
+        exclusions: ["Production publication"],
+        profile: "data-sensitive",
+      },
+    })).toMatchObject({
+      acceptedInitiativeFields: {},
+      governedProduct: {
+        revision: 3,
+        name: "Marine Shipping Platform",
+        firstWorkflow: "Service-to-voyage schedule planning",
+      },
+    })
   })
 })

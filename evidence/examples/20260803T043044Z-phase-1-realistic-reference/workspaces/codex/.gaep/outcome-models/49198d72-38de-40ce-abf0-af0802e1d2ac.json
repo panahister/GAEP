@@ -1,0 +1,218 @@
+{
+  "initiativeId": "7cbb70ba-ecdf-4418-b693-b0693de9e842",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e127679575896008f4efb896fc1f4b14a2b4c75755c6805e5d8f31a03939ca43",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:36753a529d7311fc18ee4fce96bcea08ba1e13ebd3b5342935908bf58acb5c57"
+  },
+  "informationClassification": "internal",
+  "businessUnderstanding": {
+    "recordId": "b7fd89a6-80b7-419e-91ea-a020ecd58fda",
+    "revision": 1,
+    "digest": "sha256:e66d9b26f084bebe9c3115dfe191b8298d02bf6288ac1f07cb50a13e493545aa"
+  },
+  "stakeholderModel": {
+    "recordId": "567d1363-8b85-4208-b7c7-d9cf5bbd92b6",
+    "revision": 1,
+    "digest": "sha256:4d41dc5bfee368e9571cf37563e001853b328ea7583680f4934e5bbd41245b8a"
+  },
+  "primaryHypothesis": {
+    "text": "The governed workflow should reduce context reconstruction effort without increasing burden or downstream harm.",
+    "disposition": "confirmed",
+    "sources": [
+      {
+        "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "trusted-context",
+      "level": "decision",
+      "statement": {
+        "text": "Reviewers can reconstruct a bounded decision-ready context from permitted evidence.",
+        "disposition": "confirmed",
+        "sources": [
+          {
+            "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "beneficiaryStakeholderKeys": [
+        "primary-user"
+      ],
+      "confounders": [
+        "Facilitator expertise",
+        "Initiative complexity"
+      ]
+    }
+  ],
+  "measures": [
+    {
+      "key": "MET-BURDEN-001",
+      "name": "Review burden",
+      "outcomeIds": [
+        "trusted-context"
+      ],
+      "category": "burden",
+      "kind": "countermetric",
+      "definition": "Review burden is measured for the bounded workflow using the declared evidence method.",
+      "direction": "maintain",
+      "unit": "Participant minutes",
+      "baseline": {
+        "status": "observed",
+        "value": "15 minutes",
+        "observedAt": "2026-07-25T02:00:00.000Z",
+        "sources": [
+          {
+            "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "target": {
+        "status": "candidate",
+        "statement": "Do not increase review burden above the observed baseline."
+      },
+      "collection": {
+        "ownerStakeholderKey": "primary-user",
+        "method": "Record bounded participant time and independently review the resulting evidence.",
+        "cadence": "Each selected pilot workflow",
+        "qualityConditions": [
+          "Exclude paused waiting time",
+          "Record missing observations"
+        ]
+      },
+      "dataUse": {
+        "purpose": "Evaluate the bounded workflow without ranking individual worker productivity.",
+        "classification": "internal",
+        "aggregation": "Aggregate by workflow and risk class.",
+        "retention": "Retain only for the declared pilot review period.",
+        "prohibitedUses": [
+          "Individual productivity ranking",
+          "Undisclosed workforce surveillance"
+        ]
+      },
+      "acceptanceSignal": "Review burden does not materially increase without an explicit justified tradeoff.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "MET-VALUE-001",
+      "name": "Context reconstruction time",
+      "outcomeIds": [
+        "trusted-context"
+      ],
+      "category": "user-value-flow",
+      "kind": "metric",
+      "definition": "Context reconstruction time is measured for the bounded workflow using the declared evidence method.",
+      "direction": "decrease",
+      "unit": "Participant minutes",
+      "baseline": {
+        "status": "observed",
+        "value": "90 minutes",
+        "observedAt": "2026-07-25T02:00:00.000Z",
+        "sources": [
+          {
+            "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "target": {
+        "status": "candidate",
+        "statement": "Reduce reconstruction time while preserving decision quality."
+      },
+      "collection": {
+        "ownerStakeholderKey": "primary-user",
+        "method": "Record bounded participant time and independently review the resulting evidence.",
+        "cadence": "Each selected pilot workflow",
+        "qualityConditions": [
+          "Exclude paused waiting time",
+          "Record missing observations"
+        ]
+      },
+      "dataUse": {
+        "purpose": "Evaluate the bounded workflow without ranking individual worker productivity.",
+        "classification": "internal",
+        "aggregation": "Aggregate by workflow and risk class.",
+        "retention": "Retain only for the declared pilot review period.",
+        "prohibitedUses": [
+          "Individual productivity ranking",
+          "Undisclosed workforce surveillance"
+        ]
+      },
+      "acceptanceSignal": "Qualified participants reconstruct decision-ready context with less effort.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "countermetricDisposition": {
+    "status": "included",
+    "rationale": "Review burden is a material countermetric for the governed workflow.",
+    "sources": [
+      {
+        "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "burdenDisposition": {
+    "status": "included",
+    "rationale": "Governance burden is measured explicitly rather than presented as zero-cost.",
+    "sources": [
+      {
+        "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "limitations": [
+    "The candidate measures do not establish causal Product outcomes."
+  ],
+  "schemaVersion": 1,
+  "kind": "outcome-measure-model",
+  "id": "49198d72-38de-40ce-abf0-af0802e1d2ac",
+  "productId": "22295bed-0b3c-4ffa-9979-eb612fdc0c5b",
+  "revision": 1,
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-08-03T04:31:10.812Z",
+  "updatedAt": "2026-08-03T04:31:10.812Z",
+  "authorityBoundary": "outcome-measure-model-records-candidate-hypotheses-measures-and-data-use-limits-and-does-not-approve-targets-readiness-or-release"
+}

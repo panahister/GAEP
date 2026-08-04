@@ -43,6 +43,30 @@ describe("managed Claude context runtime", () => {
     expect(completion.result.local.executablePath).toBe(process.execPath)
   })
 
+  it("forwards a bounded JSON Schema and emits provider structured output as the assistant result", async () => {
+    const handle = await startManagedClaudeContextRun({
+      executable: process.execPath,
+      executableArguments: [fixture],
+      model: "structured-output",
+      objective: "Return a contract-valid object",
+      contextPack: "governed fixture context",
+      jsonSchema: {
+        type: "object",
+        properties: { status: { type: "string", const: "ok" } },
+        required: ["status"],
+        additionalProperties: false,
+      },
+      timeoutMs: 2_000,
+    })
+    const completion = await handle.completion
+    expect(completion.terminationCause).toBe("normal")
+    expect(completion.result.portable.events).toContainEqual(expect.objectContaining({
+      type: "output-delta",
+      channel: "assistant",
+      text: '{"status":"ok"}',
+    }))
+  })
+
   it.each([
     ["failure", "failed", "provider-failure"],
     ["malformed", "protocol-error", "protocol-error"],
@@ -68,6 +92,36 @@ describe("managed Claude context runtime", () => {
     expect(persisted).not.toContain("Not logged in")
     expect(persisted).not.toContain("/Users/alice/private")
     expect(persisted).not.toContain("abc123456789")
+  })
+
+  it("fails closed when an authentication diagnostic is emitted inside an otherwise successful result", async () => {
+    const { completion, events } = await collect("auth-assistant-success")
+    expect(completion.terminationCause).toBe("provider-failure")
+    expect(completion.result.portable.terminalDisposition).toBe("failed")
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "error",
+      code: "GAEP_CLAUDE_AUTH_UNAVAILABLE",
+      retryable: false,
+    }))
+    expect(events.some((event) => event.type === "output-delta" &&
+      event.text === "Claude authentication is unavailable for the managed runtime.")).toBe(false)
+    const persisted = JSON.stringify(completion.result.portable)
+    expect(persisted).not.toContain("Not logged in")
+    expect(persisted).not.toContain("/Users/alice/private")
+    expect(persisted).not.toContain("abc123456789")
+  })
+
+  it("does not misclassify ordinary security language as a provider authentication failure", async () => {
+    const { completion, events } = await collect("security-answer")
+    expect(completion.terminationCause).toBe("normal")
+    expect(completion.result.portable.terminalDisposition).toBe("completed")
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "output-delta",
+      channel: "assistant",
+      text: "Unauthorized access is a Product risk; define the authorization boundary before release.",
+    }))
+    expect(events.some((event) => event.type === "error" &&
+      event.code === "GAEP_CLAUDE_AUTH_UNAVAILABLE")).toBe(false)
   })
 
   it("cancels the whole managed process group", async () => {

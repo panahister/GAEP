@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "d59877e3-59cd-40b9-8f5d-edbd18558c3b",
+  "productId": "4238d65d-bc5f-4e6c-9c34-d6fcab3694d2",
+  "initiativeId": "43635952-8bdd-454f-b10c-e2e99de63e9e",
+  "productRevision": 1,
+  "initiativeRevision": 4,
+  "productDigest": "sha256:e393d30d75e6308714a241d2bcb9349f4b36a1230ecaadec8aeaa3975fdbb2e5",
+  "initiativeDigest": "sha256:68744953465aaadd2be5245903421834ae23a5fd1f5efc40468183799ea026fd",
+  "selectionDigest": "sha256:d44ba90d879a86637112ff5a84eda3f755d362ae100c6c956951a92546a7d5ce",
+  "agent": {
+    "schemaVersion": 2,
+    "adapterId": "gaep.claude-code-cli",
+    "agentId": "claude-code-cli",
+    "modelId": "success",
+    "modelTruthClass": "provider-declared",
+    "modelAlias": false,
+    "settings": {},
+    "selectedAt": "2026-08-03T04:31:13.619Z",
+    "capabilityDigest": "sha256:a691c7c8c856fefe61035b43f878cd1884b11663b5a86df79f8b12fd61c576be"
+  },
+  "objective": "Run one tool-free Claude observation over the exact governed P0-P4 candidate context.",
+  "permissions": [
+    {
+      "capability": "all-tools",
+      "mode": "deny",
+      "scope": []
+    }
+  ],
+  "expectedEffects": [
+    "observe"
+  ],
+  "forbiddenActions": [
+    "Do not access tools, filesystem, browser, MCP, workspace settings, or external effects",
+    "Do not infer approval, readiness, acknowledgement, baseline, release, or action authority"
+  ],
+  "stopConditions": [
+    "Stop after the bounded provider observation or any denied capability request"
+  ],
+  "requiredEvidence": [
+    "Exact governed binding digest",
+    "Normalized provider and workflow-gate events",
+    "Explicit tool-free context-only runtime warning",
+    "Explicit non-authority boundary"
+  ],
+  "managedIntent": {
+    "workflowPlan": {
+      "recordType": "workflow-plan",
+      "recordId": "6c962e30-c572-490f-9673-fc5e4869b722",
+      "revision": 2,
+      "digest": "sha256:1f919adf4673127e01a0fe9b314df2b2786a35c9bef80653484ee134b0aff88c"
+    },
+    "contextPacks": [
+      {
+        "recordType": "context-pack",
+        "recordId": "955088ae-977b-400e-8af4-434015988e5a",
+        "revision": 1,
+        "digest": "sha256:d2c50adc2a676db30770ee044c47e9478ae883dd9ee7349a1d32c9ffec822d67"
+      }
+    ],
+    "toolDefinitions": [],
+    "requestedEffects": [
+      "observe"
+    ],
+    "requestedScopes": []
+  },
+  "createdAt": "2026-08-03T04:31:14.121Z",
+  "confirmedAt": "2026-08-03T04:31:14.233Z"
+}

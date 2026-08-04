@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "vscode-product-journey-alignment-preview",
+  "observedAt": "2026-08-02T10:05:24.000Z",
+  "featureIds": ["PLT-36", "P1-03", "P1-04", "P1-05", "P1-06"],
+  "status": "ready-for-product-owner-ux-test",
+  "scope": {
+    "host": "vscode",
+    "workflow": "adaptive-product-journey-and-existing-product-alignment-preview",
+    "productOwnerWorkspaceMutationDuringVerification": false
+  },
+  "behavior": {
+    "productJourneyCheckpointCount": 7,
+    "journeyIsDerivedFromGovernedState": true,
+    "showsRecordedAttentionNextAndNotStarted": true,
+    "showsOnePrimaryNextAction": true,
+    "advancedDesignSectionsAreCollapsed": true,
+    "sidebarUsesJourneyFirstNavigation": true,
+    "nativeChatIntakeCommand": true,
+    "chooseFileAction": true,
+    "chooseFileLabel": "Choose File",
+    "chooseFolderAction": true,
+    "chooseFolderLabel": "Choose Folder",
+    "systemWideFileBrowsing": true,
+    "recursiveFolderBrowsing": true,
+    "maximumFolderDepth": 8,
+    "maximumFolderEntries": 2000,
+    "maximumDiscoveredFiles": 100,
+    "symbolicLinksFollowed": false,
+    "naturalLanguageIntakeInstruction": true,
+    "selectionIsMemoryOnly": true,
+    "selectionIsBoundToCurrentProductRoot": true,
+    "selectionIsConsumedExactlyOnce": true,
+    "nativePaperclipAndFileReferencesSupported": true,
+    "explicitReferencesOnly": true,
+    "maximumFiles": 20,
+    "maximumBytesPerFile": 262144,
+    "maximumAggregateBytes": 1048576,
+    "supportedInputClass": "bounded-utf8-text",
+    "pdfAndDocxParsingInstalled": false,
+    "contentDigestComputedFromExactBytes": true,
+    "machineLocalAbsolutePathsStoredInChatMetadata": false,
+    "rawAttachmentTextStoredInPortableChatMetadata": false,
+    "selectedCodexOrClaudeAdvisorChallengesAlignment": true,
+    "alignmentIsEditableAcrossRounds": true,
+    "alignmentCoversProductThroughSourceProvenance": true,
+    "alignmentCreatesGovernedSourceRecords": false,
+    "grantsSourceApprovalReadinessOrLifecycleAuthority": false
+  },
+  "verification": {
+    "repositoryTests": { "filesPassed": 178, "testsPassed": 1155, "testsSkipped": 1 },
+    "typecheck": "pass",
+    "documentation": "pass-zero-warnings",
+    "gitDiffCheck": "pass",
+    "extensionHostDevelopment": "pass",
+    "extensionHostMultiRoot": "pass",
+    "isolatedPackageLifecycle": "pass",
+    "installedPackageActivation": "pass",
+    "normalProfileInstall": "pass",
+    "productOwnerUiReview": "pending"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "sizeBytes": 1269750,
+    "sha256": "c6b4c441509a07e56e63594474e5007d9a6987466a2194d4869399fef0aabbf4"
+  },
+  "roadmapBoundary": {
+    "currentCheckpoint": "UX-01 Product Journey and UX-01B alignment preview installed",
+    "nextCheckpoint": "Product Owner dashboard and bounded text-attachment review",
+    "afterAcceptance": "UX-01C governed Source Intake, candidate Baseline, and Provenance recording",
+    "implementationAndRelease": "deferred until explicit authority"
+  },
+  "acceptance": {
+    "productOwner": "pending",
+    "nextTest": "Reload VS Code, select Choose Folder from the GAEP Product view, browse outside the Workspace, choose the Services & Schedule Docs folder, optionally append a natural-language instruction to the staged @gaep /intake query, press Enter, inspect included and rejected files, revise the preview, and accept it without creating governed Source state."
+  }
+}

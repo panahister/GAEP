@@ -1,0 +1,810 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase1-realistic-reference-artifact-manifest",
+  "scenario": {
+    "id": "phase-1-atlas-release-readiness-v1",
+    "path": "scenario.json",
+    "sourcePath": "examples/phase-1-realistic-reference/scenario.json",
+    "sourceDigest": "sha256:31050aa2d6043761f2405ed909e9e57ea550284b1eeabe7acb102167cddffe79",
+    "semanticDigest": "sha256:38aea6886e76a509f5709a8f6d7366feb14f79a45d8743a172ca4b535d06c2c1",
+    "productName": "Atlas Release Readiness",
+    "initiativeTitle": "Review the Atlas release evidence packet"
+  },
+  "receipt": {
+    "path": "receipt.json",
+    "bytes": 5790,
+    "digest": "sha256:06a6c0e2f79d621c9a9c1f63bb321c1fbc559a4cb6a1e1c0233746f317327c9f",
+    "compositionDigest": "sha256:11e3814358498ea37368e10f794c38c4fb7a786d45d97883d3f17b680ffee28c"
+  },
+  "inventory": {
+    "fileCount": 143,
+    "byteCount": 3714745,
+    "entries": [
+      {
+        "path": "output-catalog.json",
+        "bytes": 4793,
+        "digest": "sha256:251bece6d41809df36295a5a8368ecb721be203d763c4d0f9b08ec1459bfb34d"
+      },
+      {
+        "path": "providers/claude-receipt.json",
+        "bytes": 5881,
+        "digest": "sha256:20e40f34a2d9edea8285177f965dc2d1826f8212126203b38d87b42917a352df"
+      },
+      {
+        "path": "providers/codex-receipt.json",
+        "bytes": 5322,
+        "digest": "sha256:30b0f7ff477581a60b69992c8fb7d19b54eab86c68f7554309a48647d93cd1a2"
+      },
+      {
+        "path": "providers/comparison-receipt.json",
+        "bytes": 9902,
+        "digest": "sha256:6fa95303c94e60de90d55174039b35b1ab9064f8fd45f737c5b7325b30d2f5c9"
+      },
+      {
+        "path": "receipt.json",
+        "bytes": 5790,
+        "digest": "sha256:06a6c0e2f79d621c9a9c1f63bb321c1fbc559a4cb6a1e1c0233746f317327c9f"
+      },
+      {
+        "path": "scenario.json",
+        "bytes": 3399,
+        "digest": "sha256:31050aa2d6043761f2405ed909e9e57ea550284b1eeabe7acb102167cddffe79"
+      },
+      {
+        "path": "workspaces/claude/.gaep/architecture-challenge-model-history/architecture-challenge-model-b8c9ffcd-bb80-4b56-9cab-ffb0cd696949-r1.json",
+        "bytes": 55667,
+        "digest": "sha256:b6990c0a56f31ac35b8b1ae58cf8ebe78e2bb85b108d502fe4478187f16f96ba"
+      },
+      {
+        "path": "workspaces/claude/.gaep/architecture-challenge-models/b8c9ffcd-bb80-4b56-9cab-ffb0cd696949.json",
+        "bytes": 55667,
+        "digest": "sha256:b6990c0a56f31ac35b8b1ae58cf8ebe78e2bb85b108d502fe4478187f16f96ba"
+      },
+      {
+        "path": "workspaces/claude/.gaep/audit/checkpoint.json",
+        "bytes": 269,
+        "digest": "sha256:680041ecb740e70431d3639f3968fb6a13317dabb91526a812b5588c432272d1"
+      },
+      {
+        "path": "workspaces/claude/.gaep/audit/events.jsonl",
+        "bytes": 56359,
+        "digest": "sha256:8514f6e6ee4b1ebd426bec98e4c0040a717c1c8c899529607e32b1218d6e5881"
+      },
+      {
+        "path": "workspaces/claude/.gaep/audit/state.json",
+        "bytes": 18513,
+        "digest": "sha256:da4f301fd13d55fccf990fb7aeff3be6dffbc3330d01e1cea574fc64d13c8173"
+      },
+      {
+        "path": "workspaces/claude/.gaep/authorization-model-history/authorization-model-b5c371b6-518f-4e31-a003-124613cf6f15-r1.json",
+        "bytes": 53546,
+        "digest": "sha256:dce8a05a26bb0f328e20cb4e5382a1b5142724fa856e85dc285d14aa1234bde6"
+      },
+      {
+        "path": "workspaces/claude/.gaep/authorization-models/b5c371b6-518f-4e31-a003-124613cf6f15.json",
+        "bytes": 53546,
+        "digest": "sha256:dce8a05a26bb0f328e20cb4e5382a1b5142724fa856e85dc285d14aa1234bde6"
+      },
+      {
+        "path": "workspaces/claude/.gaep/bounded-context-model-history/bounded-context-model-f12cbe74-02f2-45de-8a74-e76ffcdb7aac-r1.json",
+        "bytes": 9697,
+        "digest": "sha256:8e060b09bac12327692685257af81c5e9f00f19e710eb224f5ed723a002f9ee6"
+      },
+      {
+        "path": "workspaces/claude/.gaep/bounded-context-models/f12cbe74-02f2-45de-8a74-e76ffcdb7aac.json",
+        "bytes": 9697,
+        "digest": "sha256:8e060b09bac12327692685257af81c5e9f00f19e710eb224f5ed723a002f9ee6"
+      },
+      {
+        "path": "workspaces/claude/.gaep/business-architecture-baseline-history/business-architecture-baseline-acc1fe4b-8e52-4c91-abdb-68f468fc0694-r1.json",
+        "bytes": 14885,
+        "digest": "sha256:7219fea1428cdeb424e651f167e2c178acd2b14aec5fd90457f13ede6d5f7066"
+      },
+      {
+        "path": "workspaces/claude/.gaep/business-architecture-baselines/acc1fe4b-8e52-4c91-abdb-68f468fc0694.json",
+        "bytes": 14885,
+        "digest": "sha256:7219fea1428cdeb424e651f167e2c178acd2b14aec5fd90457f13ede6d5f7066"
+      },
+      {
+        "path": "workspaces/claude/.gaep/business-capability-map-history/business-capability-map-4da12230-1c87-4a56-bac8-65d5435d1e8d-r1.json",
+        "bytes": 5635,
+        "digest": "sha256:b55916fa4cd4a53f958caa3817341c86aafb31619f9839b9888a6feffe39afe6"
+      },
+      {
+        "path": "workspaces/claude/.gaep/business-capability-maps/4da12230-1c87-4a56-bac8-65d5435d1e8d.json",
+        "bytes": 5635,
+        "digest": "sha256:b55916fa4cd4a53f958caa3817341c86aafb31619f9839b9888a6feffe39afe6"
+      },
+      {
+        "path": "workspaces/claude/.gaep/business-rule-catalog-history/business-rule-catalog-e4716f69-167b-4e91-89b1-4e2b7ab92888-r1.json",
+        "bytes": 8706,
+        "digest": "sha256:fd1692ce43aa80121b65cf949fb16cab0332dc0ca26d07505c713e5fe94bc70a"
+      },
+      {
+        "path": "workspaces/claude/.gaep/business-rule-catalogs/e4716f69-167b-4e91-89b1-4e2b7ab92888.json",
+        "bytes": 8706,
+        "digest": "sha256:fd1692ce43aa80121b65cf949fb16cab0332dc0ca26d07505c713e5fe94bc70a"
+      },
+      {
+        "path": "workspaces/claude/.gaep/business-understanding/d9ce27a1-42b7-45fc-9e3e-2801c4147f15.json",
+        "bytes": 5661,
+        "digest": "sha256:c849e8943e97c266c3d2add772f7ef28d4bc064db497aea657ea343947e0a67f"
+      },
+      {
+        "path": "workspaces/claude/.gaep/business-understanding-history/business-understanding-d9ce27a1-42b7-45fc-9e3e-2801c4147f15-r1.json",
+        "bytes": 5661,
+        "digest": "sha256:c849e8943e97c266c3d2add772f7ef28d4bc064db497aea657ea343947e0a67f"
+      },
+      {
+        "path": "workspaces/claude/.gaep/context-packs/955088ae-977b-400e-8af4-434015988e5a.json",
+        "bytes": 8614,
+        "digest": "sha256:8c8e29692297a28e95b2423178ba15e44ed6687f805dd54aca26b097d1b2d83d"
+      },
+      {
+        "path": "workspaces/claude/.gaep/data-model-history/data-model-1d49e7b1-c519-4e30-ab05-2fcd7e0e711f-r1.json",
+        "bytes": 28283,
+        "digest": "sha256:74fad50c440a001cdb87e01595e9b07299d5635a8ad22ca846a455f57c26733d"
+      },
+      {
+        "path": "workspaces/claude/.gaep/data-models/1d49e7b1-c519-4e30-ab05-2fcd7e0e711f.json",
+        "bytes": 28283,
+        "digest": "sha256:74fad50c440a001cdb87e01595e9b07299d5635a8ad22ca846a455f57c26733d"
+      },
+      {
+        "path": "workspaces/claude/.gaep/decision-register-history/decision-register-9ebbe42d-1a1a-46fd-85f0-ac0527af9052-r1.json",
+        "bytes": 18760,
+        "digest": "sha256:a727b0b448ef42c2980eebd978567e928a3bad63a45dcaa5a6cb6b363f911d06"
+      },
+      {
+        "path": "workspaces/claude/.gaep/decision-registers/9ebbe42d-1a1a-46fd-85f0-ac0527af9052.json",
+        "bytes": 18760,
+        "digest": "sha256:a727b0b448ef42c2980eebd978567e928a3bad63a45dcaa5a6cb6b363f911d06"
+      },
+      {
+        "path": "workspaces/claude/.gaep/end-to-end-traceability/5ff4b83c-ea16-4a05-bede-b9eb0fc440d3.json",
+        "bytes": 24757,
+        "digest": "sha256:fbeeb06b9d1a073c83d6c071ea72a1d883ca6576ae58c4daba23d24bc1341d9b"
+      },
+      {
+        "path": "workspaces/claude/.gaep/end-to-end-traceability-history/end-to-end-traceability-5ff4b83c-ea16-4a05-bede-b9eb0fc440d3-r1.json",
+        "bytes": 24757,
+        "digest": "sha256:fbeeb06b9d1a073c83d6c071ea72a1d883ca6576ae58c4daba23d24bc1341d9b"
+      },
+      {
+        "path": "workspaces/claude/.gaep/event-integration-model-history/event-integration-model-7728a66e-ba3f-463e-a8ca-60dc99acabcb-r1.json",
+        "bytes": 117826,
+        "digest": "sha256:a0f105a4a7652fe449f36a486c3e454fccebae4feaf4df20e36c1b1b49a187bf"
+      },
+      {
+        "path": "workspaces/claude/.gaep/event-integration-models/7728a66e-ba3f-463e-a8ca-60dc99acabcb.json",
+        "bytes": 117826,
+        "digest": "sha256:a0f105a4a7652fe449f36a486c3e454fccebae4feaf4df20e36c1b1b49a187bf"
+      },
+      {
+        "path": "workspaces/claude/.gaep/evidence-registries/e0c8a49e-c243-40a8-9a78-4a010655906f.json",
+        "bytes": 32810,
+        "digest": "sha256:079b512290dc26b05226e2e4537fb438c5256c769d7095644ba96ad024c3559b"
+      },
+      {
+        "path": "workspaces/claude/.gaep/evidence-registry-history/evidence-registry-e0c8a49e-c243-40a8-9a78-4a010655906f-r1.json",
+        "bytes": 32810,
+        "digest": "sha256:079b512290dc26b05226e2e4537fb438c5256c769d7095644ba96ad024c3559b"
+      },
+      {
+        "path": "workspaces/claude/.gaep/failure-recovery-model-history/failure-recovery-model-3f6c423a-4a8a-4d19-af69-25458d357df8-r1.json",
+        "bytes": 70804,
+        "digest": "sha256:83eedc632fef88cc6dab12750f8e820a6812fb764017b435c8467f95e14bb000"
+      },
+      {
+        "path": "workspaces/claude/.gaep/failure-recovery-models/3f6c423a-4a8a-4d19-af69-25458d357df8.json",
+        "bytes": 70804,
+        "digest": "sha256:83eedc632fef88cc6dab12750f8e820a6812fb764017b435c8467f95e14bb000"
+      },
+      {
+        "path": "workspaces/claude/.gaep/initiatives/43635952-8bdd-454f-b10c-e2e99de63e9e.json",
+        "bytes": 63206,
+        "digest": "sha256:a2b46db1132bc4d4228931eca8eb15cb0c6bfbe0f8d1934461527c3d60b244f1"
+      },
+      {
+        "path": "workspaces/claude/.gaep/manifest.json",
+        "bytes": 247,
+        "digest": "sha256:d432b4e92782b48ec52b8d874e2872deee0cd1b91f1a771cdf4e779af5216a21"
+      },
+      {
+        "path": "workspaces/claude/.gaep/operating-model-history/operating-model-ffb4bcec-76b8-471b-b496-74d8140e0758-r1.json",
+        "bytes": 15629,
+        "digest": "sha256:635e0a0799544cd1f61025a37a96e25daeda7af41dc3f61b6019b4138a344b45"
+      },
+      {
+        "path": "workspaces/claude/.gaep/operating-models/ffb4bcec-76b8-471b-b496-74d8140e0758.json",
+        "bytes": 15629,
+        "digest": "sha256:635e0a0799544cd1f61025a37a96e25daeda7af41dc3f61b6019b4138a344b45"
+      },
+      {
+        "path": "workspaces/claude/.gaep/outcome-model-history/outcome-model-6d632d39-e76c-4dcb-9e8d-87464159d47a-r1.json",
+        "bytes": 8264,
+        "digest": "sha256:cdd523bd9a07405aa92ac25f8f9a165af17fe6576896edc452f83efe0e8da119"
+      },
+      {
+        "path": "workspaces/claude/.gaep/outcome-models/6d632d39-e76c-4dcb-9e8d-87464159d47a.json",
+        "bytes": 8264,
+        "digest": "sha256:cdd523bd9a07405aa92ac25f8f9a165af17fe6576896edc452f83efe0e8da119"
+      },
+      {
+        "path": "workspaces/claude/.gaep/p0-p4-readiness-gate-history/p0-p4-readiness-gate-2e5abda9-8810-4f5e-96f0-02becd136e53-r1.json",
+        "bytes": 58597,
+        "digest": "sha256:65fbad1e4b698ff70af03528397ebe94113e06ee97fbef75c5a230e161d268ca"
+      },
+      {
+        "path": "workspaces/claude/.gaep/p0-p4-readiness-gates/2e5abda9-8810-4f5e-96f0-02becd136e53.json",
+        "bytes": 58597,
+        "digest": "sha256:65fbad1e4b698ff70af03528397ebe94113e06ee97fbef75c5a230e161d268ca"
+      },
+      {
+        "path": "workspaces/claude/.gaep/p5-handoff-package-history/p5-handoff-package-19cc364a-33dd-4059-a10b-374ea3947524-r1.json",
+        "bytes": 81923,
+        "digest": "sha256:0febb245e49581d5d358cc80c9f7242b6a0b8964869b7eb53262c4786e1aaf6f"
+      },
+      {
+        "path": "workspaces/claude/.gaep/p5-handoff-packages/19cc364a-33dd-4059-a10b-374ea3947524.json",
+        "bytes": 81923,
+        "digest": "sha256:0febb245e49581d5d358cc80c9f7242b6a0b8964869b7eb53262c4786e1aaf6f"
+      },
+      {
+        "path": "workspaces/claude/.gaep/process-model-history/process-model-e6a1fd18-5859-4aec-b365-621e33a4213f-r1.json",
+        "bytes": 78047,
+        "digest": "sha256:c4c503e6b0043e4c4c39f0b45dd3f0ee8198a351a30f329b8b581138734d60ac"
+      },
+      {
+        "path": "workspaces/claude/.gaep/process-models/e6a1fd18-5859-4aec-b365-621e33a4213f.json",
+        "bytes": 78047,
+        "digest": "sha256:c4c503e6b0043e4c4c39f0b45dd3f0ee8198a351a30f329b8b581138734d60ac"
+      },
+      {
+        "path": "workspaces/claude/.gaep/product-history/product-4238d65d-bc5f-4e6c-9c34-d6fcab3694d2-r1.json",
+        "bytes": 1536,
+        "digest": "sha256:1e97d96008f6541b0fe7cb9556b8223d86726212b22ace957b72e25496497afa"
+      },
+      {
+        "path": "workspaces/claude/.gaep/product.json",
+        "bytes": 1107,
+        "digest": "sha256:5f7bc0ffa1ad244b92f890a319b954ea157f8964c3490ecc05b09a67c3428143"
+      },
+      {
+        "path": "workspaces/claude/.gaep/record-history/context-pack-955088ae-977b-400e-8af4-434015988e5a-r1.json",
+        "bytes": 9170,
+        "digest": "sha256:9974b5dc1d66945d1516b1d975f693b8bb04dc690ed3207c9f74ced7f768a6ad"
+      },
+      {
+        "path": "workspaces/claude/.gaep/record-history/workflow-plan-6c962e30-c572-490f-9673-fc5e4869b722-r1.json",
+        "bytes": 3214,
+        "digest": "sha256:fec8d243ae993352613d2b843257124bbef74ab4b0240c6940e5310958b8ab3a"
+      },
+      {
+        "path": "workspaces/claude/.gaep/record-history/workflow-plan-6c962e30-c572-490f-9673-fc5e4869b722-r2.json",
+        "bytes": 3315,
+        "digest": "sha256:8d87925ac85be3c237755acabf8823593946f87fd105f0dad60b3efaa0ba8ecb"
+      },
+      {
+        "path": "workspaces/claude/.gaep/risk-register-history/risk-register-1a03e2d5-ad83-44dd-ad0f-10f26b733bb1-r1.json",
+        "bytes": 21896,
+        "digest": "sha256:e92a68495944d6053fcc137bc0204baecdee8e07ed1c7b5651081ed4be777843"
+      },
+      {
+        "path": "workspaces/claude/.gaep/risk-registers/1a03e2d5-ad83-44dd-ad0f-10f26b733bb1.json",
+        "bytes": 21896,
+        "digest": "sha256:e92a68495944d6053fcc137bc0204baecdee8e07ed1c7b5651081ed4be777843"
+      },
+      {
+        "path": "workspaces/claude/.gaep/runtime/capabilities-c0181ec2083bf68bf4439c93dadde96cfed4f71398f4a35869608dc267c06f4a.json",
+        "bytes": 1058,
+        "digest": "sha256:3b7d0a42ed266af3a8f3218bae92ffc3f0f3779a47e3ff5f390505c753a606a5"
+      },
+      {
+        "path": "workspaces/claude/.gaep/runtime/selection.json",
+        "bytes": 344,
+        "digest": "sha256:b165eb818450d103e6b40dff7e0df93791b2215aeb3be133de46273f55d8ef04"
+      },
+      {
+        "path": "workspaces/claude/.gaep/security-privacy-assessment-history/security-privacy-assessment-137ae11c-fe28-4382-b50a-b45b93ab00f0-r1.json",
+        "bytes": 36549,
+        "digest": "sha256:7e1f5818f14cce9477f1c603b0cd107c02136f0d35236809ca6a41c80e4d25ee"
+      },
+      {
+        "path": "workspaces/claude/.gaep/security-privacy-assessments/137ae11c-fe28-4382-b50a-b45b93ab00f0.json",
+        "bytes": 36549,
+        "digest": "sha256:7e1f5818f14cce9477f1c603b0cd107c02136f0d35236809ca6a41c80e4d25ee"
+      },
+      {
+        "path": "workspaces/claude/.gaep/sessions/charter-d59877e3-59cd-40b9-8f5d-edbd18558c3b.json",
+        "bytes": 2404,
+        "digest": "sha256:4629972fc21499c1e834434b863e2030cb57e56b2984ad4c0d7b6526ea6d9483"
+      },
+      {
+        "path": "workspaces/claude/.gaep/sessions/managed-evidence-c21c88d4-1e0c-4848-a953-f92294a94618.json",
+        "bytes": 8503,
+        "digest": "sha256:37e2e2278fdc28fb40fc655e73b5969653d9e1c65a333c1c05784add747fbc5d"
+      },
+      {
+        "path": "workspaces/claude/.gaep/sessions/managed-result-87a30430-5153-4f0d-add1-9f99a602b1df.json",
+        "bytes": 1520,
+        "digest": "sha256:ffe2cbd29ec1be555697c1cb883c7700457986105f22f03b15139e4d0fec5c11"
+      },
+      {
+        "path": "workspaces/claude/.gaep/sessions/managed-run-ba79e324-91c3-4cad-b42b-5170efbfbf00.json",
+        "bytes": 74259,
+        "digest": "sha256:6b8a8cb95f0b28c850be69875390dc6f41ef18837191ff1d4abb5d4e4b21051f"
+      },
+      {
+        "path": "workspaces/claude/.gaep/sessions/run-64a5307b-2cc6-4f49-a6bf-b425004ab418.json",
+        "bytes": 836,
+        "digest": "sha256:7de623c39cbfd699e0b9e8dee50a87bc11d6671784133d3d3d60fc2670065686"
+      },
+      {
+        "path": "workspaces/claude/.gaep/source-history/source-31b32556-f6eb-4545-8d7f-9078bb5d8539-r1.json",
+        "bytes": 2623,
+        "digest": "sha256:d80e9ac898d4e46547fae26b80ec959cb32e5b56b4c1faf30fe9b788c40d5334"
+      },
+      {
+        "path": "workspaces/claude/.gaep/sources/31b32556-f6eb-4545-8d7f-9078bb5d8539.json",
+        "bytes": 2152,
+        "digest": "sha256:00755ffc6adab4374f56ed11546847598a2f15ec8d9f241c5b2c8e45b70a24df"
+      },
+      {
+        "path": "workspaces/claude/.gaep/stakeholder-model-history/stakeholder-model-bdc8dbea-adf6-477a-b475-12d324b8bc67-r1.json",
+        "bytes": 9460,
+        "digest": "sha256:50f7aeb0ba010cd484b5c9b462f0c31fbc6841ba6244375a1e4a57eeee3b26ba"
+      },
+      {
+        "path": "workspaces/claude/.gaep/stakeholder-models/bdc8dbea-adf6-477a-b475-12d324b8bc67.json",
+        "bytes": 9460,
+        "digest": "sha256:50f7aeb0ba010cd484b5c9b462f0c31fbc6841ba6244375a1e4a57eeee3b26ba"
+      },
+      {
+        "path": "workspaces/claude/.gaep/system-solution-architecture-history/system-solution-architecture-4570631f-141d-4d23-ab94-dbba43327f92-r1.json",
+        "bytes": 21658,
+        "digest": "sha256:2b931b694d40026fd7623a1b982e6b19e72c88ee638ce97f47848487531325c3"
+      },
+      {
+        "path": "workspaces/claude/.gaep/system-solution-architectures/4570631f-141d-4d23-ab94-dbba43327f92.json",
+        "bytes": 21658,
+        "digest": "sha256:2b931b694d40026fd7623a1b982e6b19e72c88ee638ce97f47848487531325c3"
+      },
+      {
+        "path": "workspaces/claude/.gaep/value-stream-model-history/value-stream-model-292cabeb-2ac5-433a-968c-8e630119a1b6-r1.json",
+        "bytes": 5464,
+        "digest": "sha256:ce56f653bb9524eac0b6c7402a284d0af8d54f6795c4ffdf90bd1ca357d97419"
+      },
+      {
+        "path": "workspaces/claude/.gaep/value-stream-models/292cabeb-2ac5-433a-968c-8e630119a1b6.json",
+        "bytes": 5464,
+        "digest": "sha256:ce56f653bb9524eac0b6c7402a284d0af8d54f6795c4ffdf90bd1ca357d97419"
+      },
+      {
+        "path": "workspaces/claude/.gaep/workflow-plans/6c962e30-c572-490f-9673-fc5e4869b722.json",
+        "bytes": 2676,
+        "digest": "sha256:b0cec6acf745d13f2f9acd8725f5ee824f2728212deccb4ee6fdaab87f056868"
+      },
+      {
+        "path": "workspaces/codex/.gaep/architecture-challenge-model-history/architecture-challenge-model-a06fbeab-141d-4332-85d6-fd9f80c5ae9f-r1.json",
+        "bytes": 55667,
+        "digest": "sha256:08ae722be63a6cd79791814df0d0bd4c33cc67572ef1c5dd2932a3e6ac09fcc4"
+      },
+      {
+        "path": "workspaces/codex/.gaep/architecture-challenge-models/a06fbeab-141d-4332-85d6-fd9f80c5ae9f.json",
+        "bytes": 55667,
+        "digest": "sha256:08ae722be63a6cd79791814df0d0bd4c33cc67572ef1c5dd2932a3e6ac09fcc4"
+      },
+      {
+        "path": "workspaces/codex/.gaep/audit/checkpoint.json",
+        "bytes": 269,
+        "digest": "sha256:54adb0396cb13bf650a42d40100db8a0531b4f167811b4b65c4c4df2c457da82"
+      },
+      {
+        "path": "workspaces/codex/.gaep/audit/events.jsonl",
+        "bytes": 59241,
+        "digest": "sha256:9cd2525d870b98cdadb82bd25960d7946cfdca2ba7b08cbb37b1f303f2b50709"
+      },
+      {
+        "path": "workspaces/codex/.gaep/audit/state.json",
+        "bytes": 19309,
+        "digest": "sha256:b136d3498a1b1a189c1e6c71c58ded019cfbdb1bf70e25d643c9158b2c8ea00d"
+      },
+      {
+        "path": "workspaces/codex/.gaep/authorization-model-history/authorization-model-1f6c85bf-ff97-4b11-bd1e-6d19955cf237-r1.json",
+        "bytes": 53546,
+        "digest": "sha256:92ed16b255bc5f28150aac78389e09a900b26f3848b68b247f11b3dba671cad3"
+      },
+      {
+        "path": "workspaces/codex/.gaep/authorization-models/1f6c85bf-ff97-4b11-bd1e-6d19955cf237.json",
+        "bytes": 53546,
+        "digest": "sha256:92ed16b255bc5f28150aac78389e09a900b26f3848b68b247f11b3dba671cad3"
+      },
+      {
+        "path": "workspaces/codex/.gaep/bounded-context-model-history/bounded-context-model-45bb5c39-51bb-4a70-8983-1d1b5a4b4670-r1.json",
+        "bytes": 9697,
+        "digest": "sha256:ac9fa4f7a84808d6b972d27e9baf79d73ce4a42c58b6577e1ae8abab639dd011"
+      },
+      {
+        "path": "workspaces/codex/.gaep/bounded-context-models/45bb5c39-51bb-4a70-8983-1d1b5a4b4670.json",
+        "bytes": 9697,
+        "digest": "sha256:ac9fa4f7a84808d6b972d27e9baf79d73ce4a42c58b6577e1ae8abab639dd011"
+      },
+      {
+        "path": "workspaces/codex/.gaep/business-architecture-baseline-history/business-architecture-baseline-d3838c11-3833-4798-8363-554dedcbd8a5-r1.json",
+        "bytes": 14885,
+        "digest": "sha256:43954e14c1a0aa1cca448d80d3c395ce2981c13490bc3c3267e439e34ebe2f3e"
+      },
+      {
+        "path": "workspaces/codex/.gaep/business-architecture-baselines/d3838c11-3833-4798-8363-554dedcbd8a5.json",
+        "bytes": 14885,
+        "digest": "sha256:43954e14c1a0aa1cca448d80d3c395ce2981c13490bc3c3267e439e34ebe2f3e"
+      },
+      {
+        "path": "workspaces/codex/.gaep/business-capability-map-history/business-capability-map-baa18b7b-d1c2-4465-95ff-bf84d220e8ee-r1.json",
+        "bytes": 5635,
+        "digest": "sha256:a5be2ff1b8f6b888087b7b5ceb7b2ee347a1be2e28ca5b83c292dd4539f47931"
+      },
+      {
+        "path": "workspaces/codex/.gaep/business-capability-maps/baa18b7b-d1c2-4465-95ff-bf84d220e8ee.json",
+        "bytes": 5635,
+        "digest": "sha256:a5be2ff1b8f6b888087b7b5ceb7b2ee347a1be2e28ca5b83c292dd4539f47931"
+      },
+      {
+        "path": "workspaces/codex/.gaep/business-rule-catalog-history/business-rule-catalog-eb0409c4-4091-4471-a915-c256239ecc2c-r1.json",
+        "bytes": 8706,
+        "digest": "sha256:318e36be07e31f2fcab91aca7f29736f88f3b943ab896d8dfd6fbbcb999d2423"
+      },
+      {
+        "path": "workspaces/codex/.gaep/business-rule-catalogs/eb0409c4-4091-4471-a915-c256239ecc2c.json",
+        "bytes": 8706,
+        "digest": "sha256:318e36be07e31f2fcab91aca7f29736f88f3b943ab896d8dfd6fbbcb999d2423"
+      },
+      {
+        "path": "workspaces/codex/.gaep/business-understanding/b7fd89a6-80b7-419e-91ea-a020ecd58fda.json",
+        "bytes": 5661,
+        "digest": "sha256:40776f842b3e1bfc28ea1c8c9015f0755d87013e9909c8e13306527ffc9b8fa3"
+      },
+      {
+        "path": "workspaces/codex/.gaep/business-understanding-history/business-understanding-b7fd89a6-80b7-419e-91ea-a020ecd58fda-r1.json",
+        "bytes": 5661,
+        "digest": "sha256:40776f842b3e1bfc28ea1c8c9015f0755d87013e9909c8e13306527ffc9b8fa3"
+      },
+      {
+        "path": "workspaces/codex/.gaep/context-packs/bb35c5a0-b299-42a6-a6cc-7ee97e1d4082.json",
+        "bytes": 8565,
+        "digest": "sha256:0e46b5809aaf39ef09dd54cc81c3d3ae30f679252717fdb590b9d2c89bf1343b"
+      },
+      {
+        "path": "workspaces/codex/.gaep/data-model-history/data-model-40e9ca20-4b55-4265-b3d3-5e09559eb1b5-r1.json",
+        "bytes": 28283,
+        "digest": "sha256:c528085d946cea5983f8a27d61e7b3573a68a6b0d46cdb4a135b4628ce65ce64"
+      },
+      {
+        "path": "workspaces/codex/.gaep/data-models/40e9ca20-4b55-4265-b3d3-5e09559eb1b5.json",
+        "bytes": 28283,
+        "digest": "sha256:c528085d946cea5983f8a27d61e7b3573a68a6b0d46cdb4a135b4628ce65ce64"
+      },
+      {
+        "path": "workspaces/codex/.gaep/decision-register-history/decision-register-d515fe98-c550-4a15-84af-9a50873da670-r1.json",
+        "bytes": 18760,
+        "digest": "sha256:5b93ccab2fafe5d5c7e9465da878541cfaabb470e859affd43d7fb5f03a3d5fe"
+      },
+      {
+        "path": "workspaces/codex/.gaep/decision-registers/d515fe98-c550-4a15-84af-9a50873da670.json",
+        "bytes": 18760,
+        "digest": "sha256:5b93ccab2fafe5d5c7e9465da878541cfaabb470e859affd43d7fb5f03a3d5fe"
+      },
+      {
+        "path": "workspaces/codex/.gaep/end-to-end-traceability/e953c7ff-72a2-4984-9bdb-dc1836ff2f66.json",
+        "bytes": 24757,
+        "digest": "sha256:d1d005ac43d7101384cf661d9cebe4e8a753cbd25870a8f18667b2be38bb7347"
+      },
+      {
+        "path": "workspaces/codex/.gaep/end-to-end-traceability-history/end-to-end-traceability-e953c7ff-72a2-4984-9bdb-dc1836ff2f66-r1.json",
+        "bytes": 24757,
+        "digest": "sha256:d1d005ac43d7101384cf661d9cebe4e8a753cbd25870a8f18667b2be38bb7347"
+      },
+      {
+        "path": "workspaces/codex/.gaep/event-integration-model-history/event-integration-model-d2a92f2f-8193-4df4-b812-bd29cb98b1b2-r1.json",
+        "bytes": 117826,
+        "digest": "sha256:47715dd6a776b1c352ef9c5532895e6ba1de23d5a7cf175fb11c9d9c2a25bf5d"
+      },
+      {
+        "path": "workspaces/codex/.gaep/event-integration-models/d2a92f2f-8193-4df4-b812-bd29cb98b1b2.json",
+        "bytes": 117826,
+        "digest": "sha256:47715dd6a776b1c352ef9c5532895e6ba1de23d5a7cf175fb11c9d9c2a25bf5d"
+      },
+      {
+        "path": "workspaces/codex/.gaep/evidence-registries/35921794-9216-40c9-b877-817b8196cf50.json",
+        "bytes": 32810,
+        "digest": "sha256:e7282cfbc43a065043404d581c09f7d1a40614765a52160e38ad7d19dccf59a3"
+      },
+      {
+        "path": "workspaces/codex/.gaep/evidence-registry-history/evidence-registry-35921794-9216-40c9-b877-817b8196cf50-r1.json",
+        "bytes": 32810,
+        "digest": "sha256:e7282cfbc43a065043404d581c09f7d1a40614765a52160e38ad7d19dccf59a3"
+      },
+      {
+        "path": "workspaces/codex/.gaep/failure-recovery-model-history/failure-recovery-model-e089a462-0f81-40ab-be9f-374770b41034-r1.json",
+        "bytes": 70804,
+        "digest": "sha256:29a0b42a02ae6456d6d6229fc9800b368f6adba6e39880dfd86aad44d350f099"
+      },
+      {
+        "path": "workspaces/codex/.gaep/failure-recovery-models/e089a462-0f81-40ab-be9f-374770b41034.json",
+        "bytes": 70804,
+        "digest": "sha256:29a0b42a02ae6456d6d6229fc9800b368f6adba6e39880dfd86aad44d350f099"
+      },
+      {
+        "path": "workspaces/codex/.gaep/initiatives/7cbb70ba-ecdf-4418-b693-b0693de9e842.json",
+        "bytes": 63192,
+        "digest": "sha256:62c065a4d3e0ef8541ec3eea4e29e88d08d6867caac5af2c62b2a89babf47789"
+      },
+      {
+        "path": "workspaces/codex/.gaep/manifest.json",
+        "bytes": 247,
+        "digest": "sha256:ae9d8bdf0d96f71f31fa3fc694a24fa5eab89318972d3a5e2a6535595369c7ac"
+      },
+      {
+        "path": "workspaces/codex/.gaep/operating-model-history/operating-model-db8782f0-52da-4b89-a94a-5b894bc06e69-r1.json",
+        "bytes": 15629,
+        "digest": "sha256:dc3b9f2ca7244d75eff0da07edebc6fe28ff29a544868f348877fe6e80cd34b5"
+      },
+      {
+        "path": "workspaces/codex/.gaep/operating-models/db8782f0-52da-4b89-a94a-5b894bc06e69.json",
+        "bytes": 15629,
+        "digest": "sha256:dc3b9f2ca7244d75eff0da07edebc6fe28ff29a544868f348877fe6e80cd34b5"
+      },
+      {
+        "path": "workspaces/codex/.gaep/outcome-model-history/outcome-model-49198d72-38de-40ce-abf0-af0802e1d2ac-r1.json",
+        "bytes": 8264,
+        "digest": "sha256:497f13861fc5bfa79d934b54f66312ce96362e1fc9bba06469e5e1de9e48f7cb"
+      },
+      {
+        "path": "workspaces/codex/.gaep/outcome-models/49198d72-38de-40ce-abf0-af0802e1d2ac.json",
+        "bytes": 8264,
+        "digest": "sha256:497f13861fc5bfa79d934b54f66312ce96362e1fc9bba06469e5e1de9e48f7cb"
+      },
+      {
+        "path": "workspaces/codex/.gaep/p0-p4-readiness-gate-history/p0-p4-readiness-gate-72cadea2-bccf-4d34-94ab-aebd7ecf9cf6-r1.json",
+        "bytes": 58597,
+        "digest": "sha256:65bbb839742365e5ca82c5d8377721702ef134ddac69bc1854046b6f1123e12d"
+      },
+      {
+        "path": "workspaces/codex/.gaep/p0-p4-readiness-gates/72cadea2-bccf-4d34-94ab-aebd7ecf9cf6.json",
+        "bytes": 58597,
+        "digest": "sha256:65bbb839742365e5ca82c5d8377721702ef134ddac69bc1854046b6f1123e12d"
+      },
+      {
+        "path": "workspaces/codex/.gaep/p5-handoff-package-history/p5-handoff-package-9d99f3d6-0689-4c71-bd03-a0303d649102-r1.json",
+        "bytes": 81923,
+        "digest": "sha256:6a88ce71d012b4777ff814d50328a89767527ee470c55c8a34a4b720acf1acc0"
+      },
+      {
+        "path": "workspaces/codex/.gaep/p5-handoff-packages/9d99f3d6-0689-4c71-bd03-a0303d649102.json",
+        "bytes": 81923,
+        "digest": "sha256:6a88ce71d012b4777ff814d50328a89767527ee470c55c8a34a4b720acf1acc0"
+      },
+      {
+        "path": "workspaces/codex/.gaep/process-model-history/process-model-862b892b-be3d-46ef-a14a-0211ae307d2d-r1.json",
+        "bytes": 78047,
+        "digest": "sha256:82a5129b758352c0ccd113f9d8f5ea968b6c8da1794eacce82cd743ad2502178"
+      },
+      {
+        "path": "workspaces/codex/.gaep/process-models/862b892b-be3d-46ef-a14a-0211ae307d2d.json",
+        "bytes": 78047,
+        "digest": "sha256:82a5129b758352c0ccd113f9d8f5ea968b6c8da1794eacce82cd743ad2502178"
+      },
+      {
+        "path": "workspaces/codex/.gaep/product-history/product-22295bed-0b3c-4ffa-9979-eb612fdc0c5b-r1.json",
+        "bytes": 1536,
+        "digest": "sha256:b4b5c3dbde93c4c552a0d57a445b01281cd283a89ee666f237c133f5049def9e"
+      },
+      {
+        "path": "workspaces/codex/.gaep/product.json",
+        "bytes": 1107,
+        "digest": "sha256:284eeee21232d373e2b2876a152fc04cfffb169abd56a755ccd8b867016c25ec"
+      },
+      {
+        "path": "workspaces/codex/.gaep/record-history/context-pack-bb35c5a0-b299-42a6-a6cc-7ee97e1d4082-r1.json",
+        "bytes": 9121,
+        "digest": "sha256:be01760e027c624b650aaf6734195102dbb32e7b3f4462c8f1acadd24622f61f"
+      },
+      {
+        "path": "workspaces/codex/.gaep/record-history/workflow-plan-e1d34f27-e44f-496b-9f42-87abb585a156-r1.json",
+        "bytes": 3213,
+        "digest": "sha256:bbe1f01a9f5f94f5163610c53c56ffb3d2daf1bb2e051bf42491825ec51f20ad"
+      },
+      {
+        "path": "workspaces/codex/.gaep/record-history/workflow-plan-e1d34f27-e44f-496b-9f42-87abb585a156-r2.json",
+        "bytes": 3314,
+        "digest": "sha256:79f2abbf7ed6b3c57b29333edbabc56a4df8cf636e70e24293392b8471b70dfd"
+      },
+      {
+        "path": "workspaces/codex/.gaep/risk-register-history/risk-register-9cbc00b9-0a4e-474a-86cf-89410f2ad50a-r1.json",
+        "bytes": 21896,
+        "digest": "sha256:31899ea3b6d536b49d5166ccb28b923f2fc03222b79a892fc5f8d25c649fc5fd"
+      },
+      {
+        "path": "workspaces/codex/.gaep/risk-registers/9cbc00b9-0a4e-474a-86cf-89410f2ad50a.json",
+        "bytes": 21896,
+        "digest": "sha256:31899ea3b6d536b49d5166ccb28b923f2fc03222b79a892fc5f8d25c649fc5fd"
+      },
+      {
+        "path": "workspaces/codex/.gaep/runtime/capabilities-046d18a34436b2234fb4e8b53115390a864331550d6f665168d6fae9e51aaf1f.json",
+        "bytes": 923,
+        "digest": "sha256:88d6cfa10498f707f4bacda74bf26fc661b53d0460b804ad307ff21748b0ed9a"
+      },
+      {
+        "path": "workspaces/codex/.gaep/runtime/selection.json",
+        "bytes": 326,
+        "digest": "sha256:7d0bbd6079abcd3cf6d52927a6ead8cbb937d158bdc107da1ee908e138d4694d"
+      },
+      {
+        "path": "workspaces/codex/.gaep/security-privacy-assessment-history/security-privacy-assessment-e992335e-9c26-45fe-8bd4-41d4609ebc7f-r1.json",
+        "bytes": 36549,
+        "digest": "sha256:1dd7f22d3bd1c0a89d360e2ec5407a9e03c9dfe53c8149466b3e325eded71323"
+      },
+      {
+        "path": "workspaces/codex/.gaep/security-privacy-assessments/e992335e-9c26-45fe-8bd4-41d4609ebc7f.json",
+        "bytes": 36549,
+        "digest": "sha256:1dd7f22d3bd1c0a89d360e2ec5407a9e03c9dfe53c8149466b3e325eded71323"
+      },
+      {
+        "path": "workspaces/codex/.gaep/sessions/charter-a2b7a4bc-205e-4724-ab86-c4a869689a60.json",
+        "bytes": 2382,
+        "digest": "sha256:ddda5d576f5be6eba63a089a049c7c88f1d8330c34bbbc139219a9e7c26845e8"
+      },
+      {
+        "path": "workspaces/codex/.gaep/sessions/managed-apply-decision-05ea668d-9357-4e03-855a-2f163ab17b6c.json",
+        "bytes": 1214,
+        "digest": "sha256:36d12dabca7d42349ae741dc1b67762f75844c0e3c9e158b2e2847f8eb503226"
+      },
+      {
+        "path": "workspaces/codex/.gaep/sessions/managed-evidence-606e7816-daa6-4338-ae29-2c9c3f3d2b6d.json",
+        "bytes": 9605,
+        "digest": "sha256:2d977753be3d8aeed2d744f891e6a0eda358abc8f8ac88757e5a7ffb37e9f893"
+      },
+      {
+        "path": "workspaces/codex/.gaep/sessions/managed-evidence-da460283-8142-4a0a-bed6-d801048e88fb.json",
+        "bytes": 10431,
+        "digest": "sha256:0fe35bacf07c9944a729ef30dce22dfd989cda1108afc318ba7303717296fecc"
+      },
+      {
+        "path": "workspaces/codex/.gaep/sessions/managed-result-9a28a18b-8e3d-4120-aa22-dace306b594b.json",
+        "bytes": 1678,
+        "digest": "sha256:24498b9dc4e6ea2f355d60faf64b11d09387923ea0c6a0256749002cdf7c6e1e"
+      },
+      {
+        "path": "workspaces/codex/.gaep/sessions/managed-result-b1519898-d116-420b-b2c8-9d17efb645c0.json",
+        "bytes": 1324,
+        "digest": "sha256:1b94cdca22cf79834b8c62706ca64dbb4105577fcf52b54e0b0707e940c9f7d3"
+      },
+      {
+        "path": "workspaces/codex/.gaep/sessions/managed-run-a42fb185-79eb-4428-ac72-99743136b255.json",
+        "bytes": 74372,
+        "digest": "sha256:66377f0d7fbda068aed5dd81bb96954bbc0fe834a31b1d47e81a2b19c24363c8"
+      },
+      {
+        "path": "workspaces/codex/.gaep/sessions/run-5f4760a7-bd86-49b3-b288-5e847f1886d1.json",
+        "bytes": 818,
+        "digest": "sha256:3f51930102f49decc2a18d0d95e6f01fea948a8e11a7b92f764690a9505ea6b5"
+      },
+      {
+        "path": "workspaces/codex/.gaep/source-history/source-60f2bc1d-dbf0-4f43-b141-25df670bdc66-r1.json",
+        "bytes": 2623,
+        "digest": "sha256:42973ddcfce13981bd47ba083def705e3bf152e2e3f42c97ec4ac8a1a4bffa18"
+      },
+      {
+        "path": "workspaces/codex/.gaep/sources/60f2bc1d-dbf0-4f43-b141-25df670bdc66.json",
+        "bytes": 2152,
+        "digest": "sha256:b7d958d6c612477d9d61ea1f7422cb9acb39129f72ff9106f0ea7aad629d8e54"
+      },
+      {
+        "path": "workspaces/codex/.gaep/stakeholder-model-history/stakeholder-model-567d1363-8b85-4208-b7c7-d9cf5bbd92b6-r1.json",
+        "bytes": 9460,
+        "digest": "sha256:2951446e8e9ba1aa943000351bf418b607542d7034dc0417d4a12a5bd7d4c5b4"
+      },
+      {
+        "path": "workspaces/codex/.gaep/stakeholder-models/567d1363-8b85-4208-b7c7-d9cf5bbd92b6.json",
+        "bytes": 9460,
+        "digest": "sha256:2951446e8e9ba1aa943000351bf418b607542d7034dc0417d4a12a5bd7d4c5b4"
+      },
+      {
+        "path": "workspaces/codex/.gaep/system-solution-architecture-history/system-solution-architecture-75a51d2b-5356-4161-96ac-798f47eb3fe0-r1.json",
+        "bytes": 21658,
+        "digest": "sha256:928a819401efb035fcd24c1f58de03d3459a3b74770fb7bf4d135ad1a2666b08"
+      },
+      {
+        "path": "workspaces/codex/.gaep/system-solution-architectures/75a51d2b-5356-4161-96ac-798f47eb3fe0.json",
+        "bytes": 21658,
+        "digest": "sha256:928a819401efb035fcd24c1f58de03d3459a3b74770fb7bf4d135ad1a2666b08"
+      },
+      {
+        "path": "workspaces/codex/.gaep/value-stream-model-history/value-stream-model-906bf12c-035c-48ac-9068-04bb4f31790b-r1.json",
+        "bytes": 5464,
+        "digest": "sha256:187272c83982eaa65141c4209a18ca3051267322dea78268644bdd89ff47db99"
+      },
+      {
+        "path": "workspaces/codex/.gaep/value-stream-models/906bf12c-035c-48ac-9068-04bb4f31790b.json",
+        "bytes": 5464,
+        "digest": "sha256:187272c83982eaa65141c4209a18ca3051267322dea78268644bdd89ff47db99"
+      },
+      {
+        "path": "workspaces/codex/.gaep/workflow-plans/e1d34f27-e44f-496b-9f42-87abb585a156.json",
+        "bytes": 2675,
+        "digest": "sha256:6704d7a3035b9ab3e8998bf95313713c1c91dd16b5c0d0fccab39828590c7f68"
+      }
+    ],
+    "inventoryDigest": "sha256:22e7c4452007ae639aa3a324ef1141d301fffb61f6b102defa22b3012136dace"
+  },
+  "stores": {
+    "codex": {
+      "root": "workspaces/codex/.gaep",
+      "fileCount": 70,
+      "byteCount": 1848685,
+      "inventoryDigest": "sha256:b8998a07aa1d2ce6afbfafa2db21ceb7590b471f2728405a5a77ae505f30629f",
+      "productDigest": "sha256:e127679575896008f4efb896fc1f4b14a2b4c75755c6805e5d8f31a03939ca43",
+      "initiativeDigest": "sha256:36753a529d7311fc18ee4fce96bcea08ba1e13ebd3b5342935908bf58acb5c57",
+      "auditEventCount": 41,
+      "managedRunCount": 1,
+      "runCount": 1,
+      "readiness": {
+        "result": "passed",
+        "outputCount": 25,
+        "applicableOutputCount": 3,
+        "notApplicableOutputCount": 22
+      },
+      "handoff": {
+        "state": "complete-for-review",
+        "itemCount": 25,
+        "includedItemCount": 3,
+        "omittedNotApplicableItemCount": 22
+      },
+      "checks": {
+        "workspaceHealthy": true,
+        "auditValid": true,
+        "productMatches": true,
+        "initiativeMatches": true,
+        "readinessMatches": true,
+        "handoffMatches": true,
+        "managedRunMatches": true,
+        "runMatches": true
+      }
+    },
+    "claude": {
+      "root": "workspaces/claude/.gaep",
+      "fileCount": 67,
+      "byteCount": 1830973,
+      "inventoryDigest": "sha256:6a16bb01517aca3ceeb7060d7c290ea35435ec1ee2de9f99e6381ec6f2665df9",
+      "productDigest": "sha256:e393d30d75e6308714a241d2bcb9349f4b36a1230ecaadec8aeaa3975fdbb2e5",
+      "initiativeDigest": "sha256:68744953465aaadd2be5245903421834ae23a5fd1f5efc40468183799ea026fd",
+      "auditEventCount": 39,
+      "managedRunCount": 1,
+      "runCount": 1,
+      "readiness": {
+        "result": "passed",
+        "outputCount": 25,
+        "applicableOutputCount": 3,
+        "notApplicableOutputCount": 22
+      },
+      "handoff": {
+        "state": "complete-for-review",
+        "itemCount": 25,
+        "includedItemCount": 3,
+        "omittedNotApplicableItemCount": 22
+      },
+      "checks": {
+        "workspaceHealthy": true,
+        "auditValid": true,
+        "productMatches": true,
+        "initiativeMatches": true,
+        "readinessMatches": true,
+        "handoffMatches": true,
+        "managedRunMatches": true,
+        "runMatches": true
+      }
+    }
+  },
+  "authorityBoundary": "artifact-manifest-is-integrity-evidence-not-product-readiness-approval-acceptance-security-release-or-deployment-authority"
+}

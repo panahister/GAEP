@@ -23,11 +23,28 @@ process.stdin.on("end", async () => {
   const sessionId = `session-${mode}`
   if (mode === "stage-edit") await writeFile("generated.txt", "generated only inside the isolated stage\n")
   process.stdout.write(`${JSON.stringify({ type: "system", subtype: "init", session_id: sessionId })}\n`)
+  if (mode === "structured-output") {
+    process.stdout.write(`${JSON.stringify({
+      type: "result",
+      subtype: "success",
+      is_error: false,
+      session_id: sessionId,
+      structured_output: { status: "ok" },
+    })}\n`)
+    return
+  }
   process.stdout.write(`${JSON.stringify({
     type: "assistant",
     session_id: sessionId,
     uuid: `turn-${mode}`,
-    message: { content: [{ type: "text", text: `analysis for ${input.length} bytes at /Users/alice/private token=abc123456789` }] },
+    message: { content: [{
+      type: "text",
+      text: mode === "auth-assistant-success"
+        ? "Not logged in · Please run /login at /Users/alice/private token=abc123456789"
+        : mode === "security-answer"
+          ? "Unauthorized access is a Product risk; define the authorization boundary before release."
+        : `analysis for ${input.length} bytes at /Users/alice/private token=abc123456789`,
+    }] },
   })}\n`)
   process.stdout.write(`${JSON.stringify({
     type: "result",

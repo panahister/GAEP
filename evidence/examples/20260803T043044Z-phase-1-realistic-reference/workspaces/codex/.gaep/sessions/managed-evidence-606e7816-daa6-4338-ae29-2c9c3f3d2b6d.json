@@ -1,0 +1,250 @@
+{
+  "schemaVersion": 2,
+  "kind": "managed-run-evidence",
+  "id": "606e7816-daa6-4338-ae29-2c9c3f3d2b6d",
+  "managedRunId": "a42fb185-79eb-4428-ac72-99743136b255",
+  "runId": "5f4760a7-bd86-49b3-b288-5e847f1886d1",
+  "productId": "22295bed-0b3c-4ffa-9979-eb612fdc0c5b",
+  "bindingsDigest": "sha256:a51f4cb95b19edd8af5d94083d780054c5ebadf02b3707b419e4cc27399ccf7f",
+  "events": [
+    {
+      "sequence": 0,
+      "observedAt": "2026-08-03T04:31:17.666Z",
+      "type": "lifecycle",
+      "phase": "initialized"
+    },
+    {
+      "sequence": 1,
+      "observedAt": "2026-08-03T04:31:17.674Z",
+      "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+      "type": "lifecycle",
+      "phase": "thread-started"
+    },
+    {
+      "sequence": 2,
+      "observedAt": "2026-08-03T04:31:17.674Z",
+      "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+      "providerTurnRef": "sha256:68383a9d7f7c480381a97bd2080a58215dfb5bd2975bd2dab67e9624a4d1c418",
+      "type": "lifecycle",
+      "phase": "turn-started"
+    },
+    {
+      "sequence": 3,
+      "observedAt": "2026-08-03T04:31:17.674Z",
+      "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+      "providerTurnRef": "sha256:68383a9d7f7c480381a97bd2080a58215dfb5bd2975bd2dab67e9624a4d1c418",
+      "type": "item",
+      "itemRef": "sha256:f7ab422d725d88cbb65bbdeebbead98d44d685edebab535c4a43bb0fbd8ac08f",
+      "itemType": "agentmessage",
+      "status": "started"
+    },
+    {
+      "sequence": 4,
+      "observedAt": "2026-08-03T04:31:17.675Z",
+      "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+      "providerTurnRef": "sha256:68383a9d7f7c480381a97bd2080a58215dfb5bd2975bd2dab67e9624a4d1c418",
+      "type": "output",
+      "channel": "assistant",
+      "contentDigest": "sha256:e4692830928080948a91bbee09a44f003ce020e10fd37f438b6eecf41b47902f",
+      "byteLength": 5,
+      "redactionCount": 0
+    },
+    {
+      "sequence": 5,
+      "observedAt": "2026-08-03T04:31:17.675Z",
+      "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+      "providerTurnRef": "sha256:68383a9d7f7c480381a97bd2080a58215dfb5bd2975bd2dab67e9624a4d1c418",
+      "type": "item",
+      "itemRef": "sha256:f7ab422d725d88cbb65bbdeebbead98d44d685edebab535c4a43bb0fbd8ac08f",
+      "itemType": "agentmessage",
+      "status": "completed"
+    },
+    {
+      "sequence": 6,
+      "observedAt": "2026-08-03T04:31:17.675Z",
+      "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+      "providerTurnRef": "sha256:68383a9d7f7c480381a97bd2080a58215dfb5bd2975bd2dab67e9624a4d1c418",
+      "type": "lifecycle",
+      "phase": "turn-completed",
+      "turnStatus": "completed"
+    }
+  ],
+  "eventsDigest": "sha256:f6b9ed344abe50bc45340184226427fda84eaa035ec31167c231b4294650f091",
+  "workflow": {
+    "plan": {
+      "recordType": "workflow-plan",
+      "recordId": "e1d34f27-e44f-496b-9f42-87abb585a156",
+      "revision": 2,
+      "digest": "sha256:c31e0db10d86f9ac6664133316979b3c361bf15afdfac76eca2d5b703bfa8088"
+    },
+    "strategy": "sequential",
+    "orderedStepIds": [
+      "01f66215-b645-489a-ad3f-a882e1a7332d"
+    ],
+    "attempts": [
+      {
+        "id": "ff91ba54-3104-4e13-a4b9-6f90e0757448",
+        "revision": 1,
+        "stepId": "01f66215-b645-489a-ad3f-a882e1a7332d",
+        "stepIndex": 0,
+        "attempt": 1,
+        "state": "review-required",
+        "dependencies": [],
+        "contextPacks": [
+          {
+            "recordType": "context-pack",
+            "recordId": "bb35c5a0-b299-42a6-a6cc-7ee97e1d4082",
+            "revision": 1,
+            "digest": "sha256:587e71da3931aad5b5828d77a8dfc3dcf11a5806a163221c6ca31584cb92ac1d"
+          }
+        ],
+        "tools": [],
+        "effectEnvelope": [
+          "observe"
+        ],
+        "eventRange": {
+          "startSequence": 0,
+          "endSequence": 6
+        },
+        "providerDisposition": "completed",
+        "terminationCause": "normal",
+        "postconditionStatus": "not-assessed",
+        "gates": {
+          "preconditions": {
+            "phase": "preconditions",
+            "interpretation": "criteria-satisfied",
+            "criteriaDigest": "sha256:8ae848851a909b46578c342d189d925094e9c9d2cfc792a976f4b7b5282b4dc7",
+            "status": "satisfied",
+            "basis": "human-attestation",
+            "evidenceDigest": "sha256:26e8badd672c9649fbcc266a8dcc987294b0b8053b09e44c5c05dfa80a5c7d21",
+            "actor": {
+              "kind": "human",
+              "id": "product-owner"
+            },
+            "evaluator": {
+              "kind": "human",
+              "id": "product-owner",
+              "version": "1",
+              "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+            },
+            "assessedAt": "2026-08-03T04:31:14.670Z"
+          },
+          "outputs": {
+            "phase": "outputs",
+            "interpretation": "criteria-satisfied",
+            "criteriaDigest": "sha256:5ca50e1008f05b2d7f1e6a34fc673fd1070e8b7935d74553e255d025537030bc",
+            "status": "not-assessed",
+            "basis": "not-evaluated",
+            "actor": {
+              "kind": "system",
+              "id": "gaep.workflow-coordinator"
+            },
+            "evaluator": {
+              "kind": "system",
+              "id": "gaep.workflow-coordinator",
+              "version": "1",
+              "digest": "sha256:a5bcb8091a3931a2c0a5bc03400b2338f4555653419733834642902d3d879db1"
+            },
+            "assessedAt": "2026-08-03T04:31:17.959Z"
+          },
+          "evidence": {
+            "phase": "evidence",
+            "interpretation": "criteria-satisfied",
+            "criteriaDigest": "sha256:ed60e9cd86c2db1fd96a798a6133c92f2a93eee56b87e6cdb253146a87ec7cc8",
+            "status": "not-assessed",
+            "basis": "not-evaluated",
+            "actor": {
+              "kind": "system",
+              "id": "gaep.workflow-coordinator"
+            },
+            "evaluator": {
+              "kind": "system",
+              "id": "gaep.workflow-coordinator",
+              "version": "1",
+              "digest": "sha256:a5bcb8091a3931a2c0a5bc03400b2338f4555653419733834642902d3d879db1"
+            },
+            "assessedAt": "2026-08-03T04:31:17.959Z"
+          },
+          "stopConditions": {
+            "phase": "stop-conditions",
+            "interpretation": "stop-boundary-complied",
+            "criteriaDigest": "sha256:f7346969412ce68c87eaa3f62ded2bbfe40d8cdec541546314b652389820412f",
+            "status": "not-assessed",
+            "basis": "not-evaluated",
+            "actor": {
+              "kind": "system",
+              "id": "gaep.workflow-coordinator"
+            },
+            "evaluator": {
+              "kind": "system",
+              "id": "gaep.workflow-coordinator",
+              "version": "1",
+              "digest": "sha256:a5bcb8091a3931a2c0a5bc03400b2338f4555653419733834642902d3d879db1"
+            },
+            "assessedAt": "2026-08-03T04:31:17.959Z"
+          }
+        },
+        "startedAt": "2026-08-03T04:31:14.669Z",
+        "endedAt": "2026-08-03T04:31:17.959Z"
+      }
+    ],
+    "completedStepIds": [],
+    "charterGates": {
+      "requiredEvidence": {
+        "phase": "charter-evidence",
+        "interpretation": "criteria-satisfied",
+        "criteriaDigest": "sha256:74d26e3ec1796234cef9c72ce217cdb6fb1cadfddc8601f02af74c86bbfb531a",
+        "status": "not-assessed",
+        "basis": "not-evaluated",
+        "actor": {
+          "kind": "system",
+          "id": "gaep.workflow-coordinator"
+        },
+        "evaluator": {
+          "kind": "system",
+          "id": "gaep.workflow-coordinator",
+          "version": "1",
+          "digest": "sha256:a5bcb8091a3931a2c0a5bc03400b2338f4555653419733834642902d3d879db1"
+        },
+        "assessedAt": "2026-08-03T04:31:17.960Z"
+      },
+      "stopConditions": {
+        "phase": "charter-stop-conditions",
+        "interpretation": "stop-boundary-complied",
+        "criteriaDigest": "sha256:2c4468bb6156e9dd051fcd8180226e45f95f3bc553ca1ab1d87187bc7ef2b988",
+        "status": "not-assessed",
+        "basis": "not-evaluated",
+        "actor": {
+          "kind": "system",
+          "id": "gaep.workflow-coordinator"
+        },
+        "evaluator": {
+          "kind": "system",
+          "id": "gaep.workflow-coordinator",
+          "version": "1",
+          "digest": "sha256:a5bcb8091a3931a2c0a5bc03400b2338f4555653419733834642902d3d879db1"
+        },
+        "assessedAt": "2026-08-03T04:31:17.960Z"
+      }
+    },
+    "terminalReasonCode": "apply-review-required",
+    "capabilityBoundary": "natural-language-gates-require-explicit-human-or-system-assessment"
+  },
+  "staging": {
+    "baselineDigest": "sha256:7c1b401f24be17daf240a5d773adce23535fb417031e88ac2d984913a2bd06b6",
+    "finalDigest": "sha256:7c1b401f24be17daf240a5d773adce23535fb417031e88ac2d984913a2bd06b6",
+    "changes": [],
+    "excludedPathCount": 1,
+    "excludedPathSetDigest": "sha256:80a94ea0b8339714e9ca2d29372a2945d67123240f3be365683be296f62b3efc",
+    "applyState": "pending"
+  },
+  "actualEffects": [
+    {
+      "effect": "observe",
+      "status": "observed-provisional",
+      "evidenceDigest": "sha256:c281bc69fa168936782375da30b4ab539787cc511f45488f38e201a6a7612f89"
+    }
+  ],
+  "capturedAt": "2026-08-03T04:31:17.962Z",
+  "authorityBoundary": "evidence-does-not-self-assert-outcome-or-authorization"
+}

@@ -6,6 +6,7 @@ import {
   acceptInitiativeClassification,
   answerInitiativeClassification,
   assessInitiativeClassification,
+  assessInitiativeClassificationWithAutomaticRepair,
   backInitiativeClassification,
   changeInitiativeClassificationAdvisor,
   initiativeClassificationInput,
@@ -13,6 +14,7 @@ import {
   isInitiativeClassificationChatState,
   parseInitiativeClassificationProposal,
   startInitiativeClassificationChat,
+  suggestedInitiativeClassificationResolution,
 } from "./interactive-initiative-classification-chat.js"
 import type { ProductChatAdvisorSelection } from "./interactive-product-chat.js"
 
@@ -68,6 +70,25 @@ describe("interactive Initiative classification chat", () => {
     expect(answerInitiativeClassification(state, "brownfield").challenge).toMatch(/specific classification brief/)
   })
 
+  it("starts a revision from the complete current classification without asking for internal JSON", () => {
+    const state = startInitiativeClassificationChat(claude, { ...context, currentClassification: classification })
+    const prompt = initiativeClassificationQuestion(state).prompt
+    expect(prompt).toContain("Revise the current governed classification")
+    expect(prompt).toContain("Preserve every supported current value")
+    expect(prompt).toContain("complete replacement classification, not a patch")
+    expect(state.currentClassification?.unresolvedQuestions).toEqual(classification.unresolvedQuestions)
+  })
+
+  it("turns open classification questions into a bounded human-review resolution brief", () => {
+    const state = startInitiativeClassificationChat(claude, { ...context, currentClassification: classification })
+    const resolution = suggestedInitiativeClassificationResolution(state)
+    expect(resolution).toContain("GAEP-generated classification resolution proposal for human review")
+    expect(resolution).toContain("standard role titles")
+    expect(resolution).toContain("consequential-gate condition")
+    expect(resolution).toContain(classification.unresolvedQuestions[0])
+    expect(resolution).toContain("unresolvedQuestions empty")
+  })
+
   it("parses, assesses, accepts, and exposes only an explicitly reviewed classification", () => {
     let state = startInitiativeClassificationChat(claude, context)
     const answer = "This is a brownfield internal Product increment owned and approved by the Product Owner, based on this human classification review."
@@ -89,6 +110,42 @@ describe("interactive Initiative classification chat", () => {
   it("rejects malformed or contract-invalid model proposals", () => {
     expect(() => parseInitiativeClassificationProposal("not JSON")).toThrow(/does not contain/)
     expect(() => parseInitiativeClassificationProposal('{"primaryType":"invented"}')).toThrow()
+  })
+
+  it("repairs an invalid advisor proposal without asking the human to format the contract", async () => {
+    const state = startInitiativeClassificationChat(claude, context)
+    const humanBrief = "This is a natural-language greenfield Product classification brief with operational scope, risk, evidence, and unresolved authority."
+    const attempts: Array<{ attempt: number; errors: string[] }> = []
+    const result = await assessInitiativeClassificationWithAutomaticRepair(
+      state,
+      humanBrief,
+      async ({ attempt, contractErrors }) => {
+        attempts.push({ attempt, errors: contractErrors })
+        return attempt === 1
+          ? { assessment: "Initial proposal", strengths: [], gaps: [], proposedAnswer: '{"primaryType":"invented"}' }
+          : { assessment: "Repaired proposal", strengths: [], gaps: [], proposedAnswer: JSON.stringify(classification) }
+      },
+    )
+    expect(result.attempts).toBe(2)
+    expect(attempts[1]?.errors.join(" ")).toContain("primaryType")
+    expect(result.state.pending?.originalAnswer).toBe(humanBrief)
+    expect(result.state.pending?.classification).toEqual(classification)
+  })
+
+  it("retries an unparseable advisor envelope and stops after a contract-valid result", async () => {
+    const state = startInitiativeClassificationChat(claude, context)
+    let calls = 0
+    const result = await assessInitiativeClassificationWithAutomaticRepair(
+      state,
+      "A natural-language classification brief with sufficient detail for the governed Initiative.",
+      async () => {
+        calls += 1
+        if (calls === 1) throw new Error("The advisor did not return the required structured assessment")
+        return { assessment: "Repaired", strengths: [], gaps: [], proposedAnswer: JSON.stringify(classification) }
+      },
+    )
+    expect(calls).toBe(2)
+    expect(result.state.phase).toBe("awaiting-approval")
   })
 
   it("preserves revision binding, supports correction, and drops stale proposals when the advisor changes", () => {

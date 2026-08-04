@@ -38,6 +38,29 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         ...baseFor(route),
         kind: "overview",
         product: { name: "Product", lifecycle: "active", readinessStatement: "Host supplied readiness" },
+        journey: {
+          state: "in-progress",
+          recordedCount: 1,
+          totalCount: 12,
+          attentionCount: 0,
+          checkpoints: [
+            { id: "product-definition", label: "Product definition", state: "complete", summary: "Recorded." },
+            { id: "initiative-definition", label: "Initiative definition", state: "next", summary: "Create one." },
+            { id: "initiative-classification", label: "Initiative classification", state: "not-started", summary: "Not started." },
+            { id: "initiative-applicability", label: "Initiative applicability", state: "not-started", summary: "Not started." },
+            { id: "source-intake", label: "Source intake", state: "not-started", summary: "Not started." },
+            { id: "source-baseline", label: "Source baseline", state: "not-started", summary: "Not started." },
+            { id: "source-provenance", label: "Source provenance", state: "not-started", summary: "Not started." },
+            { id: "product-discovery", label: "Product discovery", state: "not-started", summary: "Not started." },
+            { id: "business-architecture", label: "Business architecture", state: "not-started", summary: "Not started." },
+            { id: "solution-security-architecture", label: "Solution and security architecture", state: "not-started", summary: "Not started." },
+            { id: "detailed-design-assurance", label: "Detailed design and assurance", state: "not-started", summary: "Not started." },
+            { id: "p0-p4-readiness", label: "P0–P4 readiness and P5 handoff", state: "not-started", summary: "Not started." },
+          ],
+          next: { label: "Initiative definition", summary: "Create one.", action: { label: "Continue", action: { kind: "continue-product-journey" }, enabled: true } },
+          authorityBoundary: "product-journey-is-a-read-only-projection-and-does-not-grant-approval-readiness-or-action-authority",
+        },
+        productRevisions: table("product-revisions"),
         sections,
         currentInitiative: [],
         latestRun: [],
@@ -346,6 +369,52 @@ describe("Product Studio protocol", () => {
     const mutableEvidenceCue = forgedEvidenceCue.dashboard.evidenceCues as unknown as { freshness: string }
     mutableEvidenceCue.freshness = "unknown"
     expect(isStudioSnapshot(forgedEvidenceCue)).toBe(false)
+
+    const withoutProductRevisionHistory = structuredClone(snapshot("overview")) as unknown as Record<string, any>
+    delete withoutProductRevisionHistory.page.productRevisions
+    expect(isStudioSnapshot(withoutProductRevisionHistory)).toBe(false)
+  })
+
+  it("rejects Product Journeys that violate actionable-attention and accounting invariants", () => {
+    const missingAction = structuredClone(snapshot("overview")) as unknown as Record<string, any>
+    missingAction.page.journey.state = "attention-required"
+    missingAction.page.journey.attentionCount = 1
+    missingAction.page.journey.recordedCount = 2
+    missingAction.page.journey.checkpoints[1] = {
+      ...missingAction.page.journey.checkpoints[1],
+      state: "attention-required",
+      summary: "A recorded checkpoint needs repair.",
+    }
+    expect(isStudioSnapshot(missingAction)).toBe(false)
+
+    const disabledAction = structuredClone(missingAction)
+    disabledAction.page.journey.checkpoints[1].action = {
+      label: "Resolve the checkpoint",
+      enabled: false,
+      disabledReason: "No resolution path is available.",
+      action: { kind: "continue-product-journey" },
+    }
+    expect(isStudioSnapshot(disabledAction)).toBe(false)
+
+    const duplicateCheckpoint = structuredClone(snapshot("overview")) as unknown as Record<string, any>
+    duplicateCheckpoint.page.journey.checkpoints[11].id = "product-definition"
+    expect(isStudioSnapshot(duplicateCheckpoint)).toBe(false)
+
+    const incorrectCounts = structuredClone(snapshot("overview")) as unknown as Record<string, any>
+    incorrectCounts.page.journey.recordedCount = 2
+    expect(isStudioSnapshot(incorrectCounts)).toBe(false)
+
+    const forgedDetail = structuredClone(snapshot("overview")) as unknown as Record<string, any>
+    forgedDetail.page.journey.checkpoints[0].details = [{ label: "Product name", value: "Safe", extra: "forged" }]
+    expect(isStudioSnapshot(forgedDetail)).toBe(false)
+
+    const forgedImpact = structuredClone(snapshot("overview")) as unknown as Record<string, any>
+    forgedImpact.page.journey.checkpoints[0].impact = {
+      state: "review-required",
+      affectedCheckpointIds: ["initiative-definition", "initiative-definition"],
+      summary: "Duplicate downstream identity.",
+    }
+    expect(isStudioSnapshot(forgedImpact)).toBe(false)
   })
 
   it("accepts only a digest-bound Phase 2 UX/Figma view beside the Phase 2 dashboard shell", () => {
@@ -581,6 +650,16 @@ describe("Product Studio protocol", () => {
       expectedRevision: 3,
     })).toBe(true)
     expect(isStudioAction({
+      kind: "revise-initiative-classification",
+      initiativeId: "22222222-2222-4222-8222-222222222222",
+      expectedRevision: 3,
+    })).toBe(true)
+    expect(isStudioAction({
+      kind: "revise-initiative-applicability",
+      initiativeId: "22222222-2222-4222-8222-222222222222",
+      expectedRevision: 3,
+    })).toBe(true)
+    expect(isStudioAction({
       kind: "resolve-initiative-applicability",
       initiativeId: "22222222-2222-4222-8222-222222222222",
       expectedRevision: 3,
@@ -589,6 +668,11 @@ describe("Product Studio protocol", () => {
       kind: "classify-initiative",
       initiativeId: "/tmp/private",
       expectedRevision: 3,
+    })).toBe(false)
+    expect(isStudioAction({
+      kind: "revise-initiative-classification",
+      initiativeId: "22222222-2222-4222-8222-222222222222",
+      expectedRevision: 0,
     })).toBe(false)
     expect(isStudioAction({
       kind: "resolve-initiative-applicability",

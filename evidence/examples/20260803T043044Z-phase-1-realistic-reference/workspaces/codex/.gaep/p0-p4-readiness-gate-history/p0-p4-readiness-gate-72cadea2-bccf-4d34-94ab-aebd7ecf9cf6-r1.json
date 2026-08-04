@@ -1,0 +1,1448 @@
+{
+  "initiativeId": "7cbb70ba-ecdf-4418-b693-b0693de9e842",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e127679575896008f4efb896fc1f4b14a2b4c75755c6805e5d8f31a03939ca43",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:36753a529d7311fc18ee4fce96bcea08ba1e13ebd3b5342935908bf58acb5c57"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate P0-P4 readiness evaluation",
+  "scope": "Evaluate the exact applicable P0 through P4 governed output revisions for this Initiative without granting readiness or authority.",
+  "evaluationDefinition": {
+    "id": "p0-p4-readiness-v1",
+    "version": "1.0.0",
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "criteria": [
+      "Applicable outputs have exact current evidence",
+      "Blocking findings remain visible"
+    ],
+    "expectedEvidence": [
+      "Exact Evidence Registry entries",
+      "Exact governed output revisions"
+    ],
+    "evaluatorRequirements": [
+      "Current Product and Initiative access",
+      "Read-only governed record access"
+    ],
+    "independenceRequirements": [
+      "Approval remains outside the evaluator",
+      "Evaluation remains separate from authoring"
+    ],
+    "failureBehavior": "Missing, stale, failed, unavailable or inconclusive evidence keeps the gate from passing.",
+    "invalidationTriggers": [
+      "Applicable output revision changes",
+      "Evidence freshness or policy changes"
+    ],
+    "authorityBoundary": "evaluation-definition-does-not-grant-approval-readiness-authorization-or-action-authority"
+  },
+  "evidenceRegistry": {
+    "recordId": "35921794-9216-40c9-b877-817b8196cf50",
+    "revision": 1,
+    "digest": "sha256:2d7130f4c34d327f0fad5df7fa61c65195703c054e2fd3f16d4e5b1a932f0def"
+  },
+  "traceability": {
+    "recordId": "e953c7ff-72a2-4984-9bdb-dc1836ff2f66",
+    "revision": 1,
+    "digest": "sha256:71aeadaedb8b95344b88aaa94764131cd176bd7b9d3c3feff73f6676aee98d38"
+  },
+  "outputs": [
+    {
+      "outputKind": "architecture-challenge-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "authorization-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "bounded-context-ownership",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "business-architecture-baseline",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "business-capability-map",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "business-rule-catalog",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "business-understanding",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "candidate-source-baseline",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "data-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "decision-register",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "end-to-end-traceability",
+      "applicability": "applicable",
+      "subjects": [
+        {
+          "recordKind": "end-to-end-traceability-candidate",
+          "recordId": "e953c7ff-72a2-4984-9bdb-dc1836ff2f66",
+          "revision": 1,
+          "digest": "sha256:71aeadaedb8b95344b88aaa94764131cd176bd7b9d3c3feff73f6676aee98d38"
+        }
+      ],
+      "evaluationState": "satisfied",
+      "freshness": "current",
+      "evidenceItemKeys": [
+        "local-conformance-receipt"
+      ],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The named human evaluator records candidate satisfaction for the exact output and evidence revisions only.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "event-integration-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "evidence-registry",
+      "applicability": "applicable",
+      "subjects": [
+        {
+          "recordKind": "evidence-registry",
+          "recordId": "35921794-9216-40c9-b877-817b8196cf50",
+          "revision": 1,
+          "digest": "sha256:2d7130f4c34d327f0fad5df7fa61c65195703c054e2fd3f16d4e5b1a932f0def"
+        }
+      ],
+      "evaluationState": "satisfied",
+      "freshness": "current",
+      "evidenceItemKeys": [
+        "local-conformance-receipt"
+      ],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The named human evaluator records candidate satisfaction for the exact output and evidence revisions only.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "failure-recovery-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "initiative-entry",
+      "applicability": "applicable",
+      "subjects": [
+        {
+          "recordKind": "initiative",
+          "recordId": "7cbb70ba-ecdf-4418-b693-b0693de9e842",
+          "revision": 4,
+          "digest": "sha256:36753a529d7311fc18ee4fce96bcea08ba1e13ebd3b5342935908bf58acb5c57"
+        }
+      ],
+      "evaluationState": "satisfied",
+      "freshness": "current",
+      "evidenceItemKeys": [
+        "local-conformance-receipt"
+      ],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The named human evaluator records candidate satisfaction for the exact output and evidence revisions only.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "operating-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "outcome-success-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "process-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "risk-register",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "security-privacy-threat-assessment",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "source-intake",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "source-provenance",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "stakeholder-role-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "system-solution-architecture",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    },
+    {
+      "outputKind": "value-stream-model",
+      "applicability": "not-applicable-candidate",
+      "subjects": [],
+      "evaluationState": "not-applicable-candidate",
+      "freshness": "unknown",
+      "evidenceItemKeys": [],
+      "waiverKeys": [],
+      "blockers": [],
+      "conditions": [],
+      "findings": [],
+      "assessedBy": {
+        "kind": "human",
+        "id": "product-owner"
+      },
+      "assessedAt": "2026-07-27T02:00:00.000Z",
+      "basis": "The candidate applicability review records this output as not applicable without granting authority.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "authorityBoundary": "readiness-output-evaluation-is-candidate-epistemic-state-and-does-not-establish-approval-waiver-acceptance-readiness-phase-entry-implementation-authorization-or-action-authority"
+    }
+  ],
+  "waivers": [],
+  "unresolvedDecisions": [],
+  "conditions": [],
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-CAE-REQ-003",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-006",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-010",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-013",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-014",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-016",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-017",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-018",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-019",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-020",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CAE-REQ-024",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-004",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-007",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-008",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-013",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-015",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-016",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-017",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CST-REQ-025",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-009",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-014",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-017",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-029",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-033",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-035",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-POLICY-REQ-025",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-POLICY-REQ-027",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-006",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-007",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-008",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-013",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-RESVER-REQ-015",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SCOPE-REQ-014",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SCOPE-REQ-015",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-SCOPE-REQ-016",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-019",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-024",
+      "state": "covered-candidate",
+      "outputKinds": [
+        "end-to-end-traceability",
+        "evidence-registry",
+        "initiative-entry"
+      ],
+      "basis": "The candidate preserves exact inputs, separate gate state, adverse evidence, waivers, conditions, history and authority boundaries.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "unresolvedQuestions": [],
+  "inconsistencies": [],
+  "limitations": [
+    "No phase entry, implementation authorization, Product Owner acceptance, release, deployment, or action authority is represented"
+  ],
+  "readinessAuthorityState": "not-established",
+  "schemaVersion": 1,
+  "kind": "p0-p4-readiness-gate-candidate",
+  "id": "72cadea2-bccf-4d34-94ab-aebd7ecf9cf6",
+  "productId": "22295bed-0b3c-4ffa-9979-eb612fdc0c5b",
+  "revision": 1,
+  "membershipDigest": "sha256:ac03cefc3614c3f716297f55c7be9e8560584c149930accc5b7509b93ddcbc6e",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-08-03T04:31:13.278Z",
+  "updatedAt": "2026-08-03T04:31:13.278Z",
+  "authorityBoundary": "p0-p4-readiness-gate-is-a-candidate-evaluation-and-does-not-establish-readiness-approval-waiver-acceptance-phase-entry-implementation-authorization-baseline-promotion-or-action-authority"
+}

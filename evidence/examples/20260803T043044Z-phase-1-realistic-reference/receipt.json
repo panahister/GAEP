@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-phase1-realistic-reference-receipt",
+  "scenario": {
+    "id": "phase-1-atlas-release-readiness-v1",
+    "path": "scenario.json",
+    "sourcePath": "examples/phase-1-realistic-reference/scenario.json",
+    "sourceDigest": "sha256:31050aa2d6043761f2405ed909e9e57ea550284b1eeabe7acb102167cddffe79",
+    "semanticDigest": "sha256:38aea6886e76a509f5709a8f6d7366feb14f79a45d8743a172ca4b535d06c2c1",
+    "productName": "Atlas Release Readiness",
+    "initiativeTitle": "Review the Atlas release evidence packet"
+  },
+  "providers": {
+    "codex": {
+      "path": "providers/codex-receipt.json",
+      "bytes": 5322,
+      "digest": "sha256:30b0f7ff477581a60b69992c8fb7d19b54eab86c68f7554309a48647d93cd1a2",
+      "summaryDigest": "sha256:a0b5bed8e40efed149961fa21c8745f410840fef3c7f5cef1baceb48609ba96c",
+      "mode": "codex-staged"
+    },
+    "claude": {
+      "path": "providers/claude-receipt.json",
+      "bytes": 5881,
+      "digest": "sha256:20e40f34a2d9edea8285177f965dc2d1826f8212126203b38d87b42917a352df",
+      "summaryDigest": "sha256:7a1a526288ec3ef910cbbfea8fc0e53b8cf57b6788950a4724cc053fecb53ad7",
+      "mode": "claude-context-only"
+    },
+    "comparison": {
+      "path": "providers/comparison-receipt.json",
+      "bytes": 9902,
+      "digest": "sha256:6fa95303c94e60de90d55174039b35b1ab9064f8fd45f737c5b7325b30d2f5c9",
+      "comparisonDigest": "sha256:5ebfeb8e3336f89e7bdb396492f894488730896ca50b0f95090fd0fd4c057b2e",
+      "structuralResult": "satisfied",
+      "structuralCriteriaSatisfied": 7,
+      "semanticQuality": "not-assessed",
+      "liveProviderQuality": "not-assessed"
+    }
+  },
+  "outputCatalog": {
+    "path": "output-catalog.json",
+    "bytes": 4793,
+    "digest": "sha256:251bece6d41809df36295a5a8368ecb721be203d763c4d0f9b08ec1459bfb34d",
+    "catalogDigest": "sha256:bd6ac080327ee5ac39a0154d8a6ffafe2140b8ab02b669d2713278149f45b8e6",
+    "outputCount": 25
+  },
+  "stores": {
+    "codex": {
+      "root": "workspaces/codex/.gaep",
+      "fileCount": 70,
+      "byteCount": 1848685,
+      "inventoryDigest": "sha256:b8998a07aa1d2ce6afbfafa2db21ceb7590b471f2728405a5a77ae505f30629f",
+      "productDigest": "sha256:e127679575896008f4efb896fc1f4b14a2b4c75755c6805e5d8f31a03939ca43",
+      "initiativeDigest": "sha256:36753a529d7311fc18ee4fce96bcea08ba1e13ebd3b5342935908bf58acb5c57",
+      "auditEventCount": 41,
+      "managedRunCount": 1,
+      "runCount": 1,
+      "readiness": {
+        "result": "passed",
+        "outputCount": 25,
+        "applicableOutputCount": 3,
+        "notApplicableOutputCount": 22
+      },
+      "handoff": {
+        "state": "complete-for-review",
+        "itemCount": 25,
+        "includedItemCount": 3,
+        "omittedNotApplicableItemCount": 22
+      },
+      "checks": {
+        "workspaceHealthy": true,
+        "auditValid": true,
+        "productMatches": true,
+        "initiativeMatches": true,
+        "readinessMatches": true,
+        "handoffMatches": true,
+        "managedRunMatches": true,
+        "runMatches": true
+      }
+    },
+    "claude": {
+      "root": "workspaces/claude/.gaep",
+      "fileCount": 67,
+      "byteCount": 1830973,
+      "inventoryDigest": "sha256:6a16bb01517aca3ceeb7060d7c290ea35435ec1ee2de9f99e6381ec6f2665df9",
+      "productDigest": "sha256:e393d30d75e6308714a241d2bcb9349f4b36a1230ecaadec8aeaa3975fdbb2e5",
+      "initiativeDigest": "sha256:68744953465aaadd2be5245903421834ae23a5fd1f5efc40468183799ea026fd",
+      "auditEventCount": 39,
+      "managedRunCount": 1,
+      "runCount": 1,
+      "readiness": {
+        "result": "passed",
+        "outputCount": 25,
+        "applicableOutputCount": 3,
+        "notApplicableOutputCount": 22
+      },
+      "handoff": {
+        "state": "complete-for-review",
+        "itemCount": 25,
+        "includedItemCount": 3,
+        "omittedNotApplicableItemCount": 22
+      },
+      "checks": {
+        "workspaceHealthy": true,
+        "auditValid": true,
+        "productMatches": true,
+        "initiativeMatches": true,
+        "readinessMatches": true,
+        "handoffMatches": true,
+        "managedRunMatches": true,
+        "runMatches": true
+      }
+    }
+  },
+  "summary": {
+    "governedRecordCountPerProvider": 21,
+    "p0P4OutputCount": 25,
+    "inspectableStoreCount": 2,
+    "completedManagedRunCount": 2,
+    "structuralCriteriaSatisfied": 7,
+    "materialDivergenceCount": 0,
+    "productOwnerAcceptance": "not-established",
+    "readinessAuthority": "not-established"
+  },
+  "authority": {
+    "productOwnerAcceptance": "not-established",
+    "readinessAuthority": "not-established",
+    "liveProviderAcceptance": "not-established",
+    "nativeHostAcceptance": "not-established",
+    "securityScan": "skipped-by-product-owner",
+    "releaseAuthority": "not-granted",
+    "deploymentAuthority": "not-granted",
+    "boundary": "realistic-reference-receipt-is-local-inspectable-evidence-not-product-baseline-readiness-approval-acceptance-security-release-deployment-or-action-authority"
+  },
+  "limitations": [
+    "The artifact exercises a deterministic realistic reference Product, not a real Product baseline, production dataset, readiness decision, or Product Owner acceptance.",
+    "Codex and Claude use local fixtures; live authentication, entitlement, reachability, semantic quality, reliability, latency, usage, and cost remain untested.",
+    "The portable stores make governed records inspectable, but native IDE installation, interaction, rendering, accessibility, and supported-host acceptance remain outside this artifact.",
+    "The Product Owner explicitly skipped the interrupted Codex Security scan; the artifact is not security assurance or a security result."
+  ],
+  "compositionDigest": "sha256:11e3814358498ea37368e10f794c38c4fb7a786d45d97883d3f17b680ffee28c"
+}

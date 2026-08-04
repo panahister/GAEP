@@ -152,6 +152,15 @@ class StudioShell {
     private readonly assertiveLive: HTMLElement,
     private readonly bridge: HostBridge,
   ) {
+    // These renderers remain protocol-compatibility helpers for internal test snapshots.
+    // Product Studio intentionally never invokes them in the end-user Overview.
+    void this.renderPhaseDashboard
+    void this.renderPhase2UxFigmaDashboard
+    void this.renderPhase3aDashboard
+    void this.renderPhase1Summary
+    void this.renderPhase1ChangeImpact
+    void this.renderPhase1AgentModelDashboard
+    void this.renderPhase2ChangeImpactAgentModelDashboard
     this.bridge.onMessage((message) => this.receive(message))
     window.addEventListener("keydown", (event) => this.handleGlobalKey(event))
   }
@@ -219,15 +228,11 @@ class StudioShell {
     main.tabIndex = -1
     if (snapshot.surface.kind === "ready") {
       main.append(this.renderPage(snapshot))
-      if (snapshot.dashboard) main.append(this.renderPhaseDashboard(snapshot.dashboard))
-      if (snapshot.phase2UxFigma) main.append(this.renderPhase2UxFigmaDashboard(snapshot.phase2UxFigma))
-      if (snapshot.phase3aDashboard) main.append(this.renderPhase3aDashboard(snapshot.phase3aDashboard))
-      if (snapshot.phase2ChangeImpactAgentModel) main.append(this.renderPhase2ChangeImpactAgentModelDashboard(snapshot.phase2ChangeImpactAgentModel))
-      if (snapshot.phase1Summary) main.append(this.renderPhase1Summary(snapshot.phase1Summary))
-      if (snapshot.phase1ChangeImpact) main.append(this.renderPhase1ChangeImpact(snapshot.phase1ChangeImpact))
+      // Delivery-phase dashboards are governance/implementation projections, not
+      // end-user Product Journey content. They remain available in the protocol
+      // for internal verification, but the Product Studio never renders them.
       if (snapshot.changeImpact) main.append(this.renderChangeImpactDashboard(snapshot.changeImpact))
-      if (snapshot.phase1AgentModel) main.append(this.renderPhase1AgentModelDashboard(snapshot.phase1AgentModel))
-      else if (snapshot.agentModel) main.append(this.renderAgentModelDashboard(snapshot.agentModel))
+      if (snapshot.agentModel) main.append(this.renderAgentModelDashboard(snapshot.agentModel))
     }
     else main.append(this.renderSurfaceState(snapshot.surface))
     workspace.append(main)
@@ -359,10 +364,111 @@ class StudioShell {
       header.append(primary)
     }
     container.append(header)
-    if (page.design) container.append(this.renderDesignSection(page.design, page.route))
+
+    const journey = element("section", "section journey-card")
+    const journeyHeading = element("div", "journey-heading")
+    const journeyTitle = element("div")
+    journeyTitle.append(
+      element("h3", undefined, "Product Journey"),
+      element("div", "muted", `${page.journey.recordedCount} of ${page.journey.totalCount} checkpoints recorded · ${page.journey.attentionCount} need attention`),
+    )
+    journeyHeading.append(journeyTitle, element("strong", `journey-state ${page.journey.state}`, page.journey.state.replaceAll("-", " ")))
+    journey.append(journeyHeading)
+    const journeyList = element("ol", "journey-list")
+    for (const checkpoint of page.journey.checkpoints) {
+      const row = element("li", `journey-row ${checkpoint.state}`)
+      const recorded = checkpoint.state === "complete" || checkpoint.state === "attention-required"
+      const marker = element("span", "journey-marker", recorded ? "✓" : checkpoint.state === "next" ? "→" : "○")
+      marker.setAttribute("aria-label", checkpoint.state === "attention-required" ? "Recorded; needs attention" : checkpoint.state)
+      marker.title = checkpoint.state === "attention-required" ? "Recorded; needs attention" : checkpoint.state
+      const detail = element("div")
+      const label = element("div", "journey-label")
+      label.append(element("strong", undefined, checkpoint.label))
+      if (checkpoint.state === "attention-required") {
+        label.append(element("span", "journey-attention-badge", "Needs attention"))
+      }
+      detail.append(label, element("div", "muted", checkpoint.summary))
+      const checkpointControls = [checkpoint.action, checkpoint.reviewAction, checkpoint.reviseAction].filter(
+        (candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate),
+      )
+      if (checkpointControls.length > 0) detail.append(this.renderActionRow(checkpointControls))
+      if (recorded && checkpoint.details && checkpoint.details.length > 0) {
+        const disclosure = element("details", "journey-details")
+        const revisionLabel = checkpoint.revision ? ` · Revision ${checkpoint.revision}` : ""
+        disclosure.append(element("summary", undefined, `View recorded values${revisionLabel}`))
+
+        const tableRegion = element("div", "journey-table-scroll")
+        const table = element("table", "journey-values-table")
+        const head = element("thead")
+        const headRow = element("tr")
+        headRow.append(element("th", undefined, "Field"), element("th", undefined, "Recorded value"))
+        head.append(headRow)
+        const body = element("tbody")
+        for (const entry of checkpoint.details) {
+          const value = element("td", `journey-value ${entry.kind ?? "value"}`)
+          if (entry.kind === "list") {
+            const list = element("ul", "compact-list")
+            for (const item of entry.value.split("\n").filter(Boolean)) list.append(element("li", undefined, item))
+            value.append(list)
+          } else if (entry.kind === "status") {
+            value.append(element("span", "journey-status-value", entry.value))
+          } else if (entry.kind === "authority") {
+            value.append(element("div", "journey-authority-value", entry.value))
+          } else {
+            value.textContent = entry.value
+          }
+          const valueRow = element("tr")
+          valueRow.append(element("th", undefined, entry.label), value)
+          body.append(valueRow)
+        }
+        table.append(head, body)
+        tableRegion.append(table)
+        disclosure.append(tableRegion)
+
+        if (checkpoint.impact) {
+          const impact = element("div", `journey-impact ${checkpoint.impact.state}`)
+          impact.append(
+            element("strong", undefined, "If this checkpoint changes"),
+            element("p", "muted", checkpoint.impact.summary),
+          )
+          if (checkpoint.impact.affectedCheckpointIds.length > 0) {
+            const affected = element("ul", "compact-list")
+            for (const affectedId of checkpoint.impact.affectedCheckpointIds) {
+              const affectedCheckpoint = page.journey.checkpoints.find((candidate) => candidate.id === affectedId)
+              affected.append(element("li", undefined, affectedCheckpoint?.label ?? affectedId.replaceAll("-", " ")))
+            }
+            impact.append(affected)
+          }
+          disclosure.append(impact)
+        }
+
+        detail.append(disclosure)
+      }
+      row.append(marker, detail)
+      journeyList.append(row)
+    }
+    journey.append(journeyList)
+    const next = element("div", "journey-next")
+    next.append(element("strong", undefined, `Next: ${page.journey.next.label}`), element("p", "muted", page.journey.next.summary))
+    if (page.journey.next.action) next.append(this.renderActionButton(page.journey.next.action))
+    journey.append(next)
+    container.append(journey)
+
+    const history = element("details", "section advanced-section")
+    history.append(
+      element("summary", undefined, `Product revision history (${page.productRevisions.rows.length})`),
+      this.renderTable(page.productRevisions, false),
+    )
+    container.append(history)
+
+    if (page.design) {
+      const advanced = element("details", "section advanced-section")
+      advanced.append(element("summary", undefined, "Advanced Product design details"), this.renderDesignSection(page.design, page.route))
+      container.append(advanced)
+    }
 
     const progress = element("section", "section")
-    progress.append(element("h3", undefined, "Design sections"))
+    progress.append(element("h3", undefined, "Product workspace sections"))
     const list = element("ul", "progress-list")
     for (const section of page.sections) {
       const row = element("li", "progress-row")

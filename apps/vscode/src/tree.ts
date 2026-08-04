@@ -143,20 +143,24 @@ function diagnosticEntry(label: string, detail: string): TreeEntry {
 
 function studioEntry(route: "overview" | "agents-tools" | "runs-evidence" | "readiness"): TreeEntry {
   return {
-    label: "Open Product Studio",
+    label: route === "overview" ? "Open Product Journey" : "Open Product Studio",
     description: route,
     icon: "layout",
-    command: { command: "gaep.openProductStudio", title: "Open Product Studio", arguments: [route] },
+    command: { command: "gaep.openProductStudio", title: route === "overview" ? "Open Product Journey" : "Open Product Studio", arguments: [route] },
   }
 }
 
-function productChatEntry(): TreeEntry {
+function productChatEntry(initialized = false): TreeEntry {
   return {
-    label: "Open Interactive Product Chat",
-    description: "@gaep",
-    tooltip: "Use native VS Code Chat for multi-turn GAEP workflows, attachments, voice input, review, and explicit governed commits.",
+    label: initialized ? "Continue Product Journey" : "Start Product Journey",
+    description: initialized ? "next checkpoint" : "@gaep",
+    tooltip: "Use native VS Code Chat for multi-turn GAEP workflows, #file attachments, voice input, review, and explicit governed records.",
     icon: "comment-discussion",
-    command: { command: "gaep.openInteractiveChat", title: "Open Interactive Product Chat" },
+    command: {
+      command: "gaep.openInteractiveChat",
+      title: initialized ? "Continue Product Journey" : "Start Product Journey",
+      arguments: [initialized ? "continue" : "initialize"],
+    },
   }
 }
 
@@ -226,6 +230,12 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
           return [...recovery, diagnosticEntry("Product State Needs Repair", reason)]
         }
         return [...recovery, productChatEntry(), {
+          label: "Adopt Existing Product",
+          description: "start from documents",
+          tooltip: "Choose an existing Product folder. GAEP proposes Product Definition and complete Product Journey coverage for editable review before creating governed state.",
+          icon: "folder-opened",
+          command: { command: "gaep.chooseFolder", title: "Adopt Existing Product", arguments: ["adopt"] },
+        }, {
           label: "Initialize Product",
           description: context.workspaceName,
           icon: "add",
@@ -237,7 +247,28 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
       const selected = currentInitiative(initiatives)
       return [
         ...recovery,
-        productChatEntry(),
+        productChatEntry(true),
+        {
+          label: "Journey Mode",
+          description: "Quick · Guided · Assured",
+          tooltip: "Choose presentation depth. The mode never removes governed records, approvals, evidence, or authority boundaries.",
+          icon: "settings",
+          command: { command: "gaep.openInteractiveChat", title: "Choose Product Journey Mode", arguments: ["mode"] },
+        },
+        {
+          label: "Choose File",
+          description: "from your computer",
+          tooltip: "Browse any accessible local folder and stage selected documents as non-authoritative Source Intake candidates.",
+          icon: "attach",
+          command: { command: "gaep.chooseFile", title: "Choose File" },
+        },
+        {
+          label: "Choose Folder",
+          description: "from your computer",
+          tooltip: "Browse any accessible local folder and recursively stage its supported text documents as bounded, non-authoritative Source Intake candidates.",
+          icon: "folder-opened",
+          command: { command: "gaep.chooseFolder", title: "Choose Folder" },
+        },
         studioEntry("overview"),
         {
           label: String(product.name),
@@ -253,18 +284,6 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
           command: selected
             ? { command: "gaep.changeInitiativeState", title: "Change Initiative State", arguments: [selected.id] }
             : undefined,
-        },
-        ...initiatives.map((initiative) => ({
-          label: initiative.title,
-          description: initiative.state,
-          tooltip: `${initiative.outcome}\n\nSelect to review allowed state transitions.`,
-          icon: initiative.state === "blocked" ? "error" : initiative.state === "completed" ? "pass" : "circle-outline",
-          command: { command: "gaep.changeInitiativeState", title: "Change Initiative State", arguments: [initiative.id] },
-        })),
-        {
-          label: "Create Initiative",
-          icon: "add",
-          command: { command: "gaep.createInitiative", title: "Create Initiative" },
         },
       ]
     }

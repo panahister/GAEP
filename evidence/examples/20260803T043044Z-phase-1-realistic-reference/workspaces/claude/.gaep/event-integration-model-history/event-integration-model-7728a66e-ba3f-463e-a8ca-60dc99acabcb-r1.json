@@ -1,0 +1,2908 @@
+{
+  "initiativeId": "43635952-8bdd-454f-b10c-e2e99de63e9e",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e393d30d75e6308714a241d2bcb9349f4b36a1230ecaadec8aeaa3975fdbb2e5",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:68744953465aaadd2be5245903421834ae23a5fd1f5efc40468183799ea026fd"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed Event and Integration Model",
+  "scope": "Model exact candidate Event Types, Commands, Adapter definitions, External Contracts, authority-aware mappings, and integration routes without representing an event occurrence, sent or delivered command, accepted external contract, active adapter, completed effect, readiness state, or action authority.",
+  "systemSolutionArchitecture": {
+    "recordId": "4570631f-141d-4d23-ab94-dbba43327f92",
+    "revision": 1,
+    "digest": "sha256:aa5aef40d713260e698cacdc6637049de059a82c9e2ecc1beeadf1d435ce98f4"
+  },
+  "boundedContextModel": {
+    "recordId": "f12cbe74-02f2-45de-8a74-e76ffcdb7aac",
+    "revision": 1,
+    "digest": "sha256:42f0e91916c88ca52e40cf54cd6ed57291da5a9307f65c39d8a9959315d82a3b"
+  },
+  "operatingModel": {
+    "recordId": "ffb4bcec-76b8-471b-b496-74d8140e0758",
+    "revision": 1,
+    "digest": "sha256:ada00386d249cad44382df2b44f5e15a952e15bb436d22e5148214f05d1ba1ca"
+  },
+  "securityPrivacyAssessment": {
+    "recordId": "137ae11c-fe28-4382-b50a-b45b93ab00f0",
+    "revision": 1,
+    "digest": "sha256:ae7bdf8783b8f0d3a29187752cf746eaf90f0a7228049c31e9e7e6b73b5909ad"
+  },
+  "processModel": {
+    "recordId": "e6a1fd18-5859-4aec-b365-621e33a4213f",
+    "revision": 1,
+    "digest": "sha256:7b4adb0489f2a4932a5a56e221150ff56c6bfadec35bec77bbd804db5762885a"
+  },
+  "dataModel": {
+    "recordId": "1d49e7b1-c519-4e30-ab05-2fcd7e0e711f",
+    "revision": 1,
+    "digest": "sha256:91e6d42155e5e1d2ac1561e97979f7c2178ef94ad18389189a55fe7538dc0746"
+  },
+  "authorizationModel": {
+    "recordId": "b5c371b6-518f-4e31-a003-124613cf6f15",
+    "revision": 1,
+    "digest": "sha256:98304ca45387562e34f9e0da11d47c4b2e2074bab31a4ed3fb18c3021a415be9"
+  },
+  "eventTypes": [
+    {
+      "key": "candidate-finalized-event",
+      "name": "Candidate finalized event definition",
+      "category": "integration",
+      "schemaVersion": 1,
+      "processEventKeys": [
+        "process-finalized"
+      ],
+      "producerBoundedContextKey": "governance-core",
+      "producerRoleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "subjectKind": "process",
+      "subjectKeys": [
+        "governed-context-review"
+      ],
+      "payloadDataEntityKeys": [
+        "governed-record"
+      ],
+      "envelope": {
+        "eventIdentity": "required",
+        "typeAndSchemaVersion": "required",
+        "subjectAndExactRevision": "required",
+        "occurrenceTime": "required-when-observed",
+        "recordedTime": "required-when-observed",
+        "producerAndActor": "required",
+        "accountableScope": "required",
+        "causationAndCorrelation": "required",
+        "ordering": "subject-sequence",
+        "classificationAndHandling": "required",
+        "provenanceAndIntegrity": "required",
+        "correctionLink": "required-when-applicable"
+      },
+      "payloadContract": "Bind the exact candidate Process, transition, prior and resulting state versions, actor, authority references, evidence, causation, correlation, classification, provenance, integrity, and correction lineage.",
+      "orderingScope": "Ordering is defined only within the exact governed Process subject sequence; no global ordering or cross-system delivery order is claimed.",
+      "correctionSemantics": "The original event remains immutable; a correction is a separately attributable linked event or compensating domain action with explicit residual effects.",
+      "classification": "internal",
+      "occurrenceState": "definition-only-not-observed",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "review-requested-event",
+      "name": "Review requested event definition",
+      "category": "integration",
+      "schemaVersion": 1,
+      "processEventKeys": [
+        "process-review-requested"
+      ],
+      "producerBoundedContextKey": "product-studio",
+      "producerRoleKeys": [
+        "initiative-owner"
+      ],
+      "subjectKind": "process",
+      "subjectKeys": [
+        "governed-context-review"
+      ],
+      "payloadDataEntityKeys": [
+        "product-studio-projection"
+      ],
+      "envelope": {
+        "eventIdentity": "required",
+        "typeAndSchemaVersion": "required",
+        "subjectAndExactRevision": "required",
+        "occurrenceTime": "required-when-observed",
+        "recordedTime": "required-when-observed",
+        "producerAndActor": "required",
+        "accountableScope": "required",
+        "causationAndCorrelation": "required",
+        "ordering": "subject-sequence",
+        "classificationAndHandling": "required",
+        "provenanceAndIntegrity": "required",
+        "correctionLink": "required-when-applicable"
+      },
+      "payloadContract": "Bind the exact candidate review request separately from any committed transition, delivery result, approval response, execution result, or external acceptance.",
+      "orderingScope": "Ordering is defined only within the exact governed Process subject sequence; external consumers must preserve any unsupported or absent ordering guarantee explicitly.",
+      "correctionSemantics": "Correction never overwrites the original definition or occurrence; a separately attributable linked correction preserves causation and correlation.",
+      "classification": "internal",
+      "occurrenceState": "definition-only-not-observed",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "key": "assess-candidate-command",
+      "name": "assess-candidate",
+      "semanticVersion": "1.0.0",
+      "purpose": "Request a bounded read-only assessment of exact candidate coverage and gaps without changing governed state or implying successful execution.",
+      "mode": "analyze",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "actorRoleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "targetBoundedContextKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "inputDataEntityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "outputDataEntityKeys": [
+        "product-studio-projection"
+      ],
+      "authorizationActionKeys": [
+        "assess-candidate"
+      ],
+      "authorizationRuleKeys": [
+        "candidate-review-rule"
+      ],
+      "preconditions": [
+        "Exact Product, Initiative, upstream records, Source evidence, audit integrity, candidate policy references, and expected versions are current"
+      ],
+      "contextRequirements": [
+        "Bounded privacy-safe current records and exact digests are sufficient for candidate assessment without external effect"
+      ],
+      "outputContract": "Return a strict candidate status with counts, gaps, exact record identity, digests, fixed privacy boundary, and fixed no-authority boundary.",
+      "evidenceRequirements": [
+        "Attributable request and deterministic result evidence preserve requested intent separately from actual execution and effect truth"
+      ],
+      "effectDescriptors": [
+        "read-derived-status"
+      ],
+      "idempotencyRule": "The exact command version, actor scope, target records, expected revisions, and input digest define the idempotency identity; replay cannot create a material effect.",
+      "timeoutRetryCancellation": "Timeout, retry, cancellation, partial result, and unknown result remain distinct; no timeout is interpreted as success or as proof that no external effect occurred.",
+      "deliveryState": "not-sent",
+      "executionState": "not-executed",
+      "authorizationState": "not-granted",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "key": "revise-candidate-command",
+      "name": "revise-candidate",
+      "semanticVersion": "1.0.0",
+      "purpose": "Request preparation of a superseding candidate revision under exact expected-version, approval, confirmation, evidence, and authorization constraints.",
+      "mode": "modify",
+      "processKeys": [
+        "governed-context-review"
+      ],
+      "actorRoleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "targetBoundedContextKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "inputDataEntityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "outputDataEntityKeys": [
+        "governed-record",
+        "product-studio-projection"
+      ],
+      "authorizationActionKeys": [
+        "revise-candidate"
+      ],
+      "authorizationRuleKeys": [
+        "candidate-review-rule"
+      ],
+      "preconditions": [
+        "Exact expected revision, actor, authority, approval, confirmation, policy, evidence, upstream bindings, target state, and idempotency identity are revalidated before commitment"
+      ],
+      "contextRequirements": [
+        "Only bounded exact current records and Source evidence required by the candidate revision contract are selected"
+      ],
+      "outputContract": "Return either a validated immutable candidate revision and authoritative governed-store receipt or an explicit denied, blocked, failed, partial, cancelled, uncertain, or unverified result.",
+      "evidenceRequirements": [
+        "Requested, attempted, committed, verified, failed, compensated, and unknown effect states remain separate and attributable"
+      ],
+      "effectDescriptors": [
+        "governed-candidate-mutation"
+      ],
+      "idempotencyRule": "The command version, actor scope, canonical target, expected revision, exact payload digest, authorization scope, and validity interval define the idempotency identity.",
+      "timeoutRetryCancellation": "Retry requires a valid idempotency guarantee or proof that the prior attempt did not commit; cancellation does not claim an in-flight effect stopped.",
+      "deliveryState": "not-sent",
+      "executionState": "not-executed",
+      "authorizationState": "not-granted",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "adapters": [
+    {
+      "key": "governed-context-adapter",
+      "name": "Governed context external boundary adapter",
+      "semanticVersion": "1.0.0",
+      "kind": "external-system",
+      "boundedContextKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "supportedEventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "supportedCommandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "supportedContractVersions": [
+        "GAEP candidate contracts 0.1.0 and governed-context external contract 1.0.0"
+      ],
+      "capabilityLimits": [
+        "Candidate mapping and deterministic validation only; no external connection, credential use, delivery, execution, reconciliation, or activation is represented"
+      ],
+      "semanticLosses": [
+        "External identity, time, ordering, transaction, retention, correction, authority, delivery, receipt, and recovery guarantees remain unevaluated"
+      ],
+      "dataHandling": "The definition permits only declared internal candidate metadata under exact classification and minimization constraints; no payload disclosure or provider processing is authorized.",
+      "effectSemantics": "Requested, attempted, observed, committed, failed, compensated, uncertain, and unverified effects remain distinct and require authoritative receipts and postcondition verification.",
+      "failureSemantics": "Unsupported identity, authority, data, evidence, effect, ordering, correction, or recovery semantics fail closed or remain explicitly unknown.",
+      "idempotencyAndRetry": "The adapter must expose actual duplicate-detection and retry guarantees; absent evidence remains unknown and blocks side-effecting retry.",
+      "evidenceContract": "Any future evaluation must bind exact adapter, environment, external schema, capability, scenario, evaluator, time, limitations, expiry, and invalidating changes.",
+      "compatibilityState": "unknown",
+      "evaluationState": "not-established",
+      "activationState": "not-granted",
+      "credentialBindingState": "external-reference-only",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "externalContracts": [
+    {
+      "key": "governed-context-contract",
+      "name": "Governed context external exchange contract",
+      "semanticVersion": "1.0.0",
+      "externalSystem": "Candidate external review system",
+      "namespace": "candidate-governed-context",
+      "authorityDomain": "Independent external authority domain with no automatic GAEP authority mapping",
+      "producerBoundedContextKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "consumerBoundedContextKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "schemaAndRepresentation": "Strict versioned JSON-compatible candidate representations preserve exact identities, revisions, classification, provenance, ordering limits, mapping fidelity, unsupported semantics, and correction lineage.",
+      "versioningAndMigration": "Breaking semantics require a new major version plus compatibility, coexistence, migration, rollback, exit, consumer, and historical-interpretation evidence.",
+      "classification": "internal",
+      "compatibilityState": "unknown",
+      "consumerAcceptanceState": "not-established",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "mappings": [
+    {
+      "key": "governed-context-mapping",
+      "adapterKey": "governed-context-adapter",
+      "externalContractKey": "governed-context-contract",
+      "namespaceBinding": "Candidate external review namespace without credentials, tenant activation, or authority transfer",
+      "rows": [
+        {
+          "key": "assess-command-map",
+          "gaepSubjectKey": "assess-candidate-command",
+          "externalSubject": "candidate.assess.request.v1",
+          "authority": "gaep",
+          "direction": "export",
+          "fidelity": "narrowed",
+          "conflictRule": "GAEP remains authoritative for exact candidate command identity and payload digest; any conflicting external representation is preserved and escalated without overwrite.",
+          "timeAndVersionRule": "Bind exact command and schema versions, observation time, recorded time, expected subject revisions, and explicit absence of global ordering.",
+          "deletionAndRetentionRule": "External deletion, retention, hold, source unavailability, or inaccessible history remains explicit and cannot silently delete or validate GAEP history.",
+          "effectAndAuthorizationRule": "Export is a material external communication only after a separately current Authorization Grant binds the exact subject, direction, payload, destination, classification, and validity.",
+          "evidenceRule": "Future evidence must prove exact request mapping and authoritative receipt separately from execution or business outcome.",
+          "truthClass": "observed",
+          "sources": [
+            {
+              "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        },
+        {
+          "key": "finalized-event-map",
+          "gaepSubjectKey": "candidate-finalized-event",
+          "externalSubject": "candidate.finalized.event.v1",
+          "authority": "gaep",
+          "direction": "export",
+          "fidelity": "narrowed",
+          "conflictRule": "The exact GAEP occurrence, when one exists, remains authoritative; external acknowledgement cannot modify or replace it.",
+          "timeAndVersionRule": "Preserve exact event schema, subject revision, occurrence and recorded times, subject sequence, and declared ordering limitations.",
+          "deletionAndRetentionRule": "Deletion, redaction, hold, retention, archive, correction, and unavailable-source behavior remain independently governed and visible.",
+          "effectAndAuthorizationRule": "The definition grants no publication, delivery, disclosure, external effect, or action authority.",
+          "evidenceRule": "Future delivery evidence must bind exact event identity and recipient receipt without converting transport success into business acceptance.",
+          "truthClass": "observed",
+          "sources": [
+            {
+              "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        },
+        {
+          "key": "review-event-map",
+          "gaepSubjectKey": "review-requested-event",
+          "externalSubject": "candidate.review-requested.event.v1",
+          "authority": "gaep",
+          "direction": "export",
+          "fidelity": "narrowed",
+          "conflictRule": "An external response is a separately attributable assertion and never overwrites the source event, state, approval, or authority record.",
+          "timeAndVersionRule": "Preserve exact event, subject, cause, correlation, recorded-time, sequence, and ordering-limit semantics.",
+          "deletionAndRetentionRule": "Retention and deletion divergence creates an explicit reconciliation finding and downstream validity consequence.",
+          "effectAndAuthorizationRule": "No external communication or approval request is sent by this candidate mapping definition.",
+          "evidenceRule": "Future evidence distinguishes request occurrence, delivery attempt, receipt, consumer processing, response, and authoritative GAEP disposition.",
+          "truthClass": "observed",
+          "sources": [
+            {
+              "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        },
+        {
+          "key": "revise-command-map",
+          "gaepSubjectKey": "revise-candidate-command",
+          "externalSubject": "candidate.revise.request.v1",
+          "authority": "conditional",
+          "direction": "bidirectional",
+          "fidelity": "transformed",
+          "conflictRule": "Concurrent, divergent, ambiguous, reordered, or partially applied revisions stop for exact conflict preservation and accountable resolution; bidirectional does not imply shared authority.",
+          "timeAndVersionRule": "Compare exact expected GAEP revision and external version token; stale or missing versions fail closed before any write.",
+          "deletionAndRetentionRule": "Tombstone, deletion, retention, hold, inaccessible-source, and exit semantics remain explicit and preserve interpretable provenance.",
+          "effectAndAuthorizationRule": "Any import, export, or synchronization write requires a current exact Authorization Grant and action-time revalidation; source access grants no GAEP authority.",
+          "evidenceRule": "Future evidence must cover request, actual write, authoritative result, verified postconditions, divergence, duplicate delivery, partial application, replay, and unknown final state.",
+          "truthClass": "observed",
+          "sources": [
+            {
+              "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "synchronizationTriggers": [
+        "No trigger is active; any future schedule, event, manual request, or reconciliation trigger requires a separately approved activation record"
+      ],
+      "reconciliationOwnerRoleKey": "initiative-owner",
+      "divergenceBehavior": "Preserve both exact versions, authority claims, times, mappings, losses, and evidence; stop dependent success and escalate without inventing convergence.",
+      "duplicateDeliveryBehavior": "Detect by exact idempotency and event identities; retain duplicate evidence and never repeat a material effect without valid guarantees.",
+      "reorderingBehavior": "Use only declared subject ordering; buffer, reject, or reconcile out-of-order input explicitly without assuming global chronology.",
+      "partialApplicationBehavior": "Record every applied, unapplied, uncertain, and compensated element separately and block aggregate success until authoritative reconciliation.",
+      "retryAndReplayBehavior": "Retry or replay requires exact duplicate-safety evidence and bounded policy; repeated identical failure stops rather than fabricating progress.",
+      "unknownFinalStateBehavior": "Create a reconciliation, containment, or escalation obligation and preserve unknown outcome until an authoritative result and verified postconditions resolve it.",
+      "credentialBindingState": "not-included",
+      "evaluationState": "not-established",
+      "activationState": "not-granted",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "key": "governed-context-route",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKey": "governed-context-adapter",
+      "externalContractKey": "governed-context-contract",
+      "mappingKey": "governed-context-mapping",
+      "producerBoundedContextKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "consumerBoundedContextKeys": [
+        "governance-core",
+        "product-studio"
+      ],
+      "deliveryGuarantee": "none-declared",
+      "orderingAndConcurrency": "Only exact subject sequence and expected revisions are declared; cross-system ordering, concurrency, and atomicity remain unknown until evaluated.",
+      "idempotencyAndDuplicateDetection": "Every future operation must bind exact event or command identity, actor scope, canonical target, payload digest, and validity; unsupported duplicate detection blocks material retry.",
+      "authoritativeReceiptContract": "Transport acknowledgement is not an authoritative business result; any success requires a version-bound external receipt and verified GAEP postconditions appropriate to the exact contract.",
+      "timeoutAndUncertainResult": "A timeout after a possible external effect remains uncertain and creates an explicit reconciliation obligation; it is never interpreted as failure, success, or absence of effect.",
+      "failureAndDegradedBehavior": "Missing authority, identity, compatibility, classification, fidelity, evidence, credential, external service, or control preconditions fail closed or enter an explicitly approved bounded degraded path.",
+      "deliveryState": "not-attempted",
+      "externalAcceptanceState": "not-established",
+      "executionState": "not-executed",
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-CWC-REQ-001",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-002",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-003",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-004",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-005",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-006",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-007",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-008",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-009",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-010",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-011",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-012",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-013",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-014",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-015",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-016",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-017",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-018",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-019",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-020",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-021",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-022",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-023",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-024",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-025",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-026",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-027",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-CWC-REQ-028",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ECF-REQ-003",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ECF-REQ-011",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ECF-REQ-012",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ECF-REQ-013",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ECF-REQ-014",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ECF-REQ-015",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ECF-REQ-016",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ECF-REQ-017",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ECF-REQ-018",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ECF-REQ-020",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ECF-REQ-022",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-ECF-REQ-023",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-004",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-011",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-012",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-014",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-015",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-027",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-028",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-EER-REQ-030",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-001",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-002",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-003",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-004",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-005",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-006",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-007",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-008",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-009",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-010",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-011",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-012",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-013",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-014",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-015",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-016",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-017",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-018",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-MAP-REQ-019",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-010",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-011",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-012",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-023",
+      "state": "covered-candidate",
+      "eventTypeKeys": [
+        "candidate-finalized-event",
+        "review-requested-event"
+      ],
+      "commandKeys": [
+        "assess-candidate-command",
+        "revise-candidate-command"
+      ],
+      "adapterKeys": [
+        "governed-context-adapter"
+      ],
+      "externalContractKeys": [
+        "governed-context-contract"
+      ],
+      "mappingKeys": [
+        "governed-context-mapping"
+      ],
+      "routeKeys": [
+        "governed-context-route"
+      ],
+      "basis": "The candidate maps this exact State/Event, Workflow/Context, Compatibility/Federation, Effect, or External System Mapping requirement to versioned event, command, adapter, contract, authority-row, and route identities without claiming occurrence, delivery, acceptance, activation, execution, readiness, or authority.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "governance": {
+    "integrationStewardRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "eventStewardRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "contractReviewerRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "reviewState": "under-challenge",
+    "eventRegistryApprovalState": "not-granted",
+    "commandRegistryApprovalState": "not-granted",
+    "adapterEvaluationState": "not-established",
+    "externalContractAcceptanceState": "not-established",
+    "activationState": "not-granted",
+    "operationalReadinessState": "not-established",
+    "executionAuthorityState": "not-granted",
+    "basis": "Named candidate roles may prepare and challenge definitions, but only separately verified eligible human authorities and exact current records can approve registries, accept contracts, evaluate or activate adapters, establish readiness, grant authorization, or authorize execution.",
+    "sources": [
+      {
+        "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "assumptions": [
+    "The selected local Product, Initiative, upstream model revisions, and Source records remain the exact bounded Event and Integration Model scope"
+  ],
+  "inconsistencies": [],
+  "unresolvedQuestions": [],
+  "limitations": [
+    "No event occurrence, command send or delivery, external contract acceptance, adapter evaluation or activation, credential binding, Authorization Grant, executed effect, operational readiness, release, deployment, or action authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "event-integration-model-candidate",
+  "id": "7728a66e-ba3f-463e-a8ca-60dc99acabcb",
+  "productId": "4238d65d-bc5f-4e6c-9c34-d6fcab3694d2",
+  "revision": 1,
+  "membershipDigest": "sha256:87a3da6efeddc6c5e2d0a1ee5b85b52b30b84f151507d141443fe85a9d2d4608",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-08-03T04:31:12.339Z",
+  "updatedAt": "2026-08-03T04:31:12.339Z",
+  "authorityBoundary": "event-integration-model-is-a-candidate-registry-and-does-not-prove-event-occurrence-send-or-deliver-a-command-accept-an-external-contract-activate-an-adapter-create-an-authorization-grant-execute-an-effect-establish-operational-readiness-or-authorize-action"
+}

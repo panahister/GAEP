@@ -5861,6 +5861,307 @@ describe("current-engine Product Studio data source", () => {
     expect(JSON.stringify(snapshot)).not.toContain("sourceLocator")
   })
 
+  it("projects the Product Journey from exact Initiative and Source truth on Overview", async () => {
+    const assessment = entryAssessment({
+      applicability: {
+        status: "current",
+        matrixRevision: 3,
+        digest: `sha256:${"a".repeat(64)}`,
+        decisionCount: 49,
+        unresolvedSubjectCount: 0,
+        pendingHumanDecisionCount: 5,
+        blockedDecisionCount: 0,
+        pendingApprovalCount: 0,
+        rejectedApprovalCount: 0,
+        coverage: {
+          status: "complete",
+          catalogVersion: "gaep-initiative-applicability-subjects-v1",
+          catalogDigest: `sha256:${"f".repeat(64)}`,
+          subjectCount: 49,
+          coveredSubjectCount: 49,
+          missingSubjectCount: 0,
+          unexpectedSubjectCount: 0,
+          mismatchedSubjectCount: 0,
+        },
+      },
+      state: "attention-required",
+      reasons: ["Applicability decisions await accountable human judgment"],
+    })
+    const withoutSources = harness({ initiativeEntryAssessments: { [initiative.id]: assessment } }).source
+    const initial = await withoutSources.readSnapshot("overview")
+    if (initial.page.kind !== "overview") throw new Error("Expected Product Journey Overview")
+    expect(initial.page.journey).toMatchObject({
+      state: "attention-required",
+      recordedCount: 4,
+      totalCount: 12,
+      attentionCount: 1,
+      next: { label: "Source intake", action: { action: { kind: "continue-product-journey" } } },
+    })
+    expect(initial.page.journey.checkpoints.find((candidate) => candidate.id === "initiative-applicability"))
+      .toMatchObject({
+        state: "attention-required",
+        summary: "49 subjects mapped; 0 unresolved; 5 awaiting human decision.",
+      })
+    expect(initial.page.journey.checkpoints.find((candidate) => candidate.id === "product-definition"))
+      .toMatchObject({
+        state: "complete",
+        revision: product.revision,
+        details: expect.arrayContaining([
+          expect.objectContaining({ label: "Product name", value: product.name }),
+          expect.objectContaining({ label: "Success signals", kind: "list" }),
+        ]),
+        impact: {
+          state: "review-required",
+          affectedCheckpointIds: expect.arrayContaining(["initiative-definition", "source-intake", "p0-p4-readiness"]),
+        },
+        reviseAction: { action: { kind: "revise-product-definition", expectedRevision: product.revision } },
+      })
+    expect(initial.page.journey.checkpoints.find((candidate) => candidate.id === "initiative-definition"))
+      .toMatchObject({
+        state: "complete",
+        details: expect.arrayContaining([
+          expect.objectContaining({ label: "Initiative name", value: initiative.title }),
+          expect.objectContaining({ label: "Included scope", kind: "list" }),
+        ]),
+      })
+    for (const checkpoint of initial.page.journey.checkpoints) {
+      expect(checkpoint.reviseAction, `${checkpoint.id} must expose a working edit action`).toMatchObject({
+        enabled: true,
+      })
+    }
+
+    const withSources = harness({
+      initiativeEntryAssessments: { [initiative.id]: assessment },
+      sourceGovernanceProjection: sourceGovernanceProjection(),
+    }).source
+    const complete = await withSources.readSnapshot("overview")
+    if (complete.page.kind !== "overview") throw new Error("Expected Product Journey Overview")
+    expect(complete.page.journey).toMatchObject({
+      recordedCount: 7,
+      totalCount: 12,
+      attentionCount: 1,
+      next: { label: "Product discovery" },
+    })
+    expect(complete.page.journey.checkpoints.slice(4, 7).every((candidate) => candidate.state === "complete")).toBe(true)
+    expect(complete.page.journey.checkpoints.slice(7).every((candidate) =>
+      candidate.state === "next" || candidate.state === "not-started")).toBe(true)
+  })
+
+  it("routes every Product Journey edit action to a real workflow instead of help fallback", async () => {
+    const { source, commands } = harness()
+    const snapshot = await source.readSnapshot("overview")
+    if (snapshot.page.kind !== "overview") throw new Error("Expected Product Journey Overview")
+
+    for (const [index, checkpoint] of snapshot.page.journey.checkpoints.entries()) {
+      if (!checkpoint.reviseAction) throw new Error(`Missing edit action for ${checkpoint.id}`)
+      const result = await source.execute(checkpoint.reviseAction.action, {
+        requestId: `edit-checkpoint-${index}`,
+        expectedContextGeneration: snapshot.contextGeneration,
+        expectedSnapshotRevision: snapshot.snapshotRevision,
+      })
+      expect(result.status, checkpoint.id).toBe("accepted")
+    }
+
+    expect(commands).toHaveLength(snapshot.page.journey.checkpoints.length)
+    expect(commands.every(({ command }) =>
+      command === "gaep.openInteractiveChat" || command === "gaep.openProductStudio")).toBe(true)
+    expect(commands.some(({ args }) => args.includes("help"))).toBe(false)
+    expect(commands).toEqual(expect.arrayContaining([
+      { command: "gaep.openInteractiveChat", args: ["revise", "", true] },
+      { command: "gaep.openInteractiveChat", args: ["initiative", "", true] },
+      { command: "gaep.openInteractiveChat", args: ["classification", "", true] },
+      { command: "gaep.openInteractiveChat", args: ["applicability", "", true] },
+      { command: "gaep.openInteractiveChat", args: ["intake", "", true] },
+      { command: "gaep.openInteractiveChat", args: ["baseline", "", true] },
+      { command: "gaep.openInteractiveChat", args: ["provenance", "", true] },
+      { command: "gaep.openProductStudio", args: ["direction"] },
+      { command: "gaep.openProductStudio", args: ["architecture"] },
+      { command: "gaep.openProductStudio", args: ["risks-decisions"] },
+      { command: "gaep.openProductStudio", args: ["readiness"] },
+    ]))
+  })
+
+  it("requires both the P0–P4 readiness gate and P5 handoff before completing Phase 1", async () => {
+    const baseAssessment = entryAssessment()
+    const assessment = entryAssessment({
+      applicability: {
+        ...baseAssessment.applicability,
+        status: "current",
+        matrixRevision: 3,
+        digest: `sha256:${"a".repeat(64)}`,
+        decisionCount: 49,
+        unresolvedSubjectCount: 0,
+        coverage: {
+          ...baseAssessment.applicability.coverage!,
+          status: "complete",
+          coveredSubjectCount: 49,
+          missingSubjectCount: 0,
+        },
+      },
+      state: "ready",
+      reasons: [],
+    })
+    const canonicalOptions: HarnessOptions = {
+      initiativeEntryAssessments: { [initiative.id]: assessment },
+      sourceGovernanceProjection: sourceGovernanceProjection(),
+      businessUnderstandingProjection: businessUnderstandingProjection(),
+      businessCapabilityMapProjection: businessCapabilityMapProjection(),
+      valueStreamModelProjection: valueStreamModelProjection(),
+      operatingModelProjection: operatingModelProjection(),
+      businessRuleCatalogProjection: businessRuleCatalogProjection(),
+      businessArchitectureBaselineProjection: businessArchitectureBaselineProjection(),
+      systemSolutionArchitectureProjection: systemSolutionArchitectureProjection(),
+      boundedContextModelProjection: boundedContextModelProjection(),
+      securityPrivacyAssessmentProjection: securityPrivacyAssessmentProjection(),
+      processModelProjection: processModelProjection(),
+      dataModelProjection: dataModelProjection(),
+      authorizationModelProjection: authorizationModelProjection(),
+      eventIntegrationModelProjection: eventIntegrationModelProjection(),
+      failureRecoveryModelProjection: failureRecoveryModelProjection(),
+      architectureChallengeModelProjection: architectureChallengeModelProjection(),
+      decisionRegisterProjection: decisionRegisterProjection(),
+      riskRegisterProjection: riskRegisterProjection(),
+      evidenceRegistryProjection: evidenceRegistryProjection(),
+      endToEndTraceabilityProjection: endToEndTraceabilityProjection(),
+      p0P4ReadinessGateProjection: p0P4ReadinessGateProjection(),
+    }
+
+    const withoutHandoff = await harness(canonicalOptions).source.readSnapshot("overview")
+    if (withoutHandoff.page.kind !== "overview") throw new Error("Expected Product Journey Overview")
+    expect(withoutHandoff.page.journey).toMatchObject({
+      state: "in-progress",
+      recordedCount: 11,
+      totalCount: 12,
+      next: { label: "Design and implementation handoff" },
+    })
+    expect(withoutHandoff.page.journey.checkpoints.at(-1)).toMatchObject({ state: "next" })
+
+    const withHandoff = await harness({
+      ...canonicalOptions,
+      p5HandoffPackageProjection: p5HandoffPackageProjection(),
+    }).source.readSnapshot("overview")
+    if (withHandoff.page.kind !== "overview") throw new Error("Expected Product Journey Overview")
+    expect(withHandoff.page.journey).toMatchObject({
+      state: "ready",
+      recordedCount: 12,
+      totalCount: 12,
+      next: { label: "Product Journey recorded" },
+    })
+    expect(withHandoff.page.journey.checkpoints.at(-1)).toMatchObject({
+      state: "complete",
+      summary: "A governed pre-design readiness assessment and design handoff package are recorded.",
+    })
+  })
+
+  it("keeps recorded Classification visible as attention without sending a completed Applicability journey backward", async () => {
+    const base = entryAssessment()
+    const assessment = entryAssessment({
+      classification: {
+        ...base.classification,
+        completeness: {
+          ...base.classification.completeness!,
+          status: "incomplete",
+          unknownDimensionCount: 1,
+        },
+      },
+      applicability: {
+        ...base.applicability,
+        status: "current",
+        matrixRevision: 3,
+        digest: `sha256:${"a".repeat(64)}`,
+        decisionCount: 49,
+        unresolvedSubjectCount: 0,
+        pendingHumanDecisionCount: 5,
+        coverage: {
+          ...base.applicability.coverage!,
+          status: "complete",
+          coveredSubjectCount: 49,
+          missingSubjectCount: 0,
+        },
+      },
+      state: "attention-required",
+      reasons: ["Classification completeness and applicability authority require attention"],
+    })
+    const snapshot = await harness({ initiativeEntryAssessments: { [initiative.id]: assessment } }).source.readSnapshot("overview")
+    if (snapshot.page.kind !== "overview") throw new Error("Expected Product Journey Overview")
+
+    expect(snapshot.page.journey).toMatchObject({
+      recordedCount: 4,
+      attentionCount: 2,
+      next: { label: "Source intake" },
+    })
+    expect(snapshot.page.journey.checkpoints.find((candidate) => candidate.id === "initiative-classification"))
+      .toMatchObject({
+        state: "attention-required",
+        summary: "Recorded with attention. 0 open question(s), 1 unknown dimension(s), and 0 missing conditional dimension(s). Resolve them before a consequential downstream gate; current lifecycle work may continue.",
+        action: {
+          label: "Resolve open questions",
+          action: {
+            kind: "revise-initiative-classification",
+            initiativeId: initiative.id,
+            expectedRevision: initiative.revision,
+          },
+        },
+      })
+    expect(snapshot.page.journey.checkpoints.find((candidate) => candidate.id === "initiative-applicability"))
+      .toMatchObject({
+        state: "attention-required",
+        summary: "49 subjects mapped; 0 unresolved; 5 awaiting human decision.",
+        action: {
+          label: "Resolve pending decisions",
+          action: {
+            kind: "revise-initiative-applicability",
+            initiativeId: initiative.id,
+            expectedRevision: initiative.revision,
+          },
+        },
+      })
+    for (const checkpoint of snapshot.page.journey.checkpoints) {
+      if (checkpoint.state !== "attention-required") continue
+      expect(checkpoint.action, `${checkpoint.id} must expose a resolution action`).toMatchObject({ enabled: true })
+    }
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+  })
+
+  it("labels a revision-invalidated applicability matrix as stale and offers an explicit rebuild", async () => {
+    const base = entryAssessment()
+    const assessment = entryAssessment({
+      applicability: {
+        ...base.applicability,
+        status: "stale",
+        matrixRevision: 3,
+        digest: `sha256:${"a".repeat(64)}`,
+        decisionCount: 47,
+        unresolvedSubjectCount: 2,
+        pendingHumanDecisionCount: 3,
+        coverage: {
+          ...base.applicability.coverage!,
+          status: "incomplete",
+          coveredSubjectCount: 49,
+          missingSubjectCount: 0,
+        },
+      },
+      state: "attention-required",
+      reasons: ["Initiative applicability was invalidated by a newer Classification"],
+    })
+    const snapshot = await harness({ initiativeEntryAssessments: { [initiative.id]: assessment } }).source.readSnapshot("overview")
+    if (snapshot.page.kind !== "overview") throw new Error("Expected Product Journey Overview")
+
+    expect(snapshot.page.journey.checkpoints.find((candidate) => candidate.id === "initiative-applicability"))
+      .toMatchObject({
+        state: "attention-required",
+        summary: `The recorded matrix is stale after the Initiative or Classification changed. Rebuild it for Initiative revision ${initiative.revision}; the prior draft contains 47 mapped and 2 unresolved subject(s).`,
+        action: {
+          label: "Rebuild current applicability",
+          action: {
+            kind: "revise-initiative-applicability",
+            initiativeId: initiative.id,
+            expectedRevision: initiative.revision,
+          },
+        },
+      })
+  })
+
   it("projects exact privacy-safe Backlog Hierarchy metadata on Delivery", async () => {
     const projection = backlogHierarchyProjection()
     const { source } = harness({ backlogHierarchyProjection: projection })

@@ -15,6 +15,7 @@ export interface ManagedClaudeAnalysisRequest {
   effort?: "low" | "medium" | "high" | "xhigh" | "max"
   maxBudgetUsd?: number
   tempParent?: string
+  jsonSchema?: object
 }
 
 export interface ManagedClaudeAnalysisInvocation {
@@ -86,6 +87,10 @@ export async function createManagedClaudeAnalysisInvocation(
     throw new Error("Managed Claude analysis input exceeds its configured bound")
   }
   const cwd = await mkdtemp(join(request.tempParent ?? tmpdir(), "gaep-claude-analysis-"))
+  const jsonSchema = request.jsonSchema === undefined ? undefined : JSON.stringify(request.jsonSchema)
+  if (jsonSchema !== undefined && Buffer.byteLength(jsonSchema) > 512 * 1_024) {
+    throw new Error("Managed Claude structured-output schema exceeds its configured bound")
+  }
   let cleaned = false
   const args = [
     ...(request.executableArguments ?? []),
@@ -100,6 +105,7 @@ export async function createManagedClaudeAnalysisInvocation(
     "--tools", "",
     "--model", request.model,
     "--permission-mode", "dontAsk",
+    ...(jsonSchema === undefined ? [] : ["--json-schema", jsonSchema]),
     ...optionalClaudeArguments(request),
   ]
   return {

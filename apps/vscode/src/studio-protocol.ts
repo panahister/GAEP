@@ -178,6 +178,74 @@ export interface OverviewSectionStatus {
   gapCount: number
 }
 
+export type ProductJourneyCheckpointState =
+  | "complete"
+  | "attention-required"
+  | "current"
+  | "next"
+  | "not-started"
+
+export type ProductJourneyCheckpointId =
+  | "product-definition"
+  | "initiative-definition"
+  | "initiative-classification"
+  | "initiative-applicability"
+  | "source-intake"
+  | "source-baseline"
+  | "source-provenance"
+  | "product-discovery"
+  | "business-architecture"
+  | "solution-security-architecture"
+  | "detailed-design-assurance"
+  | "p0-p4-readiness"
+
+interface ProductJourneyCheckpointBase {
+  id: ProductJourneyCheckpointId
+  label: string
+  summary: string
+  revision?: number
+  details?: ProductJourneyCheckpointDetail[]
+  impact?: ProductJourneyCheckpointImpact
+  reviewAction?: StudioActionControl
+  reviseAction?: StudioActionControl
+}
+
+export interface ProductJourneyCheckpointDetail {
+  label: string
+  value: string
+  kind?: "value" | "list" | "status" | "authority"
+}
+
+export interface ProductJourneyCheckpointImpact {
+  state: "aligned" | "review-required" | "not-assessed"
+  affectedCheckpointIds: ProductJourneyCheckpointId[]
+  summary: string
+}
+
+/**
+ * A recorded checkpoint that needs attention is never a passive warning.
+ * The protocol requires an enabled recovery action so every host rendering the
+ * Product Journey can take the user directly to the governed repair workflow.
+ */
+export type ProductJourneyCheckpoint = ProductJourneyCheckpointBase & (
+  | { state: "attention-required"; action: StudioActionControl }
+  | { state: Exclude<ProductJourneyCheckpointState, "attention-required">; action?: StudioActionControl }
+)
+
+export interface ProductJourneySnapshot {
+  state: "in-progress" | "attention-required" | "ready"
+  recordedCount: number
+  totalCount: number
+  attentionCount: number
+  checkpoints: ProductJourneyCheckpoint[]
+  next: {
+    label: string
+    summary: string
+    action?: StudioActionControl
+  }
+  authorityBoundary: "product-journey-is-a-read-only-projection-and-does-not-grant-approval-readiness-or-action-authority"
+}
+
 export interface OverviewPageSnapshot extends StudioPageBase {
   kind: "overview"
   route: "overview"
@@ -187,6 +255,8 @@ export interface OverviewPageSnapshot extends StudioPageBase {
     revision?: number
     readinessStatement: string
   }
+  journey: ProductJourneySnapshot
+  productRevisions: StudioTableSnapshot
   primaryAction?: StudioActionControl
   sections: OverviewSectionStatus[]
   currentInitiative: StudioDefinitionEntry[]
@@ -490,6 +560,12 @@ export interface StudioSnapshot {
 
 export type StudioAction =
   | { kind: "navigate"; route: StudioRoute }
+  | { kind: "continue-product-journey" }
+  | { kind: "review-product-journey-checkpoint"; checkpointId: ProductJourneyCheckpoint["id"] }
+  | { kind: "edit-product-journey-checkpoint"; checkpointId: ProductJourneyCheckpoint["id"] }
+  | { kind: "revise-product-definition"; expectedRevision: number }
+  | { kind: "revise-initiative-classification"; initiativeId: string; expectedRevision: number }
+  | { kind: "revise-initiative-applicability"; initiativeId: string; expectedRevision: number }
   | { kind: "initialize-product" }
   | { kind: "select-product-root" }
   | { kind: "create-initiative" }
@@ -589,6 +665,11 @@ const domainWorkflowSet = new Set<string>(studioDomainWorkflows)
 const domainPageKindSet = new Set<string>(studioDomainPageKinds)
 const completionStateSet = new Set<string>(["not-started", "in-progress", "complete", "blocked", "invalid"])
 const surfaceKindSet = new Set<string>(studioSurfaceKinds)
+const productJourneyCheckpointIdSet = new Set<string>([
+  "product-definition", "initiative-definition", "initiative-classification", "initiative-applicability",
+  "source-intake", "source-baseline", "source-provenance", "product-discovery",
+  "business-architecture", "solution-security-architecture", "detailed-design-assurance", "p0-p4-readiness",
+])
 const draftStateSet = new Set<string>(studioDraftStates)
 const phaseDashboardCatalog = {
   "phase-0-1a-foundation": ["Phase 0 / 1A — Four-IDE Platform Foundation", "foundation-summary"],
@@ -1138,6 +1219,7 @@ export function isStudioAction(value: unknown): value is StudioAction {
     case "navigate":
       return hasOnlyKeys(value, ["kind", "route"]) && isStudioRoute(value.route)
     case "initialize-product":
+    case "continue-product-journey":
     case "select-product-root":
     case "create-initiative":
     case "prepare-run":
@@ -1146,11 +1228,20 @@ export function isStudioAction(value: unknown): value is StudioAction {
     case "manage-workspace-trust":
     case "retry-recovery":
       return hasOnlyKeys(value, ["kind"])
+    case "review-product-journey-checkpoint":
+    case "edit-product-journey-checkpoint":
+      return hasOnlyKeys(value, ["kind", "checkpointId"]) && typeof value.checkpointId === "string" &&
+        productJourneyCheckpointIdSet.has(value.checkpointId)
+    case "revise-product-definition":
+      return hasOnlyKeys(value, ["kind", "expectedRevision"]) && isNonNegativeInteger(value.expectedRevision) &&
+        value.expectedRevision > 0
     case "open-record":
     case "show-source":
     case "select-record":
       return hasOnlyKeys(value, ["kind", "recordId"]) && isNonEmptyString(value.recordId)
     case "classify-initiative":
+    case "revise-initiative-classification":
+    case "revise-initiative-applicability":
     case "resolve-initiative-applicability":
       return hasOnlyKeys(value, ["kind", "initiativeId", "expectedRevision"]) &&
         typeof value.initiativeId === "string" &&
@@ -1363,6 +1454,60 @@ function isDesignSection(value: unknown, route: StudioRoute): value is StudioDes
     typeof value.materialChange === "boolean"
 }
 
+function isProductJourney(value: unknown): value is ProductJourneySnapshot {
+  const checkpointIds = productJourneyCheckpointIdSet
+  const checkpointStates = new Set(["complete", "attention-required", "current", "next", "not-started"])
+  if (!(isRecord(value) && hasOnlyKeys(value, [
+    "state", "recordedCount", "totalCount", "attentionCount", "checkpoints", "next", "authorityBoundary",
+  ]) && ["in-progress", "attention-required", "ready"].includes(String(value.state)) &&
+    isNonNegativeInteger(value.recordedCount) && isNonNegativeInteger(value.totalCount) &&
+    isNonNegativeInteger(value.attentionCount) && value.totalCount === 12 &&
+    Array.isArray(value.checkpoints) && value.checkpoints.length === value.totalCount &&
+    value.checkpoints.every((candidate) => isRecord(candidate) && hasOnlyKeys(candidate, [
+      "id", "label", "state", "summary", "revision", "details", "impact", "reviewAction", "reviseAction", "action",
+    ]) &&
+      checkpointIds.has(String(candidate.id)) && isNonEmptyString(candidate.label) &&
+      checkpointStates.has(String(candidate.state)) && isNonEmptyString(candidate.summary) &&
+      (candidate.revision === undefined || (isNonNegativeInteger(candidate.revision) && candidate.revision > 0)) &&
+      (candidate.details === undefined || (Array.isArray(candidate.details) && candidate.details.length <= 512 &&
+        candidate.details.every((detail) => isRecord(detail) && hasOnlyKeys(detail, ["label", "value", "kind"]) &&
+          isNonEmptyString(detail.label) && isBoundedString(detail.value) &&
+          (detail.kind === undefined || ["value", "list", "status", "authority"].includes(String(detail.kind)))))) &&
+      (candidate.impact === undefined || (isRecord(candidate.impact) &&
+        hasOnlyKeys(candidate.impact, ["state", "affectedCheckpointIds", "summary"]) &&
+        ["aligned", "review-required", "not-assessed"].includes(String(candidate.impact.state)) &&
+        Array.isArray(candidate.impact.affectedCheckpointIds) && candidate.impact.affectedCheckpointIds.length <= 12 &&
+        candidate.impact.affectedCheckpointIds.every((id) => typeof id === "string" && checkpointIds.has(id)) &&
+        new Set(candidate.impact.affectedCheckpointIds).size === candidate.impact.affectedCheckpointIds.length &&
+        isNonEmptyString(candidate.impact.summary))) &&
+      (candidate.reviewAction === undefined || isStudioActionControl(candidate.reviewAction)) &&
+      (candidate.reviseAction === undefined || isStudioActionControl(candidate.reviseAction)) &&
+      (candidate.action === undefined || isStudioActionControl(candidate.action)) &&
+      (candidate.state !== "attention-required" ||
+        (candidate.action !== undefined && isStudioActionControl(candidate.action) && candidate.action.enabled))) &&
+    isRecord(value.next) && hasOnlyKeys(value.next, ["label", "summary", "action"]) &&
+    isNonEmptyString(value.next.label) && isNonEmptyString(value.next.summary) &&
+    (value.next.action === undefined || isStudioActionControl(value.next.action)) &&
+    value.authorityBoundary === "product-journey-is-a-read-only-projection-and-does-not-grant-approval-readiness-or-action-authority")) return false
+
+  const checkpoints = value.checkpoints as Array<Record<string, unknown>>
+  const ids = checkpoints.map((candidate) => String(candidate.id))
+  if (new Set(ids).size !== checkpointIds.size || [...checkpointIds].some((id) => !ids.includes(id))) return false
+
+  const recordedCount = checkpoints.filter((candidate) =>
+    candidate.state === "complete" || candidate.state === "attention-required").length
+  const attentionCount = checkpoints.filter((candidate) => candidate.state === "attention-required").length
+  const nextCount = checkpoints.filter((candidate) => candidate.state === "next").length
+  if (value.recordedCount !== recordedCount || value.attentionCount !== attentionCount || nextCount > 1) return false
+
+  const expectedState = attentionCount > 0 ? "attention-required" : nextCount === 1 ? "in-progress" : "ready"
+  if (value.state !== expectedState) return false
+  if (nextCount === 1 && (!isRecord(value.next) || value.next.action === undefined ||
+    !isStudioActionControl(value.next.action) || !value.next.action.enabled)) return false
+
+  return true
+}
+
 function isPageBase(page: Record<string, unknown>, route: StudioRoute): boolean {
   return page.route === route && isNonEmptyString(page.title) && isNonEmptyString(page.purpose) &&
     isStudioSourceLine(page.source) && Array.isArray(page.actions) && page.actions.length <= 100 &&
@@ -1371,12 +1516,13 @@ function isPageBase(page: Record<string, unknown>, route: StudioRoute): boolean 
 
 function isOverviewPage(page: Record<string, unknown>): boolean {
   return hasOnlyKeys(page, [
-    "kind", "route", "title", "purpose", "source", "actions", "design", "product", "primaryAction", "sections", "currentInitiative", "latestRun", "blockers",
+    "kind", "route", "title", "purpose", "source", "actions", "design", "product", "journey", "productRevisions", "primaryAction", "sections", "currentInitiative", "latestRun", "blockers",
   ]) && isPageBase(page, "overview") && page.kind === "overview" && isRecord(page.product) &&
     hasOnlyKeys(page.product, ["name", "lifecycle", "revision", "readinessStatement"]) &&
     isNonEmptyString(page.product.name) && isNonEmptyString(page.product.lifecycle) &&
     (page.product.revision === undefined || isNonNegativeInteger(page.product.revision)) &&
-    isNonEmptyString(page.product.readinessStatement) &&
+    isNonEmptyString(page.product.readinessStatement) && isProductJourney(page.journey) &&
+    isTableSnapshot(page.productRevisions) &&
     (page.primaryAction === undefined || isStudioActionControl(page.primaryAction)) &&
     Array.isArray(page.sections) && page.sections.length === studioRoutes.length && page.sections.every(isOverviewSection) &&
     Array.isArray(page.currentInitiative) && page.currentInitiative.every(isDefinitionEntry) &&

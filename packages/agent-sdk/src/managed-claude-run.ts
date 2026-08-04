@@ -148,8 +148,8 @@ function managedClaudeAuthenticationUnavailable(value: string): boolean {
     /\bnot logged in\b/iu,
     /\bplease (?:run|use)\s+\/?login\b/iu,
     /\blogin required\b/iu,
-    /\bauthentication (?:is )?required\b/iu,
-    /\bunauthori[sz]ed\b/iu,
+    /\b(?:claude|provider|account) authentication (?:is )?required\b/iu,
+    /\bauthentication failed\b/iu,
   ].some((pattern) => pattern.test(value))
 }
 
@@ -224,6 +224,7 @@ async function startManagedClaudeInvocationRun(
   let cancelRequested = false
   let timeoutTriggered = false
   let protocolFailed = false
+  let authenticationUnavailableObserved = false
   let settled = false
   let stopOperation: Promise<void> | undefined
 
@@ -308,16 +309,37 @@ async function startManagedClaudeInvocationRun(
         }
         if (record.type === "assistant") {
           for (const text of textParts(record.message)) {
-            emit({ type: "output-delta", channel: "assistant", text: sanitizePortableProviderText(text) })
+            const sanitized = sanitizePortableProviderText(text)
+            if (sanitized === "Claude authentication is unavailable for the managed runtime.") {
+              authenticationUnavailableObserved = true
+              continue
+            }
+            emit({ type: "output-delta", channel: "assistant", text: sanitized })
           }
           return
         }
         if (record.type === "result") {
           resultObserved = true
-          const isError = record.is_error === true || record.subtype === "error"
+          const isError = record.is_error === true || record.subtype === "error" || authenticationUnavailableObserved
+          if (!isError && record.structured_output && typeof record.structured_output === "object") {
+            emit({
+              type: "output-delta",
+              channel: "assistant",
+              text: sanitizePortableProviderText(JSON.stringify(record.structured_output)),
+            })
+          }
           terminalDisposition = isError ? "failed" : "completed"
           terminationCause = isError ? "provider-failure" : "normal"
-          if (isError) emit({ type: "error", ...managedClaudeFailure(record), retryable: false })
+          if (isError) emit({
+            type: "error",
+            ...(authenticationUnavailableObserved
+              ? {
+                  code: "GAEP_CLAUDE_AUTH_UNAVAILABLE" as const,
+                  message: "Claude authentication is unavailable for the managed runtime.",
+                }
+              : managedClaudeFailure(record)),
+            retryable: false,
+          })
           emit({ type: "lifecycle", phase: "turn-completed", turnStatus: isError ? "failed" : "completed" })
         }
       }

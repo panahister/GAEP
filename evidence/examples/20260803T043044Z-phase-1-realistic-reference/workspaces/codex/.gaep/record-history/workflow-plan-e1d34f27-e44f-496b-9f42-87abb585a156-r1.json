@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "kind": "product-record-revision",
+  "productId": "22295bed-0b3c-4ffa-9979-eb612fdc0c5b",
+  "recordType": "workflow-plan",
+  "recordId": "e1d34f27-e44f-496b-9f42-87abb585a156",
+  "revision": 1,
+  "recordDigest": "sha256:2a535dd972a95b4380b47c37b85f2d2ffd76f921a8d1b1f2a6c8f425cb8540f9",
+  "snapshot": {
+    "schemaVersion": 1,
+    "id": "e1d34f27-e44f-496b-9f42-87abb585a156",
+    "productId": "22295bed-0b3c-4ffa-9979-eb612fdc0c5b",
+    "revision": 1,
+    "createdAt": "2026-08-03T04:31:13.815Z",
+    "updatedAt": "2026-08-03T04:31:13.815Z",
+    "kind": "workflow-plan",
+    "title": "Codex P0-P4 deterministic acceptance workflow",
+    "objective": "Exercise the exact governed P0-P4 candidate chain through the isolated Codex app-server boundary.",
+    "subject": {
+      "recordType": "product",
+      "recordId": "22295bed-0b3c-4ffa-9979-eb612fdc0c5b",
+      "revision": 1,
+      "digest": "sha256:e127679575896008f4efb896fc1f4b14a2b4c75755c6805e5d8f31a03939ca43"
+    },
+    "actor": {
+      "kind": "human",
+      "id": "product-owner"
+    },
+    "strategy": "sequential",
+    "contextPacks": [
+      {
+        "recordType": "context-pack",
+        "recordId": "bb35c5a0-b299-42a6-a6cc-7ee97e1d4082",
+        "revision": 1,
+        "digest": "sha256:587e71da3931aad5b5828d77a8dfc3dcf11a5806a163221c6ca31584cb92ac1d"
+      }
+    ],
+    "toolDefinitions": [],
+    "steps": [
+      {
+        "id": "01f66215-b645-489a-ad3f-a882e1a7332d",
+        "title": "Review exact governed P0-P4 candidate context",
+        "objective": "Produce one bounded provider observation over exact candidate metadata without tools, writes, network, or authority.",
+        "responsibility": {
+          "kind": "agent",
+          "id": "codex-cli"
+        },
+        "contextPacks": [
+          {
+            "recordType": "context-pack",
+            "recordId": "bb35c5a0-b299-42a6-a6cc-7ee97e1d4082",
+            "revision": 1,
+            "digest": "sha256:587e71da3931aad5b5828d77a8dfc3dcf11a5806a163221c6ca31584cb92ac1d"
+          }
+        ],
+        "toolDefinitions": [],
+        "dependsOn": [],
+        "preconditions": [
+          "The exact Context Pack is current and sufficient"
+        ],
+        "outputs": [
+          "One normalized observation from the isolated Codex transport"
+        ],
+        "evidenceCriteria": [
+          "Portable provider, event, staging, workflow-gate, and outcome evidence is committed"
+        ],
+        "retry": {
+          "maxAttempts": 1,
+          "backoffMs": 0,
+          "retryOn": []
+        },
+        "stopConditions": [
+          "Stop before every Tool, network, workspace-write, approval, or external-effect request"
+        ],
+        "scope": {
+          "read": [
+            {
+              "kind": "workspace-relative",
+              "path": "."
+            }
+          ],
+          "write": [],
+          "effects": []
+        },
+        "effectEnvelope": [
+          "observe"
+        ]
+      }
+    ],
+    "state": "draft",
+    "planDigest": "sha256:84c1f21bc0aaee4e318736c585f29b6eabee23dd44aea0fa1f50266870b23aa5",
+    "authorityBoundary": "workflow-plan-does-not-grant-authority"
+  },
+  "recordedAt": "2026-08-03T04:31:13.815Z"
+}

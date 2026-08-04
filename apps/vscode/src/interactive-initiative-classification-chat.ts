@@ -24,6 +24,7 @@ export interface InitiativeClassificationContext {
     scope: string[]
     exclusions: string[]
   }
+  currentClassification?: InitiativeClassificationInput
 }
 
 export interface PendingInitiativeClassification {
@@ -36,6 +37,24 @@ export interface PendingInitiativeClassification {
   followUpQuestion?: string
   round: number
   advisor: ProductChatAdvisorSelection
+}
+
+export interface InitiativeClassificationRepairAttempt {
+  attempt: number
+  contractErrors: string[]
+  previousAssessment?: ProductAnswerAssessment
+}
+
+export interface InitiativeClassificationRepairResult {
+  state: InitiativeClassificationChatState
+  attempts: number
+}
+
+export class InitiativeClassificationRepairError extends Error {
+  constructor(readonly contractErrors: string[]) {
+    super("The selected advisor could not produce a contract-valid Initiative classification")
+    this.name = "InitiativeClassificationRepairError"
+  }
 }
 
 export interface InitiativeClassificationChatState extends InitiativeClassificationContext {
@@ -90,7 +109,13 @@ export function initiativeClassificationQuestion(state: InitiativeClassification
     key: "initiative-classification",
     title: "Initiative classification brief",
     prompt: [
-      `Classify the governed Initiative '${state.initiative.title}' for Product '${state.product.name}'.`,
+      state.currentClassification
+        ? `Revise the current governed classification for Initiative '${state.initiative.title}' in Product '${state.product.name}'.`
+        : `Classify the governed Initiative '${state.initiative.title}' for Product '${state.product.name}'.`,
+      ...(state.currentClassification ? [
+        "Preserve every supported current value, resolve only gaps supported by the latest human answer or governed context, and keep any remaining unknown explicit in unresolvedQuestions.",
+        "The complete current classification is supplied in acceptedAnswers; return one complete replacement classification, not a patch.",
+      ] : []),
       "Challenge the human brief, then propose exactly one complete JSON classification using the shape below as proposedAnswer.",
       "Use only enum tokens shown in the shape. Do not invent named people, policies, dependencies, assets, or facts.",
       "When information is genuinely missing, use an available 'unknown' enum and record the exact gap in unresolvedQuestions.",
@@ -101,6 +126,24 @@ export function initiativeClassificationQuestion(state: InitiativeClassification
       classificationShape,
     ].join("\n"),
   }
+}
+
+export function suggestedInitiativeClassificationResolution(
+  state: InitiativeClassificationChatState,
+): string | undefined {
+  const current = state.pending?.classification ?? state.currentClassification
+  if (!current || current.unresolvedQuestions.length === 0) return undefined
+  return [
+    "GAEP-generated classification resolution proposal for human review. It is not a governed fact, appointment, approval, or human confirmation.",
+    "Resolve every current classification open question into one complete editable classification without asking the human to write GAEP's internal structure.",
+    "Use standard role titles as candidate ownership and accountable-authority defaults when a named person is unavailable. Do not invent a named person or claim an appointment.",
+    "When an external fact is not yet evidenced—such as a regulation, integration contract, production SLO, measurable threshold, or design authority—record the uncertainty as a bounded dependency, rationale, evidence limitation, or consequential-gate condition. Do not claim that the external obligation is absent, but do not keep it as a classification open question when a conservative review boundary can represent it.",
+    "Distinguish current classification facts from downstream deliverables: architecture contracts, detailed acceptance thresholds, operational targets, and governed Figma/design sources may be assigned to their later lifecycle checkpoint when the Initiative scope already requires that work.",
+    "Preserve supported current values. Return a complete revised classification with unresolvedQuestions empty only when every former question is represented by an explicit candidate decision or bounded downstream review obligation.",
+    "The human must inspect and explicitly accept the resulting proposal before it can become governed state.",
+    "Current open questions:",
+    ...current.unresolvedQuestions.map((question) => `- ${question}`),
+  ].join("\n")
 }
 
 export function startInitiativeClassificationChat(
@@ -169,6 +212,53 @@ export function assessInitiativeClassification(
     },
     accepted: undefined,
   }
+}
+
+function repairDiagnostic(error: unknown): string {
+  const message = error instanceof Error ? error.message : "The advisor response was not contract-valid"
+  return message.replace(/\s+/gu, " ").trim().slice(0, 2_048) || "The advisor response was not contract-valid"
+}
+
+function nonRepairableAdvisorFailure(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+  const code = (error as { code?: unknown }).code
+  return code === "cancelled" || code === "provider-unavailable" || code === "provider-failed"
+}
+
+export async function assessInitiativeClassificationWithAutomaticRepair(
+  state: InitiativeClassificationChatState,
+  rawAnswer: string,
+  runAttempt: (input: InitiativeClassificationRepairAttempt) => Promise<ProductAnswerAssessment>,
+  maximumAttempts = 3,
+): Promise<InitiativeClassificationRepairResult> {
+  let previousAssessment: ProductAnswerAssessment | undefined = state.pending ? {
+    assessment: state.pending.assessment,
+    strengths: [...state.pending.strengths],
+    gaps: [...state.pending.gaps],
+    ...(state.pending.followUpQuestion ? { followUpQuestion: state.pending.followUpQuestion } : {}),
+    proposedAnswer: state.pending.proposedAnswer,
+  } : undefined
+  let contractErrors: string[] = []
+  for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+    let assessment: ProductAnswerAssessment
+    try {
+      assessment = await runAttempt({ attempt, contractErrors, previousAssessment })
+    } catch (error) {
+      if (nonRepairableAdvisorFailure(error)) throw error
+      contractErrors = [repairDiagnostic(error)]
+      continue
+    }
+    try {
+      return {
+        state: assessInitiativeClassification(state, rawAnswer, assessment),
+        attempts: attempt,
+      }
+    } catch (error) {
+      previousAssessment = assessment
+      contractErrors = [repairDiagnostic(error)]
+    }
+  }
+  throw new InitiativeClassificationRepairError(contractErrors)
 }
 
 export function acceptInitiativeClassification(

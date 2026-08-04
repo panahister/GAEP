@@ -174,4 +174,19 @@ describe("Initiative classification and applicability contracts", () => {
       }],
     }).success).toBe(false)
   })
+
+  it("allows complete coverage to remain entirely unresolved instead of fabricating a decision", () => {
+    expect(initiativeApplicabilityMatrixInputSchema.parse({
+      decisions: [],
+      unresolvedSubjects: [{
+        subject: { type: "approval", key: "release", label: "Release approval" },
+        reason: "No accountable release authority is established",
+        owner: "Initiative owner (human, unassigned)",
+      }],
+    })).toMatchObject({ decisions: [], unresolvedSubjects: [{ subject: { key: "release" } }] })
+    expect(initiativeApplicabilityMatrixInputSchema.safeParse({
+      decisions: [],
+      unresolvedSubjects: [],
+    }).success).toBe(false)
+  })
 })

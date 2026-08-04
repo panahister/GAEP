@@ -1,0 +1,9 @@
+{
+  "format": "gaep-project",
+  "schemaVersion": 1,
+  "productId": "4238d65d-bc5f-4e6c-9c34-d6fcab3694d2",
+  "createdAt": "2026-08-03T04:31:09.857Z",
+  "engineVersion": "0.1.0",
+  "auditCheckpointRequired": true,
+  "governedStateRequired": true
+}

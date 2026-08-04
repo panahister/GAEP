@@ -1653,6 +1653,65 @@ export class GaepEngine {
     })
   }
 
+  async reviseInitiative(
+    id: string,
+    input: InitiativeInput,
+    expectedRevision: number,
+    reason: string,
+    actorId: string,
+  ): Promise<Initiative> {
+    const initiativeId = requireUuid(id, "Initiative ID")
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+      throw new Error("Expected Initiative revision must be a positive integer")
+    }
+    const revisionReason = reason.trim()
+    if (revisionReason.length < 2 || revisionReason.length > 4_096) {
+      throw new Error("A bounded Initiative revision reason is required")
+    }
+    return this.repository.withLock(async () => {
+      await this.assertAuditIntegrity()
+      const initiative = await this.repository.readJson(
+        this.repository.resolve("initiatives", `${initiativeId}.json`),
+        initiativeSchema,
+      )
+      const product = await this.readProduct()
+      if (initiative.productId !== product.id) throw new Error("Initiative does not target this Product")
+      const currentRevision = revisionOf(initiative)
+      if (currentRevision !== expectedRevision) {
+        throw new Error(`Initiative revision changed: expected ${expectedRevision}, current ${currentRevision}`)
+      }
+      const revised = initiativeSchema.parse({
+        ...initiative,
+        ...input,
+        revision: currentRevision + 1,
+        classification: undefined,
+        applicability: undefined,
+        updatedAt: new Date().toISOString(),
+      })
+      await this.repository.commitMutation({
+        writes: [{
+          path: this.repository.resolve("initiatives", `${initiativeId}.json`),
+          value: revised,
+          schema: initiativeSchema,
+          governed: true,
+        }],
+        audit: {
+          eventType: "initiative.revised",
+          actor: { kind: "human", id: actorId },
+          subjectId: initiativeId,
+          payload: {
+            fromRevision: currentRevision,
+            toRevision: revised.revision,
+            reason: revisionReason,
+            invalidatedCheckpoints: ["initiative-classification", "initiative-applicability"],
+            recordDigest: canonicalDigest(revised),
+          },
+        },
+      })
+      return revised
+    })
+  }
+
   async readInitiative(id: string): Promise<Initiative> {
     const initiativeId = requireUuid(id, "Initiative ID")
     const initiative = await this.repository.readJson(

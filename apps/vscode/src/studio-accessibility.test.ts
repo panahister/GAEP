@@ -79,6 +79,63 @@ function pageFor(route: StudioRoute): StudioPageSnapshot {
         ...baseFor(route),
         kind: "overview",
         product: { name: "Accessible Product", lifecycle: "active", revision: 2, readinessStatement: "One scope gap remains." },
+        journey: {
+          state: "attention-required",
+          recordedCount: 4,
+          totalCount: 12,
+          attentionCount: 1,
+          checkpoints: [
+            {
+              id: "product-definition",
+              label: "Product definition",
+              state: "complete",
+              summary: "Recorded.",
+              revision: 2,
+              details: [
+                { label: "Product name", value: "Accessible Product" },
+                { label: "Success signals", value: "Exact projection\nKeyboard-accessible review", kind: "list" },
+              ],
+              impact: {
+                state: "review-required",
+                affectedCheckpointIds: ["initiative-definition", "initiative-classification"],
+                summary: "A revision must be reviewed against two downstream checkpoints.",
+              },
+              reviseAction: {
+                label: "Edit Product definition",
+                enabled: true,
+                action: { kind: "revise-product-definition", expectedRevision: 2 },
+              },
+            },
+            { id: "initiative-definition", label: "Initiative definition", state: "complete", summary: "Recorded." },
+            { id: "initiative-classification", label: "Initiative classification", state: "complete", summary: "Recorded." },
+            {
+              id: "initiative-applicability",
+              label: "Initiative applicability",
+              state: "attention-required",
+              summary: "One decision needs attention.",
+              action: {
+                label: "Resolve pending decisions",
+                enabled: true,
+                action: {
+                  kind: "revise-initiative-applicability",
+                  initiativeId: "00000000-0000-4000-8000-000000000002",
+                  expectedRevision: 1,
+                },
+              },
+            },
+            { id: "source-intake", label: "Source intake", state: "next", summary: "Attach sources." },
+            { id: "source-baseline", label: "Source baseline", state: "not-started", summary: "Not started." },
+            { id: "source-provenance", label: "Source provenance", state: "not-started", summary: "Not started." },
+            { id: "product-discovery", label: "Product discovery", state: "not-started", summary: "Not started." },
+            { id: "business-architecture", label: "Business architecture", state: "not-started", summary: "Not started." },
+            { id: "solution-security-architecture", label: "Solution and security architecture", state: "not-started", summary: "Not started." },
+            { id: "detailed-design-assurance", label: "Detailed design and assurance", state: "not-started", summary: "Not started." },
+            { id: "p0-p4-readiness", label: "P0–P4 readiness and P5 handoff", state: "not-started", summary: "Not started." },
+          ],
+          next: { label: "Source intake", summary: "Attach sources.", action: { label: "Continue", action: { kind: "continue-product-journey" }, enabled: true } },
+          authorityBoundary: "product-journey-is-a-read-only-projection-and-does-not-grant-approval-readiness-or-action-authority",
+        },
+        productRevisions: table("product-revisions"),
         primaryAction: { label: "Resolve scope gap", enabled: true, emphasis: "primary", action: { kind: "navigate", route: "scope" } },
         sections: sections(),
         currentInitiative: [{ term: "Initiative", value: "Founder verification" }],
@@ -815,16 +872,10 @@ describe("Product Studio rendered accessibility", () => {
       expect(dom.window.document.getElementById("studio-page-title")?.textContent, route).toBeTruthy()
       expect(dom.window.document.querySelectorAll(".studio-nav button"), route).toHaveLength(studioRoutes.length)
       expect(dom.window.document.querySelectorAll("#studio-route-select option"), route).toHaveLength(studioRoutes.length)
-      expect(dom.window.document.querySelector('[aria-label="Phase-scoped dashboard framework"]'), route).not.toBeNull()
-      expect(dom.window.document.body.textContent, route).toMatch(/Evidence freshness: current/i)
-      expect(dom.window.document.body.textContent, route).toMatch(/Confidence: not assessed/i)
-      expect(dom.window.document.body.textContent, route).toMatch(/Unknown — governed decision required/)
-      expect(dom.window.document.body.textContent, route).toMatch(/does not prove phase approval, readiness, acceptance, or applicability/)
-      if (route === "readiness") {
-        expect(dom.window.document.querySelector('[aria-label="Phase 1 summary and readiness dashboard"]')).not.toBeNull()
-        expect(dom.window.document.body.textContent).toMatch(/Owners: unbound/)
-        expect(dom.window.document.body.textContent).toMatch(/Product Owner acceptance, readiness authority, and phase-entry authority are not established/)
-      }
+      expect(dom.window.document.querySelector('[aria-label="Phase-scoped dashboard framework"]'), route).toBeNull()
+      expect(dom.window.document.querySelector('[aria-label="Phase 1 summary and readiness dashboard"]'), route).toBeNull()
+      expect(dom.window.document.body.textContent, route).not.toMatch(/Delivery phase dashboards/i)
+      expect(dom.window.document.body.textContent, route).not.toMatch(/Phase 1 summary and readiness/i)
       for (const element of dom.window.document.querySelectorAll<HTMLElement>("[tabindex]")) {
         expect(Number(element.getAttribute("tabindex")), `${route}: ${element.outerHTML}`).toBeLessThanOrEqual(0)
       }
@@ -838,6 +889,29 @@ describe("Product Studio rendered accessibility", () => {
       expect(result.violations.map((violation) => ({ id: violation.id, nodes: violation.nodes.map((node) => node.target) })), route).toEqual([])
     }
   }, 30_000)
+
+  it("renders checkpoint values, revision impact, and an explicit revision action", () => {
+    const candidate = snapshot("overview", 89)
+    expect(isStudioSnapshot(candidate)).toBe(true)
+    send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
+
+    const disclosure = Array.from(dom.window.document.querySelectorAll(".journey-details"))
+      .find((element) => element.textContent?.includes("Product name"))
+    expect(disclosure?.querySelector("summary")?.textContent).toBe("View recorded values · Revision 2")
+    expect(disclosure?.querySelectorAll("tbody tr")).toHaveLength(2)
+    expect(disclosure?.textContent).toMatch(/Accessible Product/)
+    expect(disclosure?.textContent).toMatch(/A revision must be reviewed against two downstream checkpoints/)
+    expect(disclosure?.textContent).toMatch(/Initiative definition/)
+    const productCheckpoint = Array.from(dom.window.document.querySelectorAll(".journey-row"))
+      .find((element) => element.textContent?.includes("Product definition"))
+    expect(Array.from(productCheckpoint?.querySelectorAll("button") ?? [], (button) => button.textContent))
+      .toContain("Edit Product definition")
+    const history = Array.from(dom.window.document.querySelectorAll("details"))
+      .find((element) => element.querySelector("summary")?.textContent === "Product revision history (1)")
+    expect(history?.textContent).toMatch(/product-revisions record/)
+    expect(Array.from(history?.querySelectorAll("button") ?? [], (button) => button.textContent))
+      .toContain("Open record")
+  })
 
   it("gives durable run events semantic time values and a truthful empty state", () => {
     const populated = snapshot("runs-evidence", 90)
@@ -923,7 +997,7 @@ describe("Product Studio rendered accessibility", () => {
     expect(labels.some((label) => /select agent|switch agent|launch run|authorize effect/i.test(label))).toBe(false)
   })
 
-  it("renders the Phase 2 UX and Figma projection accessibly without authority controls", async () => {
+  it("withholds the internal Phase 2 UX and Figma delivery projection from end users", async () => {
     const candidate = snapshot("overview", 96)
     if (!candidate.dashboard) throw new Error("Expected dashboard fixture")
     candidate.dashboard.phase = { id: "phase-2-design", label: "Phase 2 — UX and Figma Loop" }
@@ -939,14 +1013,8 @@ describe("Product Studio rendered accessibility", () => {
     send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
 
     const document = dom.window.document
-    expect(document.querySelector('[aria-label="Phase 2 UX and Figma dashboard"]')).not.toBeNull()
-    expect(document.body.textContent).toMatch(/Phase 2 UX and Figma/i)
-    expect(document.body.textContent).toMatch(/23 unavailable governed sources/i)
-    expect(document.body.textContent).toMatch(/Governed source projections/i)
-    expect(document.body.textContent).toMatch(/Governance candidates/i)
-    expect(document.body.textContent).toMatch(/Product Owner acceptance.*not established/i)
-    const labels = Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (button) => button.textContent ?? "")
-    expect(labels.some((label) => /approve|set baseline|write figma|import figma|apply remediation/i.test(label))).toBe(false)
+    expect(document.querySelector('[aria-label="Phase 2 UX and Figma dashboard"]')).toBeNull()
+    expect(document.body.textContent).not.toMatch(/23 unavailable governed sources/i)
 
     const result = await axe.run(document.documentElement, {
       rules: { "color-contrast": { enabled: false } },
@@ -954,7 +1022,7 @@ describe("Product Studio rendered accessibility", () => {
     expect(result.violations.map((violation) => ({ id: violation.id, nodes: violation.nodes.map((node) => node.target) }))).toEqual([])
   })
 
-  it("renders the bounded Phase 3A dashboard accessibly without readiness or action authority", async () => {
+  it("withholds the internal Phase 3A delivery dashboard from end users", async () => {
     const candidate = snapshot("overview", 97)
     if (!candidate.dashboard) throw new Error("Expected dashboard fixture")
     candidate.dashboard.phase = { id: "phase-3a-readiness", label: "Phase 3A — Backlog and Implementation Readiness" }
@@ -970,15 +1038,8 @@ describe("Product Studio rendered accessibility", () => {
     send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
 
     const document = dom.window.document
-    expect(document.querySelector('[aria-label="Phase 3A backlog and implementation readiness dashboard"]')).not.toBeNull()
-    expect(document.body.textContent).toMatch(/20 unavailable governed sources/i)
-    expect(document.body.textContent).toMatch(/Phase 3A dashboard views/i)
-    expect(document.body.textContent).toMatch(/Phase 3A governed source projections/i)
-    expect(document.body.textContent).toMatch(/Bounded provider workflow evidence/i)
-    expect(document.body.textContent).toMatch(/0 of 2 bounded local provider workflow evidence slots are sealed/i)
-    expect(document.body.textContent).toMatch(/no completeness, priority, readiness, waiver, ownership, implementation, acceptance, release, deployment, or action authority/i)
-    const labels = Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (button) => button.textContent ?? "")
-    expect(labels.some((label) => /prioritize|mark ready|grant waiver|assign owner|implement|approve|release|deploy/i.test(label))).toBe(false)
+    expect(document.querySelector('[aria-label="Phase 3A backlog and implementation readiness dashboard"]')).toBeNull()
+    expect(document.body.textContent).not.toMatch(/20 unavailable governed sources/i)
 
     const result = await axe.run(document.documentElement, {
       rules: { "color-contrast": { enabled: false } },
@@ -986,7 +1047,7 @@ describe("Product Studio rendered accessibility", () => {
     expect(result.violations.map((violation) => ({ id: violation.id, nodes: violation.nodes.map((node) => node.target) }))).toEqual([])
   })
 
-  it("renders the integrated Phase 2 change, impact, agent, and model views without action authority", async () => {
+  it("withholds internal Phase 2 change-impact delivery views from end users", async () => {
     const candidate: StudioSnapshot = {
       ...snapshot("agents-tools", 97),
       ...phase2IntegratedDashboards(),
@@ -995,14 +1056,8 @@ describe("Product Studio rendered accessibility", () => {
     send({ protocolVersion: studioProtocolVersion, channelId, type: "studio.snapshot", snapshot: candidate })
 
     const document = dom.window.document
-    expect(document.querySelector('[aria-label="Phase 2 Change Impact Agent and Model dashboard"]')).not.toBeNull()
-    expect(document.body.textContent).toMatch(/Synchronization change evidence/i)
-    expect(document.body.textContent).toMatch(/Bounded impact signals/i)
-    expect(document.body.textContent).toMatch(/Initiative-scoped agent and model execution truth/i)
-    expect(document.body.textContent).toMatch(/not a second source of truth/i)
-    expect(document.body.textContent).toMatch(/No Run launch or effect authority/i)
-    const labels = Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (button) => button.textContent ?? "")
-    expect(labels.some((label) => /approve|set baseline|select agent|launch run|authorize effect|apply remediation/i.test(label))).toBe(false)
+    expect(document.querySelector('[aria-label="Phase 2 Change Impact Agent and Model dashboard"]')).toBeNull()
+    expect(document.body.textContent).not.toMatch(/Synchronization change evidence/i)
 
     const result = await axe.run(document.documentElement, {
       rules: { "color-contrast": { enabled: false } },

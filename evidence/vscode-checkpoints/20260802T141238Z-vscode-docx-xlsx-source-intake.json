@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "vscode-docx-xlsx-source-intake",
+  "observedAt": "2026-08-02T14:12:38Z",
+  "featureIds": ["PLT-36", "P1-04", "P1-05", "P1-06"],
+  "status": "ready-for-product-owner-ux-test",
+  "scope": {
+    "host": "vscode",
+    "workflow": "bounded-mixed-format-source-intake-preview",
+    "productOwnerWorkspaceMutationDuringVerification": false
+  },
+  "behavior": {
+    "chooseFileAndFolderUseSystemPicker": true,
+    "supportedOfficeFormats": ["docx", "xlsx"],
+    "originalBytesAreDigestBasis": true,
+    "maximumBytesPerFile": 262144,
+    "maximumAggregateBytes": 1048576,
+    "maximumArchiveEntries": 512,
+    "maximumArchiveEntryExpansionBytes": 2097152,
+    "maximumArchiveTotalExpansionBytes": 8388608,
+    "maximumExtractedCharactersPerOfficeFile": 262144,
+    "maximumAggregateExtractedCharacters": 1048576,
+    "archivePathsValidated": true,
+    "archiveCrcValidated": true,
+    "encryptedAndZip64OfficePackagesRejected": true,
+    "docxParagraphAndTableCellTextExtracted": true,
+    "xlsxSheetCellValueAndFormulaTextExtracted": true,
+    "xlsxFormulasExecuted": false,
+    "macrosEmbeddedObjectsExternalLinksAndAutomationImported": false,
+    "machineLocalAbsolutePathsStoredInPortableMetadata": false,
+    "alignmentCreatesGovernedSourceRecords": false,
+    "grantsSourceApprovalReadinessOrLifecycleAuthority": false
+  },
+  "realisticReadOnlySmoke": {
+    "sourceSet": "Product Scheduler documentation folder",
+    "discoveredSupportedResources": 85,
+    "acceptedCandidates": 85,
+    "acceptedFormats": { "md": 79, "xml": 4, "docx": 1, "xlsx": 1 },
+    "unsupportedResources": 3,
+    "acceptedOriginalBytes": 759984,
+    "acceptedExtractedCharacters": 724963,
+    "docxExtractedCharacters": 5555,
+    "xlsxExtractedCharacters": 421,
+    "xlsxSheets": 3,
+    "sourceMutation": false
+  },
+  "verification": {
+    "focusedOfficeAndAttachmentTests": { "filesPassed": 2, "testsPassed": 7 },
+    "repositoryTests": { "filesPassed": 179, "testsPassed": 1158, "testsSkipped": 1 },
+    "typecheck": "pass",
+    "documentation": "pass-zero-warnings",
+    "lockfileDryRun": "pass",
+    "gitDiffCheck": "pass",
+    "build": "pass",
+    "extensionHostDevelopment": "pass",
+    "extensionHostMultiRoot": "pass",
+    "isolatedPackageLifecycle": "pass",
+    "installedPackageActivation": "pass",
+    "normalProfileInstall": "pass",
+    "productOwnerUiReview": "pending"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "version": "0.1.0",
+    "sizeBytes": 1275185,
+    "sha256": "11b89876eab11762e76a8cfb0cb12df04585c74dba27f5f0436943714eca7da0"
+  },
+  "roadmapBoundary": {
+    "currentCheckpoint": "UX-01B mixed-format alignment preview installed",
+    "nextCheckpoint": "Product Owner mixed-format folder intake review",
+    "afterAcceptance": "UX-01C governed Source Intake, candidate Baseline, and Provenance recording",
+    "implementationAndRelease": "deferred until explicit authority"
+  },
+  "acceptance": {
+    "productOwner": "pending",
+    "nextTest": "Reload VS Code, select Choose Folder, choose the Product Scheduler documentation folder, send the staged @gaep /intake request, confirm that the DOCX and XLSX appear as candidates while unsupported files are listed separately, inspect the extracted Word and workbook facts and limitations, then revise or accept only the advisory alignment preview."
+  }
+}

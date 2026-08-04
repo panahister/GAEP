@@ -1,4 +1,4 @@
-import type { InitiativeInput } from "@gaep/engine"
+import type { InitiativeInput, ProductInput } from "@gaep/engine"
 
 import {
   isProductChatAdvisorSelection,
@@ -46,6 +46,9 @@ export interface InitiativeChatState {
   step: number
   answers: InitiativeAnswers
   advisor: ProductChatAdvisorSelection
+  workflow?: "creation" | "revision"
+  initiativeId?: string
+  baseInitiativeRevision?: number
   pending?: PendingInitiativeAnswer
 }
 
@@ -62,9 +65,15 @@ function textQuestion(
     prompt,
     example,
     parse: (value) => value.trim(),
-    challenge: (value) => typeof value !== "string" || value.trim().length < minimum
-      ? `Make this Initiative answer more specific (at least ${minimum} characters).`
-      : undefined,
+    challenge: (value) => {
+      if (typeof value !== "string" || value.trim().length < minimum) {
+        return `Make this Initiative answer more specific (at least ${minimum} characters).`
+      }
+      if (/\[[^\]]+\]|<[^>]+>/u.test(value)) {
+        return "Replace template placeholders with a concrete, reviewable Initiative answer."
+      }
+      return undefined
+    },
   }
 }
 
@@ -117,7 +126,59 @@ export function startInitiativeChat(advisor: ProductChatAdvisorSelection): Initi
     step: 0,
     answers: {},
     advisor,
+    workflow: "creation",
   }
+}
+
+/**
+ * Gives the advisor the governed Product truth that surrounds a new Initiative.
+ * Initiative state deliberately stores only Initiative answers; this projection is
+ * rebuilt for every advisory turn so stale Product context is never persisted in chat metadata.
+ */
+export function initiativeAdvisorAcceptedAnswers(
+  answers: InitiativeAnswers,
+  product?: { revision: number; input: ProductInput },
+): object {
+  return {
+    acceptedInitiativeFields: { ...answers },
+    ...(product ? {
+      governedProduct: {
+        revision: product.revision,
+        ...product.input,
+      },
+    } : {}),
+  }
+}
+
+export function startInitiativeRevision(
+  advisor: ProductChatAdvisorSelection,
+  initiative: { id: string; revision: number; title: string; outcome: string; scope: string[]; exclusions: string[] },
+): InitiativeChatState {
+  return {
+    schemaVersion: 1,
+    kind: "gaep-initiative-chat-state",
+    phase: "review",
+    step: initiativeQuestions.length,
+    answers: {
+      title: initiative.title,
+      outcome: initiative.outcome,
+      scope: [...initiative.scope],
+      exclusions: [...initiative.exclusions],
+    },
+    advisor,
+    workflow: "revision",
+    initiativeId: initiative.id,
+    baseInitiativeRevision: initiative.revision,
+  }
+}
+
+export function editInitiativeField(state: InitiativeChatState, key: InitiativeAnswerKey): InitiativeChatState {
+  if (state.workflow !== "revision") throw new Error("Only an Initiative revision can edit a recorded field")
+  const step = initiativeQuestions.findIndex((question) => question.key === key)
+  if (step < 0) throw new Error("Unknown Initiative field")
+  const answers = { ...state.answers }
+  delete answers[key]
+  return { ...state, phase: "collecting", step, answers, pending: undefined }
 }
 
 export function currentInitiativeQuestion(state: InitiativeChatState): InitiativeQuestion | undefined {
@@ -170,7 +231,8 @@ export function acceptInitiativeAnswer(state: InitiativeChatState): InitiativeCh
   if (!question || !state.pending || state.phase !== "awaiting-approval" || state.pending.questionKey !== question.key) {
     throw new Error("There is no assessed Initiative answer awaiting explicit approval")
   }
-  const step = state.step + 1
+  const revisionComplete = state.workflow === "revision"
+  const step = revisionComplete ? initiativeQuestions.length : state.step + 1
   return {
     ...state,
     step,
@@ -225,9 +287,16 @@ export function isInitiativeChatState(value: unknown): value is InitiativeChatSt
       !["collecting", "awaiting-approval", "review", "committed", "cancelled"].includes(phase) ||
       !Number.isSafeInteger(step) || step < 0 || step > initiativeQuestions.length ||
       !answers || !isProductChatAdvisorSelection(candidate.advisor)) return false
+  if (candidate.workflow !== undefined && !["creation", "revision"].includes(String(candidate.workflow))) return false
+  if (candidate.workflow === "revision" &&
+      (typeof candidate.initiativeId !== "string" || !Number.isSafeInteger(candidate.baseInitiativeRevision) || Number(candidate.baseInitiativeRevision) < 1)) return false
   if ((phase === "review" || phase === "committed") && step !== initiativeQuestions.length) return false
   if ((phase === "collecting" || phase === "awaiting-approval") && step >= initiativeQuestions.length) return false
-  if (!initiativeQuestions.every((question, index) => index < step
+  if (candidate.workflow === "revision") {
+    if (!initiativeQuestions.every((question, index) => index === step && phase !== "review"
+      ? answers[question.key] === undefined
+      : answers[question.key] !== undefined)) return false
+  } else if (!initiativeQuestions.every((question, index) => index < step
     ? answers[question.key] !== undefined
     : answers[question.key] === undefined)) return false
   for (const question of initiativeQuestions) {

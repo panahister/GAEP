@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-claude-p0-p4-acceptance-receipt",
+  "scenario": {
+    "id": "P1-31",
+    "testFile": "packages/engine/src/business-understanding.test.ts",
+    "testName": "executes an exact P0-P4 candidate chain through tool-free Claude stream evidence",
+    "testSourceDigest": "sha256:8ece2e1b455e3b8f3ed5699fa560488542ddae862436e09c7a435ac49c5c511f",
+    "fakeStreamFile": "packages/agent-sdk/test/fixtures/fake-claude-stream.mjs",
+    "fakeStreamSourceDigest": "sha256:5c430f4bb515289758a4d89a0dc902290c3df705df2814f1e748d2513d5da517",
+    "referenceScenarioFile": "examples/phase-1-realistic-reference/scenario.json",
+    "referenceScenarioSourceDigest": "sha256:31050aa2d6043761f2405ed909e9e57ea550284b1eeabe7acb102167cddffe79"
+  },
+  "execution": {
+    "runner": "vitest-isolated-child-process",
+    "exitCode": 0,
+    "semanticSummaryCount": 1
+  },
+  "summary": {
+    "schemaVersion": 1,
+    "kind": "gaep-claude-p0-p4-semantic-summary",
+    "referenceScenario": {
+      "id": "phase-1-atlas-release-readiness-v1",
+      "kind": "gaep-phase1-realistic-reference-scenario",
+      "digest": "sha256:38aea6886e76a509f5709a8f6d7366feb14f79a45d8743a172ca4b535d06c2c1",
+      "productName": "Atlas Release Readiness",
+      "initiativeTitle": "Review the Atlas release evidence packet",
+      "outputKinds": [
+        "architecture-challenge-model",
+        "authorization-model",
+        "bounded-context-ownership",
+        "business-architecture-baseline",
+        "business-capability-map",
+        "business-rule-catalog",
+        "business-understanding",
+        "candidate-source-baseline",
+        "data-model",
+        "decision-register",
+        "end-to-end-traceability",
+        "event-integration-model",
+        "evidence-registry",
+        "failure-recovery-model",
+        "initiative-entry",
+        "operating-model",
+        "outcome-success-model",
+        "process-model",
+        "risk-register",
+        "security-privacy-threat-assessment",
+        "source-intake",
+        "source-provenance",
+        "stakeholder-role-model",
+        "system-solution-architecture",
+        "value-stream-model"
+      ],
+      "authorityBoundary": "realistic-reference-scenario-does-not-establish-product-baseline-readiness-approval-acceptance-phase-entry-release-deployment-or-action-authority"
+    },
+    "governedRecordKinds": [
+      "architecture",
+      "architectureChallengeModel",
+      "authorizationModel",
+      "baseline",
+      "boundedContextModel",
+      "business",
+      "businessRuleCatalog",
+      "capabilityMap",
+      "dataModel",
+      "decisionRegister",
+      "eventIntegrationModel",
+      "evidenceRegistry",
+      "failureRecoveryModel",
+      "operatingModel",
+      "outcome",
+      "processModel",
+      "riskRegister",
+      "securityPrivacyAssessment",
+      "stakeholder",
+      "traceability",
+      "valueStreamModel"
+    ],
+    "governedRecordCount": 21,
+    "readiness": {
+      "result": "passed",
+      "outputCount": 25,
+      "applicableOutputCount": 3,
+      "notApplicableOutputCount": 22,
+      "readinessAuthorityState": "not-established"
+    },
+    "handoff": {
+      "state": "complete-for-review",
+      "itemCount": 25,
+      "includedItemCount": 3,
+      "omittedNotApplicableItemCount": 22,
+      "acknowledgementState": "not-established",
+      "transferAuthorityState": "not-established"
+    },
+    "execution": {
+      "adapterId": "gaep.claude-code-cli",
+      "agentId": "claude-code-cli",
+      "modelId": "success",
+      "mode": "claude-context-only",
+      "state": "completed",
+      "providerDisposition": "completed",
+      "outcomeStatus": "satisfied",
+      "outcomeBasis": "postcondition-evaluator",
+      "completedStepCount": 1,
+      "totalStepCount": 1,
+      "stagingPresent": false,
+      "toolDefinitionCount": 0,
+      "writeScopeCount": 0,
+      "providerPostconditionStatus": "not-assessed",
+      "postconditionAuthority": "workflow-gate-evaluator",
+      "warningCodes": [
+        "runtime-warning",
+        "provider-output-redacted"
+      ]
+    },
+    "integrity": {
+      "auditValid": true,
+      "previewBound": true,
+      "resultBound": true,
+      "evidenceBound": true,
+      "eventsBound": true,
+      "contextBound": true
+    },
+    "authorityBoundary": "managed-readonly-receipt-does-not-grant-tool-write-effect-or-outcome-authority"
+  },
+  "summaryDigest": "sha256:7a1a526288ec3ef910cbbfea8fc0e53b8cf57b6788950a4724cc053fecb53ad7",
+  "authority": {
+    "liveProviderStatus": "not-tested",
+    "productOwnerAcceptance": "not-established",
+    "readinessAuthority": "not-established",
+    "releaseAuthority": "not-granted",
+    "securityScan": "skipped-by-product-owner",
+    "boundary": "acceptance-receipt-is-deterministic-local-evidence-not-live-provider-product-owner-readiness-security-or-release-authority"
+  },
+  "limitations": [
+    "The deterministic local Claude stream fixture verifies production invocation construction, stream parsing, redaction, and governed evidence behavior, not live provider authentication, entitlement, reachability, model quality, usage, or cost.",
+    "The production Claude lane remains tool-free, context-only, observation-only, fresh-process, and non-resumable; this receipt grants no Tool, filesystem, browser, MCP, write, approval, or external-effect authority.",
+    "The governed P0-P4 records exercise one source-bound realistic reference scenario but do not establish a real Product baseline, independent review, readiness, approval, or Product Owner acceptance.",
+    "The integration runs through the shared engine and does not validate native IDE installation, activation, interaction, rendering, accessibility, or supported-host acceptance.",
+    "The Product Owner explicitly skipped the interrupted Codex Security scan; this acceptance receipt is not security assurance or a security result."
+  ]
+}

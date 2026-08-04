@@ -398,13 +398,16 @@ export const initiativeApplicabilityMatrixInputSchema = z.object({
     digest: initiativeDigestSchema,
     subjectCount: z.number().int().positive(),
   }).strict().optional(),
-  decisions: z.array(initiativeApplicabilityDecisionInputSchema).min(1).max(512),
+  decisions: z.array(initiativeApplicabilityDecisionInputSchema).max(512),
   unresolvedSubjects: z.array(z.object({
     subject: initiativeApplicabilitySubjectSchema,
     reason: initiativeBoundedTextSchema,
     owner: initiativeBoundedTextSchema,
   }).strict()).max(512),
 }).strict().superRefine((matrix, context) => {
+  if (matrix.decisions.length === 0 && matrix.unresolvedSubjects.length === 0) {
+    context.addIssue({ code: "custom", message: "An applicability matrix must contain at least one decided or unresolved subject" })
+  }
   const decisionKeys = matrix.decisions.map((decision) => `${decision.subject.type}:${decision.subject.key}`)
   if (new Set(decisionKeys).size !== decisionKeys.length) {
     context.addIssue({ code: "custom", path: ["decisions"], message: "Applicability subjects must be decided at most once per matrix" })
@@ -421,7 +424,7 @@ export const initiativeApplicabilityMatrixInputSchema = z.object({
 export const initiativeApplicabilityMatrixSchema = initiativeApplicabilityMatrixInputSchema.safeExtend({
   schemaVersion: z.literal(1),
   kind: z.literal("initiative-applicability-matrix"),
-  decisions: z.array(initiativeApplicabilityDecisionSchema).min(1).max(512),
+  decisions: z.array(initiativeApplicabilityDecisionSchema).max(512),
   revision: z.number().int().positive(),
   initiativeId: z.string().uuid(),
   productId: z.string().uuid(),

@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-vscode-phase1-canonical-authoring-checkpoint",
+  "checkpointId": "GAEP-VSCODE-PHASE1-CANONICAL-AUTHORING-20260803T043044Z",
+  "generatedAt": "2026-08-03T04:30:44.000Z",
+  "baseCommit": "1c367d9608e5d20c62117885b16c64d768bdbd60",
+  "deliveryScope": "VS Code Pre-Implementation MVP through the pre-Figma P5 handoff",
+  "status": "ready-for-product-owner-test",
+  "implemented": {
+    "canonicalRecordCount": 23,
+    "firstRecord": "business-understanding",
+    "lastRecord": "p5-handoff-package",
+    "chatCommand": "@gaep /author",
+    "interaction": "selected-advisor draft, bounded contract repair, editable review, exact validation, and explicit Review and Record",
+    "dashboard": "twelve-checkpoint Product Journey derived from exact current Engine projections",
+    "completionRule": "Phase 1 is complete in the projection only when both the P0-P4 Readiness Gate and pre-Figma P5 Handoff Package exist",
+    "modes": [
+      "quick",
+      "guided",
+      "assured"
+    ],
+    "authorityBoundary": "AI output remains candidate-only; no approval, appointment, baseline designation, readiness, implementation, release, or action authority is synthesized"
+  },
+  "featureStatusChanges": {
+    "readyForTest": [
+      "P1-04",
+      "P1-07",
+      "P1-08",
+      "P1-09",
+      "P1-10",
+      "P1-11",
+      "P1-12",
+      "P1-13",
+      "P1-14",
+      "P1-15",
+      "P1-16",
+      "P1-17",
+      "P1-18",
+      "P1-19",
+      "P1-20",
+      "P1-21",
+      "P1-22",
+      "P1-23",
+      "P1-24",
+      "P1-25",
+      "P1-26",
+      "P1-27",
+      "P1-28",
+      "P1-29",
+      "P1-30",
+      "P1-31",
+      "P1-32",
+      "P1-33",
+      "P1-34",
+      "P1-35",
+      "P1-36"
+    ],
+    "done": [],
+    "stillInProgress": [],
+    "inReview": [
+      "P1-03"
+    ]
+  },
+  "verification": [
+    {
+      "command": "npm run typecheck",
+      "result": "pass"
+    },
+    {
+      "command": "npm test",
+      "result": "pass",
+      "testFiles": 185,
+      "passed": 1181,
+      "skipped": 1
+    },
+    {
+      "command": "npm run validate:docs",
+      "result": "pass",
+      "documents": 83,
+      "requirements": 868,
+      "warnings": 0
+    },
+    {
+      "command": "npm run build",
+      "result": "pass"
+    },
+    {
+      "command": "npm run package:vscode",
+      "result": "pass"
+    },
+    {
+      "command": "npm run test:vscode:extension-host",
+      "result": "pass",
+      "coverage": "development activation, native participant and commands, multi-root safety, isolated install/upgrade/reinstall/rollback/uninstall/final-install, installed-package activation"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ],
+  "installableArtifact": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "bytes": 1291407,
+    "sha256": "35081b5e930b4008b89ee9550ceebc44d595ca80adf0d844566f8dd261464d00"
+  },
+  "realisticReference": {
+    "path": "evidence/examples/20260803T043044Z-phase-1-realistic-reference",
+    "scenarioId": "phase-1-atlas-release-readiness-v1",
+    "outputCount": 25,
+    "inspectableStoreCount": 2,
+    "artifactFileCount": 143,
+    "compositionDigest": "sha256:11e3814358498ea37368e10f794c38c4fb7a786d45d97883d3f17b680ffee28c"
+  },
+  "productOwnerAcceptance": "not-established",
+  "limitations": [
+    "The realistic reference uses deterministic local provider fixtures and is not live Codex or Claude Code semantic-quality acceptance.",
+    "The Product Owner has not yet authored and reviewed the 23 canonical records on the real Product through the installed VSIX.",
+    "P1-30 through P1-36 are Ready for Test pending live-provider, dashboard, realistic-Product, and Product Owner acceptance evidence.",
+    "No Feature is advanced to Done by this checkpoint."
+  ]
+}

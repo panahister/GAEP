@@ -23,6 +23,7 @@ coverage/
 # Machine-local IDE state and shareable release bundles
 .idea/claudeCodeEditorTabs.xml
 local-release-bundles/
+test-artifacts/
 
 # Runtime-only example diagnostics (canonical acceptance receipts live under evidence/)
 examples/phase0-provider-model/evidence/

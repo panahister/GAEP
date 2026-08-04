@@ -295,6 +295,186 @@ button[aria-current="page"] .nav-state {
   margin: 16px 0 24px;
 }
 
+.journey-card {
+  padding: 16px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  background: var(--vscode-editorWidget-background);
+}
+
+.journey-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.journey-heading h3 {
+  margin: 0 0 4px;
+}
+
+.journey-state {
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.journey-state.attention-required {
+  color: var(--vscode-editorWarning-foreground);
+  border: 1px solid var(--vscode-inputValidation-warningBorder);
+}
+
+.journey-state.in-progress,
+.journey-state.ready {
+  color: var(--vscode-textLink-foreground);
+  border: 1px solid var(--vscode-focusBorder);
+}
+
+.journey-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.journey-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.journey-marker {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--vscode-descriptionForeground);
+}
+
+.journey-row.complete .journey-marker {
+  color: var(--vscode-testing-iconPassed);
+}
+
+.journey-row.attention-required .journey-marker {
+  color: var(--vscode-testing-iconPassed);
+}
+
+.journey-label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.journey-attention-badge {
+  color: var(--vscode-editorWarning-foreground);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.journey-row .action-button {
+  margin-top: 6px;
+}
+
+.journey-details {
+  margin-top: 8px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  background: var(--vscode-editor-background);
+}
+
+.journey-details > summary {
+  padding: 8px 10px;
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.journey-table-scroll {
+  overflow-x: auto;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.journey-values-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.journey-values-table th,
+.journey-values-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.journey-values-table thead th {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85em;
+}
+
+.journey-values-table tbody th {
+  width: 28%;
+  font-weight: 600;
+}
+
+.journey-value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.journey-value.status,
+.journey-value.authority {
+  color: var(--vscode-descriptionForeground);
+}
+
+.journey-impact {
+  margin: 10px;
+  padding: 10px;
+  border-left: 3px solid var(--vscode-focusBorder);
+  background: var(--vscode-textBlockQuote-background);
+}
+
+.journey-impact p {
+  margin: 4px 0;
+}
+
+.journey-impact.review-required {
+  border-left-color: var(--vscode-editorWarning-foreground);
+}
+
+.journey-details > .action-row {
+  padding: 0 10px 10px;
+}
+
+.journey-row.next .journey-marker {
+  color: var(--vscode-textLink-foreground);
+  border: 1px solid var(--vscode-focusBorder);
+}
+
+.journey-next {
+  margin-top: 12px;
+  padding: 12px;
+  border-left: 3px solid var(--vscode-focusBorder);
+  background: var(--vscode-textBlockQuote-background);
+}
+
+.journey-next p {
+  margin: 4px 0 12px;
+}
+
+.advanced-section > summary {
+  cursor: pointer;
+  color: var(--vscode-textLink-foreground);
+  margin-bottom: 12px;
+}
+
 .progress-list,
 .issue-list,
 .limitation-list,

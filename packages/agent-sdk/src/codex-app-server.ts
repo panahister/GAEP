@@ -14,7 +14,7 @@ import {
   type ManagedTerminalDisposition,
   type UnsequencedManagedRuntimeEvent,
 } from "./managed-runtime.js"
-import type { CodexJsonValue, CodexStableRequestParams } from "./codex-app-server-v2.types.js"
+import type { CodexJsonValue, CodexReasoningEffort, CodexStableRequestParams } from "./codex-app-server-v2.types.js"
 import {
   filterChildEnvironment,
   fingerprintExecutable,
@@ -66,6 +66,7 @@ export interface CodexStagedTurnOptions {
   threadId: string
   prompt: string
   model?: string
+  effort?: CodexReasoningEffort
 }
 
 export interface CodexManagedResultOptions {
@@ -322,6 +323,7 @@ export class CodexAppServerSupervisor {
           }
         : { type: "readOnly", networkAccess: false },
       model: options.model ?? null,
+      ...(options.effort === undefined ? {} : { effort: options.effort }),
     }), "turn/start result")
     const turn = object(result.turn, "turn/start turn")
     const turnId = textField(turn, "id")

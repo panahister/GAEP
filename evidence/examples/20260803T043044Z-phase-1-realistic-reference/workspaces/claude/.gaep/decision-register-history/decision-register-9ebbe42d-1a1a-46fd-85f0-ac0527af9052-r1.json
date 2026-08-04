@@ -1,0 +1,436 @@
+{
+  "initiativeId": "43635952-8bdd-454f-b10c-e2e99de63e9e",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e393d30d75e6308714a241d2bcb9349f4b36a1230ecaadec8aeaa3975fdbb2e5",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:68744953465aaadd2be5245903421834ae23a5fd1f5efc40468183799ea026fd"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed Product Decision Register",
+  "scope": "Record one exact cross-step Product decision with alternatives, recommendation, attributable human selection, consequences, authority gaps, and review triggers without treating the selection as effective, approved, baselined, ready, or authorized.",
+  "operatingModel": {
+    "recordId": "ffb4bcec-76b8-471b-b496-74d8140e0758",
+    "revision": 1,
+    "digest": "sha256:ada00386d249cad44382df2b44f5e15a952e15bb436d22e5148214f05d1ba1ca"
+  },
+  "architectureChallengeModel": {
+    "recordId": "b8c9ffcd-bb80-4b56-9cab-ffb0cd696949",
+    "revision": 1,
+    "digest": "sha256:d48693157348af89306480005059dda85359bc454f1c7eab10ffb22aeb93d7b6"
+  },
+  "decisions": [
+    {
+      "key": "shared-engine-boundary",
+      "question": "Should every native Product Studio host delegate governed Product semantics and persistence to one shared local engine?",
+      "scope": {
+        "included": [
+          "Four native Product Studio hosts",
+          "Shared local governed engine"
+        ],
+        "excluded": [
+          "Deployment authorization",
+          "Production release"
+        ]
+      },
+      "ownerRoleKey": "initiative-owner",
+      "decisionAuthorityRoleKeys": [
+        "initiative-owner"
+      ],
+      "decisionRightKeys": [
+        "govern-initiative-outcome"
+      ],
+      "ownerAssignmentState": "not-established",
+      "authorityAssignmentState": "not-established",
+      "subjects": [
+        {
+          "recordKind": "architecture-challenge-model",
+          "recordId": "b8c9ffcd-bb80-4b56-9cab-ffb0cd696949",
+          "revision": 1,
+          "digest": "sha256:d48693157348af89306480005059dda85359bc454f1c7eab10ffb22aeb93d7b6",
+          "relationship": "answers-for",
+          "elementKeys": [
+            "shared-engine-decision"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "key": "host-local-semantics",
+          "name": "Host-local semantics",
+          "description": "Each native host implements and persists governed Product semantics independently.",
+          "noAction": false,
+          "consequences": [
+            "Each host requires independent semantic-parity and migration evidence"
+          ],
+          "constraints": [
+            "Four authority-bearing implementations must remain compatible"
+          ],
+          "risks": [
+            "Host-local governance semantics may silently diverge"
+          ],
+          "evidence": [
+            {
+              "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        },
+        {
+          "key": "shared-governed-engine",
+          "name": "Shared governed engine",
+          "description": "Every native host delegates governed Product semantics and persistence to one shared strict engine contract.",
+          "noAction": false,
+          "consequences": [
+            "All hosts depend on one strict protocol and governed-store boundary"
+          ],
+          "constraints": [
+            "Packaging and compatibility must work in every supported host"
+          ],
+          "risks": [
+            "A shared engine defect can affect every native host"
+          ],
+          "evidence": [
+            {
+              "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "criteria": [
+        {
+          "key": "authority-integrity",
+          "statement": "The selected boundary must preserve one inspectable and fail-closed authority model across every host.",
+          "importance": "critical",
+          "evidence": [
+            {
+              "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ],
+      "recommendations": [
+        {
+          "key": "shared-engine-candidate",
+          "preference": "option",
+          "optionKey": "shared-governed-engine",
+          "rationale": "One strict governed engine minimizes host-specific semantic drift while preserving a single inspectable audit boundary.",
+          "assumptions": [
+            "Every supported host can launch or connect to the exact packaged engine"
+          ],
+          "uncertainty": [
+            "Native supported-platform acceptance remains incomplete"
+          ],
+          "proposedBy": {
+            "kind": "agent",
+            "id": "gaep-product-analysis"
+          },
+          "proposedAt": "2026-07-27T00:00:00.000Z",
+          "evidence": [
+            {
+              "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+              "sourceRevision": 1,
+              "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+              "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ],
+          "authorityBoundary": "recommendation-is-advisory-and-does-not-establish-a-decision-outcome-approval-risk-acceptance-or-action-authority"
+        }
+      ],
+      "outcome": {
+        "state": "option-selected",
+        "optionKey": "shared-governed-engine",
+        "rationale": "The named human selected the shared candidate while authority eligibility and decision effectiveness remain unestablished and pending.",
+        "selectedBy": {
+          "kind": "human",
+          "id": "product-owner"
+        },
+        "selectedAt": "2026-07-27T01:00:00.000Z",
+        "evidence": [
+          {
+            "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "authorityEligibilityState": "not-established",
+        "effectivenessState": "pending",
+        "approvalState": "not-established",
+        "riskAcceptanceState": "not-granted",
+        "baselinePromotionState": "not-granted",
+        "actionAuthorityState": "not-granted",
+        "authorityBoundary": "recorded-outcome-does-not-establish-authority-eligibility-approval-risk-acceptance-baseline-promotion-or-action-authority"
+      },
+      "authoringLifecycle": "draft",
+      "revisionDisposition": "candidate",
+      "operationalEligibilityState": "not-established",
+      "assumptions": [
+        "The exact Architecture Challenge revision remains the current decision-support input"
+      ],
+      "uncertainty": [
+        "Independent human challenge and supported-host evidence remain incomplete"
+      ],
+      "dissent": [],
+      "conflicts": [],
+      "consequences": [
+        "The selected boundary shapes every native host integration and portability contract"
+      ],
+      "risks": [
+        "A wrong boundary selection could create systemic cross-host governance drift or correlated failure"
+      ],
+      "obligations": [
+        "Re-open the question on material protocol, authority, or host changes"
+      ],
+      "implementationBoundary": "The recorded selection guides candidate implementation only; separate Approval Determinations and an exact Authorization Grant remain required for any governed effect that needs them.",
+      "reviewTriggers": [
+        "Architecture Challenge, supported-host evidence, operating authority, or protocol compatibility changes"
+      ],
+      "relationships": [
+        {
+          "recordKind": "architecture-challenge-model",
+          "recordId": "b8c9ffcd-bb80-4b56-9cab-ffb0cd696949",
+          "revision": 1,
+          "digest": "sha256:d48693157348af89306480005059dda85359bc454f1c7eab10ffb22aeb93d7b6",
+          "relationship": "depends-on",
+          "elementKeys": [
+            "shared-engine-decision"
+          ]
+        }
+      ],
+      "sources": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "requirementCoverage": [
+    {
+      "requirementId": "GAEP-DRAA-REQ-001",
+      "state": "covered-candidate",
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "basis": "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-003",
+      "state": "covered-candidate",
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "basis": "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-004",
+      "state": "covered-candidate",
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "basis": "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-005",
+      "state": "covered-candidate",
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "basis": "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-006",
+      "state": "covered-candidate",
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "basis": "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-009",
+      "state": "covered-candidate",
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "basis": "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-017",
+      "state": "covered-candidate",
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "basis": "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-029",
+      "state": "covered-candidate",
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "basis": "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-033",
+      "state": "covered-candidate",
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "basis": "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-DRAA-REQ-035",
+      "state": "covered-candidate",
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "basis": "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-IDAUTH-REQ-001",
+      "state": "covered-candidate",
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "basis": "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "requirementId": "GAEP-STATE-REQ-002",
+      "state": "covered-candidate",
+      "decisionKeys": [
+        "shared-engine-boundary"
+      ],
+      "basis": "The candidate separates recommendations, outcomes, effectiveness, approval, and authority while preserving exact subject, actor, source, state, consequence, and review-trigger bindings.",
+      "evidence": [
+        {
+          "sourceId": "31b32556-f6eb-4545-8d7f-9078bb5d8539",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:a3d4bd4c8647e0ee28131ccf1e63790e695f412c763700521a05aad13327dcf9",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "inconsistencies": [],
+  "unresolvedQuestions": [],
+  "limitations": [
+    "No owner appointment, authority eligibility, effective Decision, Approval Determination, risk acceptance, baseline promotion, readiness conclusion, release, deployment, or action authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "decision-register-candidate",
+  "id": "9ebbe42d-1a1a-46fd-85f0-ac0527af9052",
+  "productId": "4238d65d-bc5f-4e6c-9c34-d6fcab3694d2",
+  "revision": 1,
+  "membershipDigest": "sha256:c5189b4ab469818cc3ec088317e39c6e8a5f58ece7c8704b8c3b969f1a5b6f81",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-08-03T04:31:12.789Z",
+  "updatedAt": "2026-08-03T04:31:12.789Z",
+  "authorityBoundary": "decision-register-is-a-candidate-record-and-does-not-establish-owner-or-authority-assignments-decision-effectiveness-approval-risk-acceptance-baseline-promotion-readiness-or-action-authority"
+}

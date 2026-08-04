@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "vscode-initiative-applicability-checkpoint",
+  "observedAt": "2026-08-01T15:08:31.000Z",
+  "featureIds": ["PLT-36", "P1-03"],
+  "status": "ready-for-product-owner-applicability-test",
+  "scope": {
+    "host": "vscode",
+    "workflow": "state-aware-conversational-initiative-applicability",
+    "productOwnerWorkspaceMutationDuringVerification": false
+  },
+  "behavior": {
+    "continuesCurrentClassifiedInitiative": true,
+    "singleNaturalLanguageBrief": true,
+    "contextAwareSuggestedBrief": true,
+    "suggestedBriefUsesOnlyGovernedFacts": true,
+    "suggestedBriefSubmitsThroughShortCommand": true,
+    "groupedAdvisorProposalExpandedByGaep": true,
+    "applicabilityProviderTimeoutMs": 240000,
+    "selectedAdvisorChallenge": true,
+    "canonicalSubjectCount": 49,
+    "exactDecidedOrUnresolvedCoverage": true,
+    "completeAllUnresolvedCoverageIsValid": true,
+    "whollyEmptyMatrixIsInvalid": true,
+    "latestHumanReplyMaySupplyCandidateOwnersScopeAndDeferrals": true,
+    "candidateHumanDecisionsRemainUngovernedUntilAcceptAndCommit": true,
+    "standardCandidateOwnerRecommendationsCoverAll49Subjects": true,
+    "standardRolesIncludeSolutionArchitectureSecurityArchitectureAndSoftwareEngineering": true,
+    "accountableApproverRecommendationsAreLimitedToFiveApprovalGates": true,
+    "architectureApprovalUsesArchitectureAuthority": true,
+    "securityApprovalUsesSecurityAuthority": true,
+    "implementationApprovalUsesEngineeringAuthority": true,
+    "releaseApprovalUsesReleaseAuthority": true,
+    "ordinaryWorkDoesNotInheritApprovalAuthority": true,
+    "rolesCommandShowsEditableRecommendations": true,
+    "suggestCommandAlwaysSuppliesStandardRoleCoverage": true,
+    "naturalLanguageRoleOverridesSupported": true,
+    "naturalLanguageRoleOverrideGeneratesProposalImmediately": true,
+    "suggestAfterOverrideRestoresDefaults": true,
+    "guidedUnresolvedResolutionCommand": true,
+    "unresolvedSubjectsGroupedIntoCandidateClarifications": true,
+    "deliveryContextDefaultDerivedFromClassification": true,
+    "runtimeAiDefaultDerivedFromExactInitiativeWording": true,
+    "identityDefaultDerivedFromExposure": true,
+    "designReferenceDefaultDerivedFromUiCharacteristic": true,
+    "unsafeDefaultsRemainUnresolved": true,
+    "generatedClarificationIsGovernedFactOrHumanConfirmation": false,
+    "resolvePersistsWithoutAcceptAndCommit": false,
+    "standardRoleRecommendationsAppointOrAuthorizeAnyone": false,
+    "absenceNeverMeansNotApplicable": true,
+    "aiCannotGrantApproval": true,
+    "explicitAcceptRequired": true,
+    "explicitCommitConfirmationRequired": true,
+    "initiativeAndProductRevisionBound": true,
+    "catalogDigestBound": true,
+    "grantsApprovalOrExecutionAuthority": false
+  },
+  "verification": {
+    "focusedTests": { "passed": 18, "failed": 0 },
+    "contractEngineChatAdvisorRegressionTests": { "passed": 52, "failed": 0 },
+    "repositoryTests": { "filesPassed": 176, "testsPassed": 1147, "testsSkipped": 1 },
+    "typecheck": "pass",
+    "build": "pass",
+    "documentation": "pass-zero-warnings",
+    "extensionHost": "pass",
+    "packageLifecycle": "pass",
+    "syntheticLiveOpusFullLoad": {
+      "result": "pass",
+      "canonicalSubjectsCovered": 49,
+      "durationSeconds": 151.78,
+      "usesProductOwnerWorkspaceData": false
+    },
+    "productOwnerCodexObservation": {
+      "providerCompleted": true,
+      "durationSeconds": 67,
+      "canonicalSubjectsCovered": 49,
+      "decisions": 0,
+      "unresolvedSubjects": 49,
+      "priorRejectionCause": "obsolete-minimum-one-decision-contract"
+    },
+    "syntheticLiveCodexCandidateHumanDecision": {
+      "result": "pass",
+      "durationSeconds": 109.78,
+      "canonicalSubjectsCovered": 49,
+      "nonzeroDecisionsRequired": true,
+      "usesProductOwnerWorkspaceData": false
+    },
+    "syntheticLiveCodexStandardRoleCoverage": {
+      "result": "pass",
+      "durationSeconds": 142.49,
+      "canonicalSubjectsCovered": 49,
+      "subjectsWithExactRecommendedOwner": 49,
+      "usesProductOwnerWorkspaceData": false
+    },
+    "syntheticLiveCodexUnresolvedResolution": {
+      "result": "pass",
+      "durationSeconds": 102.51,
+      "startingUnresolvedSubjects": 5,
+      "reducedUnresolvedSubjects": true,
+      "canonicalSubjectsCovered": 49,
+      "usesProductOwnerWorkspaceData": false
+    },
+    "normalProfileInstall": "pass",
+    "gitDiffCheck": "pass"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "sizeBytes": 1262706,
+    "sha256": "b0eb755b5b30e508488e89f6e7b1dd20dbdc51786e7280bb2a5faa6e21fff601"
+  },
+  "roadmapBoundary": {
+    "currentCheckpoint": "P1-03 conversational Applicability Resolution installed",
+    "nextCheckpoint": "P1-04 governed Source Intake",
+    "afterNext": "P1-05 Source Baseline and P1-06 Source Provenance",
+    "implementationAndRelease": "deferred until explicit authority"
+  },
+  "acceptance": {
+    "productOwner": "pending",
+    "nextTest": "Reload VS Code and select Resolve 5 open subjects; review the revised matrix and stop before /accept."
+  }
+}

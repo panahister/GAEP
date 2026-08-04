@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "vscode-attachment-first-source-intake",
+  "observedAt": "2026-08-02T18:51:15Z",
+  "featureIds": ["PLT-36", "P1-04", "P1-05", "P1-06"],
+  "status": "accepted-document-understanding-ux",
+  "scope": {
+    "host": "vscode",
+    "workflow": "attachment-first-document-understanding-with-opt-in-alignment",
+    "productOwnerWorkspaceMutationDuringVerification": false
+  },
+  "behavior": {
+    "intakePerformsHumanRequestedDocumentTaskFirst": true,
+    "plainMarkdownAdvisorResponsesAcceptedForUnderstanding": true,
+    "structuredAssessmentStillRequiredForGovernedAlignmentAndDiscovery": true,
+    "providerAuthenticationDiagnosticsNeverRenderedAsDocumentAnswers": true,
+    "ordinarySecurityLanguageDoesNotTriggerAuthenticationFailure": true,
+    "failedFollowUpPreservesLastSuccessfulAttachmentReview": true,
+    "defaultTaskExplainsAndSummarizesContent": true,
+    "naturalLanguageFollowUpUsesReviewedAttachmentContent": true,
+    "lifecycleAlignmentIsSeparateOptInCommand": "@gaep /align",
+    "implicitInstructionReferencesAreCandidateSources": false,
+    "explicitChooseFileAndChooseFolderSelectionsRemainEligible": true,
+    "explicitTextualFileReferencesRemainEligible": true,
+    "candidateAuthorityDowngradesContentAlignment": false,
+    "rawAttachmentContentStoredInPortableChatState": false,
+    "createsGovernedSourceBaselineOrProvenance": false,
+    "grantsApprovalReadinessOrLifecycleAuthority": false
+  },
+  "realProviderReadOnlySmoke": {
+    "provider": "Claude Code",
+    "providerVersion": "2.1.218",
+    "model": "sonnet",
+    "source": "test-artifacts/gaep-source-intake/GAEP_Source_Intake_Test.docx",
+    "instruction": "describe the attachment file",
+    "candidateCount": 1,
+    "rejectedCount": 0,
+    "completed": true,
+    "answerDescribedDocumentPurposeMetadataAndSixSections": true,
+    "answerProducedLifecycleAlignment": false,
+    "sourceMutation": false
+  },
+  "verification": {
+    "focusedSourceIntakeAdvisorAndRuntimeTests": { "filesPassed": 3, "testsPassed": 30 },
+    "repositoryTests": { "filesPassed": 180, "testsPassed": 1170, "testsSkipped": 1 },
+    "typecheck": "pass",
+    "documentation": "pass-zero-warnings",
+    "gitDiffCheck": "pass",
+    "build": "pass",
+    "extensionHostDevelopment": "pass",
+    "extensionHostMultiRoot": "pass",
+    "isolatedPackageLifecycle": "pass",
+    "installedPackageActivation": "pass",
+    "normalProfileInstall": "pass",
+    "productOwnerUiReview": "accepted"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "version": "0.1.0",
+    "sizeBytes": 1278177,
+    "sha256": "7b4308a8cbe7938733b0b9da2a1f39a1f891aaca940b99dc8bdf4a2340cf60a9"
+  },
+  "roadmapBoundary": {
+    "currentCheckpoint": "P1-04 attachment-first document understanding UX accepted",
+    "nextCheckpoint": "P1-04 exact non-authoritative candidate Source recording",
+    "afterAcceptance": "Candidate P1-05 Baseline followed by P1-06 Provenance",
+    "implementationAndRelease": "deferred until explicit authority"
+  },
+  "acceptance": {
+    "productOwner": "accepted",
+    "acceptedAt": "2026-08-02T19:08:45Z",
+    "statement": "به تظرم فایل مورد تایید هست بریم سراغ بهبود های UX",
+    "nextTest": "Record the exact reviewed attachments as non-authoritative candidate Sources through one explicit Product Chat action; confirm no Baseline, Provenance, approval, readiness, or implementation authority is created."
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "kind": "source-record-revision",
+  "productId": "22295bed-0b3c-4ffa-9979-eb612fdc0c5b",
+  "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+  "revision": 1,
+  "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+  "snapshot": {
+    "initiativeId": "7cbb70ba-ecdf-4418-b693-b0693de9e842",
+    "sourceType": "stakeholder-note",
+    "title": "Reviewed stakeholder discovery",
+    "description": "The exact reviewed discovery input for the bounded business-understanding workflow.",
+    "locator": {
+      "kind": "logical",
+      "value": "discovery.reviewed"
+    },
+    "revisionIdentity": {
+      "kind": "resource-revision",
+      "value": "DISCOVERY-001@1"
+    },
+    "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "digestScope": "Canonical UTF-8 discovery content",
+    "owner": {
+      "kind": "human",
+      "id": "product-owner"
+    },
+    "semanticAuthority": {
+      "standing": "advisory",
+      "domain": "Initiative business context",
+      "scope": [
+        "P1 candidate understanding"
+      ],
+      "basis": "The accountable Product owner reviewed this exact discovery input as advisory evidence.",
+      "declaredBy": {
+        "kind": "human",
+        "id": "product-owner"
+      }
+    },
+    "knowledgeDisposition": "confirmed",
+    "trust": {
+      "sourceAuthenticity": "verified",
+      "contentIntegrity": "verified"
+    },
+    "informationClassification": "internal",
+    "rights": {
+      "status": "verified",
+      "basis": "Internal Product analysis is recorded for this source."
+    },
+    "freshness": {
+      "status": "fresh",
+      "assessedAt": "2026-07-25T00:00:00.000Z",
+      "basis": "The accountable owner reviewed this exact revision.",
+      "validUntil": "2026-08-25T00:00:00.000Z"
+    },
+    "availability": {
+      "status": "available",
+      "basis": "The logical discovery source is available."
+    },
+    "limitations": [
+      "The record does not establish stakeholder authority or Product approval."
+    ],
+    "schemaVersion": 1,
+    "kind": "source-record",
+    "id": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+    "productId": "22295bed-0b3c-4ffa-9979-eb612fdc0c5b",
+    "revision": 1,
+    "recordedBy": {
+      "kind": "human",
+      "id": "product-owner"
+    },
+    "createdAt": "2026-08-03T04:31:10.108Z",
+    "updatedAt": "2026-08-03T04:31:10.108Z",
+    "authorityBoundary": "source-semantic-authority-is-an-attributed-input-claim-and-does-not-grant-decision-approval-authorization-or-action-authority"
+  },
+  "recordedAt": "2026-08-03T04:31:10.108Z"
+}

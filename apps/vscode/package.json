@@ -40,6 +40,9 @@
     "onChatParticipant:gaep.product",
     "onLanguageModelChat:gaep-workflow",
     "onCommand:gaep.openInteractiveChat",
+    "onCommand:gaep.openConversationOutline",
+    "onCommand:gaep.chooseFile",
+    "onCommand:gaep.chooseFolder",
     "onCommand:gaep.selectProductChatAgent",
     "onCommand:gaep.selectProductChatModel",
     "onCommand:gaep.openProductStudio",
@@ -76,6 +79,21 @@
         "command": "gaep.openInteractiveChat",
         "title": "GAEP: Open Interactive Product Chat",
         "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "gaep.openConversationOutline",
+        "title": "GAEP: Open Conversation Outline",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "gaep.chooseFile",
+        "title": "GAEP: Choose File",
+        "icon": "$(attach)"
+      },
+      {
+        "command": "gaep.chooseFolder",
+        "title": "GAEP: Choose Folder",
+        "icon": "$(folder-opened)"
       },
       {
         "command": "gaep.selectProductChatAgent",
@@ -316,12 +334,76 @@
             "description": "Start a challenged, review-before-commit Product initialization"
           },
           {
+            "name": "adopt",
+            "description": "Analyze existing Product documents and propose a reviewable GAEP fast-start"
+          },
+          {
             "name": "revise",
             "description": "Revise existing Product fields with AI challenge and an audited commit"
           },
           {
+            "name": "initiative",
+            "description": "Review and revise one field of the current Initiative definition"
+          },
+          {
+            "name": "edit",
+            "description": "Choose and edit any field in the current complete Product draft"
+          },
+          {
             "name": "continue",
             "description": "Inspect governed state and start or resume the next valid workflow"
+          },
+          {
+            "name": "classification",
+            "description": "Review and resolve questions in the current Initiative classification"
+          },
+          {
+            "name": "applicability",
+            "description": "Review and resolve pending human decisions in the current Initiative applicability matrix"
+          },
+          {
+            "name": "intake",
+            "description": "Work directly with explicitly attached Product documents"
+          },
+          {
+            "name": "align",
+            "description": "Create a separate editable GAEP alignment from the reviewed attachments"
+          },
+          {
+            "name": "manifest",
+            "description": "Review exact attachment paths, formats, sizes, digests, and inclusion status"
+          },
+          {
+            "name": "record",
+            "description": "Record exact reviewed files as non-authoritative candidate Sources"
+          },
+          {
+            "name": "baseline",
+            "description": "Review and record an exact candidate Baseline from current Sources"
+          },
+          {
+            "name": "provenance",
+            "description": "Record conservative exact Source-to-Initiative lineage"
+          },
+          {
+            "name": "author",
+            "description": "Generate, challenge, review, and record the next Product Journey record"
+          },
+          {
+            "name": "mode",
+            "description": "Choose Quick, Guided, or Assured Product Journey presentation"
+          },
+          {
+            "name": "suggest",
+            "description": "Generate and submit a safe context-aware starter for the active lifecycle question"
+          },
+          {
+            "name": "roles",
+            "description": "Inspect editable standard owner and accountable-approver recommendations for all applicability subjects"
+          },
+          {
+            "name": "resolve",
+            "description": "Ask GAEP to propose bounded clarifications for unresolved applicability subjects"
           },
           {
             "name": "advisor",
@@ -461,6 +543,7 @@
     "@vscode/vsce": "^3.7.1",
     "axe-core": "^4.12.1",
     "esbuild": "^0.25.11",
+    "jszip": "^3.10.1",
     "jsdom": "^29.1.1"
   }
 }

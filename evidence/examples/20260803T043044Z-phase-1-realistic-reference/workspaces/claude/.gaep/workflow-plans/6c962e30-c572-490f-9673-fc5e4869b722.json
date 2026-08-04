@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "id": "6c962e30-c572-490f-9673-fc5e4869b722",
+  "productId": "4238d65d-bc5f-4e6c-9c34-d6fcab3694d2",
+  "revision": 2,
+  "createdAt": "2026-08-03T04:31:13.869Z",
+  "updatedAt": "2026-08-03T04:31:13.994Z",
+  "kind": "workflow-plan",
+  "title": "Claude P0-P4 deterministic acceptance workflow",
+  "objective": "Exercise the exact governed P0-P4 candidate chain through the tool-free Claude stream boundary.",
+  "subject": {
+    "recordType": "product",
+    "recordId": "4238d65d-bc5f-4e6c-9c34-d6fcab3694d2",
+    "revision": 1,
+    "digest": "sha256:e393d30d75e6308714a241d2bcb9349f4b36a1230ecaadec8aeaa3975fdbb2e5"
+  },
+  "actor": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "strategy": "sequential",
+  "contextPacks": [
+    {
+      "recordType": "context-pack",
+      "recordId": "955088ae-977b-400e-8af4-434015988e5a",
+      "revision": 1,
+      "digest": "sha256:d2c50adc2a676db30770ee044c47e9478ae883dd9ee7349a1d32c9ffec822d67"
+    }
+  ],
+  "toolDefinitions": [],
+  "steps": [
+    {
+      "id": "9de58d8b-13d0-4fb1-acb0-cf0594a1811a",
+      "title": "Review exact governed P0-P4 candidate context",
+      "objective": "Produce one bounded provider observation over exact candidate metadata without tools, writes, resume, or authority.",
+      "responsibility": {
+        "kind": "agent",
+        "id": "claude-code-cli"
+      },
+      "contextPacks": [
+        {
+          "recordType": "context-pack",
+          "recordId": "955088ae-977b-400e-8af4-434015988e5a",
+          "revision": 1,
+          "digest": "sha256:d2c50adc2a676db30770ee044c47e9478ae883dd9ee7349a1d32c9ffec822d67"
+        }
+      ],
+      "toolDefinitions": [],
+      "dependsOn": [],
+      "preconditions": [
+        "The exact Context Pack is current, internal, and sufficient"
+      ],
+      "outputs": [
+        "One normalized observation from the tool-free Claude stream transport"
+      ],
+      "evidenceCriteria": [
+        "Portable provider, event, workflow-gate, and outcome evidence is committed"
+      ],
+      "retry": {
+        "maxAttempts": 1,
+        "backoffMs": 0,
+        "retryOn": []
+      },
+      "stopConditions": [
+        "Stop before every Tool, filesystem, approval, or external-effect request"
+      ],
+      "scope": {
+        "read": [
+          {
+            "kind": "workspace-relative",
+            "path": "."
+          }
+        ],
+        "write": [],
+        "effects": []
+      },
+      "effectEnvelope": [
+        "observe"
+      ]
+    }
+  ],
+  "state": "resolved",
+  "planDigest": "sha256:ad44f26951ba58b7928f400c9da9cfa24230e2c43433443b21e0f78e295b4bcf",
+  "authorityBoundary": "workflow-plan-does-not-grant-authority"
+}

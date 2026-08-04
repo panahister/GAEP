@@ -1,0 +1,192 @@
+{
+  "initiativeId": "7cbb70ba-ecdf-4418-b693-b0693de9e842",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e127679575896008f4efb896fc1f4b14a2b4c75755c6805e5d8f31a03939ca43",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:36753a529d7311fc18ee4fce96bcea08ba1e13ebd3b5342935908bf58acb5c57"
+  },
+  "informationClassification": "internal",
+  "businessUnderstanding": {
+    "recordId": "b7fd89a6-80b7-419e-91ea-a020ecd58fda",
+    "revision": 1,
+    "digest": "sha256:e66d9b26f084bebe9c3115dfe191b8298d02bf6288ac1f07cb50a13e493545aa"
+  },
+  "stakeholderModel": {
+    "recordId": "567d1363-8b85-4208-b7c7-d9cf5bbd92b6",
+    "revision": 1,
+    "digest": "sha256:4d41dc5bfee368e9571cf37563e001853b328ea7583680f4934e5bbd41245b8a"
+  },
+  "outcomeModel": {
+    "recordId": "49198d72-38de-40ce-abf0-af0802e1d2ac",
+    "revision": 1,
+    "digest": "sha256:efbe2e464cffcd0b577cb9bae171d441f63298d1c7d1907dc8ec4e54989a3393"
+  },
+  "capabilityMap": {
+    "recordId": "baa18b7b-d1c2-4465-95ff-bf84d220e8ee",
+    "revision": 1,
+    "digest": "sha256:0c8eae4b32659c6d76cdc91f3a7bd6484812aa1987e24cf7b8e5c9f41348bd8c"
+  },
+  "valueStreamModel": {
+    "recordId": "906bf12c-035c-48ac-9068-04bb4f31790b",
+    "revision": 1,
+    "digest": "sha256:3adf8c542b675d95964b6878dde0bd9b3c6b2f0bf399991a03dceeed41f069ea"
+  },
+  "operatingModel": {
+    "recordId": "db8782f0-52da-4b89-a94a-5b894bc06e69",
+    "revision": 1,
+    "digest": "sha256:c7fb1163a188a7f7e4d8288ab3cd01ecfe9b99c265c7ba52b637bb7f7def35ef"
+  },
+  "rules": [
+    {
+      "key": "govern-context-eligibility",
+      "name": "Governed context eligibility",
+      "kind": "eligibility",
+      "statement": "Candidate context is eligible for downstream review only when every exact upstream business binding is current.",
+      "applicability": "Applies to the bounded Initiative whenever governed context is prepared for a downstream Product or engineering review.",
+      "condition": "Every recorded Product, Initiative, Source, business, capability, value-stream, and operating-model reference matches its exact current revision and digest.",
+      "outcome": "Produce an evidence-backed candidate eligibility result; otherwise return indeterminate and preserve every unresolved or stale binding.",
+      "rationale": "Fail-closed candidate eligibility prevents incomplete or stale context from being mistaken for an approved rule, baseline, or authorization.",
+      "ownerRoleKey": "initiative-owner",
+      "capabilityKeys": [
+        "governed-context"
+      ],
+      "valueStreamKeys": [
+        "governed-delivery"
+      ],
+      "decisionRightKeys": [
+        "govern-initiative-outcome"
+      ],
+      "enforcementTargetKeys": [
+        "context-entry"
+      ],
+      "exceptionBehavior": "candidate-exception-path",
+      "exceptionKeys": [
+        "bounded-context-exception"
+      ],
+      "examples": [
+        "A stale Operating Model reference produces indeterminate and blocks candidate eligibility"
+      ],
+      "unknownInputBehavior": "indeterminate",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "enforcementTargets": [
+    {
+      "key": "context-entry",
+      "name": "Governed context entry",
+      "kind": "human-workflow",
+      "target": "The candidate transition from business architecture context capture into downstream Product review.",
+      "responsibleRoleKey": "initiative-owner",
+      "mechanism": "A future implementation may evaluate exact recorded bindings and surface a candidate result for accountable human review.",
+      "failureBehavior": "Missing, conflicting, stale, unsupported, or unavailable inputs return indeterminate without silently permitting progression.",
+      "assignment": {
+        "state": "candidate",
+        "basis": "The catalog identifies a candidate accountable path for review but does not grant exception or enforcement authority.",
+        "sources": [
+          {
+            "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "verificationState": "candidate-defined",
+      "verificationCriteria": [
+        "Hostile stale-binding and unknown-input cases fail closed without granting action authority"
+      ],
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "exceptions": [
+    {
+      "key": "bounded-context-exception",
+      "name": "Bounded governed-context exception candidate",
+      "ruleKeys": [
+        "govern-context-eligibility"
+      ],
+      "scope": "One exact Initiative revision and one named downstream review scope only.",
+      "rationaleRequirements": [
+        "Explain why normal rule satisfaction is unavailable and why the bounded review remains necessary"
+      ],
+      "approvingRoleKey": "initiative-owner",
+      "decisionRightKey": "govern-initiative-outcome",
+      "compensatingControls": [
+        "Preserve the unresolved binding and require an explicit downstream hold"
+      ],
+      "validityRule": "Any future approved exception must bind exact scope, evidence, start, expiry, and conditions.",
+      "revocationRule": "Condition breach, source revision, or scope change invalidates the candidate exception path.",
+      "closureRule": "Closure requires separately governed disposition and evidence; elapsed time is not closure.",
+      "authority": {
+        "state": "candidate",
+        "basis": "The catalog identifies a candidate accountable path for review but does not grant exception or enforcement authority.",
+        "sources": [
+          {
+            "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+            "sourceRevision": 1,
+            "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+            "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "conflictModel": {
+    "defaultOutcome": "indeterminate",
+    "precedenceRule": "Rule precedence must be explicit, source-backed, and unable to weaken a higher applicable obligation by local ordering.",
+    "conflictRule": "Conflicting rule outcomes remain visible and route to the candidate accountable role without selecting the more permissive result.",
+    "unresolvedConflictRule": "An unresolved conflict produces indeterminate and cannot be consumed as approval, exception, enforcement, or authorization.",
+    "ownerRoleKey": "initiative-owner",
+    "sources": [
+      {
+        "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "limitations": [
+    "No policy evaluation, exception grant, deployed enforcement, approved baseline, readiness, or action authority is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "business-rule-catalog",
+  "id": "eb0409c4-4091-4471-a915-c256239ecc2c",
+  "productId": "22295bed-0b3c-4ffa-9979-eb612fdc0c5b",
+  "revision": 1,
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-08-03T04:31:11.296Z",
+  "updatedAt": "2026-08-03T04:31:11.296Z",
+  "authorityBoundary": "business-rule-catalog-records-candidate-rules-sources-exceptions-and-enforcement-targets-and-does-not-evaluate-policy-grant-exceptions-deploy-enforcement-approve-baseline-or-authorize-action"
+}

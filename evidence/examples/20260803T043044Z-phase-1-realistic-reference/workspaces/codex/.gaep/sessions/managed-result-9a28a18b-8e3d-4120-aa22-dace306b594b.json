@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "kind": "managed-run-result",
+  "id": "9a28a18b-8e3d-4120-aa22-dace306b594b",
+  "managedRunId": "a42fb185-79eb-4428-ac72-99743136b255",
+  "runId": "5f4760a7-bd86-49b3-b288-5e847f1886d1",
+  "productId": "22295bed-0b3c-4ffa-9979-eb612fdc0c5b",
+  "mode": "codex-staged",
+  "provider": {
+    "adapterId": "gaep.codex-cli",
+    "agentId": "codex-cli",
+    "modelId": "fake-model",
+    "capabilityDigest": "sha256:107982a95ba201f7abd0af4228e0616402331e00d287a61ea142974ca490528d",
+    "runtimeVersion": "p1-30-test"
+  },
+  "providerThreadRef": "sha256:c83a5c0fcb607f86d6a61a6ff92fabb3e2fdca9e5e7558e86eed00ea202a35b8",
+  "providerTurnRef": "sha256:68383a9d7f7c480381a97bd2080a58215dfb5bd2975bd2dab67e9624a4d1c418",
+  "providerDisposition": "completed",
+  "terminationCause": "normal",
+  "outcome": {
+    "status": "satisfied",
+    "basis": "postcondition-evaluator",
+    "evaluator": {
+      "kind": "human",
+      "id": "product-owner",
+      "version": "1",
+      "digest": "sha256:0d96341e1c5ecbb0f4c73ef2d9b46227fb5616823ea558c2ae563a9dc5f1cc0c"
+    }
+  },
+  "terminalState": "completed",
+  "evidenceId": "da460283-8142-4a0a-bed6-d801048e88fb",
+  "evidenceDigest": "sha256:75ea409ab637874d717ddcc76772052afdbcc75eeade6fe45482539bc7f4b911",
+  "previousResultId": "b1519898-d116-420b-b2c8-9d17efb645c0",
+  "previousResultDigest": "sha256:ecc3be48d1b84322f80abab5fcdbb5ceb32d7492050cafc6ee94ed671039c7fc",
+  "warnings": [
+    "runtime-warning",
+    "staging-read-confinement-unattested"
+  ],
+  "startedAt": "2026-08-03T04:31:14.575Z",
+  "endedAt": "2026-08-03T04:31:18.338Z",
+  "authorityBoundary": "provider-completion-does-not-equal-outcome-completion"
+}

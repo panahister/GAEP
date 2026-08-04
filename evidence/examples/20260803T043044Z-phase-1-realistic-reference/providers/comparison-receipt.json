@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-provider-output-comparison-receipt",
+  "scenario": {
+    "id": "P1-32",
+    "subject": "deterministic-codex-claude-p0-p4-structural-parity"
+  },
+  "inputs": {
+    "codex": {
+      "path": "providers/codex-receipt.json",
+      "kind": "gaep-codex-p0-p4-acceptance-receipt",
+      "scenarioId": "P1-30",
+      "fileDigest": "sha256:30b0f7ff477581a60b69992c8fb7d19b54eab86c68f7554309a48647d93cd1a2",
+      "summaryDigest": "sha256:a0b5bed8e40efed149961fa21c8745f410840fef3c7f5cef1baceb48609ba96c"
+    },
+    "claude": {
+      "path": "providers/claude-receipt.json",
+      "kind": "gaep-claude-p0-p4-acceptance-receipt",
+      "scenarioId": "P1-31",
+      "fileDigest": "sha256:20e40f34a2d9edea8285177f965dc2d1826f8212126203b38d87b42917a352df",
+      "summaryDigest": "sha256:7a1a526288ec3ef910cbbfea8fc0e53b8cf57b6788950a4724cc053fecb53ad7"
+    }
+  },
+  "inputsDigest": "sha256:5ac4a30e548b4b8a490150d3fed0fd95fac56681b299809487ad86e61f895448",
+  "comparison": {
+    "criteria": [
+      {
+        "id": "reference-scenario",
+        "category": "structural-parity",
+        "status": "satisfied",
+        "leftDigest": "sha256:f8747ac7cc440ef3adf8a77f986a05348596dc102514fdbf12cafb4163ae05de",
+        "rightDigest": "sha256:f8747ac7cc440ef3adf8a77f986a05348596dc102514fdbf12cafb4163ae05de",
+        "evidenceDigest": "sha256:53b92d198f035b4415d06658ee645ab400ef6eca3a50421932a44e1295f386ad",
+        "basis": "Exact canonical realistic Product scenario, output catalog, digest, and authority boundary"
+      },
+      {
+        "id": "governed-record-coverage",
+        "category": "structural-parity",
+        "status": "satisfied",
+        "leftDigest": "sha256:150ab0c6a38a1e2bb7c9f8d10e5806aa0c7ee57959dbd0a09cde14f26fba9d42",
+        "rightDigest": "sha256:150ab0c6a38a1e2bb7c9f8d10e5806aa0c7ee57959dbd0a09cde14f26fba9d42",
+        "evidenceDigest": "sha256:5c0821c62a5b5bf18d1a3135fdc139212aa76d6e341b7bb787d9885186ed0d06",
+        "basis": "Exact governed candidate kinds and counts in both verified semantic receipts"
+      },
+      {
+        "id": "readiness-evaluation",
+        "category": "structural-parity",
+        "status": "satisfied",
+        "leftDigest": "sha256:7a5795b1257cd4f1dd7880f47f4177f545f1f877ccfeb03271a4ff21f71d66e4",
+        "rightDigest": "sha256:7a5795b1257cd4f1dd7880f47f4177f545f1f877ccfeb03271a4ff21f71d66e4",
+        "evidenceDigest": "sha256:9e5971aa674968feea48d2853d4bc5f63baf5369d5522efe2377436b7643ffae",
+        "basis": "Exact readiness result, counts, applicability, and no-authority state"
+      },
+      {
+        "id": "handoff-package",
+        "category": "structural-parity",
+        "status": "satisfied",
+        "leftDigest": "sha256:364963d31e1893bd276117c46c6a7988111fefb9dab8e8927e180006510c1a78",
+        "rightDigest": "sha256:364963d31e1893bd276117c46c6a7988111fefb9dab8e8927e180006510c1a78",
+        "evidenceDigest": "sha256:9ec9fcab1f99e420a0a09b1c3f8c70a4a4fc239b7af85524bf4dd870b205f5c8",
+        "basis": "Exact handoff state, counts, acknowledgement, and transfer-authority state"
+      },
+      {
+        "id": "terminal-workflow",
+        "category": "structural-parity",
+        "status": "satisfied",
+        "leftDigest": "sha256:c0804895d9b25d4c5c46d01eb1b08b7a1eb68e4319df8b03dad41e94961cfee3",
+        "rightDigest": "sha256:c0804895d9b25d4c5c46d01eb1b08b7a1eb68e4319df8b03dad41e94961cfee3",
+        "evidenceDigest": "sha256:61c7272735af28e743ab987b534aed1d17b5ccdad02ba3cacec3b7d42a332339",
+        "basis": "Only terminal Workflow fields represented by both receipts are comparable"
+      },
+      {
+        "id": "evidence-integrity",
+        "category": "structural-parity",
+        "status": "satisfied",
+        "leftDigest": "sha256:5c22c2348c51c94deb2f3801aea823deebf3a33566604c80ccd185194523b71e",
+        "rightDigest": "sha256:5c22c2348c51c94deb2f3801aea823deebf3a33566604c80ccd185194523b71e",
+        "evidenceDigest": "sha256:7cb6dcfdd7ec2ac7eddb5eb6328192f5642d69c9c6730fc3ba55784bcea74cb2",
+        "basis": "Exact audit, preview, result, evidence, event, and Context binding flags"
+      },
+      {
+        "id": "authority-boundary",
+        "category": "structural-parity",
+        "status": "satisfied",
+        "leftDigest": "sha256:ff6c14c85f40b37821f4d998d629fd4e7d34980417910d0100019aaa6a828b0e",
+        "rightDigest": "sha256:ff6c14c85f40b37821f4d998d629fd4e7d34980417910d0100019aaa6a828b0e",
+        "evidenceDigest": "sha256:e8b86862486c6c3bfe5cdcc877ef8b239c5a1ef484b74ade6413216bcdd06427",
+        "basis": "Exact receipt and managed-readonly no-authority boundaries"
+      },
+      {
+        "id": "semantic-output-quality",
+        "category": "quality",
+        "status": "not-assessed",
+        "evidenceDigest": "sha256:d820779365ce35b39028caad0af2a91b493df043012cdd100c758a9b7e06e1f1",
+        "basis": "Portable receipts intentionally retain no raw provider output suitable for semantic quality assessment"
+      },
+      {
+        "id": "live-provider-operational-quality",
+        "category": "quality",
+        "status": "not-assessed",
+        "evidenceDigest": "sha256:68f745593ed50c13faa9fac516e79e155ef94a37aad59af900eccff9bf762218",
+        "basis": "Both verified receipts explicitly record live provider status as not tested"
+      }
+    ],
+    "criteriaDigest": "sha256:2a8e28ca93c4b60885553c3fed1b656c56b8c3bf02fffd7a46dc46e253dd932c",
+    "divergences": [
+      {
+        "id": "provider-identity",
+        "field": "execution.provider",
+        "classification": "expected-runtime",
+        "leftDigest": "sha256:3ad606ab722773b49f8223cb499ab3dd2a9db1c27999728ecea50cddc7924ac1",
+        "rightDigest": "sha256:593d30630186706afba46df324b35afddab1a1b89463b5cd8fbcfca12d4f3930",
+        "basis": "The comparison intentionally exercises distinct providers and deterministic fixture models"
+      },
+      {
+        "id": "managed-execution-mode",
+        "field": "execution.mode",
+        "classification": "expected-runtime",
+        "leftDigest": "sha256:340508d9e790ffd63db4a4a5007837cca7c8f742fde155b91377bead3dd09472",
+        "rightDigest": "sha256:1ea4d8864d4896b039d3a58307e8dba71d4e0ac8f3ed79a1e3baceb298557c15",
+        "basis": "Codex uses isolated zero-change staging while Claude is tool-free and context-only"
+      },
+      {
+        "id": "staging-evidence",
+        "field": "execution.staging",
+        "classification": "expected-runtime",
+        "leftDigest": "sha256:64fad4aa0e7ebb5954282afb15b82a72c4db4f9e416cb95be8895ea12a0640af",
+        "rightDigest": "sha256:398b676e47d03a29016ee92fe378b8b4f1b3e965390c4c64ce78d27f79df74d1",
+        "basis": "Only the Codex managed mode creates an isolated stage; its exact changed inventory is empty"
+      },
+      {
+        "id": "provider-postcondition-evidence",
+        "field": "execution.providerPostcondition",
+        "classification": "expected-runtime",
+        "leftDigest": "sha256:1e6c0321d9523656007b25b7ae14848ced73af355fbf14fb24537d4c48521b4a",
+        "rightDigest": "sha256:9f7baf3c8eb8bdfec0d4e142f51d4ea612a54679b02a0b96316e786f1096b1e4",
+        "basis": "The Claude receipt explicitly preserves a conservative raw provider postcondition and Workflow evaluator authority"
+      },
+      {
+        "id": "runtime-warning-evidence",
+        "field": "execution.warningCodes",
+        "classification": "expected-runtime",
+        "leftDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "rightDigest": "sha256:fe065b8b05cac8273b5c346b4d354ee3b146eb20320b4c82f64815b61b3e623d",
+        "basis": "The Claude fixture deliberately exercises runtime-warning and provider-output-redaction evidence"
+      }
+    ],
+    "divergencesDigest": "sha256:415be50c4bbb423e70235440ccfacf9921616867854b88d8b5f26085b9506de1",
+    "summary": {
+      "criteriaCount": 9,
+      "structuralCriteriaSatisfied": 7,
+      "structuralCriteriaDiverged": 0,
+      "qualityCriteriaNotAssessed": 2,
+      "expectedRuntimeDivergenceCount": 5,
+      "materialDivergenceCount": 0,
+      "structuralResult": "satisfied",
+      "semanticQuality": "not-assessed",
+      "liveProviderQuality": "not-assessed",
+      "providerPreference": "not-established",
+      "automaticSelectionAuthority": "not-granted"
+    }
+  },
+  "comparisonDigest": "sha256:5ebfeb8e3336f89e7bdb396492f894488730896ca50b0f95090fd0fd4c057b2e",
+  "authority": {
+    "liveProviderAcceptance": "not-established",
+    "semanticQualityAssessment": "not-established",
+    "providerPreference": "not-established",
+    "automaticSelectionAuthority": "not-granted",
+    "productOwnerAcceptance": "not-established",
+    "readinessAuthority": "not-established",
+    "securityScan": "skipped-by-product-owner",
+    "releaseAuthority": "not-granted",
+    "boundary": "comparison-receipt-is-structural-local-evidence-not-provider-ranking-selection-product-readiness-security-release-or-deployment-authority"
+  },
+  "limitations": [
+    "Both inputs are deterministic local fixture receipts bound to the same realistic reference Product scenario; neither input establishes live-provider authentication, entitlement, reachability, model quality, reliability, usage, or cost.",
+    "Provider output content is not retained in the portable receipts, so semantic correctness, usefulness, reasoning quality, style, latency, token use, and cost remain not assessed.",
+    "Structural parity covers only exact governed candidate coverage, readiness, handoff, terminal Workflow fields, evidence integrity, and authority boundaries represented by both receipts.",
+    "Expected transport differences do not rank providers or authorize automatic provider/model selection.",
+    "Native-host interaction, accessibility, real Product validation, independent human review, Product Owner acceptance, security completion, release authorization, and deployment approval remain outside this comparison."
+  ]
+}

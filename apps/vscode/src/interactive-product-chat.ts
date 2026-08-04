@@ -243,14 +243,50 @@ export function startProductRevision(
   }
 }
 
+/**
+ * Starts an evidence-assisted Product initialization at exact review rather than
+ * making the human re-enter nine fields. The caller must still show the proposal
+ * and require the normal explicit commit; this helper grants no Product authority.
+ */
+export function startProductInitializationReview(
+  advisor: ProductChatAdvisorSelection,
+  input: ProductInitializationInput,
+  candidateAttachments: readonly string[] = [],
+): ProductInitializationChatState {
+  const answers = { ...input, successSignals: [...input.successSignals], exclusions: [...input.exclusions] }
+  for (const question of productInitializationQuestions) {
+    const value = answers[question.key]
+    const challenge = question.challenge(value)
+    if (challenge) throw new Error(`${question.title}: ${challenge}`)
+  }
+  return {
+    schemaVersion: 3,
+    kind: "gaep-product-initialization-chat-state",
+    workflow: "initialization",
+    phase: "review",
+    step: productInitializationQuestions.length,
+    answers,
+    candidateAttachments: [...new Set(candidateAttachments)].slice(0, 20),
+    advisor,
+  }
+}
+
+export function editProductField(
+  state: ProductInitializationChatState,
+  key: keyof ProductInitializationAnswers,
+): ProductInitializationChatState {
+  if (state.phase !== "review") throw new Error("Only a complete Product draft can edit a selected field")
+  const step = productInitializationQuestions.findIndex((question) => question.key === key)
+  if (step < 0) throw new Error("The Product field is not supported by the interactive revision workflow")
+  return { ...state, phase: "collecting", step, pending: undefined }
+}
+
 export function editProductRevisionField(
   state: ProductInitializationChatState,
   key: keyof ProductInitializationAnswers,
 ): ProductInitializationChatState {
-  if (state.workflow !== "revision") throw new Error("Only a Product revision draft can edit one existing field")
-  const step = productInitializationQuestions.findIndex((question) => question.key === key)
-  if (step < 0) throw new Error("The Product field is not supported by the interactive revision workflow")
-  return { ...state, phase: "collecting", step, pending: undefined }
+  if (state.workflow !== "revision") throw new Error("Only a Product revision draft can use the revision-field workflow")
+  return editProductField(state, key)
 }
 
 export function currentProductInitializationQuestion(state: ProductInitializationChatState): ProductInitializationQuestion | undefined {

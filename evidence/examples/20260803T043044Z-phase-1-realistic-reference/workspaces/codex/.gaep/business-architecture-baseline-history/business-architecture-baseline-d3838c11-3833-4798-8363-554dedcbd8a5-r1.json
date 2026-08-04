@@ -1,0 +1,364 @@
+{
+  "initiativeId": "7cbb70ba-ecdf-4418-b693-b0693de9e842",
+  "context": {
+    "productRevision": 1,
+    "productDigest": "sha256:e127679575896008f4efb896fc1f4b14a2b4c75755c6805e5d8f31a03939ca43",
+    "initiativeRevision": 4,
+    "initiativeDigest": "sha256:36753a529d7311fc18ee4fce96bcea08ba1e13ebd3b5342935908bf58acb5c57"
+  },
+  "informationClassification": "internal",
+  "title": "Candidate governed context Business Architecture Baseline",
+  "purpose": "Integrate the exact candidate capability, value-stream, operating-model, and Business Rule records for accountable review.",
+  "businessUnderstanding": {
+    "recordId": "b7fd89a6-80b7-419e-91ea-a020ecd58fda",
+    "revision": 1,
+    "digest": "sha256:e66d9b26f084bebe9c3115dfe191b8298d02bf6288ac1f07cb50a13e493545aa"
+  },
+  "stakeholderModel": {
+    "recordId": "567d1363-8b85-4208-b7c7-d9cf5bbd92b6",
+    "revision": 1,
+    "digest": "sha256:4d41dc5bfee368e9571cf37563e001853b328ea7583680f4934e5bbd41245b8a"
+  },
+  "outcomeModel": {
+    "recordId": "49198d72-38de-40ce-abf0-af0802e1d2ac",
+    "revision": 1,
+    "digest": "sha256:efbe2e464cffcd0b577cb9bae171d441f63298d1c7d1907dc8ec4e54989a3393"
+  },
+  "capabilityMap": {
+    "recordId": "baa18b7b-d1c2-4465-95ff-bf84d220e8ee",
+    "revision": 1,
+    "digest": "sha256:0c8eae4b32659c6d76cdc91f3a7bd6484812aa1987e24cf7b8e5c9f41348bd8c"
+  },
+  "valueStreamModel": {
+    "recordId": "906bf12c-035c-48ac-9068-04bb4f31790b",
+    "revision": 1,
+    "digest": "sha256:3adf8c542b675d95964b6878dde0bd9b3c6b2f0bf399991a03dceeed41f069ea"
+  },
+  "operatingModel": {
+    "recordId": "db8782f0-52da-4b89-a94a-5b894bc06e69",
+    "revision": 1,
+    "digest": "sha256:c7fb1163a188a7f7e4d8288ab3cd01ecfe9b99c265c7ba52b637bb7f7def35ef"
+  },
+  "businessRuleCatalog": {
+    "recordId": "eb0409c4-4091-4471-a915-c256239ecc2c",
+    "revision": 1,
+    "digest": "sha256:7d92cea878fde628f970b4d22e4f68f91bce7e83a2642cbb2e215d8f5d4e288f"
+  },
+  "scope": {
+    "included": [
+      "Candidate Business Architecture compound snapshot"
+    ],
+    "excluded": [
+      "Implementation, release, and operational execution"
+    ],
+    "boundaries": [
+      "No approval, baseline designation, readiness, exception, enforcement, or action authority"
+    ]
+  },
+  "coverage": [
+    {
+      "elementKind": "business-rule",
+      "elementKey": "govern-context-eligibility",
+      "disposition": "included-candidate",
+      "rationale": "This exact candidate element is included so the compound architecture review does not silently omit governed scope.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "elementKind": "capability",
+      "elementKey": "governed-context",
+      "disposition": "included-candidate",
+      "rationale": "This exact candidate element is included so the compound architecture review does not silently omit governed scope.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "elementKind": "decision-right",
+      "elementKey": "govern-gaep-semantics",
+      "disposition": "included-candidate",
+      "rationale": "This exact candidate element is included so the compound architecture review does not silently omit governed scope.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "elementKind": "decision-right",
+      "elementKey": "govern-initiative-outcome",
+      "disposition": "included-candidate",
+      "rationale": "This exact candidate element is included so the compound architecture review does not silently omit governed scope.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "elementKind": "enforcement-target",
+      "elementKey": "context-entry",
+      "disposition": "included-candidate",
+      "rationale": "This exact candidate element is included so the compound architecture review does not silently omit governed scope.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "elementKind": "exception",
+      "elementKey": "bounded-context-exception",
+      "disposition": "included-candidate",
+      "rationale": "This exact candidate element is included so the compound architecture review does not silently omit governed scope.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "elementKind": "operating-role",
+      "elementKey": "gaep-steward",
+      "disposition": "included-candidate",
+      "rationale": "This exact candidate element is included so the compound architecture review does not silently omit governed scope.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "elementKind": "operating-role",
+      "elementKey": "initiative-owner",
+      "disposition": "included-candidate",
+      "rationale": "This exact candidate element is included so the compound architecture review does not silently omit governed scope.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "elementKind": "value-stream",
+      "elementKey": "governed-delivery",
+      "disposition": "included-candidate",
+      "rationale": "This exact candidate element is included so the compound architecture review does not silently omit governed scope.",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "integrationClaims": [
+    {
+      "key": "governed-context-flow",
+      "statement": "The governed-context capability, value stream, accountable roles, decision right, and eligibility rule form one candidate cross-model review path.",
+      "capabilityKeys": [
+        "governed-context"
+      ],
+      "valueStreamKeys": [
+        "governed-delivery"
+      ],
+      "roleKeys": [
+        "gaep-steward",
+        "initiative-owner"
+      ],
+      "decisionRightKeys": [
+        "govern-initiative-outcome"
+      ],
+      "ruleKeys": [
+        "govern-context-eligibility"
+      ],
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "consistencyChecks": [
+    {
+      "topic": "capability-role-accountability",
+      "state": "candidate-satisfied",
+      "basis": "The exact bound candidate records provide a coherent attributable trace for accountable review without approval.",
+      "accountableRoleKey": "initiative-owner",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "topic": "capability-value-stream-trace",
+      "state": "candidate-satisfied",
+      "basis": "The exact bound candidate records provide a coherent attributable trace for accountable review without approval.",
+      "accountableRoleKey": "initiative-owner",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "topic": "exception-decision-authority",
+      "state": "candidate-satisfied",
+      "basis": "The exact bound candidate records provide a coherent attributable trace for accountable review without approval.",
+      "accountableRoleKey": "initiative-owner",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "topic": "outcome-capability-trace",
+      "state": "candidate-satisfied",
+      "basis": "The exact bound candidate records provide a coherent attributable trace for accountable review without approval.",
+      "accountableRoleKey": "initiative-owner",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "topic": "rule-capability-value-trace",
+      "state": "candidate-satisfied",
+      "basis": "The exact bound candidate records provide a coherent attributable trace for accountable review without approval.",
+      "accountableRoleKey": "initiative-owner",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "topic": "source-freshness",
+      "state": "candidate-satisfied",
+      "basis": "The exact bound candidate records provide a coherent attributable trace for accountable review without approval.",
+      "accountableRoleKey": "initiative-owner",
+      "sources": [
+        {
+          "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+          "sourceRevision": 1,
+          "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "governance": {
+    "ownerRoleKey": "initiative-owner",
+    "reviewerRoleKeys": [
+      "gaep-steward",
+      "initiative-owner"
+    ],
+    "decisionRightKey": "govern-initiative-outcome",
+    "approvalState": "not-granted",
+    "basis": "The candidate owner and reviewers prepare an attributable review; this record cannot grant baseline approval.",
+    "sources": [
+      {
+        "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "changeControl": {
+    "accountableRoleKey": "initiative-owner",
+    "decisionRightKey": "govern-initiative-outcome",
+    "triggers": [
+      "Bound architecture member revision changes",
+      "Candidate scope or coverage changes"
+    ],
+    "requiredReviews": [
+      "authority-review",
+      "business-review",
+      "impact-review",
+      "source-review"
+    ],
+    "dispositionRule": "Any trigger requires a superseding candidate revision and separate accountable review without silent baseline promotion.",
+    "sources": [
+      {
+        "sourceId": "60f2bc1d-dbf0-4f43-b141-25df670bdc66",
+        "sourceRevision": 1,
+        "recordDigest": "sha256:d42e2359d3a6db9dfebc1f7cbf5c9666a9bdc95a55278e65bf094cd14619189b",
+        "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "limitations": [
+    "No realistic Product Owner acceptance or approved Business Architecture Baseline is represented"
+  ],
+  "schemaVersion": 1,
+  "kind": "business-architecture-baseline-candidate",
+  "id": "d3838c11-3833-4798-8363-554dedcbd8a5",
+  "productId": "22295bed-0b3c-4ffa-9979-eb612fdc0c5b",
+  "revision": 1,
+  "membershipDigest": "sha256:0b972ad7097cdb97d5deb43bafd18216baa4fd0126c0a8e89bff383a58af1298",
+  "state": "candidate",
+  "createdBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "updatedBy": {
+    "kind": "human",
+    "id": "product-owner"
+  },
+  "createdAt": "2026-08-03T04:31:11.411Z",
+  "updatedAt": "2026-08-03T04:31:11.411Z",
+  "authorityBoundary": "business-architecture-baseline-is-a-candidate-compound-snapshot-and-does-not-designate-or-approve-a-baseline-establish-readiness-grant-exceptions-deploy-enforcement-or-authorize-action"
+}

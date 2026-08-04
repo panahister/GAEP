@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "vscode-candidate-source-recording",
+  "observedAt": "2026-08-02T19:49:05Z",
+  "featureIds": ["PLT-36", "P1-04"],
+  "status": "ready-for-product-owner-ux-test",
+  "scope": {
+    "host": "vscode",
+    "workflow": "reviewed-attachment-to-exact-candidate-source",
+    "productOwnerWorkspaceMutationDuringAutomatedVerification": false
+  },
+  "behavior": {
+    "oneExplicitChatAction": "@gaep /record",
+    "recordsExactOriginalByteDigest": true,
+    "deduplicatesSameContentWithinRequest": true,
+    "retryReusesExistingExactContentDigest": true,
+    "semanticAuthority": "non-authoritative",
+    "owner": "unassigned",
+    "rights": "unknown",
+    "freshness": "unknown",
+    "sourceAuthenticity": "unknown",
+    "contentIntegrity": "verified-exact-bytes",
+    "informationHandling": "restricted-until-reviewed",
+    "createsBaseline": false,
+    "createsProvenance": false,
+    "grantsApprovalReadinessImplementationOrReleaseAuthority": false
+  },
+  "verification": {
+    "focusedSourceRecordingAndGovernanceTests": { "filesPassed": 4, "testsPassed": 15 },
+    "repositoryTests": { "filesPassed": 182, "testsPassed": 1174, "testsSkipped": 1 },
+    "typecheck": "pass",
+    "documentation": "pass-zero-warnings",
+    "build": "pass",
+    "extensionHostDevelopment": "pass",
+    "extensionHostMultiRoot": "pass",
+    "isolatedPackageLifecycle": "pass",
+    "installedPackageActivation": "pass",
+    "normalProfileInstall": "pass",
+    "gitDiffCheck": "pass",
+    "productOwnerUiReview": "pending"
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "version": "0.1.0",
+    "sizeBytes": 1279880,
+    "sha256": "3a85996e7c202c867ff9367516f9b73783d82427a68a51b84f991bdb8d1717e5"
+  },
+  "roadmapBoundary": {
+    "currentCheckpoint": "P1-04 exact non-authoritative candidate Source recording installed",
+    "nextCheckpoint": "Product Owner records the reviewed Word document and inspects Product Journey",
+    "afterAcceptance": "P1-05 exact candidate Baseline",
+    "laterCheckpoint": "P1-06 exact Source Provenance",
+    "implementationAndRelease": "deferred until explicit authority"
+  },
+  "acceptance": {
+    "productOwner": "pending",
+    "nextTest": "Reload VS Code, reattach the Word document, send @gaep /intake list the risks and open decisions described in the document, select Record Candidate Sources or send @gaep /record, confirm one new non-authoritative Source and zero Baseline/Provenance authority, then use @gaep /continue and inspect Product Journey. Repeat @gaep /record once and confirm it reports already recorded rather than creating a duplicate."
+  }
+}

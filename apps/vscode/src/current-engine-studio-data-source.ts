@@ -187,6 +187,8 @@ import {
   type StudioInspectorSnapshot,
   type StudioIssue,
   type StudioPageSnapshot,
+  type ProductJourneyCheckpoint,
+  type ProductJourneySnapshot,
   type StudioRoute,
   type StudioSnapshot,
   type StudioSurfaceState,
@@ -461,6 +463,8 @@ export interface CurrentStudioEngineReader {
 
 export type ExistingStudioCommand =
   | "gaep.initializeProduct"
+  | "gaep.openProductStudio"
+  | "gaep.openInteractiveChat"
   | "gaep.selectWorkspaceRoot"
   | "gaep.createInitiative"
   | "gaep.classifyInitiative"
@@ -3212,6 +3216,480 @@ function selectedInitiativeEntries(state: ObservedStudioState): StudioDefinition
   ]
 }
 
+function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
+  const initiative = currentInitiative(state.initiatives)
+  const assessment = initiative ? state.initiativeEntryAssessments.get(initiative.id) : undefined
+  const source = initiative ? state.sourceGovernanceProjections.get(initiative.id) : undefined
+  const classificationRecorded = assessment?.classification.status !== undefined &&
+    assessment.classification.status !== "missing" && Boolean(assessment.classification.digest)
+  const classificationAttention = Boolean(classificationRecorded) && (
+    assessment?.classification.status !== "current" ||
+    assessment.classification.completeness?.status !== "complete"
+  )
+  const coverage = assessment?.applicability.coverage
+  const applicabilityRecorded = Boolean(assessment?.applicability.digest) &&
+    (assessment?.applicability.decisionCount ?? 0) + (assessment?.applicability.unresolvedSubjectCount ?? 0) > 0
+  const applicabilityAttention = applicabilityRecorded && (
+    assessment?.applicability.status !== "current" ||
+    coverage?.status !== "complete" ||
+    assessment.applicability.unresolvedSubjectCount > 0 ||
+    assessment.applicability.pendingHumanDecisionCount > 0 ||
+    assessment.applicability.pendingApprovalCount > 0 ||
+    assessment.state === "attention-required"
+  )
+  const sourceIntakeComplete = (source?.assessment.sourceCount ?? 0) > 0
+  const baselineComplete = Boolean(source?.assessment.currentBaseline)
+  const provenanceComplete = (source?.assessment.provenanceCount ?? 0) > 0 &&
+    (source?.assessment.unprovenancedSourceCount ?? 0) === 0
+  const discovery = initiative ? state.businessUnderstandingProjections.get(initiative.id) : undefined
+  const productDiscoveryComplete = Boolean(
+    discovery?.businessUnderstanding && discovery.stakeholderModel && discovery.outcomeModel,
+  )
+  const businessArchitectureComplete = Boolean(initiative &&
+    state.businessCapabilityMapProjections.get(initiative.id)?.capabilityMap &&
+    state.valueStreamModelProjections.get(initiative.id)?.valueStreamModel &&
+    state.operatingModelProjections.get(initiative.id)?.operatingModel &&
+    state.businessRuleCatalogProjections.get(initiative.id)?.businessRuleCatalog &&
+    state.businessArchitectureBaselineProjections.get(initiative.id)?.baseline)
+  const solutionSecurityComplete = Boolean(initiative &&
+    state.systemSolutionArchitectureProjections.get(initiative.id)?.architecture &&
+    state.boundedContextModelProjections.get(initiative.id)?.model &&
+    state.securityPrivacyAssessmentProjections.get(initiative.id)?.assessment)
+  const detailedDesignComplete = Boolean(initiative &&
+    state.processModelProjections.get(initiative.id)?.model &&
+    state.dataModelProjections.get(initiative.id)?.model &&
+    state.authorizationModelProjections.get(initiative.id)?.model &&
+    state.eventIntegrationModelProjections.get(initiative.id)?.model &&
+    state.failureRecoveryModelProjections.get(initiative.id)?.model &&
+    state.architectureChallengeModelProjections.get(initiative.id)?.model &&
+    state.decisionRegisterProjections.get(initiative.id)?.register &&
+    state.riskRegisterProjections.get(initiative.id)?.register &&
+    state.evidenceRegistryProjections.get(initiative.id)?.registry &&
+    state.endToEndTraceabilityProjections.get(initiative.id)?.traceability)
+  const p0P4ReadinessComplete = Boolean(
+    initiative &&
+    state.p0P4ReadinessGateProjections.get(initiative.id)?.gate &&
+    state.p5HandoffPackageProjections.get(initiative.id)?.handoff,
+  )
+
+  const checkpointOrder: ProductJourneyCheckpoint["id"][] = [
+    "product-definition", "initiative-definition", "initiative-classification", "initiative-applicability",
+    "source-intake", "source-baseline", "source-provenance", "product-discovery", "business-architecture",
+    "solution-security-architecture", "detailed-design-assurance", "p0-p4-readiness",
+  ]
+  const downstreamImpact = (id: ProductJourneyCheckpoint["id"]): ProductJourneyCheckpoint["impact"] => {
+    const affectedCheckpointIds = checkpointOrder.slice(checkpointOrder.indexOf(id) + 1)
+    return {
+      state: affectedCheckpointIds.length > 0 ? "review-required" : "aligned",
+      affectedCheckpointIds,
+      summary: affectedCheckpointIds.length > 0
+        ? `A new revision must revalidate ${affectedCheckpointIds.length} downstream checkpoint(s); GAEP will preserve prior revisions until the user accepts a realignment.`
+        : "This is the final pre-design checkpoint; no downstream Product Journey checkpoint is recorded after it.",
+    }
+  }
+  const review = (id: ProductJourneyCheckpoint["id"]): StudioActionControl =>
+    control("Review details", { kind: "review-product-journey-checkpoint", checkpointId: id }, true)
+  const edit = (id: ProductJourneyCheckpoint["id"], label = "Edit checkpoint"): StudioActionControl =>
+    control(label, { kind: "edit-product-journey-checkpoint", checkpointId: id }, true)
+  const listValue = (values: readonly string[]): string => values.length > 0 ? values.join("\n") : "None recorded"
+  const componentDetails = (
+    components: ReadonlyArray<readonly [label: string, recorded: boolean]>,
+  ): ProductJourneyCheckpoint["details"] => components.map(([label, recorded]) => ({
+    label,
+    value: recorded ? "Recorded" : "Missing",
+    kind: "status",
+  }))
+
+  let open = true
+  const checkpoint = (
+    id: ProductJourneyCheckpoint["id"],
+    label: string,
+    complete: boolean,
+    summary: string,
+    attention = false,
+    action?: StudioActionControl,
+    metadata: Pick<ProductJourneyCheckpoint, "revision" | "details" | "impact" | "reviewAction" | "reviseAction"> = {},
+  ): ProductJourneyCheckpoint => {
+    if (complete) {
+      if (attention) {
+        if (!action?.enabled) {
+          throw new Error(`Product Journey invariant violated: attention checkpoint ${id} requires an enabled resolution action`)
+        }
+        return { id, label, state: "attention-required", summary, action, ...metadata }
+      }
+      return { id, label, state: "complete", summary, ...(action ? { action } : {}), ...metadata }
+    }
+    if (open) {
+      open = false
+      return { id, label, state: "next", summary, ...metadata }
+    }
+    return { id, label, state: "not-started", summary, ...metadata }
+  }
+
+  const checkpoints: ProductJourneyCheckpoint[] = [
+    checkpoint(
+      "product-definition",
+      "Product definition",
+      Boolean(state.product),
+      state.product ? `Recorded at revision ${state.product.revision ?? 1}.` : "Define the Product and its durable boundary.",
+      false,
+      undefined,
+      state.product ? {
+        revision: state.product.revision ?? 1,
+        details: [
+          { label: "Product name", value: state.product.name },
+          { label: "Summary", value: state.product.summary },
+          { label: "Problem", value: state.product.problem },
+          { label: "Affected users", value: state.product.affectedUsers },
+          { label: "Desired outcome", value: state.product.desiredOutcome },
+          { label: "Success signals", value: listValue(state.product.successSignals), kind: "list" },
+          { label: "First workflow", value: state.product.firstWorkflow },
+          { label: "Exclusions", value: listValue(state.product.exclusions), kind: "list" },
+          { label: "Profile", value: state.product.profile, kind: "status" },
+          {
+            label: "Revision history",
+            value: `${state.productRevisions.length} immutable revision record(s). Open the Product revisions table on this Overview for timestamps and sources.`,
+            kind: "status",
+          },
+        ],
+        impact: downstreamImpact("product-definition"),
+        reviewAction: review("product-definition"),
+        reviseAction: control("Edit Product definition", {
+          kind: "revise-product-definition",
+          expectedRevision: state.product.revision ?? 1,
+        }, true),
+      } : {
+        impact: downstreamImpact("product-definition"),
+        reviseAction: edit("product-definition", "Start Product definition"),
+      },
+    ),
+    checkpoint(
+      "initiative-definition",
+      "Initiative definition",
+      Boolean(initiative),
+      initiative ? `${initiative.title} · revision ${initiative.revision ?? 1}.` : "Create the bounded change being evaluated.",
+      false,
+      undefined,
+      initiative ? {
+        revision: initiative.revision ?? 1,
+        details: [
+          { label: "Initiative name", value: initiative.title },
+          { label: "Bounded outcome", value: initiative.outcome },
+          { label: "Included scope", value: listValue(initiative.scope), kind: "list" },
+          { label: "Exclusions", value: listValue(initiative.exclusions), kind: "list" },
+          { label: "Lifecycle state", value: initiative.state, kind: "status" },
+        ],
+        impact: downstreamImpact("initiative-definition"),
+        reviewAction: review("initiative-definition"),
+        reviseAction: edit("initiative-definition", "Edit Initiative definition"),
+      } : {
+        impact: downstreamImpact("initiative-definition"),
+        reviseAction: edit("initiative-definition", "Start Initiative definition"),
+      },
+    ),
+    checkpoint(
+      "initiative-classification",
+      "Initiative classification",
+      classificationRecorded,
+      classificationRecorded
+        ? classificationAttention
+          ? [
+              "Recorded with attention.",
+              `${assessment?.classification.completeness?.unresolvedQuestionCount ?? 0} open question(s),`,
+              `${assessment?.classification.completeness?.unknownDimensionCount ?? 0} unknown dimension(s), and`,
+              `${assessment?.classification.completeness?.missingConditionalDimensionCount ?? 0} missing conditional dimension(s).`,
+              "Resolve them before a consequential downstream gate; current lifecycle work may continue.",
+            ].join(" ")
+          : "The current Initiative revision has a complete governed classification."
+        : "Classify change posture, risk, exposure, and assurance context.",
+      classificationAttention,
+      classificationAttention && initiative
+        ? control(
+            "Resolve open questions",
+            { kind: "revise-initiative-classification", initiativeId: initiative.id, expectedRevision: initiative.revision ?? 1 },
+            true,
+          )
+        : undefined,
+      classificationRecorded && initiative?.classification ? {
+        revision: initiative.revision ?? 1,
+        details: [
+          { label: "Primary type", value: initiative.classification.primaryType },
+          { label: "Secondary types", value: listValue(initiative.classification.secondaryTypes), kind: "list" },
+          { label: "System state", value: initiative.classification.systemState, kind: "status" },
+          { label: "Change posture", value: initiative.classification.changePosture, kind: "status" },
+          { label: "Motivations", value: listValue(initiative.classification.motivations), kind: "list" },
+          { label: "Owner", value: initiative.classification.owner },
+          { label: "Accountable authority", value: initiative.classification.accountableAuthority, kind: "authority" },
+          { label: "Open questions", value: listValue(initiative.classification.unresolvedQuestions), kind: "list" },
+          { label: "Rationale", value: initiative.classification.rationale },
+        ],
+        impact: downstreamImpact("initiative-classification"),
+        reviewAction: review("initiative-classification"),
+        reviseAction: control("Edit classification", {
+          kind: "revise-initiative-classification",
+          initiativeId: initiative.id,
+          expectedRevision: initiative.revision ?? 1,
+        }, true),
+      } : {
+        impact: downstreamImpact("initiative-classification"),
+        reviseAction: edit("initiative-classification", "Start Initiative classification"),
+      },
+    ),
+    checkpoint(
+      "initiative-applicability",
+      "Initiative applicability",
+      applicabilityRecorded,
+      applicabilityRecorded
+        ? assessment!.applicability.status === "stale"
+          ? [
+              `The recorded matrix is stale after the Initiative or Classification changed.`,
+              `Rebuild it for Initiative revision ${initiative?.revision ?? 1};`,
+              `the prior draft contains ${assessment!.applicability.decisionCount} mapped and`,
+              `${assessment!.applicability.unresolvedSubjectCount} unresolved subject(s).`,
+            ].join(" ")
+          : [
+              `${assessment!.applicability.decisionCount} subjects mapped;`,
+              `${assessment!.applicability.unresolvedSubjectCount} unresolved;`,
+              `${assessment!.applicability.pendingHumanDecisionCount} awaiting human decision.`,
+            ].join(" ")
+        : "Resolve the canonical lifecycle subjects for this Initiative.",
+      applicabilityAttention,
+      applicabilityAttention && initiative
+        ? control(
+            assessment?.applicability.status === "stale" ? "Rebuild current applicability" : "Resolve pending decisions",
+            { kind: "revise-initiative-applicability", initiativeId: initiative.id, expectedRevision: initiative.revision ?? 1 },
+            true,
+          )
+        : undefined,
+      applicabilityRecorded && initiative?.applicability ? {
+        revision: initiative.applicability.revision,
+        details: [
+          ...Object.entries(initiative.applicability.decisions.reduce<Record<string, number>>((counts, decision) => {
+            counts[decision.status] = (counts[decision.status] ?? 0) + 1
+            return counts
+          }, {})).sort(([left], [right]) => left.localeCompare(right)).map(([status, count]) => ({
+            label: status,
+            value: `${count} subject(s)`,
+            kind: "status" as const,
+          })),
+          ...initiative.applicability.unresolvedSubjects.map((entry) => ({
+            label: entry.subject.label,
+            value: `Unresolved — ${entry.reason} · owner: ${entry.owner}`,
+            kind: "status" as const,
+          })),
+          { label: "Authority boundary", value: "The matrix records applicability decisions; it does not grant approval, readiness, or execution authority.", kind: "authority" },
+        ],
+        impact: downstreamImpact("initiative-applicability"),
+        reviewAction: review("initiative-applicability"),
+        reviseAction: control("Edit applicability", {
+          kind: "revise-initiative-applicability",
+          initiativeId: initiative.id,
+          expectedRevision: initiative.revision ?? 1,
+        }, true),
+      } : {
+        impact: downstreamImpact("initiative-applicability"),
+        reviseAction: edit("initiative-applicability", "Start Initiative applicability"),
+      },
+    ),
+    checkpoint(
+      "source-intake",
+      "Source intake",
+      sourceIntakeComplete,
+      sourceIntakeComplete
+        ? `${source!.assessment.sourceCount} exact candidate Source record(s).`
+        : "Attach existing Product documents, work with their content, and record the reviewed candidates.",
+      false,
+      undefined,
+      {
+        ...(sourceIntakeComplete ? {
+          revision: source!.initiative.revision,
+          details: source!.sources.map((candidate) => ({
+          label: candidate.title,
+          value: `${candidate.sourceType} · revision ${candidate.revision} · ${candidate.semanticAuthority.standing} · ${candidate.freshness}`,
+          kind: "status" as const,
+          })),
+        } : {}),
+        impact: downstreamImpact("source-intake"),
+        ...(sourceIntakeComplete ? { reviewAction: review("source-intake") } : {}),
+        reviseAction: edit("source-intake", sourceIntakeComplete ? "Revise candidate Sources" : "Start Source intake"),
+      },
+    ),
+    checkpoint(
+      "source-baseline",
+      "Source baseline",
+      baselineComplete,
+      baselineComplete ? "A current candidate source baseline exists." : "Freeze the exact reviewed source set for this Initiative.",
+      false,
+      undefined,
+      {
+        ...(baselineComplete ? {
+          revision: source!.assessment.currentBaseline!.revision,
+          details: [
+          { label: "Baseline state", value: source!.assessment.currentBaseline!.status, kind: "status" },
+          { label: "Exact members", value: `${source!.assessment.currentBaseline!.memberCount} Source revision(s)` },
+          { label: "Membership digest", value: source!.assessment.currentBaseline!.membershipDigest },
+          ],
+        } : {}),
+        impact: downstreamImpact("source-baseline"),
+        ...(baselineComplete ? { reviewAction: review("source-baseline") } : {}),
+        reviseAction: edit("source-baseline", baselineComplete ? "Create revised Baseline" : "Start Source baseline"),
+      },
+    ),
+    checkpoint(
+      "source-provenance",
+      "Source provenance",
+      provenanceComplete,
+      provenanceComplete ? "All governed sources have recorded lineage." : "Record how accepted Product facts trace back to exact source revisions.",
+      false,
+      undefined,
+      {
+        ...(provenanceComplete ? {
+          revision: source!.initiative.revision,
+          details: [
+          { label: "Provenance records", value: `${source!.assessment.provenanceCount}` },
+          { label: "Unprovenanced Sources", value: `${source!.assessment.unprovenancedSourceCount}`, kind: "status" },
+          { label: "Boundary", value: "Recorded lineage attributes candidate evidence; it does not establish content truth or Source authority.", kind: "authority" },
+          ],
+        } : {}),
+        impact: downstreamImpact("source-provenance"),
+        ...(provenanceComplete ? { reviewAction: review("source-provenance") } : {}),
+        reviseAction: edit("source-provenance", provenanceComplete ? "Revise Source provenance" : "Start Source provenance"),
+      },
+    ),
+    checkpoint(
+      "product-discovery",
+      "Product discovery",
+      productDiscoveryComplete,
+      productDiscoveryComplete
+        ? "Business understanding, stakeholders, and outcome measures are recorded."
+        : "Challenge and record business understanding, stakeholders, roles, outcomes, and success measures.",
+      false,
+      undefined,
+      initiative ? {
+        details: componentDetails([
+          ["Business understanding", Boolean(discovery?.businessUnderstanding)],
+          ["Stakeholder and role model", Boolean(discovery?.stakeholderModel)],
+          ["Outcomes and success measures", Boolean(discovery?.outcomeModel)],
+        ]),
+        impact: downstreamImpact("product-discovery"),
+        reviewAction: control("Open Product discovery", { kind: "navigate", route: "direction" }, true),
+        reviseAction: edit("product-discovery", "Edit Product discovery"),
+      } : {},
+    ),
+    checkpoint(
+      "business-architecture",
+      "Business architecture",
+      businessArchitectureComplete,
+      businessArchitectureComplete
+        ? "Capability, value stream, operating model, rules, and the candidate business baseline are recorded."
+        : "Build the capability map, value streams, operating model, business rules, and candidate business baseline.",
+      false,
+      undefined,
+      initiative ? {
+        details: componentDetails([
+          ["Capability map", Boolean(state.businessCapabilityMapProjections.get(initiative.id)?.capabilityMap)],
+          ["Value streams", Boolean(state.valueStreamModelProjections.get(initiative.id)?.valueStreamModel)],
+          ["Operating model", Boolean(state.operatingModelProjections.get(initiative.id)?.operatingModel)],
+          ["Business rules", Boolean(state.businessRuleCatalogProjections.get(initiative.id)?.businessRuleCatalog)],
+          ["Business architecture baseline candidate", Boolean(state.businessArchitectureBaselineProjections.get(initiative.id)?.baseline)],
+        ]),
+        impact: downstreamImpact("business-architecture"),
+        reviewAction: control("Open Business architecture", { kind: "navigate", route: "architecture" }, true),
+        reviseAction: edit("business-architecture", "Edit Business architecture"),
+      } : {},
+    ),
+    checkpoint(
+      "solution-security-architecture",
+      "Solution and security architecture",
+      solutionSecurityComplete,
+      solutionSecurityComplete
+        ? "Solution architecture, bounded contexts, and the security/privacy assessment are recorded."
+        : "Define solution architecture, bounded contexts and ownership, plus security, privacy, and threats.",
+      false,
+      undefined,
+      initiative ? {
+        details: componentDetails([
+          ["System / Solution architecture", Boolean(state.systemSolutionArchitectureProjections.get(initiative.id)?.architecture)],
+          ["Bounded contexts and ownership", Boolean(state.boundedContextModelProjections.get(initiative.id)?.model)],
+          ["Security, privacy, and threat assessment", Boolean(state.securityPrivacyAssessmentProjections.get(initiative.id)?.assessment)],
+        ]),
+        impact: downstreamImpact("solution-security-architecture"),
+        reviewAction: control("Open Solution architecture", { kind: "navigate", route: "architecture" }, true),
+        reviseAction: edit("solution-security-architecture", "Edit solution and security architecture"),
+      } : {},
+    ),
+    checkpoint(
+      "detailed-design-assurance",
+      "Detailed design and assurance",
+      detailedDesignComplete,
+      detailedDesignComplete
+        ? "Detailed models, challenges, decisions, risks, evidence, and end-to-end traceability are recorded."
+        : "Complete process, data, authorization, integration, recovery, challenge, decision, risk, evidence, and traceability records.",
+      false,
+      undefined,
+      initiative ? {
+        details: componentDetails([
+          ["Process and Event Storming model", Boolean(state.processModelProjections.get(initiative.id)?.model)],
+          ["Data model", Boolean(state.dataModelProjections.get(initiative.id)?.model)],
+          ["Authorization model", Boolean(state.authorizationModelProjections.get(initiative.id)?.model)],
+          ["Event and integration model", Boolean(state.eventIntegrationModelProjections.get(initiative.id)?.model)],
+          ["Failure and recovery model", Boolean(state.failureRecoveryModelProjections.get(initiative.id)?.model)],
+          ["Architecture challenge", Boolean(state.architectureChallengeModelProjections.get(initiative.id)?.model)],
+          ["Decision register", Boolean(state.decisionRegisterProjections.get(initiative.id)?.register)],
+          ["Risk register", Boolean(state.riskRegisterProjections.get(initiative.id)?.register)],
+          ["Evidence registry", Boolean(state.evidenceRegistryProjections.get(initiative.id)?.registry)],
+          ["End-to-end traceability", Boolean(state.endToEndTraceabilityProjections.get(initiative.id)?.traceability)],
+        ]),
+        impact: downstreamImpact("detailed-design-assurance"),
+        reviewAction: control("Open Detailed design", { kind: "navigate", route: "risks-decisions" }, true),
+        reviseAction: edit("detailed-design-assurance", "Edit detailed design and assurance"),
+      } : {},
+    ),
+    checkpoint(
+      "p0-p4-readiness",
+      "Design and implementation handoff",
+      p0P4ReadinessComplete,
+      p0P4ReadinessComplete
+        ? "A governed pre-design readiness assessment and design handoff package are recorded."
+        : "Assess the exact Product Journey records and package the design handoff without granting implementation authority.",
+      false,
+      undefined,
+      initiative ? {
+        details: componentDetails([
+          ["Pre-design readiness assessment", Boolean(state.p0P4ReadinessGateProjections.get(initiative.id)?.gate)],
+          ["Design handoff package", Boolean(state.p5HandoffPackageProjections.get(initiative.id)?.handoff)],
+        ]),
+        impact: downstreamImpact("p0-p4-readiness"),
+        reviewAction: control("Review handoff", { kind: "navigate", route: "readiness" }, true),
+        reviseAction: edit("p0-p4-readiness", "Edit handoff inputs"),
+      } : {},
+    ),
+  ]
+  const nextCheckpoint = checkpoints.find((candidate) => candidate.state === "next")
+  const attentionCount = checkpoints.filter((candidate) => candidate.state === "attention-required").length
+  const recordedCount = checkpoints.filter((candidate) =>
+    candidate.state === "complete" || candidate.state === "attention-required").length
+  const next = nextCheckpoint
+    ? {
+        label: nextCheckpoint.label,
+        summary: nextCheckpoint.summary,
+        action: control("Continue in Product Chat", { kind: "continue-product-journey" }, true, "primary"),
+      }
+    : {
+        label: "Product Journey recorded",
+        summary: "The complete pre-design journey is recorded. Review readiness and the design handoff before continuing.",
+      }
+  return {
+    state: attentionCount > 0 ? "attention-required" : nextCheckpoint ? "in-progress" : "ready",
+    recordedCount,
+    totalCount: checkpoints.length,
+    attentionCount,
+    checkpoints,
+    next,
+    authorityBoundary: "product-journey-is-a-read-only-projection-and-does-not-grant-approval-readiness-or-action-authority",
+  }
+}
+
 function latestRunEntries(runs: Run[]): StudioDefinitionEntry[] {
   const run = newestRun(runs)
   if (!run) return []
@@ -3724,6 +4202,43 @@ function primaryAction(state: ObservedStudioState, eligibility = prepareRunEligi
   return prepareRunControl(eligibility)
 }
 
+function productRevisionRecordId(record: ProductRevision): string {
+  return `${record.productId}-r${record.revision}`
+}
+
+function productRevisionTable(records: ProductRevision[]): StudioTableSnapshot {
+  return {
+    id: "product-revisions",
+    title: "Product revision history",
+    columns: [
+      { key: "revision", label: "Revision", identifier: true },
+      { key: "name", label: "Product name" },
+      { key: "source", label: "Source" },
+      { key: "recorded", label: "Recorded" },
+    ],
+    rows: records.map((record) => ({
+      id: productRevisionRecordId(record),
+      cells: {
+        revision: String(record.revision),
+        name: record.product.name,
+        source: record.source.kind,
+        recorded: record.recordedAt,
+      },
+      actions: [control("Inspect exact snapshot", {
+        kind: "open-record",
+        recordId: productRevisionRecordId(record),
+      })],
+    })),
+    actions: [],
+    ...(records.length === 0 ? {
+      emptyState: emptySurface(
+        "No Product revision history",
+        "Initialize or revise the Product to create immutable Product history.",
+      ),
+    } : {}),
+  }
+}
+
 function overviewPage(state: ObservedStudioState): OverviewPageSnapshot {
   const product = state.product
   const eligibility = prepareRunEligibility(state)
@@ -3748,6 +4263,8 @@ function overviewPage(state: ObservedStudioState): OverviewPageSnapshot {
           : "Product truth is available; start or resume the governed design draft to evaluate design readiness."
         : "Initialize a Product before readiness can be evaluated.",
     },
+    journey: productJourney(state),
+    productRevisions: productRevisionTable(state.productRevisions),
     ...(primary ? { primaryAction: primary } : {}),
     sections: sectionsFor(state),
     currentInitiative: selectedInitiativeEntries(state),
@@ -6455,22 +6972,7 @@ function readinessPage(state: ObservedStudioState): ReadinessPageSnapshot {
     actions: [],
     ...(state.designRevisions.length === 0 ? { emptyState: emptySurface("No design revisions", "A local draft is not governed Product history until an explicit design revision is created.") } : {}),
   }
-  const productRevisions: StudioTableSnapshot = {
-    id: "product-revisions",
-    title: "Product revisions",
-    columns: [
-      { key: "revision", label: "Revision", identifier: true },
-      { key: "source", label: "Source" },
-      { key: "recorded", label: "Recorded" },
-    ],
-    rows: state.productRevisions.map((record) => ({
-      id: `${record.productId}-r${record.revision}`,
-      cells: { revision: String(record.revision), source: record.source.kind, recorded: record.recordedAt },
-      actions: [],
-    })),
-    actions: [],
-    ...(state.productRevisions.length === 0 ? { emptyState: emptySurface("No Product revision history", "Initialize or revise Product design to create immutable Product history.") } : {}),
-  }
+  const productRevisions = productRevisionTable(state.productRevisions)
   const portableDesignPage = state.domainPages["portable-design-snapshot"]
   const portableDesignImportEnabled = state.audit?.valid === true && portableDesignPage !== undefined
   const portableDesignSnapshots = portableDesignSnapshotTable(state.portableDesignSnapshots, portableDesignImportEnabled)
@@ -6725,6 +7227,10 @@ function inspectorFor(state: ObservedStudioState, recordId: string): StudioInspe
     ...state.runToolSelections.map((value) => ({ type: "run-tool-selection", value })),
     ...state.traceLinks.map((value) => ({ type: "trace-link", value })),
     ...state.designRevisions.map((value) => ({ type: "design-revision", value })),
+    ...state.productRevisions.map((revision) => ({
+      type: "product-revision",
+      value: { ...revision, id: productRevisionRecordId(revision) },
+    })),
   ]
   const match = typedRecords.find((candidate) => candidate.value.id === recordId)
   if (!match) return undefined
@@ -6764,6 +7270,29 @@ function inspectorFor(state: ObservedStudioState, recordId: string): StudioInspe
       { term: "Authority boundary", value: grant.authorityBoundary },
       ...(grant.revocationReason ? [{ term: "Revocation reason", value: grant.revocationReason }] : []),
     )
+  }
+  if (match.type === "product-revision") {
+    const revision = state.productRevisions.find((candidate) => productRevisionRecordId(candidate) === recordId)
+    if (revision) {
+      entries.push(
+        { term: "Product name", value: revision.product.name },
+        { term: "Summary", value: revision.product.summary },
+        { term: "Problem", value: revision.product.problem },
+        { term: "Affected users", value: revision.product.affectedUsers },
+        { term: "Desired outcome", value: revision.product.desiredOutcome },
+        { term: "Success signals", value: revision.product.successSignals.join("\n") },
+        { term: "First workflow", value: revision.product.firstWorkflow },
+        { term: "Exclusions", value: revision.product.exclusions.join("\n") },
+        { term: "Profile", value: revision.product.profile },
+        { term: "Exact digest", value: revision.productDigest },
+        { term: "Recorded at", value: revision.recordedAt },
+        { term: "Revision source", value: `${revision.source.kind}:${revision.source.id}` },
+        {
+          term: "History contract",
+          value: "This immutable snapshot is never edited in place. Reapplying its values must create a new Product revision and revalidate downstream checkpoints.",
+        },
+      )
+    }
   }
   const relationships = state.traceLinks.flatMap((link): StudioDefinitionEntry[] => {
     if (link.source.recordId === recordId) return [{ term: link.relationship, value: `${link.target.recordType}:${link.target.recordId}`, recordId: link.id }]
@@ -6863,6 +7392,86 @@ function surfaceFor(route: StudioRoute, context: CurrentEngineStudioContext, sta
 
 function commandFor(action: StudioAction): { command: ExistingStudioCommand; args: unknown[]; announcement: string } | undefined {
   switch (action.kind) {
+    case "continue-product-journey": return {
+      command: "gaep.openInteractiveChat",
+      args: ["continue"],
+      announcement: "Opened Product Chat at the next governed lifecycle checkpoint.",
+    }
+    case "review-product-journey-checkpoint": {
+      const chatCommandByCheckpoint: Partial<Record<ProductJourneyCheckpoint["id"], string>> = {
+        "product-definition": "status",
+        "initiative-definition": "status",
+        "initiative-classification": "classification",
+        "initiative-applicability": "applicability",
+        "source-intake": "manifest",
+        "source-baseline": "baseline",
+        "source-provenance": "provenance",
+      }
+      const studioRouteByCheckpoint: Partial<Record<ProductJourneyCheckpoint["id"], StudioRoute>> = {
+        "product-discovery": "direction",
+        "business-architecture": "architecture",
+        "solution-security-architecture": "architecture",
+        "detailed-design-assurance": "risks-decisions",
+        "p0-p4-readiness": "readiness",
+      }
+      const studioRoute = studioRouteByCheckpoint[action.checkpointId]
+      if (studioRoute) return {
+        command: "gaep.openProductStudio",
+        args: [studioRoute],
+        announcement: `Opened Product Studio for ${action.checkpointId.replaceAll("-", " ")} review.`,
+      }
+      return {
+        command: "gaep.openInteractiveChat",
+        args: [chatCommandByCheckpoint[action.checkpointId] ?? "status"],
+        announcement: `Opened Product Chat for ${action.checkpointId.replaceAll("-", " ")} review.`,
+      }
+    }
+    case "edit-product-journey-checkpoint": {
+      const studioRouteByCheckpoint: Partial<Record<ProductJourneyCheckpoint["id"], StudioRoute>> = {
+        "product-discovery": "direction",
+        "business-architecture": "architecture",
+        "solution-security-architecture": "architecture",
+        "detailed-design-assurance": "risks-decisions",
+        "p0-p4-readiness": "readiness",
+      }
+      const studioRoute = studioRouteByCheckpoint[action.checkpointId]
+      if (studioRoute) return {
+        command: "gaep.openProductStudio",
+        args: [studioRoute],
+        announcement: `Opened the editable ${action.checkpointId.replaceAll("-", " ")} workspace.`,
+      }
+      const chatCommandByCheckpoint: Partial<Record<ProductJourneyCheckpoint["id"], string>> = {
+        "product-definition": "revise",
+        "initiative-definition": "initiative",
+        "initiative-classification": "classification",
+        "initiative-applicability": "applicability",
+        "source-intake": "intake",
+        "source-baseline": "baseline",
+        "source-provenance": "provenance",
+      }
+      const chatCommand = chatCommandByCheckpoint[action.checkpointId]
+      if (!chatCommand) return undefined
+      return {
+        command: "gaep.openInteractiveChat",
+        args: [chatCommand, "", true],
+        announcement: `Opened an editable ${action.checkpointId.replaceAll("-", " ")} workflow in a fresh Product Chat.`,
+      }
+    }
+    case "revise-product-definition": return {
+      command: "gaep.openInteractiveChat",
+      args: ["revise", "", true],
+      announcement: `Opened Product definition revision from revision ${action.expectedRevision}.`,
+    }
+    case "revise-initiative-classification": return {
+      command: "gaep.openInteractiveChat",
+      args: ["classification", "", true],
+      announcement: "Opened Product Chat to resolve the current Initiative classification questions.",
+    }
+    case "revise-initiative-applicability": return {
+      command: "gaep.openInteractiveChat",
+      args: ["applicability", "", true],
+      announcement: "Opened Product Chat to resolve pending Initiative applicability decisions.",
+    }
     case "initialize-product": return { command: "gaep.initializeProduct", args: [], announcement: "Opened the native Product initialization workflow." }
     case "select-product-root": return { command: "gaep.selectWorkspaceRoot", args: [], announcement: "Opened the native Product-root picker." }
     case "create-initiative": return { command: "gaep.createInitiative", args: [], announcement: "Opened the native Initiative workflow." }
@@ -7676,6 +8285,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
     if (!this.context.trusted() || !this.context.workspace() || !this.context.engine()) return empty
     const engine = this.context.engine()!
     const phase1SummaryRequired = ["phase-1b-product", "phase-1c-acceptance"].includes(this.context.deliveryPhase())
+    const productJourneyRequired = route === "overview"
     const phase2DashboardRequired = this.context.deliveryPhase() === "phase-2-design"
     try {
       empty.product = await engine.readProduct()
@@ -7780,7 +8390,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "delivery" && engine.sourceGovernance) {
+    if ((route === "overview" || route === "delivery") && engine.sourceGovernance) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.sourceGovernance!.project(initiative.id)),
@@ -9687,7 +10297,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       } else if (empty.initiatives.length > 0) empty.issues.push(issue("test-generation-unavailable", "Test Generation metadata is withheld because the audit chain is invalid or unavailable.", "blocker"))
     }
     if (
-      (route === "direction" || route === "users-jobs" || route === "outcomes") &&
+      (route === "direction" || route === "users-jobs" || route === "outcomes" || productJourneyRequired) &&
       engine.businessUnderstanding
     ) {
       if (auditSemanticsVerified) {
@@ -9731,7 +10341,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.businessCapabilityMap) {
+    if ((route === "architecture" || productJourneyRequired) && engine.businessCapabilityMap) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.businessCapabilityMap!.project(initiative.id)),
@@ -9773,7 +10383,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.valueStreamModel) {
+    if ((route === "architecture" || productJourneyRequired) && engine.valueStreamModel) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.valueStreamModel!.project(initiative.id)),
@@ -9815,7 +10425,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.operatingModel) {
+    if ((route === "architecture" || productJourneyRequired) && engine.operatingModel) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.operatingModel!.project(initiative.id)),
@@ -9857,7 +10467,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.businessRuleCatalog) {
+    if ((route === "architecture" || productJourneyRequired) && engine.businessRuleCatalog) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.businessRuleCatalog!.project(initiative.id)),
@@ -9899,7 +10509,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.businessArchitectureBaseline) {
+    if ((route === "architecture" || productJourneyRequired) && engine.businessArchitectureBaseline) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.businessArchitectureBaseline!.project(initiative.id)),
@@ -9941,7 +10551,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.systemSolutionArchitecture) {
+    if ((route === "architecture" || productJourneyRequired) && engine.systemSolutionArchitecture) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.systemSolutionArchitecture!.project(initiative.id)),
@@ -9983,7 +10593,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.boundedContextModel) {
+    if ((route === "architecture" || productJourneyRequired) && engine.boundedContextModel) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.boundedContextModel!.project(initiative.id)),
@@ -10025,7 +10635,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.securityPrivacyAssessment) {
+    if ((route === "architecture" || productJourneyRequired) && engine.securityPrivacyAssessment) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.securityPrivacyAssessment!.project(initiative.id)),
@@ -10067,7 +10677,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.processModel) {
+    if ((route === "architecture" || productJourneyRequired) && engine.processModel) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.processModel!.project(initiative.id)),
@@ -10109,7 +10719,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.dataModel) {
+    if ((route === "architecture" || productJourneyRequired) && engine.dataModel) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.dataModel!.project(initiative.id)),
@@ -10151,7 +10761,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.authorizationModel) {
+    if ((route === "architecture" || productJourneyRequired) && engine.authorizationModel) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.authorizationModel!.project(initiative.id)),
@@ -10193,7 +10803,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.eventIntegrationModel) {
+    if ((route === "architecture" || productJourneyRequired) && engine.eventIntegrationModel) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.eventIntegrationModel!.project(initiative.id)),
@@ -10235,7 +10845,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.failureRecoveryModel) {
+    if ((route === "architecture" || productJourneyRequired) && engine.failureRecoveryModel) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.failureRecoveryModel!.project(initiative.id)),
@@ -10277,7 +10887,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "architecture" && engine.architectureChallengeModel) {
+    if ((route === "architecture" || productJourneyRequired) && engine.architectureChallengeModel) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.architectureChallengeModel!.project(initiative.id)),
@@ -10319,7 +10929,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "risks-decisions" && engine.decisionRegister) {
+    if ((route === "risks-decisions" || productJourneyRequired) && engine.decisionRegister) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.decisionRegister!.project(initiative.id)),
@@ -10361,7 +10971,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "risks-decisions" && engine.riskRegister) {
+    if ((route === "risks-decisions" || productJourneyRequired) && engine.riskRegister) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.riskRegister!.project(initiative.id)),
@@ -10403,7 +11013,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "risks-decisions" && engine.evidenceRegistry) {
+    if ((route === "risks-decisions" || productJourneyRequired) && engine.evidenceRegistry) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.evidenceRegistry!.project(initiative.id)),
@@ -10445,7 +11055,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if (route === "trace" && engine.endToEndTraceability) {
+    if ((route === "trace" || productJourneyRequired) && engine.endToEndTraceability) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.endToEndTraceability!.project(initiative.id)),
@@ -10487,7 +11097,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if ((route === "trace" || phase1SummaryRequired) && engine.p0P4ReadinessGate) {
+    if ((route === "trace" || phase1SummaryRequired || productJourneyRequired) && engine.p0P4ReadinessGate) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.p0P4ReadinessGate!.project(initiative.id)),
@@ -10529,7 +11139,7 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
         ))
       }
     }
-    if ((route === "trace" || phase1SummaryRequired) && engine.p5HandoffPackage) {
+    if ((route === "trace" || phase1SummaryRequired || productJourneyRequired) && engine.p5HandoffPackage) {
       if (auditSemanticsVerified) {
         const projections = await Promise.allSettled(
           empty.initiatives.map((initiative) => engine.p5HandoffPackage!.project(initiative.id)),

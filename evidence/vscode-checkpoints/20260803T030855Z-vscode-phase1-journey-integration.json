@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "gaep-vscode-product-journey-checkpoint",
+  "checkpointId": "GAEP-VSCODE-PHASE1-JOURNEY-20260803",
+  "observedAt": "2026-08-03T03:08:55Z",
+  "baseCommit": "1c367d9608e5d20c62117885b16c64d768bdbd60",
+  "sourceState": "dirty-working-tree-under-product-owner-review",
+  "scope": [
+    "exact candidate Source Baseline recording",
+    "conservative Source-to-Initiative Provenance recording",
+    "twelve-checkpoint Product Journey projection",
+    "P1-07 through P1-36 grouped progress derived from exact Engine projections",
+    "Quick, Guided, and Assured presentation modes",
+    "correct Product Chat command routing for Baseline, Provenance, and Mode",
+    "VS Code package and Extension Host lifecycle"
+  ],
+  "results": {
+    "typecheck": "passed",
+    "repositoryTests": {
+      "status": "passed",
+      "files": 184,
+      "passed": 1177,
+      "skipped": 1
+    },
+    "focusedJourneyTests": {
+      "status": "passed",
+      "files": 5,
+      "passed": 145
+    },
+    "documentationValidation": "passed",
+    "build": "passed",
+    "extensionHost": "passed",
+    "isolatedVsixLifecycle": "passed",
+    "phase1Reference": {
+      "status": "passed",
+      "scenarioId": "phase-1-atlas-release-readiness-v1",
+      "outputCount": 25,
+      "artifactFileCount": 143,
+      "compositionDigest": "sha256:3cd36a788eff9094a98c9e0c7251cb8f1a68fc6d005f97eb5bbd283989c64369"
+    }
+  },
+  "package": {
+    "path": "apps/vscode/dist/gaep-vscode.vsix",
+    "byteLength": 1285295,
+    "sha256": "412508ed394b8af63bd9ba601d1e112ab2464010a2f4a553925bf5accb1b4ce7"
+  },
+  "truthBoundary": {
+    "sourceBaselineAndProvenance": "ready-for-product-owner-test",
+    "adaptiveJourneyUx": "ready-for-product-owner-test",
+    "canonicalP1Authoring": "not-complete",
+    "realProductP0P4Completion": "not-executed",
+    "phase1Acceptance": "not-granted"
+  },
+  "remainingGaps": [
+    "The Product Owner has not exercised Baseline, Provenance, or journey-mode switching in the installed package.",
+    "The current real Product has not created and reviewed every canonical P1-07 through P1-36 record.",
+    "The verified realistic Phase 1 reference proves Engine composition but is not evidence that the Product Owner's Product completed P0-P4."
+  ],
+  "authorityBoundary": "this-checkpoint-records-tested-implementation-and-does-not-grant-product-owner-acceptance-phase-completion-readiness-implementation-or-release-authority"
+}

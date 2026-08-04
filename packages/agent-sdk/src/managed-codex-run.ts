@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import { CodexAppServerSupervisor, type CodexAppServerOptions } from "./codex-app-server.js"
+import type { CodexReasoningEffort } from "./codex-app-server-v2.types.js"
 import { canonicalDigest } from "./digest.js"
 import {
   BoundedAsyncQueue,
@@ -36,6 +37,7 @@ export interface ManagedCodexStagedRunRequest {
   model: string
   prompt: string
   developerInstructions?: string
+  effort?: CodexReasoningEffort
   /** Machine-local provider thread identity; never persist this value in GAEP records. */
   resumeThreadId?: string
   runtimeVersion?: string
@@ -539,7 +541,13 @@ export async function startManagedCodexStagedRun(
         : await supervisor.startStagedThread({ stage, model, developerInstructions })
       threadId = thread.threadId
       if (cancelRequested) throw new Error("Managed Codex run was cancelled before turn creation")
-      const turn = await supervisor.startStagedTurn({ stage, threadId, prompt, model })
+      const turn = await supervisor.startStagedTurn({
+        stage,
+        threadId,
+        prompt,
+        model,
+        ...(request.effort === undefined ? {} : { effort: request.effort }),
+      })
       turnId = turn.turnId
       timer = setTimeout(() => {
         timeoutTriggered = true
