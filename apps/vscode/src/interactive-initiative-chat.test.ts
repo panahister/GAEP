@@ -4,6 +4,7 @@ import {
   acceptInitiativeAnswer,
   answerInitiative,
   assessInitiativeAnswer,
+  assessInitiativeAnswerWithAutomaticRepair,
   backInitiative,
   currentInitiativeQuestion,
   initiativeAdvisorAcceptedAnswers,
@@ -79,6 +80,26 @@ describe("interactive Initiative chat", () => {
     const state = startInitiativeChat(advisor)
     expect(answerInitiative(state, "Improve [specific outcome] for [target actor]").challenge)
       .toMatch(/concrete, reviewable/i)
+  })
+
+  it("automatically repairs a placeholder advisor proposal before showing it to the human", async () => {
+    const state = startInitiativeChat(advisor)
+    const proposals = [
+      "Improve [specific outcome] for [target actor] in [bounded workflow]",
+      "Establish governed service-to-voyage schedule planning for maritime planners",
+    ]
+    const result = await assessInitiativeAnswerWithAutomaticRepair(
+      state,
+      "Please suggest the strongest title from the Product context",
+      async ({ attempt }) => ({
+        assessment: "A context-grounded candidate title is available.",
+        strengths: [],
+        gaps: [],
+        proposedAnswer: proposals[attempt - 1]!,
+      }),
+    )
+    expect(result.attempts).toBe(2)
+    expect(result.state.pending?.proposedAnswer).toBe(proposals[1])
   })
 
   it("projects governed Product context into Initiative advisory turns", () => {

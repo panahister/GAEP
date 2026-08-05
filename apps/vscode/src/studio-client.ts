@@ -419,6 +419,7 @@ class StudioShell {
           }
           const valueRow = element("tr")
           valueRow.append(element("th", undefined, entry.label), value)
+          if (entry.action) value.append(this.renderActionRow([entry.action]))
           body.append(valueRow)
         }
         table.append(head, body)

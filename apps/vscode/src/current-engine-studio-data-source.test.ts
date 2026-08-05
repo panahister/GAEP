@@ -6032,7 +6032,7 @@ describe("current-engine Product Studio data source", () => {
       state: "in-progress",
       recordedCount: 11,
       totalCount: 12,
-      next: { label: "Design and implementation handoff" },
+      next: { label: "Pre-Figma readiness and handoff" },
     })
     expect(withoutHandoff.page.journey.checkpoints.at(-1)).toMatchObject({ state: "next" })
 
@@ -6049,7 +6049,7 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(withHandoff.page.journey.checkpoints.at(-1)).toMatchObject({
       state: "complete",
-      summary: "A governed pre-design readiness assessment and design handoff package are recorded.",
+      summary: "A governed readiness assessment and editable pre-Figma handoff package are recorded.",
     })
   })
 

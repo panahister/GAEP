@@ -35,7 +35,7 @@ export const journeyCheckpointLabels: Readonly<Record<ExistingProductJourneyChec
   "business-architecture": "Business architecture",
   "solution-security-architecture": "Solution and security architecture",
   "detailed-design-assurance": "Detailed design and assurance",
-  "design-implementation-handoff": "Design and implementation handoff",
+  "design-implementation-handoff": "Pre-Figma readiness and handoff",
 }
 
 export function parseExistingProductJourneyCoverage(value: unknown): ExistingProductJourneyCoverage[] {

@@ -46,6 +46,7 @@
     "onCommand:gaep.selectProductChatAgent",
     "onCommand:gaep.selectProductChatModel",
     "onCommand:gaep.openProductStudio",
+    "onCommand:gaep.exportProductJourneyMarkdown",
     "onCommand:gaep.initializeProduct",
     "onCommand:gaep.selectWorkspaceRoot",
     "onCommand:gaep.selectAgent",
@@ -111,6 +112,11 @@
         "command": "gaep.openProductStudio",
         "title": "GAEP: Open Product Studio",
         "icon": "$(layout)"
+      },
+      {
+        "command": "gaep.exportProductJourneyMarkdown",
+        "title": "GAEP: Export Product Journey as Markdown",
+        "icon": "$(markdown)"
       },
       {
         "command": "gaep.selectWorkspaceRoot",

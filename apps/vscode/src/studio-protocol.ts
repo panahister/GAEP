@@ -214,6 +214,7 @@ export interface ProductJourneyCheckpointDetail {
   label: string
   value: string
   kind?: "value" | "list" | "status" | "authority"
+  action?: StudioActionControl
 }
 
 export interface ProductJourneyCheckpointImpact {
@@ -563,6 +564,8 @@ export type StudioAction =
   | { kind: "continue-product-journey" }
   | { kind: "review-product-journey-checkpoint"; checkpointId: ProductJourneyCheckpoint["id"] }
   | { kind: "edit-product-journey-checkpoint"; checkpointId: ProductJourneyCheckpoint["id"] }
+  | { kind: "review-phase1-canonical-record"; recordKind: string }
+  | { kind: "edit-phase1-canonical-record"; recordKind: string }
   | { kind: "revise-product-definition"; expectedRevision: number }
   | { kind: "revise-initiative-classification"; initiativeId: string; expectedRevision: number }
   | { kind: "revise-initiative-applicability"; initiativeId: string; expectedRevision: number }
@@ -1232,6 +1235,10 @@ export function isStudioAction(value: unknown): value is StudioAction {
     case "edit-product-journey-checkpoint":
       return hasOnlyKeys(value, ["kind", "checkpointId"]) && typeof value.checkpointId === "string" &&
         productJourneyCheckpointIdSet.has(value.checkpointId)
+    case "review-phase1-canonical-record":
+    case "edit-phase1-canonical-record":
+      return hasOnlyKeys(value, ["kind", "recordKind"]) && isNonEmptyString(value.recordKind) &&
+        /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.recordKind)
     case "revise-product-definition":
       return hasOnlyKeys(value, ["kind", "expectedRevision"]) && isNonNegativeInteger(value.expectedRevision) &&
         value.expectedRevision > 0
@@ -1470,9 +1477,10 @@ function isProductJourney(value: unknown): value is ProductJourneySnapshot {
       checkpointStates.has(String(candidate.state)) && isNonEmptyString(candidate.summary) &&
       (candidate.revision === undefined || (isNonNegativeInteger(candidate.revision) && candidate.revision > 0)) &&
       (candidate.details === undefined || (Array.isArray(candidate.details) && candidate.details.length <= 512 &&
-        candidate.details.every((detail) => isRecord(detail) && hasOnlyKeys(detail, ["label", "value", "kind"]) &&
+        candidate.details.every((detail) => isRecord(detail) && hasOnlyKeys(detail, ["label", "value", "kind", "action"]) &&
           isNonEmptyString(detail.label) && isBoundedString(detail.value) &&
-          (detail.kind === undefined || ["value", "list", "status", "authority"].includes(String(detail.kind)))))) &&
+          (detail.kind === undefined || ["value", "list", "status", "authority"].includes(String(detail.kind))) &&
+          (detail.action === undefined || isStudioActionControl(detail.action))))) &&
       (candidate.impact === undefined || (isRecord(candidate.impact) &&
         hasOnlyKeys(candidate.impact, ["state", "affectedCheckpointIds", "summary"]) &&
         ["aligned", "review-required", "not-assessed"].includes(String(candidate.impact.state)) &&

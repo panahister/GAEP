@@ -12,6 +12,7 @@ import {
   validatePhase1CanonicalDraft,
 } from "./phase1-canonical-authoring.js"
 import { candidateSourceRecordInput } from "./product-chat-source-recording.js"
+import { buildProductJourneyMarkdown } from "./product-journey-markdown-export.js"
 
 describe("Phase 1 canonical authoring", () => {
   let workspace: string | undefined
@@ -74,6 +75,10 @@ describe("Phase 1 canonical authoring", () => {
       },
     })
     expect(target?.schema).toMatchObject({ type: "object" })
+    expect((target?.context as { authoringRules: string[] }).authoringRules).toEqual(expect.arrayContaining([
+      expect.stringContaining("human is never responsible"),
+      expect.stringContaining("draft the answer from Product, Initiative, Sources"),
+    ]))
 
     const bindings = target!.context as {
       exactBindings: { initiativeId: string; context: object; sourceReferences: object[] }
@@ -107,8 +112,36 @@ describe("Phase 1 canonical authoring", () => {
     }
     expect(validatePhase1CanonicalDraft("business-understanding", draft).valid).toBe(true)
     const committed = await commitPhase1CanonicalDraft(engine, "business-understanding", draft, actorId)
-    expect(committed).toMatchObject({ kind: "business-understanding", revision: 1 })
+    expect(committed).toMatchObject({ kind: "business-understanding", revision: 1, operation: "created" })
+
+    const revisionTarget = await nextPhase1AuthoringTarget(engine, initiative.id, "business-understanding")
+    expect(revisionTarget).toMatchObject({
+      kind: "business-understanding",
+      operation: "revise",
+      current: { id: committed.id, revision: 1, history: [{ revision: 1 }] },
+    })
+    expect(revisionTarget?.downstream.find((candidate) => candidate.kind === "stakeholder-model")).toMatchObject({
+      recorded: false,
+    })
+    const revised = await commitPhase1CanonicalDraft(engine, "business-understanding", {
+      ...draft,
+      limitations: [...draft.limitations, "Revised after human review"],
+    }, actorId, { id: committed.id, expectedRevision: 1 })
+    expect(revised).toMatchObject({ kind: "business-understanding", revision: 2, operation: "revised" })
+    expect((await nextPhase1AuthoringTarget(engine, initiative.id, "business-understanding"))?.current?.history)
+      .toHaveLength(2)
     expect((await nextPhase1AuthoringTarget(engine, initiative.id))?.kind).toBe("stakeholder-model")
+
+    const markdown = await buildProductJourneyMarkdown(engine, initiative.id, {
+      generatedAt: "2026-08-05T00:00:00.000Z",
+    })
+    expect(markdown).toContain("# Scheduler — Product Journey")
+    expect(markdown).toContain("| Checkpoint | Status | Revision / coverage | Purpose |")
+    expect(markdown).toContain("```mermaid")
+    expect(markdown).toContain("Event Storming and detailed assurance")
+    expect(markdown).toContain("# Product discovery — Business Understanding")
+    expect(markdown).toContain("Current revision: **2** · History: **2 revision(s)**")
+    expect(markdown).toContain("## Pre-Figma boundary")
   })
 
   it("fails closed with precise schema paths instead of accepting prose or partial records", () => {

@@ -63,6 +63,7 @@ import {
   nextPhase1AuthoringTarget,
   validatePhase1CanonicalDraft,
 } from "./phase1-canonical-authoring.js"
+import { buildProductJourneyMarkdown } from "./product-journey-markdown-export.js"
 import {
   isProductChatAdvisorSelection,
   productInitializationQuestions,
@@ -1192,20 +1193,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           Boolean(recovery.model), Boolean(challenge.model), Boolean(decisions.register), Boolean(risks.register),
           Boolean(evidence.registry), Boolean(traceability.traceability),
         ], "risks-decisions"),
-        group("p0-p4-readiness", "Design and implementation handoff", [
+        group("p0-p4-readiness", "Pre-Figma readiness and handoff", [
           Boolean(readiness.gate), Boolean(handoff.handoff),
         ], "readiness"),
       ] }
     },
-    nextPhase1AuthoringTarget: async (initiativeId) => {
+    nextPhase1AuthoringTarget: async (initiativeId, requestedKind) => {
       const runtime = await requireRuntime()
-      return nextPhase1AuthoringTarget(runtime.engine, initiativeId)
+      return nextPhase1AuthoringTarget(runtime.engine, initiativeId, requestedKind)
     },
     validatePhase1CanonicalDraft: async (kind, value) => validatePhase1CanonicalDraft(kind, value),
-    commitPhase1CanonicalDraft: async (kind, value) => {
+    commitPhase1CanonicalDraft: async (kind, value, current) => {
       const runtime = await requireRuntime()
       const result = await withProductDomainMutation(() =>
-        commitPhase1CanonicalDraft(runtime.engine, kind, value, actorId))
+        commitPhase1CanonicalDraft(runtime.engine, kind, value, actorId, current))
       refresh()
       return result
     },
@@ -1485,6 +1486,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("gaep.openProductStudio", async (route?: unknown) => {
       await studioProvider?.open(isStudioRoute(route) ? route : "overview")
     }),
+    vscode.commands.registerCommand("gaep.exportProductJourneyMarkdown", safely(async () => {
+      const runtime = await requireRuntime()
+      const initiative = currentInitiative(await readInitiatives(runtime.path))
+      if (!initiative) throw new Error("Create or select a current Initiative before exporting the Product Journey")
+      const markdown = await buildProductJourneyMarkdown(runtime.engine, initiative.id)
+      const target = await vscode.window.showSaveDialog({
+        title: "Export Product Journey as Markdown",
+        defaultUri: vscode.Uri.joinPath(vscode.Uri.file(runtime.path), "GAEP_PRODUCT_JOURNEY.md"),
+        filters: { Markdown: ["md"] },
+        saveLabel: "Export Product Journey",
+      })
+      if (!target) return
+      await vscode.workspace.fs.writeFile(target, new TextEncoder().encode(markdown))
+      const document = await vscode.workspace.openTextDocument(target)
+      await vscode.window.showTextDocument(document, { preview: false })
+      void vscode.window.showInformationMessage("GAEP Product Journey Markdown exported")
+    })),
   )
 
   type DomainWorkflowAction = Extract<StudioAction, { kind: "domain-workflow" }>

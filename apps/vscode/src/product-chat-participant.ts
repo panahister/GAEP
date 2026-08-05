@@ -39,6 +39,7 @@ import {
   productInitializationInput,
   productInitializationProgress,
   recordProductAnswerAssessment,
+  recordProductAnswerAssessmentWithAutomaticRepair,
   startProductInitialization,
   startProductInitializationReview,
   startProductRevision,
@@ -63,6 +64,7 @@ import {
   acceptInitiativeAnswer,
   answerInitiative,
   assessInitiativeAnswer,
+  assessInitiativeAnswerWithAutomaticRepair,
   backInitiative,
   changeInitiativeAdvisor,
   currentInitiativeQuestion,
@@ -109,7 +111,8 @@ import {
   sourceUnderstandingInstruction,
 } from "./product-chat-source-intake.js"
 import type { CandidateSourceAttachment } from "./product-chat-source-recording.js"
-import type { Phase1CanonicalRecordKind } from "./phase1-canonical-authoring.js"
+import { phase1CanonicalRecordKinds, type Phase1CanonicalRecordKind } from "./phase1-canonical-authoring.js"
+import { phase1CanonicalPresentation } from "./phase1-canonical-presentation.js"
 import {
   canSafelyRebindInitiativeClassification,
   initiativeApplicabilityAttentionItems,
@@ -206,7 +209,7 @@ export interface GaepProductChatOptions {
       route: "direction" | "architecture" | "risks-decisions" | "readiness"
     }>
   }>
-  nextPhase1AuthoringTarget(initiativeId: string): Promise<{
+  nextPhase1AuthoringTarget(initiativeId: string, requestedKind?: Phase1CanonicalRecordKind): Promise<{
     kind: Phase1CanonicalRecordKind
     label: string
     group: string
@@ -214,17 +217,21 @@ export interface GaepProductChatOptions {
     total: number
     schema: object
     context: object
+    operation: "create" | "revise"
+    current?: { id: string; revision: number; record: unknown; history: Array<{ revision: number; recordedAt?: string; recordedBy?: string }> }
+    downstream: Array<{ kind: Phase1CanonicalRecordKind; label: string; recorded: boolean }>
   } | undefined>
   validatePhase1CanonicalDraft(kind: Phase1CanonicalRecordKind, value: unknown): Promise<{
     valid: boolean
     value?: unknown
     errors: string[]
   }>
-  commitPhase1CanonicalDraft(kind: Phase1CanonicalRecordKind, value: unknown): Promise<{
+  commitPhase1CanonicalDraft(kind: Phase1CanonicalRecordKind, value: unknown, current?: { id: string; expectedRevision: number }): Promise<{
     id: string
     revision: number
     kind: Phase1CanonicalRecordKind
     label: string
+    operation: "created" | "revised"
   }>
   journeyMode?(): Promise<{ mode: "quick" | "guided" | "assured"; source: "recommended" | "selected" }>
   selectJourneyMode?(): Promise<{ mode: "quick" | "guided" | "assured"; source: "selected" } | undefined>
@@ -348,6 +355,9 @@ interface Phase1CanonicalAuthoringState {
     group: string
     ordinal: number
     total: number
+    operation: "create" | "revise"
+    current?: { id: string; revision: number; historyCount: number }
+    downstreamRecorded: Array<{ kind: Phase1CanonicalRecordKind; label: string }>
   }
   advisor: ProductChatAdvisorSelection
   assessment: ProductAnswerAssessment
@@ -415,12 +425,19 @@ function existingProductInitializationInput(value: unknown): ProductInitializati
 }
 
 function phase1AuthoringMarkdown(state: Phase1CanonicalAuthoringState): string {
-  const exactDraft = JSON.stringify(state.draft, null, 2)
+  const presentation = phase1CanonicalPresentation({
+    kind: state.target.kind,
+    label: state.target.label,
+    draft: state.draft,
+  })
   return [
-    `# ${markdownValue(state.target.label)} — ${state.phase === "review" ? "exact review" : "candidate proposal"}`,
+    `# ${markdownValue(state.target.label)} — ${state.phase === "review" ? "exact review" : state.target.operation === "revise" ? "revision proposal" : "candidate proposal"}`,
     "",
     `Product Journey record **${state.target.ordinal}/${state.target.total}** · ${markdownValue(state.target.group)}`,
     `Advisor: **${markdownValue(state.advisor.agentLabel)} · ${markdownValue(state.advisor.modelLabel)}** (${state.advisor.modelTruthClass}) · round **${state.round}**`,
+    ...(state.target.current ? [
+      `Current governed revision: **${state.target.current.revision}** · immutable history: **${state.target.current.historyCount} revision(s)**`,
+    ] : []),
     "",
     `**Assessment:** ${markdownValue(state.assessment.assessment)}`,
     ...(state.assessment.strengths.length > 0
@@ -433,11 +450,13 @@ function phase1AuthoringMarkdown(state: Phase1CanonicalAuthoringState): string {
       ? ["", `**Challenge question:** ${markdownValue(state.assessment.followUpQuestion)}`]
       : []),
     "",
-    "## Exact candidate record",
-    "",
-    "```json",
-    exactDraft,
-    "```",
+    presentation,
+    ...(state.target.downstreamRecorded.length > 0 ? [
+      "",
+      "## Downstream realignment after commit",
+      "",
+      ...state.target.downstreamRecorded.map((entry) => `- **${markdownValue(entry.label)}** — review required after this upstream revision`),
+    ] : []),
     "",
     "> This candidate has passed its input schema only. It grants no approval, appointment, baseline designation, readiness, implementation, release, or action authority.",
     "",
@@ -1273,6 +1292,7 @@ export function registerGaepProductChat(
                 `Create the complete ${target.label} input object for Product Journey record ${target.ordinal}/${target.total}.`,
                 "The JSON Schema and governed context are supplied below. proposedAnswer must decode to the input object itself, with no wrapper.",
                 "Every human-readable value must be English. Missing knowledge must remain explicit and conservative.",
+                "Act as an AI Product and engineering collaborator: infer the strongest useful candidate from all supplied governed context. Never return placeholders, internal-schema instructions, or ask the human to repeat facts already present.",
               ].join(" "),
             },
             acceptedAnswers: {
@@ -1603,18 +1623,25 @@ export function registerGaepProductChat(
         }
         response.progress(`Validating and recording the exact ${currentDraft.target.label} candidate…`)
         try {
-          const result = await options.commitPhase1CanonicalDraft(currentDraft.target.kind, currentDraft.draft)
+          const result = await options.commitPhase1CanonicalDraft(
+            currentDraft.target.kind,
+            currentDraft.draft,
+            currentDraft.target.current
+              ? { id: currentDraft.target.current.id, expectedRevision: currentDraft.target.current.revision }
+              : undefined,
+          )
           phase1AuthoringState = { ...currentDraft, phase: "committed" }
           response.markdown([
             `# ${markdownValue(result.label)} recorded`,
             "",
-            `Candidate record **${result.id}** · revision **${result.revision}** is now governed local Product state.`,
+            `Candidate record **${result.id}** was **${result.operation}** at revision **${result.revision}** and is now governed local Product state.`,
             "",
             "The record remains candidate evidence and grants no approval, appointment, baseline designation, readiness, implementation, release, or action authority.",
             "",
             "Continue to the next Product Journey record.",
           ].join("\n"))
           response.button({ command: "gaep.openInteractiveChat", title: "Continue Product Journey", arguments: ["author"] })
+          response.button({ command: "gaep.openInteractiveChat", title: "Review This Record", arguments: ["author", `review:${result.kind}`] })
           response.button({ command: "gaep.openProductStudio", title: "Open Product Journey", arguments: ["overview"] })
         } catch (error) {
           options.reportDiagnostic?.(`Product Journey ${currentDraft.target.label} commit failed`, error)
@@ -1651,7 +1678,7 @@ export function registerGaepProductChat(
         return phase1AuthoringMetadata(phase1AuthoringState)
       }
       if (!command && request.prompt.trim()) {
-        const rawTarget = await options.nextPhase1AuthoringTarget(currentDraft.initiativeId)
+        const rawTarget = await options.nextPhase1AuthoringTarget(currentDraft.initiativeId, currentDraft.target.kind)
         const target = rawTarget ? withAvailableCandidateDocumentContent(rawTarget) : undefined
         if (!target || target.kind !== currentDraft.target.kind) {
           response.markdown("The exact upstream record state changed. The draft was preserved but cannot be revised against stale bindings. Use **`@gaep /cancel`**, then **`@gaep /author`**.")
@@ -1687,7 +1714,13 @@ export function registerGaepProductChat(
         response.markdown("Product Journey authoring requires a current Candidate Source Baseline and Source Provenance. Use **`@gaep /continue`** to finish the source foundation.")
         return
       }
-      const rawTarget = await options.nextPhase1AuthoringTarget(current.id)
+      const authorPrompt = request.prompt.trim()
+      const requested = authorPrompt.match(/^(?:edit|review):([a-z0-9-]+)$/u)
+      const requestedKind = requested?.[1] && phase1CanonicalRecordKinds.includes(requested[1] as Phase1CanonicalRecordKind)
+        ? requested[1] as Phase1CanonicalRecordKind
+        : undefined
+      const reviewOnly = authorPrompt.startsWith("review:")
+      const rawTarget = await options.nextPhase1AuthoringTarget(current.id, requestedKind)
       const target = rawTarget ? withAvailableCandidateDocumentContent(rawTarget) : undefined
       if (!target) {
         response.markdown([
@@ -1698,6 +1731,24 @@ export function registerGaepProductChat(
         response.button({ command: "gaep.openProductStudio", title: "Review Design Handoff", arguments: ["readiness"] })
         return
       }
+      if (reviewOnly && target.current) {
+        response.markdown([
+          `# ${markdownValue(target.label)} — governed record review`,
+          "",
+          `Current revision: **${target.current.revision}** · immutable history: **${target.current.history.length} revision(s)**`,
+          "",
+          phase1CanonicalPresentation({ kind: target.kind, label: target.label, draft: target.current.record }),
+          ...(target.downstream.filter((entry) => entry.recorded).length > 0 ? [
+            "",
+            "## Recorded downstream dependencies",
+            "",
+            ...target.downstream.filter((entry) => entry.recorded).map((entry) => `- ${markdownValue(entry.label)}`),
+          ] : []),
+        ].join("\n"))
+        response.button({ command: "gaep.openInteractiveChat", title: `Edit ${target.label}`, arguments: ["author", `edit:${target.kind}`, true] })
+        response.button({ command: "gaep.openProductStudio", title: "Back to Product Journey", arguments: ["overview"] })
+        return
+      }
       const advisor = options.currentAdvisor() ?? await options.selectAdvisor()
       if (!advisor) {
         response.markdown("Product Journey authoring did not start because no executable Codex or Claude Code advisor/model was selected.")
@@ -1706,7 +1757,9 @@ export function registerGaepProductChat(
       const proposed = await proposeCanonicalRecord(
         target,
         advisor,
-        request.prompt.trim() || "Generate the strongest conservative candidate supported by the governed Product, Initiative, Sources, and exact upstream records.",
+        requestedKind
+          ? `Revise the current ${target.label} using the governed Product, Initiative, Sources, current record, revision history, and upstream records. Preserve valid facts, improve weaknesses, and identify downstream realignment. Do not ask the human to rewrite internal structures.`
+          : authorPrompt || "Generate the strongest conservative candidate supported by the governed Product, Initiative, Sources, and exact upstream records.",
       )
       if (!proposed) return
       phase1AuthoringState = {
@@ -1719,6 +1772,11 @@ export function registerGaepProductChat(
           group: target.group,
           ordinal: target.ordinal,
           total: target.total,
+          operation: target.operation,
+          ...(target.current ? {
+            current: { id: target.current.id, revision: target.current.revision, historyCount: target.current.history.length },
+          } : {}),
+          downstreamRecorded: target.downstream.filter((entry) => entry.recorded).map((entry) => ({ kind: entry.kind, label: entry.label })),
         },
         advisor,
         assessment: proposed.assessment,
@@ -2261,7 +2319,7 @@ export function registerGaepProductChat(
             "  PD[\"Product definition\"] --> ID[\"Initiative definition\"] --> IC[\"Initiative classification\"] --> IA[\"Initiative applicability\"]",
             "  IA --> SI[\"Source intake\"] --> SB[\"Source baseline\"] --> SP[\"Source provenance\"]",
             "  SP --> DISC[\"Product discovery\"] --> BA[\"Business architecture\"] --> SA[\"Solution and security architecture\"]",
-            "  SA --> DD[\"Detailed design and assurance\"] --> DH[\"P0–P4 readiness and P5 handoff\"]",
+            "  SA --> DD[\"Detailed design and assurance, including Event Storming\"] --> DH[\"Pre-Figma readiness and handoff\"]",
             "```",
             "",
             `**Journey assessment:** ${markdownValue(coverageAssessment.assessment)}`,
@@ -2345,7 +2403,7 @@ export function registerGaepProductChat(
         `  PD --> BA["${nodeState(Boolean(phaseGroup("business-architecture")?.complete))} Business architecture"]`,
         `  BA --> SA["${nodeState(Boolean(phaseGroup("solution-security-architecture")?.complete))} Solution and security architecture"]`,
         `  SA --> DD["${nodeState(Boolean(phaseGroup("detailed-design-assurance")?.complete))} Detailed design and assurance"]`,
-        `  DD --> R["${nodeState(Boolean(phaseGroup("p0-p4-readiness")?.complete))} P0–P4 readiness and P5 handoff"]`,
+        `  DD --> R["${nodeState(Boolean(phaseGroup("p0-p4-readiness")?.complete))} Pre-Figma readiness and handoff"]`,
         "```",
       ].join("\n")
       response.markdown([
@@ -3179,24 +3237,35 @@ export function registerGaepProductChat(
         return initiativeMetadata(initiativeState)
       }
       const question = currentInitiativeQuestion(initiativeState)!
-      response.progress(`Asking ${initiativeState.advisor.agentLabel} · ${initiativeState.advisor.modelLabel} to challenge this Initiative answer`)
-      const abort = new AbortController()
-      const cancellation = token.onCancellationRequested(() => abort.abort())
       try {
-        const assessment = await options.challengeAnswer({
-          advisor: initiativeState.advisor,
-          question,
-          acceptedAnswers: await initiativeAdvisorContext(),
-          userAnswer: request.prompt,
-          previousAssessment: initiativeState.pending,
-        }, abort.signal)
-        initiativeState = assessInitiativeAnswer(initiativeState, request.prompt, assessment)
+        const acceptedAnswers = await initiativeAdvisorContext()
+        const result = await assessInitiativeAnswerWithAutomaticRepair(
+          initiativeState,
+          request.prompt,
+          async ({ attempt, contractErrors, previousAssessment }) => {
+            response.progress(attempt === 1
+              ? `Asking ${initiativeState!.advisor.agentLabel} · ${initiativeState!.advisor.modelLabel} to draft and challenge this Initiative answer`
+              : `GAEP is replacing an invalid or placeholder Initiative answer with a concrete context-grounded candidate (${attempt}/3)…`)
+            return withChatCancellation(token, (signal) => options.challengeAnswer({
+              advisor: initiativeState!.advisor,
+              question,
+              acceptedAnswers: {
+                ...acceptedAnswers,
+                ...(contractErrors.length > 0 ? { contractErrorsToRepair: contractErrors } : {}),
+              },
+              userAnswer: attempt === 1
+                ? request.prompt
+                : `${request.prompt}\n\nGAEP automatic answer repair: return a concrete, field-valid proposal derived from the governed context. Replace every placeholder. Do not ask the human to repeat known Product facts.`,
+              ...(previousAssessment ? { previousAssessment } : {}),
+            }, signal))
+          },
+        )
+        initiativeState = result.state
         response.markdown(initiativeAssessedMarkdown(initiativeState))
-      } catch {
-        response.markdown(initiativeQuestionMarkdown(initiativeState, "The advisor did not return a valid Initiative assessment. GAEP did not advance."))
+      } catch (error) {
+        options.reportDiagnostic?.("Initiative answer automatic normalization failed", error)
+        response.markdown(initiativeQuestionMarkdown(initiativeState, "GAEP could not produce a concrete field-valid proposal after three automatic repair attempts. Your draft is preserved; switch the agent/model or retry without learning GAEP's internal format."))
         response.button({ command: "gaep.showDiagnostics", title: "Show Diagnostics" })
-      } finally {
-        cancellation.dispose()
       }
       return initiativeMetadata(initiativeState)
     }
@@ -3350,28 +3419,39 @@ export function registerGaepProductChat(
       response.markdown(questionMarkdown(state, result.challenge))
       return metadata(state)
     }
-    response.progress(`Asking ${state.advisor.agentLabel} · ${state.advisor.modelLabel} to challenge this candidate answer`)
-    const abort = new AbortController()
-    const cancellation = token.onCancellationRequested(() => abort.abort())
     try {
       const question = currentProductInitializationQuestion(state)!
-      const assessment = await options.challengeAnswer({
-        advisor: state.advisor,
-        question,
-        acceptedAnswers: state.answers,
-        userAnswer: request.prompt,
-        previousAssessment: state.pending,
-      }, abort.signal)
-      state = recordProductAnswerAssessment(state, request.prompt, assessment)
+      const result = await recordProductAnswerAssessmentWithAutomaticRepair(
+        state,
+        request.prompt,
+        async ({ attempt, contractErrors, previousAssessment }) => {
+          response.progress(attempt === 1
+            ? `Asking ${state!.advisor.agentLabel} · ${state!.advisor.modelLabel} to draft and challenge this Product answer`
+            : `GAEP is replacing an invalid or placeholder Product answer with a concrete context-grounded candidate (${attempt}/3)…`)
+          return withChatCancellation(token, (signal) => options.challengeAnswer({
+            advisor: state!.advisor,
+            question,
+            acceptedAnswers: {
+              acceptedProductFields: state!.answers,
+              candidateAttachments: state!.candidateAttachments,
+              ...(contractErrors.length > 0 ? { contractErrorsToRepair: contractErrors } : {}),
+            },
+            userAnswer: attempt === 1
+              ? request.prompt
+              : `${request.prompt}\n\nGAEP automatic answer repair: return a concrete, field-valid proposal derived from every accepted Product field and candidate attachment. Replace every placeholder and do not ask for facts already present.`,
+            ...(previousAssessment ? { previousAssessment } : {}),
+          }, signal))
+        },
+      )
+      state = result.state
       response.markdown(assessedAnswerMarkdown(state))
-    } catch {
+    } catch (error) {
+      options.reportDiagnostic?.("Product answer automatic normalization failed", error)
       response.markdown(questionMarkdown(
         state,
-        "The selected advisor did not return a valid governed assessment. This answer was not accepted and GAEP did not advance. Retry the answer, use `/agent` to change provider, or `/model` to change its model.",
+        "GAEP could not produce a concrete field-valid proposal after three automatic repair attempts. Your draft is preserved; retry or switch the agent/model without learning GAEP's internal format.",
       ))
       response.button({ command: "gaep.showDiagnostics", title: "Show Diagnostics" })
-    } finally {
-      cancellation.dispose()
     }
     return metadata(state)
   }

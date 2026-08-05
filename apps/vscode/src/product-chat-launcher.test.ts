@@ -46,7 +46,7 @@ describe("Product Chat launcher", () => {
     expect(participantSource).toContain('"```mermaid"')
     expect(participantSource).toContain('"flowchart LR"')
     expect(participantSource).toContain('title: "Open Conversation Outline"')
-    expect(participantSource).toContain("P0–P4 readiness and P5 handoff")
+    expect(participantSource).toContain("Pre-Figma readiness and handoff")
     expect(participantSource).not.toContain("new Proxy(response")
   })
 

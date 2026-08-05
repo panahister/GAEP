@@ -13,8 +13,8 @@ const sourceByteLimit = 64 * 1024
 const digestPattern = /^sha256:[0-9a-f]{64}$/
 
 export const defaultProviderComparisonInputs = {
-  codex: "evidence/examples/20260728T023152Z-phase-1-codex-p0-p4-realistic-reference.json",
-  claude: "evidence/examples/20260728T023152Z-phase-1-claude-p0-p4-realistic-reference.json",
+  codex: "evidence/examples/20260805T121000Z-phase-1-codex-p0-p4-acceptance.json",
+  claude: "evidence/examples/20260805T121000Z-phase-1-claude-p0-p4-acceptance.json",
 }
 
 export const providerComparisonLimitations = [

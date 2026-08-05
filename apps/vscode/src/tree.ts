@@ -271,6 +271,13 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         },
         studioEntry("overview"),
         {
+          label: "Export Product Journey",
+          description: "Markdown",
+          tooltip: "Export the governed Product Journey, record history, sources, Event Storming, architecture, and Pre-Figma readiness as a portable Markdown file.",
+          icon: "markdown",
+          command: { command: "gaep.exportProductJourneyMarkdown", title: "Export Product Journey as Markdown" },
+        },
+        {
           label: String(product.name),
           description: String(product.lifecycleState ?? "active"),
           icon: "package",

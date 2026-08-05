@@ -128,6 +128,20 @@ function ambiguousSingleLineList(value: ProductInitializationValue): string | un
     : undefined
 }
 
+function unresolvedTemplatePlaceholder(value: string): boolean {
+  return /\[[^\]]+\]|<[^>]+>|\{[^}]+\}/u.test(value)
+}
+
+function placeholderChallenge(value: ProductInitializationValue): string | undefined {
+  if (typeof value === "string" && unresolvedTemplatePlaceholder(value)) {
+    return "Replace template placeholders with a concrete, reviewable Product answer."
+  }
+  if (Array.isArray(value) && value.some(unresolvedTemplatePlaceholder)) {
+    return "Replace every template placeholder with a concrete, reviewable list item."
+  }
+  return undefined
+}
+
 function textQuestion(
   key: keyof ProductInitializationAnswers,
   title: string,
@@ -143,7 +157,7 @@ function textQuestion(
     parse: (value) => value.trim(),
     challenge: (value) => typeof value !== "string" || value.trim().length < minimum
       ? `Please make this answer more specific (at least ${minimum} characters).`
-      : undefined,
+      : placeholderChallenge(value),
   }
 }
 
@@ -159,7 +173,7 @@ export const productInitializationQuestions: readonly ProductInitializationQuest
     prompt: "List at least two observable success signals, one item per line. Commas inside an item are preserved.",
     example: "70% fewer manual interventions\nSame-session feasibility output\nPlanned-versus-actual visibility",
     parse: parseLineItems,
-    challenge: (value) => ambiguousSingleLineList(value) ?? (!Array.isArray(value) || value.length < 2
+    challenge: (value) => ambiguousSingleLineList(value) ?? placeholderChallenge(value) ?? (!Array.isArray(value) || value.length < 2
       ? "Provide at least two distinct, observable success signals, one per line."
       : value.some((item) => item.length < 4)
         ? "Each success signal must be specific enough to review later."
@@ -172,7 +186,7 @@ export const productInitializationQuestions: readonly ProductInitializationQuest
     prompt: "What is explicitly outside the first scope? Put one exclusion on each line. Commas inside an item are preserved. Enter `none` only if the absence of exclusions is deliberate.",
     example: "Live AIS tracking\nAutomated deviation recovery\nCost posting",
     parse: (value) => value.trim().toLowerCase() === "none" ? [] : parseLineItems(value),
-    challenge: (value) => ambiguousSingleLineList(value) ?? (!Array.isArray(value) ? "Provide exclusions as a list." : undefined),
+    challenge: (value) => ambiguousSingleLineList(value) ?? placeholderChallenge(value) ?? (!Array.isArray(value) ? "Provide exclusions as a list." : undefined),
   },
   {
     key: "profile",
@@ -340,6 +354,69 @@ export function recordProductAnswerAssessment(
       advisor: state.advisor,
     },
   }
+}
+
+export interface ProductAnswerRepairAttempt {
+  attempt: number
+  contractErrors: string[]
+  previousAssessment?: ProductAnswerAssessment
+}
+
+export interface ProductAnswerRepairResult {
+  state: ProductInitializationChatState
+  attempts: number
+}
+
+export class ProductAnswerRepairError extends Error {
+  constructor(readonly contractErrors: readonly string[]) {
+    super(contractErrors[0] ?? "The advisor could not produce a concrete Product answer")
+    this.name = "ProductAnswerRepairError"
+  }
+}
+
+function repairDiagnostic(error: unknown): string {
+  const message = error instanceof Error ? error.message : "The advisor response was not contract-valid"
+  return message.replace(/\s+/gu, " ").trim().slice(0, 2_048) || "The advisor response was not contract-valid"
+}
+
+function nonRepairableAdvisorFailure(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+  const code = (error as { code?: unknown }).code
+  return code === "cancelled" || code === "provider-unavailable" || code === "provider-failed"
+}
+
+/** Applies the same bounded repair policy to every Product field, including list fields. */
+export async function recordProductAnswerAssessmentWithAutomaticRepair(
+  state: ProductInitializationChatState,
+  rawAnswer: string,
+  runAttempt: (input: ProductAnswerRepairAttempt) => Promise<ProductAnswerAssessment>,
+  maximumAttempts = 3,
+): Promise<ProductAnswerRepairResult> {
+  let previousAssessment: ProductAnswerAssessment | undefined = state.pending ? {
+    assessment: state.pending.assessment,
+    strengths: [...state.pending.strengths],
+    gaps: [...state.pending.gaps],
+    ...(state.pending.followUpQuestion ? { followUpQuestion: state.pending.followUpQuestion } : {}),
+    proposedAnswer: state.pending.proposedAnswer,
+  } : undefined
+  let contractErrors: string[] = []
+  for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+    let assessment: ProductAnswerAssessment
+    try {
+      assessment = await runAttempt({ attempt, contractErrors, previousAssessment })
+    } catch (error) {
+      if (nonRepairableAdvisorFailure(error)) throw error
+      contractErrors = [repairDiagnostic(error)]
+      continue
+    }
+    try {
+      return { state: recordProductAnswerAssessment(state, rawAnswer, assessment), attempts: attempt }
+    } catch (error) {
+      previousAssessment = assessment
+      contractErrors = [repairDiagnostic(error)]
+    }
+  }
+  throw new ProductAnswerRepairError(contractErrors)
 }
 
 export function acceptProductAnswer(state: ProductInitializationChatState): ProductInitializationChatState {

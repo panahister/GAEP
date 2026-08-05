@@ -52,6 +52,24 @@ export interface InitiativeChatState {
   pending?: PendingInitiativeAnswer
 }
 
+export interface InitiativeAnswerRepairAttempt {
+  attempt: number
+  contractErrors: string[]
+  previousAssessment?: ProductAnswerAssessment
+}
+
+export interface InitiativeAnswerRepairResult {
+  state: InitiativeChatState
+  attempts: number
+}
+
+export class InitiativeAnswerRepairError extends Error {
+  constructor(readonly contractErrors: readonly string[]) {
+    super(contractErrors[0] ?? "The advisor could not produce a concrete Initiative answer")
+    this.name = "InitiativeAnswerRepairError"
+  }
+}
+
 function textQuestion(
   key: Extract<InitiativeAnswerKey, "title" | "outcome">,
   title: string,
@@ -69,7 +87,7 @@ function textQuestion(
       if (typeof value !== "string" || value.trim().length < minimum) {
         return `Make this Initiative answer more specific (at least ${minimum} characters).`
       }
-      if (/\[[^\]]+\]|<[^>]+>/u.test(value)) {
+      if (/\[[^\]]+\]|<[^>]+>|\{[^}]+\}/u.test(value)) {
         return "Replace template placeholders with a concrete, reviewable Initiative answer."
       }
       return undefined
@@ -81,6 +99,9 @@ function listChallenge(value: InitiativeAnswerValue, minimum: number, label: str
   if (!Array.isArray(value) || value.length < minimum) return `Provide at least ${minimum} ${label}, one per line.`
   if (value.length === 1 && value[0]?.includes(",")) {
     return "Put each list item on its own line. GAEP preserves commas inside an item."
+  }
+  if (value.some((item) => /\[[^\]]+\]|<[^>]+>|\{[^}]+\}/u.test(item))) {
+    return `Replace template placeholders with concrete, reviewable ${label}s.`
   }
   return value.some((item) => item.length < 3) ? `Each ${label} must be specific enough to review.` : undefined
 }
@@ -224,6 +245,54 @@ export function assessInitiativeAnswer(
       advisor: state.advisor,
     },
   }
+}
+
+function repairDiagnostic(error: unknown): string {
+  const message = error instanceof Error ? error.message : "The advisor response was not contract-valid"
+  return message.replace(/\s+/gu, " ").trim().slice(0, 2_048) || "The advisor response was not contract-valid"
+}
+
+function nonRepairableAdvisorFailure(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+  const code = (error as { code?: unknown }).code
+  return code === "cancelled" || code === "provider-unavailable" || code === "provider-failed"
+}
+
+/**
+ * Keeps provider formatting mistakes and placeholder answers away from the human.
+ * The user supplies intent; GAEP owns normalization to the current field contract.
+ */
+export async function assessInitiativeAnswerWithAutomaticRepair(
+  state: InitiativeChatState,
+  rawAnswer: string,
+  runAttempt: (input: InitiativeAnswerRepairAttempt) => Promise<ProductAnswerAssessment>,
+  maximumAttempts = 3,
+): Promise<InitiativeAnswerRepairResult> {
+  let previousAssessment: ProductAnswerAssessment | undefined = state.pending ? {
+    assessment: state.pending.assessment,
+    strengths: [...state.pending.strengths],
+    gaps: [...state.pending.gaps],
+    ...(state.pending.followUpQuestion ? { followUpQuestion: state.pending.followUpQuestion } : {}),
+    proposedAnswer: state.pending.proposedAnswer,
+  } : undefined
+  let contractErrors: string[] = []
+  for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+    let assessment: ProductAnswerAssessment
+    try {
+      assessment = await runAttempt({ attempt, contractErrors, previousAssessment })
+    } catch (error) {
+      if (nonRepairableAdvisorFailure(error)) throw error
+      contractErrors = [repairDiagnostic(error)]
+      continue
+    }
+    try {
+      return { state: assessInitiativeAnswer(state, rawAnswer, assessment), attempts: attempt }
+    } catch (error) {
+      previousAssessment = assessment
+      contractErrors = [repairDiagnostic(error)]
+    }
+  }
+  throw new InitiativeAnswerRepairError(contractErrors)
 }
 
 export function acceptInitiativeAnswer(state: InitiativeChatState): InitiativeChatState {

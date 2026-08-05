@@ -3293,11 +3293,15 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     control(label, { kind: "edit-product-journey-checkpoint", checkpointId: id }, true)
   const listValue = (values: readonly string[]): string => values.length > 0 ? values.join("\n") : "None recorded"
   const componentDetails = (
-    components: ReadonlyArray<readonly [label: string, recorded: boolean]>,
-  ): ProductJourneyCheckpoint["details"] => components.map(([label, recorded]) => ({
+    components: ReadonlyArray<readonly [label: string, record: unknown, kind: string]>,
+  ): ProductJourneyCheckpoint["details"] => components.map(([label, record, kind]) => ({
     label,
-    value: recorded ? "Recorded" : "Missing",
+    value: record ? "Recorded" : "Missing",
     kind: "status",
+    action: control(record ? "Review or edit" : "Create", {
+      kind: record ? "review-phase1-canonical-record" : "edit-phase1-canonical-record",
+      recordKind: kind,
+    }, true),
   }))
 
   let open = true
@@ -3567,9 +3571,9 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
       undefined,
       initiative ? {
         details: componentDetails([
-          ["Business understanding", Boolean(discovery?.businessUnderstanding)],
-          ["Stakeholder and role model", Boolean(discovery?.stakeholderModel)],
-          ["Outcomes and success measures", Boolean(discovery?.outcomeModel)],
+          ["Business understanding", discovery?.businessUnderstanding, "business-understanding"],
+          ["Stakeholder and role model", discovery?.stakeholderModel, "stakeholder-model"],
+          ["Outcomes and success measures", discovery?.outcomeModel, "outcome-model"],
         ]),
         impact: downstreamImpact("product-discovery"),
         reviewAction: control("Open Product discovery", { kind: "navigate", route: "direction" }, true),
@@ -3587,11 +3591,11 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
       undefined,
       initiative ? {
         details: componentDetails([
-          ["Capability map", Boolean(state.businessCapabilityMapProjections.get(initiative.id)?.capabilityMap)],
-          ["Value streams", Boolean(state.valueStreamModelProjections.get(initiative.id)?.valueStreamModel)],
-          ["Operating model", Boolean(state.operatingModelProjections.get(initiative.id)?.operatingModel)],
-          ["Business rules", Boolean(state.businessRuleCatalogProjections.get(initiative.id)?.businessRuleCatalog)],
-          ["Business architecture baseline candidate", Boolean(state.businessArchitectureBaselineProjections.get(initiative.id)?.baseline)],
+          ["Capability map", state.businessCapabilityMapProjections.get(initiative.id)?.capabilityMap, "business-capability-map"],
+          ["Value streams", state.valueStreamModelProjections.get(initiative.id)?.valueStreamModel, "value-stream-model"],
+          ["Operating model", state.operatingModelProjections.get(initiative.id)?.operatingModel, "operating-model"],
+          ["Business rules", state.businessRuleCatalogProjections.get(initiative.id)?.businessRuleCatalog, "business-rule-catalog"],
+          ["Business architecture baseline candidate", state.businessArchitectureBaselineProjections.get(initiative.id)?.baseline, "business-architecture-baseline"],
         ]),
         impact: downstreamImpact("business-architecture"),
         reviewAction: control("Open Business architecture", { kind: "navigate", route: "architecture" }, true),
@@ -3609,9 +3613,9 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
       undefined,
       initiative ? {
         details: componentDetails([
-          ["System / Solution architecture", Boolean(state.systemSolutionArchitectureProjections.get(initiative.id)?.architecture)],
-          ["Bounded contexts and ownership", Boolean(state.boundedContextModelProjections.get(initiative.id)?.model)],
-          ["Security, privacy, and threat assessment", Boolean(state.securityPrivacyAssessmentProjections.get(initiative.id)?.assessment)],
+          ["System / Solution architecture", state.systemSolutionArchitectureProjections.get(initiative.id)?.architecture, "system-solution-architecture"],
+          ["Bounded contexts and ownership", state.boundedContextModelProjections.get(initiative.id)?.model, "bounded-context-model"],
+          ["Security, privacy, and threat assessment", state.securityPrivacyAssessmentProjections.get(initiative.id)?.assessment, "security-privacy-assessment"],
         ]),
         impact: downstreamImpact("solution-security-architecture"),
         reviewAction: control("Open Solution architecture", { kind: "navigate", route: "architecture" }, true),
@@ -3629,16 +3633,16 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
       undefined,
       initiative ? {
         details: componentDetails([
-          ["Process and Event Storming model", Boolean(state.processModelProjections.get(initiative.id)?.model)],
-          ["Data model", Boolean(state.dataModelProjections.get(initiative.id)?.model)],
-          ["Authorization model", Boolean(state.authorizationModelProjections.get(initiative.id)?.model)],
-          ["Event and integration model", Boolean(state.eventIntegrationModelProjections.get(initiative.id)?.model)],
-          ["Failure and recovery model", Boolean(state.failureRecoveryModelProjections.get(initiative.id)?.model)],
-          ["Architecture challenge", Boolean(state.architectureChallengeModelProjections.get(initiative.id)?.model)],
-          ["Decision register", Boolean(state.decisionRegisterProjections.get(initiative.id)?.register)],
-          ["Risk register", Boolean(state.riskRegisterProjections.get(initiative.id)?.register)],
-          ["Evidence registry", Boolean(state.evidenceRegistryProjections.get(initiative.id)?.registry)],
-          ["End-to-end traceability", Boolean(state.endToEndTraceabilityProjections.get(initiative.id)?.traceability)],
+          ["Event Storming and process model", state.processModelProjections.get(initiative.id)?.model, "process-model"],
+          ["Data model", state.dataModelProjections.get(initiative.id)?.model, "data-model"],
+          ["Authorization model", state.authorizationModelProjections.get(initiative.id)?.model, "authorization-model"],
+          ["Event and integration model", state.eventIntegrationModelProjections.get(initiative.id)?.model, "event-integration-model"],
+          ["Failure and recovery model", state.failureRecoveryModelProjections.get(initiative.id)?.model, "failure-recovery-model"],
+          ["Architecture challenge", state.architectureChallengeModelProjections.get(initiative.id)?.model, "architecture-challenge-model"],
+          ["Decision register", state.decisionRegisterProjections.get(initiative.id)?.register, "decision-register"],
+          ["Risk register", state.riskRegisterProjections.get(initiative.id)?.register, "risk-register"],
+          ["Evidence registry", state.evidenceRegistryProjections.get(initiative.id)?.registry, "evidence-registry"],
+          ["End-to-end traceability", state.endToEndTraceabilityProjections.get(initiative.id)?.traceability, "end-to-end-traceability"],
         ]),
         impact: downstreamImpact("detailed-design-assurance"),
         reviewAction: control("Open Detailed design", { kind: "navigate", route: "risks-decisions" }, true),
@@ -3647,17 +3651,17 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     ),
     checkpoint(
       "p0-p4-readiness",
-      "Design and implementation handoff",
+      "Pre-Figma readiness and handoff",
       p0P4ReadinessComplete,
       p0P4ReadinessComplete
-        ? "A governed pre-design readiness assessment and design handoff package are recorded."
-        : "Assess the exact Product Journey records and package the design handoff without granting implementation authority.",
+        ? "A governed readiness assessment and editable pre-Figma handoff package are recorded."
+        : "Assess the exact Product Journey records and package complete pre-Figma inputs without claiming Figma MCP execution or implementation authority.",
       false,
       undefined,
       initiative ? {
         details: componentDetails([
-          ["Pre-design readiness assessment", Boolean(state.p0P4ReadinessGateProjections.get(initiative.id)?.gate)],
-          ["Design handoff package", Boolean(state.p5HandoffPackageProjections.get(initiative.id)?.handoff)],
+          ["Pre-Figma readiness assessment", state.p0P4ReadinessGateProjections.get(initiative.id)?.gate, "p0-p4-readiness-gate"],
+          ["Pre-Figma handoff package", state.p5HandoffPackageProjections.get(initiative.id)?.handoff, "p5-handoff-package"],
         ]),
         impact: downstreamImpact("p0-p4-readiness"),
         reviewAction: control("Review handoff", { kind: "navigate", route: "readiness" }, true),
@@ -7456,6 +7460,16 @@ function commandFor(action: StudioAction): { command: ExistingStudioCommand; arg
         args: [chatCommand, "", true],
         announcement: `Opened an editable ${action.checkpointId.replaceAll("-", " ")} workflow in a fresh Product Chat.`,
       }
+    }
+    case "review-phase1-canonical-record": return {
+      command: "gaep.openInteractiveChat",
+      args: ["author", `review:${action.recordKind}`, true],
+      announcement: `Opened the current ${action.recordKind.replaceAll("-", " ")} record, revision history, and downstream impact.`,
+    }
+    case "edit-phase1-canonical-record": return {
+      command: "gaep.openInteractiveChat",
+      args: ["author", `edit:${action.recordKind}`, true],
+      announcement: `Opened an editable revision candidate for ${action.recordKind.replaceAll("-", " ")}.`,
     }
     case "revise-product-definition": return {
       command: "gaep.openInteractiveChat",

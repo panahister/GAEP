@@ -13,6 +13,7 @@ import {
   productInitializationInput,
   productInitializationProgress,
   recordProductAnswerAssessment,
+  recordProductAnswerAssessmentWithAutomaticRepair,
   selectProductChatAdvisorForCommand,
   startProductInitialization,
   startProductInitializationReview,
@@ -143,6 +144,23 @@ describe("interactive Product initialization chat", () => {
     expect(state.step).toBe(0)
     state = acceptProductAnswer(state)
     expect(state.answers.name).toBe(revised)
+  })
+
+  it("automatically repairs an invalid Product suggestion without asking for internal formatting", async () => {
+    const state = startProductInitialization(claude)
+    const proposals = ["Build [product name]", "Marine Shipping Planning Workspace"]
+    const result = await recordProductAnswerAssessmentWithAutomaticRepair(
+      state,
+      "Suggest a concrete name from the attached Product documents",
+      async ({ attempt }) => ({
+        assessment: "The concrete proposal uses the supplied Product domain.",
+        strengths: [],
+        gaps: [],
+        proposedAnswer: proposals[attempt - 1]!,
+      }),
+    )
+    expect(result.attempts).toBe(2)
+    expect(result.state.pending?.proposedAnswer).toBe(proposals[1])
   })
 
   it("challenges locally-invalid answers before any provider call", () => {
