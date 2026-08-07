@@ -3,7 +3,7 @@ id: GAEP-CST-004
 title: Methodology Constitution
 document_type: normative-specification
 schema_version: 1.0
-version: 0.2.0
+version: 0.3.0
 status: proposed
 owner_role: GAEP Specification Steward
 scope: GAEP methodology composition, Product-to-Operations lifecycle concerns, applicability, and external-reference boundaries
@@ -246,6 +246,14 @@ These rules may intersect with external ideas, but their exact state model and c
 
 Conflicting references are resolved by exact concern, scope, source authority, version, evidence access, applicability, and GAEP constitutional constraints. A conflict stays visible until an accountable human records a bounded decision. GAEP-native rules are identified explicitly in `GAEP-REG-011` and are not assigned an external owner.
 
+### Version-bound assessment and rights boundary
+
+An assessed source records publication date separately from source access, content review, freshness checking, and the next scheduled review. `Not-accessed` and `not-reviewed` are explicit machine states with reasons; absence never implies that a source was accessed or reviewed. Living unnumbered sources bind to the exact recorded snapshot/check date and expose the claims blocked by edition uncertainty.
+
+Every external mapping binds the exact assessed reference identity and version, exact GAEP target artifact/catalog identity and version, relationship, rationale, limitations, assessor Principal or explicit unassigned assessor role, accountable owner role, assessment date, review trigger, and next review date. Mapping bindings and reference concern IDs are reciprocal catalog relationships, not independently authored labels.
+
+Rights status is separate from its explanatory note. Until confirmed otherwise, restricted or proprietary content remains `link-and-summary-only`, `permission-required`, or `unresolved`; source presence never authorizes copying, transformation, distribution, or detailed normative inference.
+
 ### Permitted with exact qualification
 
 GAEP may say that it is:
@@ -289,6 +297,9 @@ GAEP must not say or imply that it is:
 | GAEP-MTH-REQ-016 | A method or reference change SHALL trigger bounded impact analysis across affected concerns, profiles, claims, decisions, evidence, projections, and acceptance tests. | Change-impact scenario |
 | GAEP-MTH-REQ-017 | Missing knowledge SHALL remain unresolved, blocked, deferred, or awaiting human decision and SHALL NOT be interpreted as not applicable or satisfied. | Missing-context negative scenario |
 | GAEP-MTH-REQ-018 | GAEP SHALL NOT claim external conformance, certification, equivalence, endorsement, safety, security, trustworthiness, accessibility, enterprise readiness, or achieved outcomes without a separate exact approved mapping and evidence case. | Public-claim audit |
+| GAEP-MTH-REQ-019 | Every assessed methodology source SHALL expose separate publication, access, content-review, freshness-check, and next-review dates or explicit unresolved states allowed by the reference contract. | Catalog schema and chronology tests |
+| GAEP-MTH-REQ-020 | Every methodology mapping SHALL bind exact external-reference and GAEP target versions, assessor or explicit unassigned assessor role, accountable owner, rationale, limits, assessment date, review trigger, and next review date. | Mapping governance projection and referential-integrity tests |
+| GAEP-MTH-REQ-021 | Machine validation SHALL fail closed across JSON Schema structure and catalog-wide semantic integrity before any projection is rendered or accepted as synchronized. | Schema-engine, semantic, and renderer parity tests |
 
 ## Downstream projection contract
 

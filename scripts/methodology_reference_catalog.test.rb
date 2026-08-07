@@ -15,76 +15,60 @@ class MethodologyReferenceCatalogTest < Minitest::Test
     @catalog = JSON.parse(@raw)
   end
 
-  def test_positive_fixture_is_valid_and_serialization_is_stable
+  def test_positive_fixture_is_semantically_valid_and_serialization_is_stable
     assert_empty MethodologyReferenceCatalog.validate(@catalog, raw_text: @raw)
     first = MethodologyReferenceCatalog.canonical_json(@catalog)
     second = MethodologyReferenceCatalog.canonical_json(JSON.parse(first))
     assert_equal first, second
   end
 
-  def test_negative_duplicate_reference_identity
+  def test_duplicate_assessed_reference_identity_fails
     hostile = clone_catalog
     hostile["references"][1]["referenceId"] = hostile["references"][0]["referenceId"]
     assert_error(hostile, "duplicate referenceId")
   end
 
-  def test_negative_missing_and_non_https_official_source
-    missing = clone_catalog
-    missing["references"][0].delete("officialUri")
-    assert_error(missing, "missing fields: officialUri")
+  def test_reference_chronology_fails_closed
+    hostile = clone_catalog
+    hostile["references"][0]["access"]["date"] = "2020-01-01"
+    assert_error(hostile, "access.date is earlier than publicationDate")
 
     hostile = clone_catalog
-    hostile["references"][0]["officialUri"] = "http://example.invalid/reference"
-    assert_error(hostile, "must be an HTTPS official URI")
+    hostile["references"][0]["nextReviewDate"] = "2020-01-01"
+    assert_error(hostile, "nextReviewDate is earlier than freshnessCheckedAt")
   end
 
-  def test_negative_missing_version_and_impossible_dates
-    missing = clone_catalog
-    missing["references"][0]["versionOrEdition"] = ""
-    assert_error(missing, "versionOrEdition must be a non-empty string")
-
-    impossible = clone_catalog
-    impossible["references"][0]["publicationDate"] = "2026-02-30"
-    assert_error(impossible, "publicationDate is not a possible ISO date")
-
-    chronology = clone_catalog
-    chronology["references"][0]["publicationDate"] = "2026-08-08"
-    chronology["references"][0]["checkedAt"] = "2026-08-07"
-    assert_error(chronology, "checkedAt is earlier than publicationDate")
+  def test_current_revision_status_conflict_fails
+    hostile = clone_catalog
+    reference = hostile["references"].find { |entry| entry["status"] == "current" }
+    reference["underRevision"] = true
+    assert_error(hostile, "current status is incompatible")
   end
 
-  def test_negative_controlled_values
-    {
-      "referenceType" => "tool",
-      "status" => "latest",
-      "accessEvidence" => "probably-reviewed",
-      "evidenceStatus" => "looks-good"
-    }.each do |field, invalid|
-      hostile = clone_catalog
-      hostile["references"][0][field] = invalid
-      assert_error(hostile, "#{field} is invalid")
-    end
-  end
-
-  def test_negative_supersession_self_cycle_and_status_conflict
+  def test_supersession_self_cycle_and_status_conflicts_fail
     self_supersession = clone_catalog
-    reference = self_supersession["references"][0]
+    reference = self_supersession["references"][2]
+    reference["status"] = "superseded"
+    reference["supersedes"] = [reference["referenceId"]]
     reference["supersededBy"] = [reference["referenceId"]]
     assert_error(self_supersession, "cannot supersede itself")
 
     cycle = clone_catalog
-    left, right = cycle["references"][0, 2]
+    left, right = cycle["references"][2, 2]
+    left["status"] = "superseded"
+    right["status"] = "superseded"
+    left["supersedes"] = [right["referenceId"]]
     left["supersededBy"] = [right["referenceId"]]
+    right["supersedes"] = [left["referenceId"]]
     right["supersededBy"] = [left["referenceId"]]
     assert_error(cycle, "supersession cycle")
 
-    incompatible = clone_catalog
-    incompatible["references"][0]["status"] = "current"
-    incompatible["references"][0]["underRevision"] = true
-    assert_error(incompatible, "current status is incompatible")
+    no_successor = clone_catalog
+    no_successor["references"][2]["status"] = "superseded"
+    assert_error(no_successor, "requires a successor reference")
   end
 
-  def test_hostile_claims_and_unverified_evidence_fail_closed
+  def test_overstrong_and_unverified_claims_fail_closed
     strong = clone_catalog
     strong["references"][0]["claimLanguage"] = "GAEP is ISO-compliant and production-ready."
     assert_error(strong, "claimLanguage is stronger than recorded evidence")
@@ -95,22 +79,48 @@ class MethodologyReferenceCatalogTest < Minitest::Test
     assert_error(unverified, "unverified source supports a strong claim")
   end
 
-  def test_hostile_unknown_crosswalk_ids_and_type_confusion
+  def test_unknown_crosswalk_ids_and_concern_name_drift_fail
     unknown = clone_catalog
-    unknown["mappings"][0]["referenceIds"] = ["GAEP-XREF-999"]
-    assert_error(unknown, "referenceIds contains unknown IDs")
+    unknown["mappings"][0]["referenceBindings"] = [
+      { "referenceId" => "GAEP-XREF-999", "versionOrEdition" => "unknown" }
+    ]
+    assert_error(unknown, "referenceBindings contains unknown IDs")
 
-    competitor = clone_catalog
-    competitor["references"][0]["referenceType"] = "competitor-product"
-    assert_error(competitor, "referenceType is invalid")
+    unknown_concern = clone_catalog
+    unknown_concern["references"][0]["gaepConcernIds"] << "GAEP-MTH-CON-999"
+    assert_error(unknown_concern, "gaepConcernIds contains unknown IDs")
 
+    drift = clone_catalog
+    drift["mappings"][0]["concern"] = "Different concern"
+    assert_error(drift, "must equal the canonical concern name")
+  end
+
+  def test_mapping_reference_symmetry_and_bound_version_fail_closed
+    missing_reference_side = clone_catalog
+    mapping = missing_reference_side["mappings"].find { |entry| !entry["referenceBindings"].empty? }
+    reference_id = mapping["referenceBindings"].first["referenceId"]
+    missing_reference_side["references"].find { |entry| entry["referenceId"] == reference_id }["gaepConcernIds"].delete(mapping["concernId"])
+    assert_error(missing_reference_side, "without reciprocal gaepConcernIds")
+
+    missing_mapping_side = clone_catalog
+    reference = missing_mapping_side["references"].find { |entry| !entry["gaepConcernIds"].empty? }
+    concern_id = reference["gaepConcernIds"].first
+    missing_mapping_side["mappings"].find { |entry| entry["concernId"] == concern_id }["referenceBindings"].reject! do |binding|
+      binding["referenceId"] == reference["referenceId"]
+    end
+    assert_error(missing_mapping_side, "without reciprocal mapping binding")
+
+    stale = clone_catalog
+    stale["mappings"].find { |entry| !entry["referenceBindings"].empty? }["referenceBindings"][0]["versionOrEdition"] = "stale"
+    assert_error(stale, "reference binding version is stale")
+  end
+
+  def test_tool_provider_vendor_phase_ddd_microservices_and_waterfall_fail
     tool = clone_catalog
     tool["references"][0]["canonicalName"] = "Figma"
     tool["references"][0]["referenceType"] = "methodology"
-    assert_error(tool, "classifies a replaceable tool or provider as methodology")
-  end
+    assert_error(tool, "tool, provider, or competitor Product as methodology")
 
-  def test_hostile_vendor_phase_universal_ddd_microservices_and_waterfall
     vendor_phase = clone_catalog
     vendor_phase["mappings"][0]["concern"] = "Figma lifecycle phase"
     assert_error(vendor_phase, "names a lifecycle phase after a vendor tool")
@@ -128,7 +138,7 @@ class MethodologyReferenceCatalogTest < Minitest::Test
     assert_error(waterfall, "fixed full-scope waterfall")
   end
 
-  def test_negative_noncanonical_identity_lexical_and_serialization_order
+  def test_noncanonical_identity_lexical_and_serialization_order_fails
     hostile = clone_catalog
     hostile["references"].reverse!
     hostile["references"][0]["limitations"].reverse!

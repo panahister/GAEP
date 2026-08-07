@@ -8,6 +8,7 @@ require_relative "lib/methodology_reference_catalog"
 
 root = Pathname.new(__dir__).join("..").expand_path
 catalog_path = root.join("docs", "next", "99_Registries_and_References", "011_METHODOLOGY_REFERENCE_CATALOG.json")
+schema_path = root.join("docs", "next", "99_Registries_and_References", "011_METHODOLOGY_REFERENCE_CATALOG.schema.json")
 crosswalk_path = root.join("docs", "next", "99_Registries_and_References", "002_EXTERNAL_STANDARDS_CROSSWALK.md")
 mode = ARGV.fetch(0, "--check")
 unless %w[--check --write].include?(mode) && ARGV.length == 1
@@ -16,6 +17,11 @@ unless %w[--check --write].include?(mode) && ARGV.length == 1
 end
 
 catalog = JSON.parse(catalog_path.read)
+schema = JSON.parse(schema_path.read)
+unless catalog.fetch("schemaId") == schema.fetch("$id") && catalog.fetch("schemaVersion") == MethodologyReferenceCatalog::SCHEMA_VERSION
+  warn "catalog schema identity/version does not match the renderer contract"
+  exit 1
+end
 catalog_errors = MethodologyReferenceCatalog.validate(catalog, raw_text: catalog_path.read)
 unless catalog_errors.empty?
   warn catalog_errors.join("\n")
@@ -25,6 +31,7 @@ end
 text = crosswalk_path.read
 replacements = {
   ["<!-- BEGIN GENERATED CONCERN CROSSWALK -->", "<!-- END GENERATED CONCERN CROSSWALK -->"] => MethodologyReferenceCatalog.mapping_projection(catalog),
+  ["<!-- BEGIN GENERATED MAPPING GOVERNANCE -->", "<!-- END GENERATED MAPPING GOVERNANCE -->"] => MethodologyReferenceCatalog.assessment_projection(catalog),
   ["<!-- BEGIN GENERATED REFERENCE INVENTORY -->", "<!-- END GENERATED REFERENCE INVENTORY -->"] => MethodologyReferenceCatalog.reference_projection(catalog)
 }
 rendered = text.dup
@@ -38,11 +45,15 @@ replacements.each do |(start_marker, end_marker), projection|
 end
 
 digest = Digest::SHA256.hexdigest(catalog_path.read)
+rendered.gsub!(/Catalog ID: `[^`]+`/, "Catalog ID: `#{catalog.fetch('catalogId')}`")
+rendered.gsub!(/Schema ID: `[^`]+`/, "Schema ID: `#{catalog.fetch('schemaId')}`")
+rendered.gsub!(/Schema version: `[^`]+`/, "Schema version: `#{catalog.fetch('schemaVersion')}`")
 rendered.gsub!(/Catalog SHA-256: `[0-9a-f]{64}`/, "Catalog SHA-256: `#{digest}`")
 rendered.gsub!(/Catalog version: `[^`]+`/, "Catalog version: `#{catalog.fetch('version')}`")
 rendered.gsub!(/Catalog assessed references: `\d+`/, "Catalog assessed references: `#{catalog.fetch('references').length}`")
 rendered.gsub!(/Catalog concern mappings: `\d+`/, "Catalog concern mappings: `#{catalog.fetch('mappings').length}`")
 rendered.gsub!(/Catalog deferred candidates: `\d+`/, "Catalog deferred candidates: `#{catalog.fetch('deferredCandidates').length}`")
+rendered.gsub!(/Freshness checked at: `[^`]+`/, "Freshness checked at: `#{catalog.fetch('freshnessCheckedAt')}`")
 
 if mode == "--write"
   crosswalk_path.write(rendered)

@@ -1,16 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gaep.example/schemas/methodology-reference-catalog-1.0.0.json",
+  "$id": "https://gaep.example/schemas/methodology-reference-catalog-2.0.0.json",
   "title": "GAEP Methodology Reference Catalog",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "catalogId",
+    "schemaId",
     "schemaVersion",
     "version",
     "status",
     "ownerRole",
-    "checkedAt",
+    "freshnessCheckedAt",
     "approval",
     "authorityEffect",
     "claimBoundary",
@@ -21,23 +22,15 @@
   ],
   "properties": {
     "catalogId": { "const": "GAEP-REG-011" },
-    "schemaVersion": { "const": "1.0.0" },
-    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "schemaId": { "const": "https://gaep.example/schemas/methodology-reference-catalog-2.0.0.json" },
+    "schemaVersion": { "const": "2.0.0" },
+    "version": { "const": "0.3.0" },
     "status": { "const": "proposed" },
-    "ownerRole": { "type": "string", "minLength": 1 },
-    "checkedAt": { "type": "string", "format": "date" },
-    "approval": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["state", "approvedBy", "approvedAt"],
-      "properties": {
-        "state": { "const": "not-approved" },
-        "approvedBy": { "type": "array", "maxItems": 0 },
-        "approvedAt": { "type": "null" }
-      }
-    },
+    "ownerRole": { "const": "GAEP Reference Steward" },
+    "freshnessCheckedAt": { "type": "string", "format": "date" },
+    "approval": { "$ref": "#/$defs/approval" },
     "authorityEffect": { "const": "none" },
-    "claimBoundary": { "type": "string", "minLength": 1 },
+    "claimBoundary": { "$ref": "#/$defs/nonEmptyString" },
     "concerns": {
       "type": "array",
       "minItems": 1,
@@ -60,17 +53,147 @@
   },
   "$defs": {
     "nonEmptyString": { "type": "string", "minLength": 1 },
+    "nullableNonEmptyString": {
+      "oneOf": [
+        { "$ref": "#/$defs/nonEmptyString" },
+        { "type": "null" }
+      ]
+    },
+    "nullableDate": {
+      "oneOf": [
+        { "type": "string", "format": "date" },
+        { "type": "null" }
+      ]
+    },
     "uniqueStrings": {
       "type": "array",
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+    "referenceId": { "type": "string", "pattern": "^GAEP-XREF-[0-9]{3}$" },
+    "concernId": { "type": "string", "pattern": "^GAEP-MTH-CON-[0-9]{3}$" },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "approvedBy", "approvedAt"],
+      "properties": {
+        "state": { "const": "not-approved" },
+        "approvedBy": { "type": "array", "maxItems": 0 },
+        "approvedAt": { "type": "null" }
+      }
+    },
+    "access": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "date", "evidence", "reason"],
+      "properties": {
+        "status": { "enum": ["accessed", "not-accessed"] },
+        "date": { "$ref": "#/$defs/nullableDate" },
+        "evidence": {
+          "enum": [
+            "full-primary-source",
+            "licensed-copy",
+            "official-publication",
+            "official-summary",
+            "official-abstract",
+            "not-accessed"
+          ]
+        },
+        "reason": { "$ref": "#/$defs/nullableNonEmptyString" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "accessed" } }, "required": ["status"] },
+          "then": {
+            "properties": {
+              "date": { "type": "string", "format": "date" },
+              "evidence": { "not": { "const": "not-accessed" } },
+              "reason": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "not-accessed" } }, "required": ["status"] },
+          "then": {
+            "properties": {
+              "date": { "type": "null" },
+              "evidence": { "const": "not-accessed" },
+              "reason": { "$ref": "#/$defs/nonEmptyString" }
+            }
+          }
+        }
+      ]
+    },
+    "contentReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "date", "depth", "reason"],
+      "properties": {
+        "status": { "enum": ["reviewed", "not-reviewed"] },
+        "date": { "$ref": "#/$defs/nullableDate" },
+        "depth": {
+          "enum": [
+            "full-primary-source",
+            "licensed-copy",
+            "official-publication",
+            "official-summary",
+            "official-abstract",
+            "not-reviewed"
+          ]
+        },
+        "reason": { "$ref": "#/$defs/nullableNonEmptyString" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "reviewed" } }, "required": ["status"] },
+          "then": {
+            "properties": {
+              "date": { "type": "string", "format": "date" },
+              "depth": { "not": { "const": "not-reviewed" } },
+              "reason": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "not-reviewed" } }, "required": ["status"] },
+          "then": {
+            "properties": {
+              "date": { "type": "null" },
+              "depth": { "const": "not-reviewed" },
+              "reason": { "$ref": "#/$defs/nonEmptyString" }
+            }
+          }
+        }
+      ]
+    },
+    "assessor": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "principalId"],
+          "properties": {
+            "kind": { "const": "principal" },
+            "principalId": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "role"],
+          "properties": {
+            "kind": { "const": "unassigned-role" },
+            "role": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        }
+      ]
     },
     "concern": {
       "type": "object",
       "additionalProperties": false,
       "required": ["concernId", "canonicalName"],
       "properties": {
-        "concernId": { "type": "string", "pattern": "^GAEP-MTH-CON-[0-9]{3}$" },
+        "concernId": { "$ref": "#/$defs/concernId" },
         "canonicalName": { "$ref": "#/$defs/nonEmptyString" }
       }
     },
@@ -84,11 +207,14 @@
         "referenceType",
         "issuingAuthority",
         "versionOrEdition",
+        "versionCertainty",
         "publicationDate",
         "status",
         "officialUri",
-        "checkedAt",
-        "accessEvidence",
+        "access",
+        "contentReview",
+        "freshnessCheckedAt",
+        "rightsStatus",
         "licenseOrCopyrightNote",
         "supersedes",
         "supersededBy",
@@ -99,56 +225,130 @@
         "explicitlyNotAdopted",
         "applicabilityProfiles",
         "limitations",
+        "blockedClaims",
         "claimLanguage",
         "evidenceStatus",
         "reviewTrigger",
-        "nextReviewAt",
+        "nextReviewDate",
         "notes"
       ],
       "properties": {
-        "referenceId": { "type": "string", "pattern": "^GAEP-XREF-[0-9]{3}$" },
+        "referenceId": { "$ref": "#/$defs/referenceId" },
         "canonicalName": { "$ref": "#/$defs/nonEmptyString" },
         "shortName": { "$ref": "#/$defs/nonEmptyString" },
         "referenceType": {
-          "enum": ["standard", "framework", "methodology", "method", "model", "principle-set", "research-program", "metric-framework", "regulatory-guidance", "visualization-model"]
+          "enum": [
+            "standard",
+            "framework",
+            "methodology",
+            "method",
+            "model",
+            "principle-set",
+            "research-program",
+            "metric-framework",
+            "regulatory-guidance",
+            "visualization-model"
+          ]
         },
         "issuingAuthority": { "$ref": "#/$defs/nonEmptyString" },
         "versionOrEdition": { "$ref": "#/$defs/nonEmptyString" },
-        "publicationDate": {
-          "oneOf": [
-            { "type": "null" },
-            { "type": "string", "pattern": "^[0-9]{4}(-[0-9]{2})?(-[0-9]{2})?$" }
-          ]
-        },
+        "versionCertainty": { "enum": ["exact", "snapshot-bound", "uncertain", "unverifiable"] },
+        "publicationDate": { "$ref": "#/$defs/nullableDate" },
         "status": { "enum": ["current", "current-under-revision", "superseded", "historical", "candidate", "unverifiable"] },
         "officialUri": { "type": "string", "format": "uri", "pattern": "^https://" },
-        "checkedAt": { "type": "string", "format": "date" },
-        "accessEvidence": { "enum": ["full-primary-source-reviewed", "licensed-copy-reviewed", "official-publication-reviewed", "official-summary-reviewed", "official-abstract-only", "unverified"] },
+        "access": { "$ref": "#/$defs/access" },
+        "contentReview": { "$ref": "#/$defs/contentReview" },
+        "freshnessCheckedAt": { "type": "string", "format": "date" },
+        "rightsStatus": { "enum": ["confirmed-permitted", "link-and-summary-only", "permission-required", "unresolved"] },
         "licenseOrCopyrightNote": { "$ref": "#/$defs/nonEmptyString" },
-        "supersedes": { "$ref": "#/$defs/uniqueStrings" },
-        "supersededBy": { "$ref": "#/$defs/uniqueStrings" },
+        "supersedes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/referenceId" }
+        },
+        "supersededBy": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/referenceId" }
+        },
         "underRevision": { "type": "boolean" },
-        "gaepConcernIds": { "$ref": "#/$defs/uniqueStrings" },
+        "gaepConcernIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/concernId" }
+        },
         "adoptedConcepts": { "$ref": "#/$defs/uniqueStrings" },
         "adaptedConcepts": { "$ref": "#/$defs/uniqueStrings" },
         "explicitlyNotAdopted": { "$ref": "#/$defs/uniqueStrings" },
         "applicabilityProfiles": { "$ref": "#/$defs/uniqueStrings" },
         "limitations": { "$ref": "#/$defs/uniqueStrings" },
+        "blockedClaims": { "$ref": "#/$defs/uniqueStrings" },
         "claimLanguage": { "$ref": "#/$defs/nonEmptyString" },
         "evidenceStatus": { "enum": ["primary-source-verified", "partially-verified", "version-pending", "superseded", "unverified"] },
         "reviewTrigger": { "$ref": "#/$defs/nonEmptyString" },
-        "nextReviewAt": { "type": "string", "format": "date" },
+        "nextReviewDate": { "type": "string", "format": "date" },
         "notes": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "referenceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["referenceId", "versionOrEdition"],
+      "properties": {
+        "referenceId": { "$ref": "#/$defs/referenceId" },
+        "versionOrEdition": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "mappingAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assessor", "ownerRole", "assessmentDate", "reviewTrigger", "nextReviewDate"],
+      "properties": {
+        "assessor": { "$ref": "#/$defs/assessor" },
+        "ownerRole": { "$ref": "#/$defs/nonEmptyString" },
+        "assessmentDate": { "type": "string", "format": "date" },
+        "reviewTrigger": { "$ref": "#/$defs/nonEmptyString" },
+        "nextReviewDate": { "type": "string", "format": "date" }
+      }
+    },
+    "gaepTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifactId", "artifactVersion", "catalogId", "catalogVersion"],
+      "properties": {
+        "artifactId": { "const": "GAEP-CST-004" },
+        "artifactVersion": { "const": "0.3.0" },
+        "catalogId": { "const": "GAEP-REG-011" },
+        "catalogVersion": { "const": "0.3.0" }
       }
     },
     "mapping": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["concernId", "concern", "referenceIds", "conceptUsed", "relationshipStatus", "gaepAdaptation", "rationale", "applicability", "affectedArtifactsOrBehaviors", "requiredEvidence", "limitations", "reviewTrigger", "gaepNative"],
+      "required": [
+        "concernId",
+        "concern",
+        "referenceBindings",
+        "conceptUsed",
+        "relationshipStatus",
+        "gaepAdaptation",
+        "rationale",
+        "applicability",
+        "affectedArtifactsOrBehaviors",
+        "requiredEvidence",
+        "limitations",
+        "assessment",
+        "gaepTarget",
+        "gaepNative"
+      ],
       "properties": {
-        "concernId": { "type": "string", "pattern": "^GAEP-MTH-CON-[0-9]{3}$" },
+        "concernId": { "$ref": "#/$defs/concernId" },
         "concern": { "$ref": "#/$defs/nonEmptyString" },
-        "referenceIds": { "$ref": "#/$defs/uniqueStrings" },
+        "referenceBindings": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/referenceBinding" }
+        },
         "conceptUsed": { "$ref": "#/$defs/uniqueStrings" },
         "relationshipStatus": { "enum": ["adopt", "adapt", "reject", "optional", "gaep-native"] },
         "gaepAdaptation": { "$ref": "#/$defs/nonEmptyString" },
@@ -157,18 +357,27 @@
         "affectedArtifactsOrBehaviors": { "$ref": "#/$defs/uniqueStrings" },
         "requiredEvidence": { "$ref": "#/$defs/uniqueStrings" },
         "limitations": { "$ref": "#/$defs/uniqueStrings" },
-        "reviewTrigger": { "$ref": "#/$defs/nonEmptyString" },
+        "assessment": { "$ref": "#/$defs/mappingAssessment" },
+        "gaepTarget": { "$ref": "#/$defs/gaepTarget" },
         "gaepNative": { "type": "boolean" }
       }
     },
     "deferredCandidate": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["referenceId", "canonicalName", "status", "reviewTrigger", "notes"],
+      "required": ["referenceId", "canonicalName", "status", "blockedClaims", "reviewTrigger", "notes"],
       "properties": {
-        "referenceId": { "type": "string", "pattern": "^GAEP-XREF-[0-9]{3}$" },
+        "referenceId": { "$ref": "#/$defs/referenceId" },
         "canonicalName": { "$ref": "#/$defs/nonEmptyString" },
-        "status": { "type": "string", "pattern": "^unresolved-" },
+        "status": {
+          "enum": [
+            "unresolved-not-assessed",
+            "unresolved-must-split",
+            "unresolved-must-select-family-member",
+            "unresolved-must-select-specification-set"
+          ]
+        },
+        "blockedClaims": { "$ref": "#/$defs/uniqueStrings" },
         "reviewTrigger": { "$ref": "#/$defs/nonEmptyString" },
         "notes": { "$ref": "#/$defs/nonEmptyString" }
       }

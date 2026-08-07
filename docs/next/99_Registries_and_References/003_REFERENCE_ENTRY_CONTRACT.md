@@ -3,7 +3,7 @@ id: GAEP-REG-003
 title: Reference Entry Contract
 document_type: registry
 schema_version: 1.0
-version: 0.4.0
+version: 0.5.0
 status: proposed
 owner_role: GAEP Reference Steward
 scope: External references used by GAEP specifications, profiles, decisions, and evidence
@@ -40,11 +40,14 @@ Every assessed `references` entry shall contain these exact fields:
 - `referenceType`;
 - `issuingAuthority`;
 - `versionOrEdition`;
-- `publicationDate` (an ISO date, partial ISO date, or `null` when the official source supplies none);
+- `versionCertainty`;
+- `publicationDate` (a full ISO date or `null` when the reviewed official source supplies no exact full date);
 - `status`;
 - `officialUri`;
-- `checkedAt`;
-- `accessEvidence`;
+- `access` with explicit status, date, evidence depth, and reason;
+- `contentReview` with explicit status, date, review depth, and reason;
+- `freshnessCheckedAt`;
+- `rightsStatus`;
 - `licenseOrCopyrightNote`;
 - `supersedes`;
 - `supersededBy`;
@@ -55,13 +58,26 @@ Every assessed `references` entry shall contain these exact fields:
 - `explicitlyNotAdopted`;
 - `applicabilityProfiles`;
 - `limitations`;
+- `blockedClaims`;
 - `claimLanguage`;
 - `evidenceStatus`;
 - `reviewTrigger`;
-- `nextReviewAt`;
+- `nextReviewDate`;
 - `notes`.
 
-The catalog itself shall additionally identify its stable catalog ID, schema version, content version, authoring status, owner role, exact check date, separate approval state, authority effect, claim boundary, concern registry, assessed references, and preserved deferred candidates.
+The catalog itself shall additionally identify its stable catalog ID, exact schema ID, schema version, content version, authoring status, owner role, exact freshness-check date, separate approval state, authority effect, claim boundary, concern registry, assessed references, and preserved deferred candidates.
+
+Every `mappings` entry shall contain these exact fields:
+
+- `concernId` and the exact canonical `concern` name;
+- version-bound `referenceBindings`, each containing `referenceId` and `versionOrEdition`;
+- `conceptUsed`, `relationshipStatus`, `gaepAdaptation`, `rationale`, and `applicability`;
+- `affectedArtifactsOrBehaviors`, `requiredEvidence`, and `limitations`;
+- an `assessment` containing an assessor Principal or explicit unassigned assessor role, accountable `ownerRole`, `assessmentDate`, `reviewTrigger`, and `nextReviewDate`;
+- a `gaepTarget` containing exact Methodology Constitution artifact ID/version and catalog ID/version; and
+- `gaepNative`.
+
+Every deferred candidate shall expose a valid catalog reference ID, unresolved state, blocked claims, review trigger, and notes. Deferred candidates remain outside the assessed set.
 
 ## Evidence and relationship states
 
@@ -69,13 +85,38 @@ The canonical catalog uses these closed reference types: `standard`, `framework`
 
 Reference status is one of `current`, `current-under-revision`, `superseded`, `historical`, `candidate`, or `unverifiable`. `underRevision` remains an independent boolean checked for compatibility with the status.
 
-`accessEvidence` says what was actually reviewed and is one of `full-primary-source-reviewed`, `licensed-copy-reviewed`, `official-publication-reviewed`, `official-summary-reviewed`, `official-abstract-only`, or `unverified`. A paid or licensed source whose full content was not reviewed may support only claims available from the reviewed official page, summary, or abstract.
+`access.status` is `accessed` or `not-accessed`. An accessed source binds a full access date and one of `full-primary-source`, `licensed-copy`, `official-publication`, `official-summary`, or `official-abstract`; its reason is `null`. A source not accessed binds a `null` date, `not-accessed` evidence, and a non-empty reason.
+
+`contentReview.status` is `reviewed` or `not-reviewed`. A reviewed source binds a full review date and the exact depth reviewed; its reason is `null`. A source not reviewed binds a `null` date, `not-reviewed` depth, and a non-empty reason. Access, content review, publication, and freshness checking are distinct events and must not be collapsed into one date.
+
+`versionCertainty` is `exact`, `snapshot-bound`, `uncertain`, or `unverifiable`. A living unnumbered source may be assessed only through a named snapshot/check date and must expose claims blocked by that uncertainty. `unverifiable` certainty is compatible only with `unverifiable` reference status.
+
+`rightsStatus` is one of `confirmed-permitted`, `link-and-summary-only`, `permission-required`, or `unresolved`. `licenseOrCopyrightNote` records the separate rationale and limits. A paid, proprietary, or restricted source whose content rights were not confirmed may support only the link, summary, abstract, or metadata actually reviewed.
 
 `evidenceStatus` is one of `primary-source-verified`, `partially-verified`, `version-pending`, `superseded`, or `unverified`. It describes the verification performed, not the truth or effectiveness of the source's intended outcome. `adoptedConcepts`, `adaptedConcepts`, and `explicitlyNotAdopted` are non-interchangeable. An empty `adoptedConcepts` list is valid and prevents informative calibration from being mislabeled direct adoption.
 
 Concern mappings use `adopt`, `adapt`, `reject`, `optional`, or `gaep-native`. A GAEP-native row has no external reference owner. A supported source or method never becomes universally mandatory merely because it is registered.
 
+Every external mapping binds the exact catalog reference version. The binding version must equal the assessed reference record. The mapping's `gaepTarget` must equal the current `GAEP-CST-004` and `GAEP-REG-011` identities and versions. `referenceBindings` and each reference's `gaepConcernIds` are reciprocal projections of the same relationship and must be symmetric.
+
+Supersession targets are assessed catalog reference IDs, never free text. Every supersession edge is reciprocal, self-reference and cycles are prohibited, and a `superseded` reference must identify an assessed successor. Historical publication labels that do not resolve to assessed records remain notes and cannot create an operational graph edge.
+
 Deferred candidates are preserved research leads, not assessed references. They must expose their unresolved state and a review trigger, and they cannot support material reliance or claim language.
+
+## Version 2 migration and authority split
+
+Catalog schema `2.0.0` replaces, rather than retains, four ambiguous schema `1.0.0` fields:
+
+| Removed schema 1.0 field | Schema 2.0 replacement | Compatibility boundary |
+|---|---|---|
+| `checkedAt` | `freshnessCheckedAt` | No alias is accepted; callers must migrate. |
+| `accessEvidence` | `access` plus `contentReview` | Access and review are now distinct and explicit. |
+| `nextReviewAt` | `nextReviewDate` | No alias is accepted; full dates remain required. |
+| mapping `referenceIds` | versioned `referenceBindings` | An ID without the bound assessed version is invalid. |
+
+This is an intentional fail-closed candidate-contract change. No approved or runtime Baseline is being migrated by inference.
+
+JSON Schema owns object shape, required fields, primitive types, patterns, enums, nullability, formats, and `uniqueItems`. The semantic validator owns catalog-wide ID resolution, reciprocity, supersession cycles and status compatibility, mapping/reference symmetry, chronology, version binding, claim/methodology boundaries, and canonical ordering. Renderers own projections only and cannot repair or reinterpret invalid canonical data.
 
 No external reference or mapping establishes GAEP or external-standard conformance by inference. A conformance claim requires a separately approved, version-bound mapping and evidence case against the actual criteria.
 
@@ -119,8 +160,8 @@ P02 may create the market benchmark and executive claim registry from these fiel
 | GAEP-REF-REQ-005 | External standards mappings SHALL identify relationship type, assessor, rationale, source/target versions and review date. | Crosswalk review |
 | GAEP-REF-REQ-006 | A reference without an exact edition, version, or revision SHALL use `unverifiable` or remain a deferred candidate and SHALL identify a review trigger and the claims blocked from relying on it. | Version-uncertainty gate |
 | GAEP-REF-REQ-007 | Every reference SHALL record access date and review date separately, or explicit `not-accessed` and `not-reviewed` values with reason. | Date-field validation |
-| GAEP-REF-REQ-008 | Every mapping SHALL identify assessor Principal or explicit unassigned assessor role, accountable owner role, exact GAEP source and target versions, registered relationship type, rationale, limitations, and next review trigger. | Mapping-record validation |
-| GAEP-REF-REQ-009 | Every reference SHALL expose rights/licensing status as `confirmed-permitted`, `link-and-summary-only`, `permission-required`, `unresolved`, or another registered extension value before content is stored, quoted, transformed, or distributed. | Rights-state review |
+| GAEP-REF-REQ-008 | Every mapping SHALL identify assessor Principal or explicit unassigned assessor role, accountable owner role, exact bound external-reference and GAEP target versions, registered relationship type, rationale, limitations, assessment date, review trigger, and next review date. | Mapping-record validation |
+| GAEP-REF-REQ-009 | Every reference SHALL expose rights/licensing status as exactly `confirmed-permitted`, `link-and-summary-only`, `permission-required`, or `unresolved` before content is stored, quoted, transformed, or distributed. | Rights-state review |
 | GAEP-REF-REQ-010 | Citation, similarity, relationship mapping, or use as calibration evidence SHALL NOT imply GAEP conformance, certification, endorsement, equivalence, or conformance to the external source. | Conformance-inference negative test |
 | GAEP-REF-REQ-011 | A crosswalk used by an approval or release gate SHALL contain no unresolved source version, assessor, mapping, review-date, or rights field for any relied-upon row. | Release-crosswalk completeness test |
 | GAEP-REF-REQ-012 | One versioned machine-readable catalog SHALL own methodology-reference identity, version, access evidence, mapping, limitation, claim language, and review triggers; every human or UI representation SHALL be a synchronized projection. | Catalog and projection validation |
@@ -134,3 +175,6 @@ P02 may create the market benchmark and executive claim registry from these fiel
 | GAEP-REF-REQ-020 | Human crosswalk, P02, P03, Guideline, lifecycle, UI, Chat, and export projections SHALL resolve catalog ID and exact version and SHALL NOT maintain independent reference values. | Projection-lineage validation |
 | GAEP-REF-REQ-021 | A methodology, method, framework, model, research program, metric framework, principle set, visualization model, tool, provider, adapter, and competitor Product SHALL NOT be silently reclassified as another kind. | Type-confusion negative test |
 | GAEP-REF-REQ-022 | Every methodology, compliance, executive, or public claim SHALL bind exact subject, source version, checked date, evidence state, scope, limitations, owner, approval state, and review trigger. | Claim-record validation |
+| GAEP-REF-REQ-023 | Draft 2020-12 JSON Schema validation SHALL execute fail-closed with strict compilation, all-errors reporting, offline format validation, and no type coercion, default insertion, unknown-format bypass, or remote schema fetch. | Schema-engine test |
+| GAEP-REF-REQ-024 | Every mapping `referenceBinding.versionOrEdition` SHALL equal the referenced assessed record, and every mapping target SHALL equal the current catalog and Methodology Constitution identity/version. | Referential-integrity test |
+| GAEP-REF-REQ-025 | Every mapping/reference concern relationship and supersession relationship SHALL be reciprocal, resolvable, acyclic, status-compatible, and canonically ordered. | Catalog-wide semantic test |

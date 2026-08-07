@@ -345,7 +345,10 @@ if !METHODOLOGY_REFERENCE_SCHEMA.file?
 else
   begin
     schema = JSON.parse(METHODOLOGY_REFERENCE_SCHEMA.read)
-    errors << "#{METHODOLOGY_REFERENCE_SCHEMA.relative_path_from(ROOT)}: wrong schema id" unless schema["$id"].to_s.include?("methodology-reference-catalog-1.0.0")
+    errors << "#{METHODOLOGY_REFERENCE_SCHEMA.relative_path_from(ROOT)}: wrong schema id" unless schema["$id"] == MethodologyReferenceCatalog::SCHEMA_ID
+    if methodology_catalog && methodology_catalog["schemaId"] != schema["$id"]
+      errors << "#{METHODOLOGY_REFERENCE_SCHEMA.relative_path_from(ROOT)}: catalog schema binding is stale"
+    end
   rescue JSON::ParserError => e
     errors << "#{METHODOLOGY_REFERENCE_SCHEMA.relative_path_from(ROOT)}: invalid JSON: #{e.message}"
   end
@@ -355,6 +358,9 @@ if methodology_catalog && METHODOLOGY_CROSSWALK.file?
   crosswalk_text = METHODOLOGY_CROSSWALK.read
   expected_digest = "Catalog SHA-256: `#{methodology_catalog_digest}`"
   errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: catalog digest projection is stale" unless crosswalk_text.include?(expected_digest)
+  errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: catalog identity projection is stale" unless crosswalk_text.include?("Catalog ID: `#{methodology_catalog['catalogId']}`")
+  errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: schema identity projection is stale" unless crosswalk_text.include?("Schema ID: `#{methodology_catalog['schemaId']}`")
+  errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: schema version projection is stale" unless crosswalk_text.include?("Schema version: `#{methodology_catalog['schemaVersion']}`")
   errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: catalog version projection is stale" unless crosswalk_text.include?("Catalog version: `#{methodology_catalog['version']}`")
   errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: assessed-reference count projection is stale" unless crosswalk_text.include?("Catalog assessed references: `#{methodology_reference_count}`")
   errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: concern-mapping count projection is stale" unless crosswalk_text.include?("Catalog concern mappings: `#{methodology_mapping_count}`")
@@ -368,6 +374,7 @@ if methodology_catalog && METHODOLOGY_CROSSWALK.file?
   end
   {
     "concern crosswalk" => ["<!-- BEGIN GENERATED CONCERN CROSSWALK -->", "<!-- END GENERATED CONCERN CROSSWALK -->", MethodologyReferenceCatalog.mapping_projection(methodology_catalog)],
+    "mapping governance" => ["<!-- BEGIN GENERATED MAPPING GOVERNANCE -->", "<!-- END GENERATED MAPPING GOVERNANCE -->", MethodologyReferenceCatalog.assessment_projection(methodology_catalog)],
     "reference inventory" => ["<!-- BEGIN GENERATED REFERENCE INVENTORY -->", "<!-- END GENERATED REFERENCE INVENTORY -->", MethodologyReferenceCatalog.reference_projection(methodology_catalog)]
   }.each do |label, (start_marker, end_marker, expected_projection)|
     match = crosswalk_text.match(/#{Regexp.escape(start_marker)}\n(.*?)\n#{Regexp.escape(end_marker)}/m)
@@ -386,7 +393,7 @@ if methodology_catalog && METHODOLOGY_CONSTITUTION.file?
   Array(methodology_catalog["concerns"]).each do |concern|
     errors << "#{METHODOLOGY_CONSTITUTION.relative_path_from(ROOT)}: missing concern #{concern['concernId']}" unless constitution_text.include?(concern["concernId"])
   end
-  (1..18).each do |number|
+  (1..21).each do |number|
     requirement_id = format("GAEP-MTH-REQ-%03d", number)
     errors << "#{METHODOLOGY_CONSTITUTION.relative_path_from(ROOT)}: missing requirement #{requirement_id}" unless constitution_text.include?(requirement_id)
   end

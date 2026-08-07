@@ -1,10 +1,11 @@
 {
   "catalogId": "GAEP-REG-011",
-  "schemaVersion": "1.0.0",
-  "version": "0.2.0",
+  "schemaId": "https://gaep.example/schemas/methodology-reference-catalog-2.0.0.json",
+  "schemaVersion": "2.0.0",
+  "version": "0.3.0",
   "status": "proposed",
   "ownerRole": "GAEP Reference Steward",
-  "checkedAt": "2026-08-07",
+  "freshnessCheckedAt": "2026-08-07",
   "approval": {
     "state": "not-approved",
     "approvedBy": [
@@ -124,11 +125,24 @@
       "referenceType": "framework",
       "issuingAuthority": "National Institute of Standards and Technology",
       "versionOrEdition": "NIST AI 100-1, Version 1.0",
+      "versionCertainty": "exact",
       "publicationDate": "2023-01-26",
       "status": "current-under-revision",
       "officialUri": "https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "official-publication-reviewed",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "official-publication",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "official-publication",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "confirmed-permitted",
       "licenseOrCopyrightNote": "United States government publication terms apply; GAEP links and paraphrases and does not import the framework as its own conformance contract.",
       "supersedes": [
 
@@ -138,10 +152,7 @@
       ],
       "underRevision": true,
       "gaepConcernIds": [
-        "GAEP-MTH-CON-010",
-        "GAEP-MTH-CON-013",
-        "GAEP-MTH-CON-014",
-        "GAEP-MTH-CON-022"
+        "GAEP-MTH-CON-010"
       ],
       "adoptedConcepts": [
 
@@ -162,10 +173,15 @@
         "NIST states that AI RMF 1.0 is being revised; exact successor impact is unknown.",
         "The official publication page and abstract were reviewed, not a complete function/category mapping."
       ],
+      "blockedClaims": [
+        "Claims that the bound source is complete or remains current after the review trigger",
+        "Conformance, certification, endorsement, or achieved-outcome claims",
+        "Detailed normative inference beyond the reviewed official material"
+      ],
       "claimLanguage": "NIST AI RMF 1.0 is an informative, voluntary AI-risk calibration source; GAEP does not claim NIST compliance, trustworthiness, safety or security.",
       "evidenceStatus": "version-pending",
       "reviewTrigger": "NIST publishes a revised AI RMF, changes the revision status, or GAEP proposes a function-level mapping.",
-      "nextReviewAt": "2026-11-07",
+      "nextReviewDate": "2026-11-07",
       "notes": "The official NIST site explicitly reports the revision in progress as of the catalog check date."
     },
     {
@@ -175,11 +191,24 @@
       "referenceType": "framework",
       "issuingAuthority": "National Institute of Standards and Technology",
       "versionOrEdition": "NIST AI 600-1",
+      "versionCertainty": "exact",
       "publicationDate": "2024-07-26",
       "status": "current",
       "officialUri": "https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "official-publication-reviewed",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "official-publication",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "official-publication",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "confirmed-permitted",
       "licenseOrCopyrightNote": "United States government publication terms apply; GAEP links and paraphrases and does not import the profile as its own conformance contract.",
       "supersedes": [
 
@@ -189,9 +218,7 @@
       ],
       "underRevision": false,
       "gaepConcernIds": [
-        "GAEP-MTH-CON-010",
-        "GAEP-MTH-CON-013",
-        "GAEP-MTH-CON-014"
+        "GAEP-MTH-CON-010"
       ],
       "adoptedConcepts": [
 
@@ -212,10 +239,13 @@
         "The official publication page and abstract were reviewed, not a complete action-level mapping.",
         "The profile depends on AI RMF 1.0, which is under revision."
       ],
+      "blockedClaims": [
+        "Conformance, certification, endorsement, or achieved-outcome claims"
+      ],
       "claimLanguage": "NIST AI 600-1 is an informative Generative-AI risk profile when applicable; GAEP does not claim NIST compliance or risk-outcome achievement.",
       "evidenceStatus": "primary-source-verified",
       "reviewTrigger": "NIST revises AI RMF 1.0, publishes a successor profile, or GAEP proposes an action-level mapping.",
-      "nextReviewAt": "2026-11-07",
+      "nextReviewDate": "2026-11-07",
       "notes": "This profile is applicable only when the governed Initiative includes a material Generative-AI system or use concern."
     },
     {
@@ -225,14 +255,27 @@
       "referenceType": "framework",
       "issuingAuthority": "National Institute of Standards and Technology",
       "versionOrEdition": "SP 800-218, SSDF Version 1.1",
+      "versionCertainty": "exact",
       "publicationDate": "2022-02-03",
       "status": "current",
       "officialUri": "https://csrc.nist.gov/pubs/sp/800/218/final",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "official-publication-reviewed",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "official-publication",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "official-publication",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "confirmed-permitted",
       "licenseOrCopyrightNote": "United States government publication terms apply; GAEP links and paraphrases and does not import the document as its own conformance contract.",
       "supersedes": [
-        "NIST CSWP 13 (2020-04-23)"
+
       ],
       "supersededBy": [
 
@@ -240,8 +283,6 @@
       "underRevision": false,
       "gaepConcernIds": [
         "GAEP-MTH-CON-009",
-        "GAEP-MTH-CON-013",
-        "GAEP-MTH-CON-014",
         "GAEP-MTH-CON-019",
         "GAEP-MTH-CON-023",
         "GAEP-MTH-CON-025"
@@ -266,11 +307,14 @@
         "The official publication page and abstract were reviewed, not a complete requirement-by-requirement assessment.",
         "Use of SSDF practices does not prove that GAEP or a governed product is secure."
       ],
+      "blockedClaims": [
+        "Conformance, certification, endorsement, or achieved-outcome claims"
+      ],
       "claimLanguage": "NIST SSDF 1.1 is an informative secure-development calibration source selected by applicability; GAEP does not claim NIST compliance or security outcomes from citation.",
       "evidenceStatus": "primary-source-verified",
       "reviewTrigger": "NIST publishes a successor, material update, or GAEP proposes a practice-level mapping.",
-      "nextReviewAt": "2027-02-07",
-      "notes": "The official abstract says SSDF practices can be integrated into each SDLC implementation, supporting GAEP's composition model."
+      "nextReviewDate": "2027-02-07",
+      "notes": "The official abstract says SSDF practices can be integrated into each SDLC implementation, supporting GAEP's composition model. Prior or successor publication labels (NIST CSWP 13 (2020-04-23)) remain informative only; no operational supersession edge is recorded because those publications are not assessed GAEP-REG-011 references."
     },
     {
       "referenceId": "GAEP-XREF-005",
@@ -279,14 +323,27 @@
       "referenceType": "standard",
       "issuingAuthority": "ISO and IEC",
       "versionOrEdition": "2023, Edition 2",
+      "versionCertainty": "exact",
       "publicationDate": "2023-11-15",
       "status": "current",
       "officialUri": "https://www.iso.org/standard/78176.html",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "official-abstract-only",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "official-abstract",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "official-abstract",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "link-and-summary-only",
       "licenseOrCopyrightNote": "ISO copyright applies; link and original GAEP summary only. No ISO text is reproduced as a GAEP requirement.",
       "supersedes": [
-        "ISO/IEC 25010:2011"
+
       ],
       "supersededBy": [
 
@@ -294,7 +351,6 @@
       "underRevision": false,
       "gaepConcernIds": [
         "GAEP-MTH-CON-004",
-        "GAEP-MTH-CON-013",
         "GAEP-MTH-CON-017",
         "GAEP-MTH-CON-019"
       ],
@@ -318,11 +374,15 @@
         "Only the official ISO page and abstract were reviewed; the paid full standard was not reviewed.",
         "Specific characteristics, measures and acceptance mappings require licensed full-text review."
       ],
+      "blockedClaims": [
+        "Conformance, certification, endorsement, or achieved-outcome claims",
+        "Detailed normative inference beyond the reviewed official material"
+      ],
       "claimLanguage": "GAEP's multidimensional product-quality concern is informed by the official abstract of ISO/IEC 25010:2023; no conformance is claimed.",
       "evidenceStatus": "partially-verified",
       "reviewTrigger": "ISO lifecycle status or edition changes; or GAEP selects characteristics for normative reliance.",
-      "nextReviewAt": "2027-02-07",
-      "notes": "The current edition defines nine characteristics, but this catalog does not reproduce or normatively import them."
+      "nextReviewDate": "2027-02-07",
+      "notes": "The current edition defines nine characteristics, but this catalog does not reproduce or normatively import them. Prior or successor publication labels (ISO/IEC 25010:2011) remain informative only; no operational supersession edge is recorded because those publications are not assessed GAEP-REG-011 references."
     },
     {
       "referenceId": "GAEP-XREF-011",
@@ -331,14 +391,27 @@
       "referenceType": "standard",
       "issuingAuthority": "ISO, IEC and IEEE",
       "versionOrEdition": "2022, Edition 2",
+      "versionCertainty": "exact",
       "publicationDate": "2022-11-07",
       "status": "current",
       "officialUri": "https://www.iso.org/standard/74393.html",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "official-abstract-only",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "official-abstract",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "official-abstract",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "link-and-summary-only",
       "licenseOrCopyrightNote": "ISO copyright applies; link and original GAEP summary only. No ISO text is reproduced as a GAEP requirement.",
       "supersedes": [
-        "ISO/IEC/IEEE 42010:2011"
+
       ],
       "supersededBy": [
 
@@ -346,7 +419,6 @@
       "underRevision": false,
       "gaepConcernIds": [
         "GAEP-MTH-CON-003",
-        "GAEP-MTH-CON-013",
         "GAEP-MTH-CON-020",
         "GAEP-MTH-CON-021"
       ],
@@ -370,11 +442,15 @@
         "Only the official ISO page and abstract were reviewed; the paid full standard was not reviewed.",
         "The official abstract explicitly excludes architecting processes, methods, notations, techniques and tools."
       ],
+      "blockedClaims": [
+        "Conformance, certification, endorsement, or achieved-outcome claims",
+        "Detailed normative inference beyond the reviewed official material"
+      ],
       "claimLanguage": "GAEP architecture-description concerns are informed by the official abstract of ISO/IEC/IEEE 42010:2022; no conformance or equivalent architecture-description framework is claimed.",
       "evidenceStatus": "partially-verified",
       "reviewTrigger": "ISO lifecycle status or edition changes; or GAEP proposes a detailed conformance mapping.",
-      "nextReviewAt": "2027-02-07",
-      "notes": "Supports concern-oriented architecture records without prescribing DDD, C4, TOGAF, microservices or another method."
+      "nextReviewDate": "2027-02-07",
+      "notes": "Supports concern-oriented architecture records without prescribing DDD, C4, TOGAF, microservices or another method. Prior or successor publication labels (ISO/IEC/IEEE 42010:2011) remain informative only; no operational supersession edge is recorded because those publications are not assessed GAEP-REG-011 references."
     },
     {
       "referenceId": "GAEP-XREF-012",
@@ -383,22 +459,34 @@
       "referenceType": "standard",
       "issuingAuthority": "ISO, IEC and IEEE",
       "versionOrEdition": "2018, Edition 2",
+      "versionCertainty": "exact",
       "publicationDate": "2018-11-28",
       "status": "current-under-revision",
       "officialUri": "https://www.iso.org/standard/72089.html",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "official-abstract-only",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "official-abstract",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "official-abstract",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "link-and-summary-only",
       "licenseOrCopyrightNote": "ISO copyright applies; link and original GAEP summary only. No ISO text is reproduced as a GAEP requirement.",
       "supersedes": [
-        "ISO/IEC/IEEE 29148:2011"
+
       ],
       "supersededBy": [
-        "ISO/IEC/IEEE CD 29148"
+
       ],
       "underRevision": true,
       "gaepConcernIds": [
         "GAEP-MTH-CON-002",
-        "GAEP-MTH-CON-013",
         "GAEP-MTH-CON-018",
         "GAEP-MTH-CON-023"
       ],
@@ -422,11 +510,16 @@
         "ISO marks the current edition as confirmed in 2024 but to be revised as of 2026-02-16.",
         "Only the official ISO page and abstract were reviewed; the paid full standard was not reviewed."
       ],
+      "blockedClaims": [
+        "Claims that the bound source is complete or remains current after the review trigger",
+        "Conformance, certification, endorsement, or achieved-outcome claims",
+        "Detailed normative inference beyond the reviewed official material"
+      ],
       "claimLanguage": "GAEP requirements concerns are calibrated against the official abstract of ISO/IEC/IEEE 29148:2018 while the edition is under revision; no conformance is claimed.",
       "evidenceStatus": "version-pending",
       "reviewTrigger": "Publication or cancellation of the successor revision; any GAEP normative requirements mapping.",
-      "nextReviewAt": "2026-11-07",
-      "notes": "Version drift is a live risk; any detailed mapping remains blocked pending the successor and licensed review."
+      "nextReviewDate": "2026-11-07",
+      "notes": "Version drift is a live risk; any detailed mapping remains blocked pending the successor and licensed review. Prior or successor publication labels (ISO/IEC/IEEE 29148:2011; ISO/IEC/IEEE CD 29148) remain informative only; no operational supersession edge is recorded because those publications are not assessed GAEP-REG-011 references."
     },
     {
       "referenceId": "GAEP-XREF-013",
@@ -435,14 +528,27 @@
       "referenceType": "standard",
       "issuingAuthority": "ISO, IEC and IEEE",
       "versionOrEdition": "2026, Edition 2",
+      "versionCertainty": "exact",
       "publicationDate": "2026-04-29",
       "status": "current",
       "officialUri": "https://www.iso.org/standard/90219.html",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "official-abstract-only",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "official-abstract",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "official-abstract",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "link-and-summary-only",
       "licenseOrCopyrightNote": "ISO copyright applies; link and original GAEP summary only. No ISO text is reproduced as a GAEP requirement.",
       "supersedes": [
-        "ISO/IEC/IEEE 12207:2017"
+
       ],
       "supersededBy": [
 
@@ -452,7 +558,6 @@
         "GAEP-MTH-CON-001",
         "GAEP-MTH-CON-005",
         "GAEP-MTH-CON-012",
-        "GAEP-MTH-CON-014",
         "GAEP-MTH-CON-025"
       ],
       "adoptedConcepts": [
@@ -476,11 +581,15 @@
         "Only the official ISO page and abstract were reviewed; the paid full standard was not reviewed.",
         "This 2026 edition replaced the previously catalogued 2017 edition after the old registry was written."
       ],
+      "blockedClaims": [
+        "Conformance, certification, endorsement, or achieved-outcome claims",
+        "Detailed normative inference beyond the reviewed official material"
+      ],
       "claimLanguage": "GAEP's software lifecycle concerns are informed by the official abstract of ISO/IEC/IEEE 12207:2026; no conformance or equivalence is claimed.",
       "evidenceStatus": "partially-verified",
       "reviewTrigger": "ISO lifecycle status, edition, or official abstract changes; or GAEP proposes normative reliance.",
-      "nextReviewAt": "2027-02-07",
-      "notes": "The official abstract states that the standard does not require a specific lifecycle model, methodology, modelling approach or selection technique."
+      "nextReviewDate": "2027-02-07",
+      "notes": "The official abstract states that the standard does not require a specific lifecycle model, methodology, modelling approach or selection technique. Prior or successor publication labels (ISO/IEC/IEEE 12207:2017) remain informative only; no operational supersession edge is recorded because those publications are not assessed GAEP-REG-011 references."
     },
     {
       "referenceId": "GAEP-XREF-015",
@@ -489,11 +598,24 @@
       "referenceType": "standard",
       "issuingAuthority": "World Wide Web Consortium",
       "versionOrEdition": "W3C Recommendation, 2024-12-12",
+      "versionCertainty": "exact",
       "publicationDate": "2024-12-12",
       "status": "current",
       "officialUri": "https://www.w3.org/TR/WCAG22/",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "full-primary-source-reviewed",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "full-primary-source",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "full-primary-source",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "link-and-summary-only",
       "licenseOrCopyrightNote": "W3C document use, liability and trademark rules apply; GAEP links and summarizes and does not reproduce the recommendation.",
       "supersedes": [
 
@@ -504,8 +626,6 @@
       "underRevision": false,
       "gaepConcernIds": [
         "GAEP-MTH-CON-011",
-        "GAEP-MTH-CON-013",
-        "GAEP-MTH-CON-014",
         "GAEP-MTH-CON-017",
         "GAEP-MTH-CON-019"
       ],
@@ -528,10 +648,13 @@
         "The current official Recommendation and conformance sections were reviewed, not a criterion-by-criterion GAEP mapping.",
         "W3C says WCAG 2.2 does not supersede 2.0 or 2.1, though it advises use of 2.2 for future applicability."
       ],
+      "blockedClaims": [
+        "Conformance, certification, endorsement, or achieved-outcome claims"
+      ],
       "claimLanguage": "WCAG 2.2 is the current candidate accessibility reference for applicable web scope; conformance requires a separate exact evaluation and claim.",
       "evidenceStatus": "primary-source-verified",
       "reviewTrigger": "W3C issues a new Recommendation, substantive errata, or GAEP proposes a WCAG conformance claim.",
-      "nextReviewAt": "2027-02-07",
+      "nextReviewDate": "2027-02-07",
       "notes": "WCAG 3 remains outside this catalog until it becomes an appropriate official successor for the selected claim scope."
     },
     {
@@ -541,14 +664,27 @@
       "referenceType": "standard",
       "issuingAuthority": "ISO, IEC and IEEE",
       "versionOrEdition": "2023, Edition 2",
+      "versionCertainty": "exact",
       "publicationDate": "2023-05-16",
       "status": "current",
       "officialUri": "https://www.iso.org/standard/81702.html",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "official-abstract-only",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "official-abstract",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "official-abstract",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "link-and-summary-only",
       "licenseOrCopyrightNote": "ISO copyright applies; link and original GAEP summary only. No ISO text is reproduced as a GAEP requirement.",
       "supersedes": [
-        "ISO/IEC/IEEE 15288:2015"
+
       ],
       "supersededBy": [
 
@@ -557,7 +693,7 @@
       "gaepConcernIds": [
         "GAEP-MTH-CON-001",
         "GAEP-MTH-CON-005",
-        "GAEP-MTH-CON-014"
+        "GAEP-MTH-CON-012"
       ],
       "adoptedConcepts": [
 
@@ -581,11 +717,15 @@
         "Detailed normative mappings are prohibited without licensed full-text review and an approved mapping case.",
         "Only the official ISO page and abstract were reviewed; the paid full standard was not reviewed."
       ],
+      "blockedClaims": [
+        "Conformance, certification, endorsement, or achieved-outcome claims",
+        "Detailed normative inference beyond the reviewed official material"
+      ],
       "claimLanguage": "GAEP's lifecycle coverage is informed by the official abstract of ISO/IEC/IEEE 15288:2023; no conformance or equivalence is claimed.",
       "evidenceStatus": "partially-verified",
       "reviewTrigger": "ISO lifecycle status, edition, or official abstract changes; or GAEP proposes normative reliance.",
-      "nextReviewAt": "2027-02-07",
-      "notes": "The official abstract explicitly states full-lifecycle, iterative, concurrent and recursive applicability and says no specific lifecycle model or method is prescribed."
+      "nextReviewDate": "2027-02-07",
+      "notes": "The official abstract explicitly states full-lifecycle, iterative, concurrent and recursive applicability and says no specific lifecycle model or method is prescribed. Prior or successor publication labels (ISO/IEC/IEEE 15288:2015) remain informative only; no operational supersession edge is recorded because those publications are not assessed GAEP-REG-011 references."
     },
     {
       "referenceId": "GAEP-XREF-021",
@@ -594,14 +734,27 @@
       "referenceType": "framework",
       "issuingAuthority": "The Open Group Architecture Forum",
       "versionOrEdition": "10th Edition; Technical Corrigendum 1 listed separately",
+      "versionCertainty": "exact",
       "publicationDate": "2022-04-25",
       "status": "current",
       "officialUri": "https://publications.opengroup.org/standards/togaf",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "official-summary-reviewed",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "official-summary",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "official-summary",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "link-and-summary-only",
       "licenseOrCopyrightNote": "The Open Group copyright and license terms apply. The full standard was not downloaded; redistribution and commercial-use restrictions were not exercised.",
       "supersedes": [
-        "TOGAF Standard, Version 9.2"
+
       ],
       "supersededBy": [
 
@@ -609,8 +762,6 @@
       "underRevision": false,
       "gaepConcernIds": [
         "GAEP-MTH-CON-003",
-        "GAEP-MTH-CON-005",
-        "GAEP-MTH-CON-014",
         "GAEP-MTH-CON-016",
         "GAEP-MTH-CON-020"
       ],
@@ -633,11 +784,15 @@
         "Only current official catalog, overview and licensing pages were reviewed; the licensed full standard was not reviewed.",
         "The modular Series Guides and Technical Corrigendum require exact item-level selection before material reliance."
       ],
+      "blockedClaims": [
+        "Conformance, certification, endorsement, or achieved-outcome claims",
+        "Detailed normative inference beyond the reviewed official material"
+      ],
       "claimLanguage": "TOGAF is an informative enterprise-architecture calibration source for applicable initiatives; GAEP is not represented as TOGAF-compliant.",
       "evidenceStatus": "partially-verified",
       "reviewTrigger": "A new edition, corrigendum, selected Series Guide, or proposed material TOGAF reliance.",
-      "nextReviewAt": "2027-02-07",
-      "notes": "The official source describes configurable use and a modular body of knowledge; GAEP retains its own governance semantics."
+      "nextReviewDate": "2027-02-07",
+      "notes": "The official source describes configurable use and a modular body of knowledge; GAEP retains its own governance semantics. Prior or successor publication labels (TOGAF Standard, Version 9.2) remain informative only; no operational supersession edge is recorded because those publications are not assessed GAEP-REG-011 references."
     },
     {
       "referenceId": "GAEP-XREF-022",
@@ -646,11 +801,24 @@
       "referenceType": "visualization-model",
       "issuingAuthority": "Simon Brown",
       "versionOrEdition": "living official website; no numbered edition",
+      "versionCertainty": "snapshot-bound",
       "publicationDate": null,
       "status": "current",
       "officialUri": "https://c4model.com/",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "full-primary-source-reviewed",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "full-primary-source",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "full-primary-source",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "confirmed-permitted",
       "licenseOrCopyrightNote": "Official website and example diagrams state Creative Commons Attribution 4.0; attribution and source terms remain required.",
       "supersedes": [
 
@@ -661,7 +829,6 @@
       "underRevision": false,
       "gaepConcernIds": [
         "GAEP-MTH-CON-003",
-        "GAEP-MTH-CON-014",
         "GAEP-MTH-CON-020"
       ],
       "adoptedConcepts": [
@@ -684,10 +851,14 @@
         "C4 focuses primarily on software-system static structure and supporting views, not the full business, domain, data, workflow or governance model.",
         "The source is living and has no immutable numbered edition."
       ],
+      "blockedClaims": [
+        "Claims that the bound source is complete or remains current after the review trigger",
+        "Conformance, certification, endorsement, or achieved-outcome claims"
+      ],
       "claimLanguage": "GAEP may use C4 as an optional architecture-visualization method when applicable; C4 is not a mandatory lifecycle or architecture method.",
       "evidenceStatus": "primary-source-verified",
       "reviewTrigger": "Material change to official abstractions, diagram guidance, license, or GAEP representation mapping.",
-      "nextReviewAt": "2026-11-07",
+      "nextReviewDate": "2026-11-07",
       "notes": "The official FAQ says C4 implies no software-delivery process; this supports keeping architecture method and representation separate."
     },
     {
@@ -697,11 +868,24 @@
       "referenceType": "principle-set",
       "issuingAuthority": "The seventeen Manifesto authors",
       "versionOrEdition": "original 2001 publication",
-      "publicationDate": "2001",
+      "versionCertainty": "exact",
+      "publicationDate": null,
       "status": "current",
       "officialUri": "https://agilemanifesto.org/",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "full-primary-source-reviewed",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "full-primary-source",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "full-primary-source",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "link-and-summary-only",
       "licenseOrCopyrightNote": "Copyright 2001 by the authors; the declaration may be copied only in its entirety with its notice. GAEP stores an original summary, not copied manifesto text.",
       "supersedes": [
 
@@ -712,7 +896,6 @@
       "underRevision": false,
       "gaepConcernIds": [
         "GAEP-MTH-CON-005",
-        "GAEP-MTH-CON-014",
         "GAEP-MTH-CON-015",
         "GAEP-MTH-CON-017",
         "GAEP-MTH-CON-018"
@@ -739,10 +922,13 @@
         "GAEP adapts the feedback orientation while retaining repository-visible trace and authority.",
         "Values and principles do not define GAEP governance, approval, evidence or authorization semantics."
       ],
+      "blockedClaims": [
+        "Conformance, certification, endorsement, or achieved-outcome claims"
+      ],
       "claimLanguage": "GAEP is compatible with and informed by selected Agile values and principles; it is not an Agile framework or certification claim.",
       "evidenceStatus": "primary-source-verified",
       "reviewTrigger": "Official source or copyright notice changes; or a public Agile-alignment claim is proposed.",
-      "nextReviewAt": "2027-08-07",
+      "nextReviewDate": "2027-08-07",
       "notes": "The official sources were reviewed directly; this catalog intentionally paraphrases rather than reproduces them."
     },
     {
@@ -752,14 +938,27 @@
       "referenceType": "metric-framework",
       "issuingAuthority": "DORA",
       "versionOrEdition": "living guidance; last updated 2026-01-05",
+      "versionCertainty": "snapshot-bound",
       "publicationDate": "2026-01-05",
       "status": "current",
       "officialUri": "https://dora.dev/guides/dora-metrics/",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "official-publication-reviewed",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "official-publication",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "official-publication",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "link-and-summary-only",
       "licenseOrCopyrightNote": "Official DORA web content copyright applies; GAEP stores an original summary and link only.",
       "supersedes": [
-        "DORA four-key-metrics presentation"
+
       ],
       "supersededBy": [
 
@@ -768,7 +967,6 @@
       "gaepConcernIds": [
         "GAEP-MTH-CON-005",
         "GAEP-MTH-CON-012",
-        "GAEP-MTH-CON-013",
         "GAEP-MTH-CON-025"
       ],
       "adoptedConcepts": [
@@ -790,11 +988,15 @@
         "GAEP has not measured or demonstrated DORA outcomes.",
         "The official guidance is a living source and now uses a five-metric model rather than the historic four-key presentation."
       ],
+      "blockedClaims": [
+        "Claims that the bound source is complete or remains current after the review trigger",
+        "Conformance, certification, endorsement, or achieved-outcome claims"
+      ],
       "claimLanguage": "DORA provides an informative operational-feedback calibration source; GAEP makes no performance outcome claim without measured, context-bound evidence.",
       "evidenceStatus": "primary-source-verified",
       "reviewTrigger": "DORA changes the metric model, guidance date, research basis, or GAEP proposes a delivery-performance claim.",
-      "nextReviewAt": "2026-11-07",
-      "notes": "Current official guidance identifies five metrics and cautions against goals, disparate comparisons and competition."
+      "nextReviewDate": "2026-11-07",
+      "notes": "Current official guidance identifies five metrics and cautions against goals, disparate comparisons and competition. Prior or successor publication labels (DORA four-key-metrics presentation) remain informative only; no operational supersession edge is recorded because those publications are not assessed GAEP-REG-011 references."
     },
     {
       "referenceId": "GAEP-XREF-025",
@@ -803,14 +1005,27 @@
       "referenceType": "model",
       "issuingAuthority": "Matthew Skelton and Manuel Pais",
       "versionOrEdition": "Second Edition",
+      "versionCertainty": "exact",
       "publicationDate": "2025-09-23",
       "status": "current",
       "officialUri": "https://teamtopologies.com/book",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "official-summary-reviewed",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "official-summary",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "official-summary",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "link-and-summary-only",
       "licenseOrCopyrightNote": "Book and official site copyright apply; the full proprietary book was not reviewed or copied.",
       "supersedes": [
-        "Team Topologies, First Edition (2019)"
+
       ],
       "supersededBy": [
 
@@ -818,8 +1033,6 @@
       "underRevision": false,
       "gaepConcernIds": [
         "GAEP-MTH-CON-006",
-        "GAEP-MTH-CON-012",
-        "GAEP-MTH-CON-014",
         "GAEP-MTH-CON-021"
       ],
       "adoptedConcepts": [
@@ -844,11 +1057,15 @@
         "Only official Second Edition summary and key-concept pages were reviewed; the full book was not reviewed.",
         "Organizational patterns require contextual evidence and accountable organizational authority."
       ],
+      "blockedClaims": [
+        "Conformance, certification, endorsement, or achieved-outcome claims",
+        "Detailed normative inference beyond the reviewed official material"
+      ],
       "claimLanguage": "GAEP may use Team Topologies concepts as optional organizational-design inputs; it does not require the method or claim its outcomes.",
       "evidenceStatus": "partially-verified",
       "reviewTrigger": "A new edition, official concept change, or GAEP organization-design claim.",
-      "nextReviewAt": "2027-02-07",
-      "notes": "The current edition is 2025, not the 2019 first edition."
+      "nextReviewDate": "2027-02-07",
+      "notes": "The current edition is 2025, not the 2019 first edition. Prior or successor publication labels (Team Topologies, First Edition (2019)) remain informative only; no operational supersession edge is recorded because those publications are not assessed GAEP-REG-011 references."
     },
     {
       "referenceId": "GAEP-XREF-026",
@@ -857,11 +1074,24 @@
       "referenceType": "methodology",
       "issuingAuthority": "Eric Evans / Domain Language, Inc.",
       "versionOrEdition": "2015-03 reference edition",
-      "publicationDate": "2015-03",
+      "versionCertainty": "exact",
+      "publicationDate": null,
       "status": "current",
       "officialUri": "https://www.domainlanguage.com/ddd/reference/",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "full-primary-source-reviewed",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "full-primary-source",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "full-primary-source",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "confirmed-permitted",
       "licenseOrCopyrightNote": "The official page states the DDD Reference is licensed under Creative Commons Attribution 4.0; source pattern summaries retain their stated attribution terms.",
       "supersedes": [
 
@@ -873,7 +1103,6 @@
       "gaepConcernIds": [
         "GAEP-MTH-CON-003",
         "GAEP-MTH-CON-007",
-        "GAEP-MTH-CON-014",
         "GAEP-MTH-CON-015",
         "GAEP-MTH-CON-016",
         "GAEP-MTH-CON-020",
@@ -899,10 +1128,13 @@
         "GAEP's default applies only after Initiative applicability selects the relevant enterprise software-intensive profile.",
         "The reference is a summary complement, not a complete teaching or implementation guide."
       ],
+      "blockedClaims": [
+        "Conformance, certification, endorsement, or achieved-outcome claims"
+      ],
       "claimLanguage": "DDD is GAEP's proposed default strategic domain approach for applicable enterprise software-intensive profiles, not a universal requirement and not a microservices mandate.",
       "evidenceStatus": "primary-source-verified",
       "reviewTrigger": "Official reference or license changes; or GAEP changes DDD applicability/default language.",
-      "nextReviewAt": "2027-08-07",
+      "nextReviewDate": "2027-08-07",
       "notes": "The official reference includes summaries from the 2004 book plus later patterns; it does not make architecture deployment decisions."
     },
     {
@@ -912,11 +1144,24 @@
       "referenceType": "method",
       "issuingAuthority": "Alberto Brandolini",
       "versionOrEdition": "living Leanpub book; incomplete",
+      "versionCertainty": "snapshot-bound",
       "publicationDate": null,
       "status": "candidate",
       "officialUri": "https://www.eventstorming.com/book/",
-      "checkedAt": "2026-08-07",
-      "accessEvidence": "official-publication-reviewed",
+      "access": {
+        "status": "accessed",
+        "date": "2026-08-07",
+        "evidence": "official-publication",
+        "reason": null
+      },
+      "contentReview": {
+        "status": "reviewed",
+        "date": "2026-08-07",
+        "depth": "official-publication",
+        "reason": null
+      },
+      "freshnessCheckedAt": "2026-08-07",
+      "rightsStatus": "link-and-summary-only",
       "licenseOrCopyrightNote": "Author and Leanpub copyright apply; the book was not copied or fully reviewed.",
       "supersedes": [
 
@@ -926,9 +1171,7 @@
       ],
       "underRevision": true,
       "gaepConcernIds": [
-        "GAEP-MTH-CON-007",
         "GAEP-MTH-CON-008",
-        "GAEP-MTH-CON-014",
         "GAEP-MTH-CON-015",
         "GAEP-MTH-CON-016"
       ],
@@ -952,10 +1195,15 @@
         "GAEP adoption is limited to an optional preferred collaborative-discovery method when applicability and facilitation conditions fit.",
         "The official source says the book remains incomplete and under active writing."
       ],
+      "blockedClaims": [
+        "Claims that the bound source is complete or remains current after the review trigger",
+        "Conformance, certification, endorsement, or achieved-outcome claims",
+        "Detailed normative inference beyond the reviewed official material"
+      ],
       "claimLanguage": "EventStorming is a preferred collaborative behavioral-discovery option when applicable; it is not a universal GAEP ceremony or approval source.",
       "evidenceStatus": "partially-verified",
       "reviewTrigger": "Book completion state, official source, or GAEP applicability language changes.",
-      "nextReviewAt": "2026-11-07",
+      "nextReviewDate": "2026-11-07",
       "notes": "The official source describes EventStorming as deliberate collective learning and identifies the method as originating in 2013."
     }
   ],
@@ -963,9 +1211,15 @@
     {
       "concernId": "GAEP-MTH-CON-001",
       "concern": "Product-to-Operations lifecycle completeness and tailoring",
-      "referenceIds": [
-        "GAEP-XREF-013",
-        "GAEP-XREF-020"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-013",
+          "versionOrEdition": "2026, Edition 2"
+        },
+        {
+          "referenceId": "GAEP-XREF-020",
+          "versionOrEdition": "2023, Edition 2"
+        }
       ],
       "conceptUsed": [
         "full lifecycle concern coverage",
@@ -987,14 +1241,32 @@
       "limitations": [
         "Only official abstracts were reviewed; no detailed process mapping or conformance claim is supported."
       ],
-      "reviewTrigger": "A lifecycle reference edition or GAEP lifecycle boundary changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "A lifecycle reference edition or GAEP lifecycle boundary changes.",
+        "nextReviewDate": "2027-02-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-002",
       "concern": "Requirements quality and traceability",
-      "referenceIds": [
-        "GAEP-XREF-012"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-012",
+          "versionOrEdition": "2018, Edition 2"
+        }
       ],
       "conceptUsed": [
         "lifecycle-wide requirements engineering",
@@ -1017,17 +1289,44 @@
       "limitations": [
         "The source is abstract-only and under revision; detailed normative inference is blocked."
       ],
-      "reviewTrigger": "ISO publishes the successor or GAEP proposes a detailed requirements mapping.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "ISO publishes the successor or GAEP proposes a detailed requirements mapping.",
+        "nextReviewDate": "2026-11-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-003",
       "concern": "Architecture description and sufficient design before implementation",
-      "referenceIds": [
-        "GAEP-XREF-011",
-        "GAEP-XREF-021",
-        "GAEP-XREF-022",
-        "GAEP-XREF-026"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-011",
+          "versionOrEdition": "2022, Edition 2"
+        },
+        {
+          "referenceId": "GAEP-XREF-021",
+          "versionOrEdition": "10th Edition; Technical Corrigendum 1 listed separately"
+        },
+        {
+          "referenceId": "GAEP-XREF-022",
+          "versionOrEdition": "living official website; no numbered edition"
+        },
+        {
+          "referenceId": "GAEP-XREF-026",
+          "versionOrEdition": "2015-03 reference edition"
+        }
       ],
       "conceptUsed": [
         "stakeholder concerns and viewpoints",
@@ -1050,14 +1349,32 @@
       "limitations": [
         "TOGAF was summary-only; C4 is visualization; DDD does not select deployment topology."
       ],
-      "reviewTrigger": "Architecture impact, reference versions or the affected slice changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Architecture impact, reference versions or the affected slice changes.",
+        "nextReviewDate": "2026-11-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-004",
       "concern": "Product quality and assurance",
-      "referenceIds": [
-        "GAEP-XREF-005"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-005",
+          "versionOrEdition": "2023, Edition 2"
+        }
       ],
       "conceptUsed": [
         "multidimensional product quality",
@@ -1080,17 +1397,44 @@
       "limitations": [
         "The official abstract does not support a complete characteristic mapping or achieved-quality claim."
       ],
-      "reviewTrigger": "Quality scope, edition or a public quality claim changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Quality scope, edition or a public quality claim changes.",
+        "nextReviewDate": "2027-02-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-005",
       "concern": "Iterative change and feedback",
-      "referenceIds": [
-        "GAEP-XREF-013",
-        "GAEP-XREF-020",
-        "GAEP-XREF-023",
-        "GAEP-XREF-024"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-013",
+          "versionOrEdition": "2026, Edition 2"
+        },
+        {
+          "referenceId": "GAEP-XREF-020",
+          "versionOrEdition": "2023, Edition 2"
+        },
+        {
+          "referenceId": "GAEP-XREF-023",
+          "versionOrEdition": "original 2001 publication"
+        },
+        {
+          "referenceId": "GAEP-XREF-024",
+          "versionOrEdition": "living guidance; last updated 2026-01-05"
+        }
       ],
       "conceptUsed": [
         "incremental learning",
@@ -1114,14 +1458,32 @@
       "limitations": [
         "Agile values and DORA measures do not replace authority or prove Product value."
       ],
-      "reviewTrigger": "Delivery model, risk or operational feedback changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Delivery model, risk or operational feedback changes.",
+        "nextReviewDate": "2026-11-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-006",
       "concern": "Organizational flow and cognitive load",
-      "referenceIds": [
-        "GAEP-XREF-025"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-025",
+          "versionOrEdition": "Second Edition"
+        }
       ],
       "conceptUsed": [
         "cognitive load",
@@ -1144,14 +1506,32 @@
       "limitations": [
         "Only official concepts and edition metadata were reviewed; the proprietary book was not."
       ],
-      "reviewTrigger": "Organization design or source edition changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Organization design or source edition changes.",
+        "nextReviewDate": "2027-02-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-007",
       "concern": "Strategic domain boundaries",
-      "referenceIds": [
-        "GAEP-XREF-026"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-026",
+          "versionOrEdition": "2015-03 reference edition"
+        }
       ],
       "conceptUsed": [
         "bounded context",
@@ -1175,14 +1555,32 @@
       "limitations": [
         "DDD is not universal and does not imply microservices or full tactical-pattern adoption."
       ],
-      "reviewTrigger": "Domain complexity, Product profile or DDD source changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Domain complexity, Product profile or DDD source changes.",
+        "nextReviewDate": "2027-08-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-008",
       "concern": "Collaborative behavioral discovery",
-      "referenceIds": [
-        "GAEP-XREF-027"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-027",
+          "versionOrEdition": "living Leanpub book; incomplete"
+        }
       ],
       "conceptUsed": [
         "collaborative discovery of events, policies and boundaries"
@@ -1204,14 +1602,32 @@
       "limitations": [
         "The official book source is incomplete and actively written; workshop consensus is not authority."
       ],
-      "reviewTrigger": "Method source, discovery ambiguity or facilitation conditions change.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Method source, discovery ambiguity or facilitation conditions change.",
+        "nextReviewDate": "2026-11-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-009",
       "concern": "Secure software development",
-      "referenceIds": [
-        "GAEP-XREF-004"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-004",
+          "versionOrEdition": "SP 800-218, SSDF Version 1.1"
+        }
       ],
       "conceptUsed": [
         "selectable secure-development practices across lifecycle models"
@@ -1233,15 +1649,36 @@
       "limitations": [
         "SSDF citation does not establish NIST conformance or a security outcome."
       ],
-      "reviewTrigger": "SSDF version, threat model or security claim changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "SSDF version, threat model or security claim changes.",
+        "nextReviewDate": "2027-02-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-010",
       "concern": "AI risk and accountable human oversight",
-      "referenceIds": [
-        "GAEP-XREF-001",
-        "GAEP-XREF-002"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-001",
+          "versionOrEdition": "NIST AI 100-1, Version 1.0"
+        },
+        {
+          "referenceId": "GAEP-XREF-002",
+          "versionOrEdition": "NIST AI 600-1"
+        }
       ],
       "conceptUsed": [
         "Generative-AI-specific risk profile",
@@ -1264,14 +1701,32 @@
       "limitations": [
         "AI RMF is under revision; neither source proves trustworthiness, safety or security."
       ],
-      "reviewTrigger": "NIST revisions, AI scope or a public AI claim changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "NIST revisions, AI scope or a public AI claim changes.",
+        "nextReviewDate": "2026-11-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-011",
       "concern": "Accessibility",
-      "referenceIds": [
-        "GAEP-XREF-015"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-015",
+          "versionOrEdition": "W3C Recommendation, 2024-12-12"
+        }
       ],
       "conceptUsed": [
         "scoped conformance claims",
@@ -1294,16 +1749,40 @@
       "limitations": [
         "WCAG presence does not establish conformance and does not cover every accessibility concern."
       ],
-      "reviewTrigger": "W3C Recommendation, interface scope or accessibility claim changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "W3C Recommendation, interface scope or accessibility claim changes.",
+        "nextReviewDate": "2027-02-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-012",
       "concern": "Operational outcome feedback",
-      "referenceIds": [
-        "GAEP-XREF-013",
-        "GAEP-XREF-020",
-        "GAEP-XREF-024"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-013",
+          "versionOrEdition": "2026, Edition 2"
+        },
+        {
+          "referenceId": "GAEP-XREF-020",
+          "versionOrEdition": "2023, Edition 2"
+        },
+        {
+          "referenceId": "GAEP-XREF-024",
+          "versionOrEdition": "living guidance; last updated 2026-01-05"
+        }
       ],
       "conceptUsed": [
         "delivery performance in context",
@@ -1326,13 +1805,28 @@
       "limitations": [
         "DORA metrics must not be targets for ranking or proof of Product value."
       ],
-      "reviewTrigger": "Operational context, metric guidance or lifecycle source changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Operational context, metric guidance or lifecycle source changes.",
+        "nextReviewDate": "2026-11-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-013",
       "concern": "Claim evidence and non-conformance inference",
-      "referenceIds": [
+      "referenceBindings": [
 
       ],
       "conceptUsed": [
@@ -1356,13 +1850,28 @@
       "limitations": [
         "External references inform the policy but do not own GAEP's exact claim state model."
       ],
-      "reviewTrigger": "A claim class, catalog contract or publication policy changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "A claim class, catalog contract or publication policy changes.",
+        "nextReviewDate": "2027-02-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": true
     },
     {
       "concernId": "GAEP-MTH-CON-014",
       "concern": "Applicability-driven method composition",
-      "referenceIds": [
+      "referenceBindings": [
 
       ],
       "conceptUsed": [
@@ -1386,16 +1895,40 @@
       "limitations": [
         "The exact state semantics and combination rules are GAEP-native."
       ],
-      "reviewTrigger": "Applicability states or profile composition rules change.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Applicability states or profile composition rules change.",
+        "nextReviewDate": "2027-02-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": true
     },
     {
       "concernId": "GAEP-MTH-CON-015",
       "concern": "Product discovery",
-      "referenceIds": [
-        "GAEP-XREF-023",
-        "GAEP-XREF-026",
-        "GAEP-XREF-027"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-023",
+          "versionOrEdition": "original 2001 publication"
+        },
+        {
+          "referenceId": "GAEP-XREF-026",
+          "versionOrEdition": "2015-03 reference edition"
+        },
+        {
+          "referenceId": "GAEP-XREF-027",
+          "versionOrEdition": "living Leanpub book; incomplete"
+        }
       ],
       "conceptUsed": [
         "behavioral discovery",
@@ -1419,16 +1952,40 @@
       "limitations": [
         "No method substitutes for Product evidence or acceptance authority."
       ],
-      "reviewTrigger": "Product profile, uncertainty or discovery source changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Product profile, uncertainty or discovery source changes.",
+        "nextReviewDate": "2026-11-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-016",
       "concern": "Business architecture",
-      "referenceIds": [
-        "GAEP-XREF-021",
-        "GAEP-XREF-026",
-        "GAEP-XREF-027"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-021",
+          "versionOrEdition": "10th Edition; Technical Corrigendum 1 listed separately"
+        },
+        {
+          "referenceId": "GAEP-XREF-026",
+          "versionOrEdition": "2015-03 reference edition"
+        },
+        {
+          "referenceId": "GAEP-XREF-027",
+          "versionOrEdition": "living Leanpub book; incomplete"
+        }
       ],
       "conceptUsed": [
         "capability and value flow",
@@ -1451,16 +2008,40 @@
       "limitations": [
         "TOGAF was summary-only and EventStorming remains candidate evidence."
       ],
-      "reviewTrigger": "Business boundary, operating model or source versions change.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Business boundary, operating model or source versions change.",
+        "nextReviewDate": "2026-11-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-017",
       "concern": "Product Design",
-      "referenceIds": [
-        "GAEP-XREF-005",
-        "GAEP-XREF-015",
-        "GAEP-XREF-023"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-005",
+          "versionOrEdition": "2023, Edition 2"
+        },
+        {
+          "referenceId": "GAEP-XREF-015",
+          "versionOrEdition": "W3C Recommendation, 2024-12-12"
+        },
+        {
+          "referenceId": "GAEP-XREF-023",
+          "versionOrEdition": "original 2001 publication"
+        }
       ],
       "conceptUsed": [
         "accessible design",
@@ -1484,15 +2065,36 @@
       "limitations": [
         "No cited source selects Figma or makes a design artifact authoritative."
       ],
-      "reviewTrigger": "Product Design scope, adapter or criteria change.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Product Design scope, adapter or criteria change.",
+        "nextReviewDate": "2027-02-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-018",
       "concern": "Backlog engineering",
-      "referenceIds": [
-        "GAEP-XREF-012",
-        "GAEP-XREF-023"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-012",
+          "versionOrEdition": "2018, Edition 2"
+        },
+        {
+          "referenceId": "GAEP-XREF-023",
+          "versionOrEdition": "original 2001 publication"
+        }
       ],
       "conceptUsed": [
         "incremental delivery",
@@ -1515,16 +2117,40 @@
       "limitations": [
         "A backlog is not authority and Agile principles do not remove evidence obligations."
       ],
-      "reviewTrigger": "Affected slice, architecture or requirements change.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Affected slice, architecture or requirements change.",
+        "nextReviewDate": "2026-11-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-019",
       "concern": "Testing and assurance",
-      "referenceIds": [
-        "GAEP-XREF-004",
-        "GAEP-XREF-005",
-        "GAEP-XREF-015"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-004",
+          "versionOrEdition": "SP 800-218, SSDF Version 1.1"
+        },
+        {
+          "referenceId": "GAEP-XREF-005",
+          "versionOrEdition": "2023, Edition 2"
+        },
+        {
+          "referenceId": "GAEP-XREF-015",
+          "versionOrEdition": "W3C Recommendation, 2024-12-12"
+        }
       ],
       "conceptUsed": [
         "accessibility evaluation",
@@ -1548,17 +2174,44 @@
       "limitations": [
         "Testing cannot prove universal correctness, security, safety or accessibility."
       ],
-      "reviewTrigger": "Claim scope, risk, quality criteria or source changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Claim scope, risk, quality criteria or source changes.",
+        "nextReviewDate": "2027-02-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-020",
       "concern": "Architecture style selection",
-      "referenceIds": [
-        "GAEP-XREF-011",
-        "GAEP-XREF-021",
-        "GAEP-XREF-022",
-        "GAEP-XREF-026"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-011",
+          "versionOrEdition": "2022, Edition 2"
+        },
+        {
+          "referenceId": "GAEP-XREF-021",
+          "versionOrEdition": "10th Edition; Technical Corrigendum 1 listed separately"
+        },
+        {
+          "referenceId": "GAEP-XREF-022",
+          "versionOrEdition": "living official website; no numbered edition"
+        },
+        {
+          "referenceId": "GAEP-XREF-026",
+          "versionOrEdition": "2015-03 reference edition"
+        }
       ],
       "conceptUsed": [
         "separation of domain and deployment boundaries",
@@ -1581,16 +2234,40 @@
       "limitations": [
         "C4 visualizes architecture; DDD and TOGAF do not determine a deployment style automatically."
       ],
-      "reviewTrigger": "Architecture drivers, affected slice or source guidance changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Architecture drivers, affected slice or source guidance changes.",
+        "nextReviewDate": "2026-11-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-021",
       "concern": "Team and repository topology",
-      "referenceIds": [
-        "GAEP-XREF-011",
-        "GAEP-XREF-025",
-        "GAEP-XREF-026"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-011",
+          "versionOrEdition": "2022, Edition 2"
+        },
+        {
+          "referenceId": "GAEP-XREF-025",
+          "versionOrEdition": "Second Edition"
+        },
+        {
+          "referenceId": "GAEP-XREF-026",
+          "versionOrEdition": "2015-03 reference edition"
+        }
       ],
       "conceptUsed": [
         "separate logical and organizational boundaries",
@@ -1613,13 +2290,28 @@
       "limitations": [
         "Neither Team Topologies nor DDD justifies automatic one-to-one mappings."
       ],
-      "reviewTrigger": "Organization, repository or domain boundaries change.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Organization, repository or domain boundaries change.",
+        "nextReviewDate": "2027-02-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-022",
       "concern": "Human authority",
-      "referenceIds": [
+      "referenceBindings": [
 
       ],
       "conceptUsed": [
@@ -1643,15 +2335,36 @@
       "limitations": [
         "External AI guidance may calibrate risk but does not own GAEP's exact authority semantics."
       ],
-      "reviewTrigger": "Authority policy, risk class or AI execution capability changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Authority policy, risk class or AI execution capability changes.",
+        "nextReviewDate": "2027-02-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": true
     },
     {
       "concernId": "GAEP-MTH-CON-023",
       "concern": "Source provenance and controlled change",
-      "referenceIds": [
-        "GAEP-XREF-004",
-        "GAEP-XREF-012"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-004",
+          "versionOrEdition": "SP 800-218, SSDF Version 1.1"
+        },
+        {
+          "referenceId": "GAEP-XREF-012",
+          "versionOrEdition": "2018, Edition 2"
+        }
       ],
       "conceptUsed": [
         "change impact",
@@ -1675,13 +2388,28 @@
       "limitations": [
         "The exact Source state model and canonical ordering are GAEP-native."
       ],
-      "reviewTrigger": "Source identity, revision, integrity or requirements changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Source identity, revision, integrity or requirements changes.",
+        "nextReviewDate": "2026-11-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     },
     {
       "concernId": "GAEP-MTH-CON-024",
       "concern": "Candidate, review, accept and commit semantics",
-      "referenceIds": [
+      "referenceBindings": [
 
       ],
       "conceptUsed": [
@@ -1706,16 +2434,40 @@
       "limitations": [
         "This exact combined state model must not be attributed to an external reference."
       ],
-      "reviewTrigger": "Proposal-state, persistence or authority semantics change.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Proposal-state, persistence or authority semantics change.",
+        "nextReviewDate": "2027-02-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": true
     },
     {
       "concernId": "GAEP-MTH-CON-025",
       "concern": "Release and operations",
-      "referenceIds": [
-        "GAEP-XREF-004",
-        "GAEP-XREF-013",
-        "GAEP-XREF-024"
+      "referenceBindings": [
+        {
+          "referenceId": "GAEP-XREF-004",
+          "versionOrEdition": "SP 800-218, SSDF Version 1.1"
+        },
+        {
+          "referenceId": "GAEP-XREF-013",
+          "versionOrEdition": "2026, Edition 2"
+        },
+        {
+          "referenceId": "GAEP-XREF-024",
+          "versionOrEdition": "living guidance; last updated 2026-01-05"
+        }
       ],
       "conceptUsed": [
         "delivery performance",
@@ -1739,7 +2491,22 @@
       "limitations": [
         "Reference presence does not grant release authority or prove operational performance."
       ],
-      "reviewTrigger": "Release scope, operating conditions, metric guidance or lifecycle source changes.",
+      "assessment": {
+        "assessor": {
+          "kind": "unassigned-role",
+          "role": "GAEP Reference Steward"
+        },
+        "ownerRole": "GAEP Reference Steward",
+        "assessmentDate": "2026-08-07",
+        "reviewTrigger": "Release scope, operating conditions, metric guidance or lifecycle source changes.",
+        "nextReviewDate": "2026-11-07"
+      },
+      "gaepTarget": {
+        "artifactId": "GAEP-CST-004",
+        "artifactVersion": "0.3.0",
+        "catalogId": "GAEP-REG-011",
+        "catalogVersion": "0.3.0"
+      },
       "gaepNative": false
     }
   ],
@@ -1748,6 +2515,9 @@
       "referenceId": "GAEP-XREF-003",
       "canonicalName": "ISO/IEC 42001 artificial intelligence management system",
       "status": "unresolved-not-assessed",
+      "blockedClaims": [
+        "Any material GAEP claim or methodology reliance"
+      ],
       "reviewTrigger": "A concrete GAEP AI-management-system concern requires assessment.",
       "notes": "Preserved from the earlier crosswalk; excluded from P01 material reliance."
     },
@@ -1755,6 +2525,9 @@
       "referenceId": "GAEP-XREF-006",
       "canonicalName": "NIST Privacy Framework",
       "status": "unresolved-not-assessed",
+      "blockedClaims": [
+        "Any material GAEP claim or methodology reliance"
+      ],
       "reviewTrigger": "A concrete privacy-profile mapping requires assessment.",
       "notes": "Preserved from the earlier crosswalk; excluded from P01 material reliance."
     },
@@ -1762,6 +2535,9 @@
       "referenceId": "GAEP-XREF-007",
       "canonicalName": "NIST OSCAL",
       "status": "unresolved-not-assessed",
+      "blockedClaims": [
+        "Any material GAEP claim or methodology reliance"
+      ],
       "reviewTrigger": "A machine-readable controls exchange requirement is selected.",
       "notes": "Preserved from the earlier crosswalk; excluded from P01 material reliance."
     },
@@ -1769,6 +2545,9 @@
       "referenceId": "GAEP-XREF-008",
       "canonicalName": "OWASP Agentic Security Initiative",
       "status": "unresolved-not-assessed",
+      "blockedClaims": [
+        "Any material GAEP claim or methodology reliance"
+      ],
       "reviewTrigger": "A concrete agentic-security profile mapping requires assessment.",
       "notes": "Preserved from the earlier crosswalk; excluded from P01 material reliance."
     },
@@ -1776,6 +2555,9 @@
       "referenceId": "GAEP-XREF-009",
       "canonicalName": "ISO/IEC 27001 and NIST Cybersecurity Framework compound legacy candidate",
       "status": "unresolved-must-split",
+      "blockedClaims": [
+        "Any material GAEP claim or methodology reliance"
+      ],
       "reviewTrigger": "A security-management concern selects each source separately.",
       "notes": "Preserved from the earlier crosswalk; compound rows are prohibited from material reliance."
     },
@@ -1783,6 +2565,9 @@
       "referenceId": "GAEP-XREF-010",
       "canonicalName": "ISO/IEC 27701 privacy information management",
       "status": "unresolved-not-assessed",
+      "blockedClaims": [
+        "Any material GAEP claim or methodology reliance"
+      ],
       "reviewTrigger": "A privacy-management concern requires assessment.",
       "notes": "Preserved from the earlier crosswalk; excluded from P01 material reliance."
     },
@@ -1790,6 +2575,9 @@
       "referenceId": "GAEP-XREF-014",
       "canonicalName": "ISO 31000 risk management",
       "status": "unresolved-not-assessed",
+      "blockedClaims": [
+        "Any material GAEP claim or methodology reliance"
+      ],
       "reviewTrigger": "An enterprise-risk vocabulary or mapping requires assessment.",
       "notes": "Preserved from the earlier crosswalk; excluded from P01 material reliance."
     },
@@ -1797,6 +2585,9 @@
       "referenceId": "GAEP-XREF-016",
       "canonicalName": "ISO 15489 records management family",
       "status": "unresolved-must-select-family-member",
+      "blockedClaims": [
+        "Any material GAEP claim or methodology reliance"
+      ],
       "reviewTrigger": "A records-management concern selects an exact family member and edition.",
       "notes": "Preserved from the earlier crosswalk; family rows are prohibited from material reliance."
     },
@@ -1804,6 +2595,9 @@
       "referenceId": "GAEP-XREF-017",
       "canonicalName": "SLSA and in-toto compound legacy candidate",
       "status": "unresolved-must-split",
+      "blockedClaims": [
+        "Any material GAEP claim or methodology reliance"
+      ],
       "reviewTrigger": "A supply-chain provenance concern selects each source separately.",
       "notes": "Preserved from the earlier crosswalk; compound rows are prohibited from material reliance."
     },
@@ -1811,6 +2605,9 @@
       "referenceId": "GAEP-XREF-018",
       "canonicalName": "SPDX and CycloneDX compound legacy candidate",
       "status": "unresolved-must-split",
+      "blockedClaims": [
+        "Any material GAEP claim or methodology reliance"
+      ],
       "reviewTrigger": "A component-transparency concern selects each source separately.",
       "notes": "Preserved from the earlier crosswalk; compound rows are prohibited from material reliance."
     },
@@ -1818,6 +2615,9 @@
       "referenceId": "GAEP-XREF-019",
       "canonicalName": "OpenTelemetry specifications",
       "status": "unresolved-must-select-specification-set",
+      "blockedClaims": [
+        "Any material GAEP claim or methodology reliance"
+      ],
       "reviewTrigger": "An operational telemetry exchange requirement selects an exact specification set.",
       "notes": "Preserved from the earlier crosswalk; excluded from P01 material reliance."
     }
