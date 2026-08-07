@@ -75,13 +75,30 @@ export function validateCatalogWithSchema(catalog, schema) {
   };
 }
 
-export function validateCanonicalCatalog() {
-  const schema = readJson(SCHEMA_PATH);
-  const catalog = readJson(CATALOG_PATH);
+export function assertCatalogSchemaBinding(catalog, schema) {
   if (catalog.schemaId !== schema.$id) {
     throw new Error(`catalog schemaId ${catalog.schemaId} does not equal schema $id ${schema.$id}`);
   }
+  const schemaVersion = schema?.properties?.schemaVersion?.const;
+  if (typeof schemaVersion !== "string" || schemaVersion.length === 0) {
+    throw new Error("schema properties.schemaVersion.const must be a non-empty string");
+  }
+  if (catalog.schemaVersion !== schemaVersion) {
+    throw new Error(
+      `catalog schemaVersion ${catalog.schemaVersion} does not equal schema version ${schemaVersion}`,
+    );
+  }
+}
+
+export function validateCatalogFiles({ catalogPath = CATALOG_PATH, schemaPath = SCHEMA_PATH } = {}) {
+  const schema = readJson(schemaPath);
+  const catalog = readJson(catalogPath);
+  assertCatalogSchemaBinding(catalog, schema);
   return validateCatalogWithSchema(catalog, schema);
+}
+
+export function validateCanonicalCatalog() {
+  return validateCatalogFiles();
 }
 
 export function normalizeAjvErrors(errors) {

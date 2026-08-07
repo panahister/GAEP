@@ -46,6 +46,20 @@ class MethodologyReferenceCatalogParityTest < Minitest::Test
     assert_equal MethodologyReferenceCatalog::DEFERRED_STATUSES, property("deferredCandidate", "status").fetch("enum")
   end
 
+  def test_access_review_depth_compatibility_table_is_complete_and_exact
+    expected = {
+      "full-primary-source" => %w[full-primary-source official-publication official-summary official-abstract not-reviewed],
+      "licensed-copy" => %w[licensed-copy official-summary official-abstract not-reviewed],
+      "official-publication" => %w[official-publication official-summary official-abstract not-reviewed],
+      "official-summary" => %w[official-summary official-abstract not-reviewed],
+      "official-abstract" => %w[official-abstract not-reviewed],
+      "not-accessed" => %w[not-reviewed]
+    }
+    assert_equal expected, MethodologyReferenceCatalog::ACCESS_REVIEW_DEPTH_COMPATIBILITY
+    assert_equal MethodologyReferenceCatalog::ACCESS_EVIDENCE.sort, expected.keys.sort
+    assert_empty expected.values.flatten.uniq - MethodologyReferenceCatalog::CONTENT_REVIEW_DEPTHS
+  end
+
   def test_schema_catalog_and_target_identities_and_versions_match
     assert_equal MethodologyReferenceCatalog::SCHEMA_ID, @schema.fetch("$id")
     assert_equal MethodologyReferenceCatalog::SCHEMA_ID, @catalog.fetch("schemaId")

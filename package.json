@@ -62,7 +62,7 @@
     "test:watch": "vitest",
     "test:methodology-schema": "node --test scripts/methodology_reference_schema.test.mjs",
     "test:methodology-semantics": "ruby scripts/methodology_reference_catalog.test.rb && ruby scripts/methodology_reference_catalog_integrity.test.rb && ruby scripts/methodology_reference_catalog_parity.test.rb",
-    "test:methodology-catalog": "npm run test:methodology-schema && npm run test:methodology-semantics",
+    "test:methodology-catalog": "npm run validate:methodology-schema && npm run test:methodology-schema && npm run test:methodology-semantics",
     "typecheck": "tsc -b",
     "validate:methodology-schema": "node scripts/validate_methodology_reference_schema.mjs",
     "validate:docs": "npm run validate:methodology-schema && ruby scripts/validate_next_docs.rb"

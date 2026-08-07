@@ -121,6 +121,45 @@ class MethodologyReferenceCatalogIntegrityTest < Minitest::Test
     assert_error(hostile, "unverifiable status requires unverifiable version certainty")
   end
 
+  def test_snapshot_bound_freshness_and_snapshot_dates_must_match
+    hostile = clone_catalog
+    snapshot_reference(hostile)["freshnessCheckedAt"] = "2026-08-08"
+    assert_error(hostile, "snapshotDate must equal freshnessCheckedAt")
+  end
+
+  def test_snapshot_bound_reference_without_access_fails
+    hostile = clone_catalog
+    snapshot_reference(hostile)["access"] = {
+      "status" => "not-accessed",
+      "date" => nil,
+      "evidence" => "not-accessed",
+      "reason" => "Access evidence is unavailable."
+    }
+    assert_error(hostile, "snapshot-bound reference requires accessed evidence")
+  end
+
+  def test_snapshot_bound_reference_without_content_review_fails
+    hostile = clone_catalog
+    snapshot_reference(hostile)["contentReview"] = not_reviewed_state
+    assert_error(hostile, "snapshot-bound reference requires reviewed content")
+  end
+
+  def test_snapshot_bound_reference_without_blocked_claims_fails
+    hostile = clone_catalog
+    snapshot_reference(hostile)["blockedClaims"] = []
+    assert_error(hostile, "snapshot-bound reference requires blocked claims")
+  end
+
+  def test_unverifiable_reference_used_by_mapping_fails
+    hostile = clone_catalog
+    reference = hostile["references"].find { |entry| entry["referenceId"] == "GAEP-XREF-002" }
+    reference["versionCertainty"] = "unverifiable"
+    reference["status"] = "unverifiable"
+    reference["evidenceStatus"] = "unverified"
+    reference["blockedClaims"] = ["All material reliance is blocked."]
+    assert_error(hostile, "non-native mapping cannot use unverifiable reference")
+  end
+
   def test_unknown_concern_mapping
     hostile = clone_catalog
     hostile["mappings"][0]["concernId"] = "GAEP-MTH-CON-999"
@@ -201,6 +240,59 @@ class MethodologyReferenceCatalogIntegrityTest < Minitest::Test
     assert_error(hostile, "reference binding version is stale")
   end
 
+  def test_stale_reference_binding_snapshot_date
+    hostile = clone_catalog
+    first_external_mapping(hostile)["referenceBindings"][0]["snapshotDate"] = "2026-08-06"
+    assert_error(hostile, "reference binding snapshot date is stale")
+  end
+
+  def test_not_accessed_and_reviewed_state_fails
+    hostile = clone_catalog
+    hostile["references"][0]["access"] = {
+      "status" => "not-accessed",
+      "date" => nil,
+      "evidence" => "not-accessed",
+      "reason" => "Access evidence is unavailable."
+    }
+    assert_error(hostile, "access/content-review state is contradictory")
+  end
+
+  def test_review_date_earlier_than_access_date_fails
+    hostile = clone_catalog
+    hostile["references"][0]["contentReview"]["date"] = "2026-08-06"
+    assert_error(hostile, "contentReview.date is earlier than access.date")
+  end
+
+  def test_review_depth_stronger_than_access_evidence_fails
+    hostile = clone_catalog
+    reference = hostile["references"].find { |entry| entry.dig("access", "evidence") == "official-summary" }
+    reference["contentReview"]["depth"] = "full-primary-source"
+    assert_error(hostile, "contentReview.depth is stronger than access evidence")
+  end
+
+  def test_accessed_and_not_reviewed_state_remains_valid
+    positive = clone_catalog
+    positive["references"][0]["contentReview"] = not_reviewed_state
+    assert_empty MethodologyReferenceCatalog.validate(positive)
+  end
+
+  def test_not_accessed_and_not_reviewed_state_remains_valid
+    positive = clone_catalog
+    reference = positive["references"][0]
+    reference["access"] = {
+      "status" => "not-accessed",
+      "date" => nil,
+      "evidence" => "not-accessed",
+      "reason" => "Access evidence is unavailable."
+    }
+    reference["contentReview"] = not_reviewed_state
+    assert_empty MethodologyReferenceCatalog.validate(positive)
+  end
+
+  def test_accessed_and_reviewed_compatible_depth_remains_valid
+    assert_empty MethodologyReferenceCatalog.validate(clone_catalog)
+  end
+
   def test_wrong_gaep_target_version
     hostile = clone_catalog
     hostile["mappings"][0]["gaepTarget"]["artifactVersion"] = "0.2.0"
@@ -279,6 +371,19 @@ class MethodologyReferenceCatalogIntegrityTest < Minitest::Test
 
   def first_external_mapping(catalog)
     catalog["mappings"].find { |entry| !entry["gaepNative"] }
+  end
+
+  def snapshot_reference(catalog)
+    catalog["references"].find { |entry| entry["versionCertainty"] == "snapshot-bound" }
+  end
+
+  def not_reviewed_state
+    {
+      "status" => "not-reviewed",
+      "date" => nil,
+      "depth" => "not-reviewed",
+      "reason" => "Content review is pending."
+    }
   end
 
   def assert_error(catalog, fragment, raw_text: nil)
