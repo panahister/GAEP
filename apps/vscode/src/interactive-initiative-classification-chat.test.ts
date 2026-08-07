@@ -14,6 +14,7 @@ import {
   isInitiativeClassificationChatState,
   parseInitiativeClassificationProposal,
   startInitiativeClassificationChat,
+  suggestedInitiativeClassificationBrief,
   suggestedInitiativeClassificationResolution,
 } from "./interactive-initiative-classification-chat.js"
 import type { ProductChatAdvisorSelection } from "./interactive-product-chat.js"
@@ -87,6 +88,31 @@ describe("interactive Initiative classification chat", () => {
     expect(resolution).toContain("consequential-gate condition")
     expect(resolution).toContain(classification.unresolvedQuestions[0])
     expect(resolution).toContain("unresolvedQuestions empty")
+  })
+
+  it("can resolve open questions from a new unaccepted proposal without requiring a prior governed classification", () => {
+    let state = startInitiativeClassificationChat(claude, context)
+    state = assessInitiativeClassification(state, "Create the strongest supported classification from the governed context.", {
+      assessment: "The first complete candidate preserves one explicit uncertainty.",
+      strengths: [],
+      gaps: ["Policy scope remains unresolved."],
+      proposedAnswer: JSON.stringify(classification),
+    })
+
+    const resolution = suggestedInitiativeClassificationResolution(state)
+    expect(resolution).toContain(classification.unresolvedQuestions[0])
+    expect(state.currentClassification).toBeUndefined()
+  })
+
+  it("can draft a complete first classification from governed context without making the human write the contract", () => {
+    const state = startInitiativeClassificationChat(claude, context)
+    const brief = suggestedInitiativeClassificationBrief(state)
+
+    expect(brief).toContain("GAEP-generated Initiative classification proposal")
+    expect(brief).toContain(context.initiative.title)
+    expect(brief).toContain(context.product.name)
+    expect(brief).toContain("unresolvedQuestions")
+    expect(brief).toContain("/accept")
   })
 
   it("parses, assesses, accepts, and exposes only an explicitly reviewed classification", () => {

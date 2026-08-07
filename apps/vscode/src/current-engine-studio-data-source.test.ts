@@ -99,6 +99,8 @@ import {
   type ExistingStudioCommand,
 } from "./current-engine-studio-data-source.js"
 import type { PortableDesignSnapshot } from "./portable-design-workflow.js"
+import type { AdoptionAccelerationPlan } from "./adoption-acceleration.js"
+import { existingProductJourneyCheckpointIds } from "./existing-product-journey-coverage.js"
 import { isStudioSnapshot, studioRoutes } from "./studio-protocol.js"
 
 const workspacePath = "/machine-only/example-product"
@@ -5100,6 +5102,7 @@ interface HarnessOptions {
   designDriftDetectionProjection?: DesignDriftDetectionProjection
   designDriftDetectionProjectionError?: Error
   commandResult?: unknown
+  adoptionAcceleration?: AdoptionAccelerationPlan
 }
 
 function harness(options: HarnessOptions = {}) {
@@ -5542,6 +5545,7 @@ function harness(options: HarnessOptions = {}) {
       }
       return options.initiatives ?? [initiative]
     },
+    adoptionAcceleration: async () => options.adoptionAcceleration,
     listHandoffs: async () => {
       if (options.handoffObservationError) throw options.handoffObservationError
       const records = options.handoffs ?? []
@@ -5601,6 +5605,77 @@ function harness(options: HarnessOptions = {}) {
 }
 
 describe("current-engine Product Studio data source", () => {
+  it("projects committed Adopt evidence as captured Source Intake and reviewable checkpoint candidates", async () => {
+    const adoptionAcceleration: AdoptionAccelerationPlan = {
+      schemaVersion: 1,
+      kind: "gaep-existing-product-adoption-acceleration",
+      product: { id: product.id, revision: product.revision ?? 1, digest: canonicalDigest(product) },
+      committedAt: "2026-08-05T12:00:00.000Z",
+      productAssessment: "Evidence-backed Product candidate.",
+      productGaps: [],
+      journeyAssessment: "Five candidates are ready and later work needs decisions.",
+      sources: [{
+        label: "requirements.md",
+        format: "md",
+        extraction: "utf8-text",
+        byteLength: 42,
+        contentDigest: `sha256:${"a".repeat(64)}`,
+        limitations: [],
+      }],
+      checkpoints: existingProductJourneyCheckpointIds.map((checkpoint, index) => ({
+        checkpoint,
+        coverage: index < 7 ? "ready-to-propose" as const : "partially-supported" as const,
+        evidence: `Evidence for ${checkpoint}`,
+        candidateProposal: `Proposal for ${checkpoint}`,
+        missingDecisions: index < 7 ? "None identified" : "Human decision required",
+        evidenceDigest: canonicalDigest({ checkpoint, evidence: `Evidence for ${checkpoint}` }),
+        proposalDigest: canonicalDigest({
+          checkpoint,
+          candidateProposal: `Proposal for ${checkpoint}`,
+          missingDecisions: index < 7 ? "None identified" : "Human decision required",
+        }),
+      })),
+      authorityBoundary: "non-governed-candidates-require-checkpoint-review-and-explicit-commit",
+      planDigest: `sha256:${"b".repeat(64)}`,
+    }
+    const { source, commands } = harness({ initiatives: [], adoptionAcceleration })
+
+    const snapshot = await source.readSnapshot("overview")
+    expect(snapshot.page.kind).toBe("overview")
+    if (snapshot.page.kind !== "overview") throw new Error("Expected overview")
+    expect(isStudioSnapshot(snapshot)).toBe(true)
+    expect(snapshot.page.journey.recordedCount).toBe(2)
+    expect(snapshot.page.journey.candidateCount).toBeGreaterThan(0)
+    expect(snapshot.page.journey.decisionCount).toBeGreaterThan(0)
+    expect(snapshot.page.journey.checkpoints.find((row) => row.id === "source-intake")).toMatchObject({
+      state: "complete",
+      summary: expect.stringContaining("captured by Adopt"),
+    })
+    const initiativeCandidate = snapshot.page.journey.checkpoints.find((row) => row.id === "initiative-definition")
+    expect(initiativeCandidate).toMatchObject({
+      state: "candidate-ready",
+      reviewAction: { label: "Review and commit proposal", action: { kind: "review-adoption-candidate" } },
+    })
+    expect(snapshot.page.journey.checkpoints.find((row) => row.id === "product-discovery")).toMatchObject({
+      state: "needs-decisions",
+      details: expect.arrayContaining([{ label: "Supporting evidence", value: "Evidence for product-discovery" }]),
+    })
+    expect(snapshot.page.journey.checkpoints.find((row) => row.id === "initiative-classification")?.reviseAction).toMatchObject({
+      label: "Start Initiative classification",
+      action: { kind: "continue-product-journey" },
+    })
+    if (!initiativeCandidate?.reviewAction) throw new Error("Expected candidate review action")
+    await source.execute(initiativeCandidate.reviewAction.action, {
+      requestId: "request-adoption-candidate",
+      expectedContextGeneration: snapshot.contextGeneration,
+      expectedSnapshotRevision: snapshot.snapshotRevision,
+    })
+    expect(commands.at(-1)).toEqual({
+      command: "gaep.openInteractiveChat",
+      args: ["adopt", "review:initiative-definition", true, true],
+    })
+  })
+
   it("produces protocol-valid honest snapshots for every approved route", async () => {
     const { source } = harness()
     for (const route of studioRoutes) {
@@ -5969,16 +6044,45 @@ describe("current-engine Product Studio data source", () => {
     expect(commands).toEqual(expect.arrayContaining([
       { command: "gaep.openInteractiveChat", args: ["revise", "", true] },
       { command: "gaep.openInteractiveChat", args: ["initiative", "", true] },
-      { command: "gaep.openInteractiveChat", args: ["classification", "", true] },
-      { command: "gaep.openInteractiveChat", args: ["applicability", "", true] },
+      { command: "gaep.openInteractiveChat", args: ["continue"] },
       { command: "gaep.openInteractiveChat", args: ["intake", "", true] },
       { command: "gaep.openInteractiveChat", args: ["baseline", "", true] },
       { command: "gaep.openInteractiveChat", args: ["provenance", "", true] },
-      { command: "gaep.openProductStudio", args: ["direction"] },
-      { command: "gaep.openProductStudio", args: ["architecture"] },
-      { command: "gaep.openProductStudio", args: ["risks-decisions"] },
-      { command: "gaep.openProductStudio", args: ["readiness"] },
+      { command: "gaep.openInteractiveChat", args: ["author", "group:product-discovery", true, true] },
+      { command: "gaep.openInteractiveChat", args: ["author", "group:business-architecture", true, true] },
+      { command: "gaep.openInteractiveChat", args: ["author", "group:solution-security-architecture", true, true] },
+      { command: "gaep.openInteractiveChat", args: ["author", "group:detailed-design-assurance", true, true] },
+      { command: "gaep.openInteractiveChat", args: ["author", "group:p0-p4-readiness", true, true] },
     ]))
+  })
+
+  it("routes checkpoint review actions to the visual Product Journey review positioned at the selected checkpoint", async () => {
+    const { source, commands } = harness()
+    const snapshot = await source.readSnapshot("overview")
+    if (snapshot.page.kind !== "overview") throw new Error("Expected Product Journey Overview")
+    const canonicalIds = [
+      "product-discovery",
+      "business-architecture",
+      "solution-security-architecture",
+      "detailed-design-assurance",
+      "p0-p4-readiness",
+    ] as const
+
+    for (const [index, id] of canonicalIds.entries()) {
+      const checkpoint = snapshot.page.journey.checkpoints.find((candidate) => candidate.id === id)
+      if (!checkpoint?.reviewAction) throw new Error(`Missing review action for ${id}`)
+      expect(checkpoint.reviewAction.action).toEqual({ kind: "review-product-journey-checkpoint", checkpointId: id })
+      expect((await source.execute(checkpoint.reviewAction.action, {
+        requestId: `review-checkpoint-${index}`,
+        expectedContextGeneration: snapshot.contextGeneration,
+        expectedSnapshotRevision: snapshot.snapshotRevision,
+      })).status).toBe("accepted")
+    }
+
+    expect(commands).toEqual(canonicalIds.map((id) => ({
+      command: "gaep.reviewProductJourneyCheckpoint",
+      args: [id],
+    })))
   })
 
   it("requires both the P0–P4 readiness gate and P5 handoff before completing Phase 1", async () => {
@@ -6051,6 +6155,27 @@ describe("current-engine Product Studio data source", () => {
       state: "complete",
       summary: "A governed readiness assessment and editable pre-Figma handoff package are recorded.",
     })
+
+    // Hierarchical phases: every checkpoint carries an ordered phase grouping.
+    for (const checkpoint of withHandoff.page.journey.checkpoints) {
+      expect(checkpoint.phase, `${checkpoint.id} must carry a phase grouping`).toMatchObject({
+        id: expect.any(String),
+        label: expect.any(String),
+        order: expect.any(Number),
+      })
+    }
+    expect(withHandoff.page.journey.checkpoints.find((row) => row.id === "product-definition")?.phase)
+      .toMatchObject({ id: "foundation", order: 1 })
+    expect(withHandoff.page.journey.checkpoints.find((row) => row.id === "product-discovery")?.phase)
+      .toMatchObject({ id: "product-discovery", order: 3 })
+
+    // Inline canonical content: sub-records summarize governed metadata instead of a bare "Recorded".
+    const discovery = withHandoff.page.journey.checkpoints.find((row) => row.id === "product-discovery")
+    const understanding = discovery?.details?.find((detail) => detail.label === "Business understanding")
+    expect(understanding?.kind).toBe("list")
+    expect(understanding?.value).toContain("3 objectives")
+    expect(understanding?.value).toContain("Governed · revision 2")
+    expect(understanding?.value).not.toContain("sha256")
   })
 
   it("keeps recorded Classification visible as attention without sending a completed Applicability journey backward", async () => {

@@ -11,6 +11,7 @@
     "dist/extension.cjs",
     "dist/studio-client.js",
     "media/gaep.svg",
+    "media/GAEP_GUIDE.md",
     "README.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md"
@@ -46,6 +47,10 @@
     "onCommand:gaep.selectProductChatAgent",
     "onCommand:gaep.selectProductChatModel",
     "onCommand:gaep.openProductStudio",
+    "onCommand:gaep.openGuide",
+    "onCommand:gaep.addReferenceLink",
+    "onCommand:gaep.manageReferenceLinks",
+    "onCommand:gaep.reviewProductJourneyCheckpoint",
     "onCommand:gaep.exportProductJourneyMarkdown",
     "onCommand:gaep.initializeProduct",
     "onCommand:gaep.selectWorkspaceRoot",
@@ -114,9 +119,29 @@
         "icon": "$(layout)"
       },
       {
+        "command": "gaep.openGuide",
+        "title": "GAEP: Open Guide",
+        "icon": "$(book)"
+      },
+      {
+        "command": "gaep.reviewProductJourneyCheckpoint",
+        "title": "GAEP: Review Product Journey (visual)",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "gaep.addReferenceLink",
+        "title": "GAEP: Add Useful Link",
+        "icon": "$(link)"
+      },
+      {
+        "command": "gaep.manageReferenceLinks",
+        "title": "GAEP: Manage Useful Links",
+        "icon": "$(references)"
+      },
+      {
         "command": "gaep.exportProductJourneyMarkdown",
-        "title": "GAEP: Export Product Journey as Markdown",
-        "icon": "$(markdown)"
+        "title": "GAEP: Export Product Journey",
+        "icon": "$(folder-library)"
       },
       {
         "command": "gaep.selectWorkspaceRoot",
@@ -394,6 +419,10 @@
           {
             "name": "author",
             "description": "Generate, challenge, review, and record the next Product Journey record"
+          },
+          {
+            "name": "inspect",
+            "description": "Inspect exact JSON for the active canonical Product Journey candidate"
           },
           {
             "name": "mode",

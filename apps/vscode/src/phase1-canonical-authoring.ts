@@ -95,10 +95,187 @@ export const phase1CanonicalRecordCatalog = definitions.map(({ kind, label, grou
   group,
 }))
 
+export const phase1CanonicalGroupByCheckpoint = {
+  "product-discovery": "Product discovery",
+  "business-architecture": "Business architecture",
+  "solution-security-architecture": "Solution and security architecture",
+  "detailed-design-assurance": "Detailed design and assurance",
+  "p0-p4-readiness": "Pre-Figma readiness and handoff",
+} as const
+
+export type Phase1CanonicalGroupCheckpointId = keyof typeof phase1CanonicalGroupByCheckpoint
+
+export function phase1CanonicalInputJsonSchema(kind: Phase1CanonicalRecordKind): object {
+  return toJSONSchema(definition(kind).schema, {
+    target: "draft-2020-12",
+    unrepresentable: "any",
+  }) as object
+}
+
+export function phase1CanonicalAuthoringFailureMarkdown(input: {
+  label: string
+  advisorLabel: string
+  error: unknown
+  priorCandidatePreserved: boolean
+}): string {
+  const message = input.error instanceof Error ? input.error.message : ""
+  const authenticationUnavailable = /authentication is unavailable|not logged in|login required/iu.test(message)
+  const interrupted = /interrupted|timed out|timeout/iu.test(message)
+  const contractSchemaRejected = /invalid_json_schema|invalid schema for response_format/iu.test(message)
+  const cause = contractSchemaRejected
+    ? "**GAEP's provider-facing canonical schema was rejected before the selected advisor could generate a candidate.**"
+    : authenticationUnavailable
+    ? `**${input.advisorLabel} could not authenticate for this governed authoring request.**`
+    : interrupted
+      ? `**${input.advisorLabel}'s managed authoring turn was interrupted before a contract-valid candidate was completed.**`
+      : `**${input.advisorLabel} did not complete this governed authoring request.**`
+  return [
+    `# ${input.label} authoring unavailable`,
+    "",
+    cause,
+    "",
+    contractSchemaRejected
+      ? "This is an internal GAEP contract-translation failure, not a Product-data or agent-selection problem. No retry with the same extension build can repair it; update GAEP, then generate the proposal again."
+      : input.priorCandidatePreserved
+      ? "A prior advisory candidate was received but did not pass the canonical contract. It remains uncommitted and can be regenerated through a fresh bounded retry."
+      : "No contract-valid Product Journey candidate or review was produced. Retry the canonical draft, switch the agent/model, or inspect Diagnostics.",
+    "",
+    "> No Product Journey record, revision, downstream realignment, approval, readiness, implementation, release, or action authority was created.",
+  ].join("\n")
+}
+
 function definition(kind: Phase1CanonicalRecordKind): Definition {
   const found = definitions.find((candidate) => candidate.kind === kind)
   if (!found) throw new Error(`Unknown Product Journey record kind: ${kind}`)
   return found
+}
+
+type JsonRecord = Record<string, unknown>
+
+function jsonRecord(value: unknown): JsonRecord | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as JsonRecord
+    : undefined
+}
+
+function cloneJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(cloneJsonValue)
+  const record = jsonRecord(value)
+  if (!record) return value
+  return Object.fromEntries(Object.entries(record).map(([key, child]) => [key, cloneJsonValue(child)]))
+}
+
+function valueAtPath(value: unknown, path: readonly PropertyKey[]): unknown {
+  let current = value
+  for (const segment of path) {
+    if (typeof segment === "number") {
+      if (!Array.isArray(current)) return undefined
+      current = current[segment]
+      continue
+    }
+    if (typeof segment !== "string") return undefined
+    const record = jsonRecord(current)
+    if (!record) return undefined
+    current = record[segment]
+  }
+  return current
+}
+
+function textField(value: unknown, field: string): string | undefined {
+  const candidate = jsonRecord(value)?.[field]
+  return typeof candidate === "string" ? candidate : undefined
+}
+
+function numberField(value: unknown, field: string): number | undefined {
+  const candidate = jsonRecord(value)?.[field]
+  return typeof candidate === "number" ? candidate : undefined
+}
+
+function paddedRevision(value: unknown): string {
+  return String(numberField(value, "revision") ?? 0).padStart(12, "0")
+}
+
+function canonicalOrderingComparator(message: string, values: readonly unknown[]): ((left: unknown, right: unknown) => number) | undefined {
+  if (values.every((value) => typeof value === "string")) {
+    return (left, right) => String(left).localeCompare(String(right))
+  }
+  if (/Exact Source references/iu.test(message) && values.every((value) => textField(value, "sourceId") !== undefined)) {
+    return (left, right) =>
+      textField(left, "sourceId")!.localeCompare(textField(right, "sourceId")!) ||
+      (numberField(left, "sourceRevision") ?? 0) - (numberField(right, "sourceRevision") ?? 0)
+  }
+  if (/(?:Decision|Evidence) Subject|related-record|Readiness output subjects|Handoff subjects/iu.test(message) &&
+      values.every((value) => textField(value, "recordKind") !== undefined && textField(value, "recordId") !== undefined)) {
+    return (left, right) => [
+      textField(left, "recordKind")!, textField(left, "recordId")!, paddedRevision(left), textField(left, "relationship") ?? "",
+    ].join(":").localeCompare([
+      textField(right, "recordKind")!, textField(right, "recordId")!, paddedRevision(right), textField(right, "relationship") ?? "",
+    ].join(":"))
+  }
+  if (/Glossary terms/iu.test(message) && values.every((value) => textField(value, "term") !== undefined)) {
+    return (left, right) => textField(left, "term")!.toLocaleLowerCase("en-US")
+      .localeCompare(textField(right, "term")!.toLocaleLowerCase("en-US"))
+  }
+  if (/element ordering/iu.test(message) &&
+      values.every((value) => textField(value, "elementKind") !== undefined && textField(value, "elementKey") !== undefined)) {
+    return (left, right) => `${textField(left, "elementKind")}:${textField(left, "elementKey")}`
+      .localeCompare(`${textField(right, "elementKind")}:${textField(right, "elementKey")}`)
+  }
+  const field = /key ordering/iu.test(message) && values.every((value) => textField(value, "key") !== undefined)
+    ? "key"
+    : /ID ordering/iu.test(message) && values.every((value) => textField(value, "requirementId") !== undefined)
+      ? "requirementId"
+      : /identity ordering/iu.test(message) && values.every((value) => textField(value, "id") !== undefined)
+        ? "id"
+        : values.every((value) => textField(value, "outputKind") !== undefined)
+          ? "outputKind"
+          : values.every((value) => textField(value, "dimension") !== undefined)
+            ? "dimension"
+            : values.every((value) => textField(value, "key") !== undefined)
+              ? "key"
+              : values.every((value) => textField(value, "requirementId") !== undefined)
+                ? "requirementId"
+                : values.every((value) => textField(value, "id") !== undefined)
+                  ? "id"
+                  : undefined
+  return field
+    ? (left, right) => textField(left, field)!.localeCompare(textField(right, field)!)
+    : undefined
+}
+
+function canonicalOrderingIssue(message: string): boolean {
+  return /canonical(?: [A-Za-z-]+)* ordering/iu.test(message)
+}
+
+/**
+ * Canonical ordering is a storage-contract concern that JSON Schema cannot express.
+ * Normalize only arrays that the canonical Zod contract explicitly reports as
+ * unordered; sequence arrays that do not raise such an issue remain untouched.
+ */
+export function normalizePhase1CanonicalOrdering(kind: Phase1CanonicalRecordKind, value: unknown): unknown {
+  const schema = definition(kind).schema
+  const candidate = cloneJsonValue(value)
+  for (let pass = 0; pass < 8; pass += 1) {
+    const parsed = schema.safeParse(candidate)
+    if (parsed.success) return candidate
+    const issues = parsed.error.issues
+      .filter((issue) => canonicalOrderingIssue(issue.message))
+      .sort((left, right) => right.path.length - left.path.length)
+    let changed = false
+    for (const issue of issues) {
+      const values = valueAtPath(candidate, issue.path)
+      if (!Array.isArray(values) || values.length < 2) continue
+      const comparator = canonicalOrderingComparator(issue.message, values)
+      if (!comparator) continue
+      const ordered = [...values].sort(comparator)
+      if (ordered.some((entry, index) => entry !== values[index])) {
+        values.splice(0, values.length, ...ordered)
+        changed = true
+      }
+    }
+    if (!changed) break
+  }
+  return candidate
 }
 
 function exactReference(value: { id: string; revision: number }): object {
@@ -314,7 +491,7 @@ export async function nextPhase1AuthoringTarget(
     group: next.group,
     ordinal: definitions.indexOf(next) + 1,
     total: definitions.length,
-    schema: toJSONSchema(next.schema, { target: "draft-2020-12", unrepresentable: "any" }) as object,
+    schema: phase1CanonicalInputJsonSchema(next.kind),
     operation: existing ? "revise" : "create",
     ...(existing ? {
       current: {
@@ -397,7 +574,8 @@ export function validatePhase1CanonicalDraft(kind: Phase1CanonicalRecordKind, va
   value?: unknown
   errors: string[]
 } {
-  const parsed = definition(kind).schema.safeParse(value)
+  const normalized = normalizePhase1CanonicalOrdering(kind, value)
+  const parsed = definition(kind).schema.safeParse(normalized)
   if (parsed.success) return { valid: true, value: parsed.data, errors: [] }
   return {
     valid: false,

@@ -290,6 +290,9 @@ export function editProductField(
   key: keyof ProductInitializationAnswers,
 ): ProductInitializationChatState {
   if (state.phase !== "review") throw new Error("Only a complete Product draft can edit a selected field")
+  if (state.workflow !== "revision") {
+    throw new Error("An uncommitted Product initialization proposal is read-only until its first explicit commit")
+  }
   const step = productInitializationQuestions.findIndex((question) => question.key === key)
   if (step < 0) throw new Error("The Product field is not supported by the interactive revision workflow")
   return { ...state, phase: "collecting", step, pending: undefined }
@@ -456,6 +459,7 @@ export function goBackProductInitialization(state: ProductInitializationChatStat
   if (state.workflow === "revision") {
     return { ...state, phase: "review", step: productInitializationQuestions.length, pending: undefined }
   }
+  if (state.phase === "review") return state
   const step = Math.max(0, Math.min(state.step, productInitializationQuestions.length) - 1)
   const question = productInitializationQuestions[step]
   const answers = { ...state.answers }

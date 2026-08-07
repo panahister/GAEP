@@ -50,8 +50,18 @@ import { productInitializationPresentation } from "./product-initialization.js"
 import { registerGaepProductChat } from "./product-chat-participant.js"
 import { supportedProductChatAttachmentExtensions } from "./product-chat-attachments.js"
 import { ProductChatFileSelection } from "./product-chat-file-selection.js"
-import { resolveProductChatLauncherCommand } from "./product-chat-launcher.js"
+import {
+  resolveProductChatLauncherCommand,
+  shouldStartFreshProductChatSession,
+  shouldSubmitProductChatLauncher,
+} from "./product-chat-launcher.js"
 import { recordExactCandidateSources } from "./product-chat-source-recording.js"
+import {
+  adoptionPlanMatchesProduct,
+  createAdoptionAccelerationPlan,
+  readAdoptionAccelerationPlan,
+  writeAdoptionAccelerationPlan,
+} from "./adoption-acceleration.js"
 import {
   candidateBaselineInput,
   initiativeSourceProvenanceInput,
@@ -63,7 +73,8 @@ import {
   nextPhase1AuthoringTarget,
   validatePhase1CanonicalDraft,
 } from "./phase1-canonical-authoring.js"
-import { buildProductJourneyMarkdown } from "./product-journey-markdown-export.js"
+import { buildProductJourneyExportFiles, buildProductJourneyReview } from "./product-journey-markdown-export.js"
+import { addReferenceLink, readReferenceLinks, removeReferenceLink } from "./reference-links.js"
 import {
   isProductChatAdvisorSelection,
   productInitializationQuestions,
@@ -980,7 +991,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const runtime = await requireRuntime()
       const initiative = await withProductDomainMutation(() => runtime.engine.createInitiative(input, actorId))
       refresh()
-      return { title: initiative.title, state: initiative.state, revision: initiative.revision ?? 1 }
+      return { id: initiative.id, title: initiative.title, state: initiative.state, revision: initiative.revision ?? 1 }
     },
     reviseInitiative: async (initiativeId, input, expectedRevision) => {
       const runtime = await requireRuntime()
@@ -1073,6 +1084,62 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       refresh()
       return result
     },
+    persistAdoptionAcceleration: async (review) => {
+      const runtime = await requireRuntime()
+      const product = await runtime.engine.readProduct()
+      const plan = createAdoptionAccelerationPlan({
+        product: {
+          id: product.id,
+          revision: product.revision ?? 1,
+          digest: canonicalDigest(product),
+        },
+        review,
+        committedAt: new Date().toISOString(),
+      })
+      await writeAdoptionAccelerationPlan(runtime.path, plan)
+      refresh()
+      return { sourceCount: plan.sources.length, checkpointCount: plan.checkpoints.length }
+    },
+    adoptionAcceleration: async () => {
+      const runtime = await requireRuntime()
+      const plan = await readAdoptionAccelerationPlan(runtime.path)
+      if (!plan) return undefined
+      const product = await runtime.engine.readProduct()
+      return adoptionPlanMatchesProduct(plan, {
+        id: product.id,
+        revision: product.revision,
+        digest: canonicalDigest(product),
+      }) ? plan : undefined
+    },
+    consumeAdoptionSources: async (initiativeId) => {
+      const runtime = await requireRuntime()
+      const plan = await readAdoptionAccelerationPlan(runtime.path)
+      if (!plan) throw new Error("No committed adoption candidate set is available")
+      const product = await runtime.engine.readProduct()
+      if (!adoptionPlanMatchesProduct(plan, {
+        id: product.id,
+        revision: product.revision,
+        digest: canonicalDigest(product),
+      })) throw new Error("The adoption candidate set does not match the current Product revision")
+      const initiative = currentInitiative(await readInitiatives(runtime.path))
+      if (!initiative || initiative.id !== initiativeId) throw new Error("The adoption candidate set no longer matches the current Initiative")
+      const result = await withProductDomainMutation(async () => {
+        const existing = await runtime.engine.sourceGovernance.listSources(initiativeId)
+        return recordExactCandidateSources({
+          initiativeId,
+          sources: plan.sources,
+          actorId,
+          assessedAt: plan.committedAt,
+          existing: existing.map((source) => ({ id: source.id, title: source.title, contentDigest: source.contentDigest })),
+          create: async (input) => {
+            const source = await runtime.engine.sourceGovernance.createSource(input, actorId)
+            return { id: source.id, title: source.title, contentDigest: source.contentDigest }
+          },
+        })
+      })
+      refresh()
+      return result
+    },
     sourceCheckpoint: async (initiativeId) => {
       const runtime = await requireRuntime()
       const [sources, baselines, provenance, assessment] = await Promise.all([
@@ -1088,6 +1155,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return {
         sourceCount: sources.length,
         sourceTitles: sources.map((source) => source.title),
+        sourceMembershipDigest: sources.length > 0
+          ? canonicalDigest(candidateBaselineInput(initiativeId, sources).members)
+          : canonicalDigest([]),
         ...(baseline && current ? { baseline: {
           id: baseline.id,
           revision: baseline.revision,
@@ -1284,15 +1354,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     requestedCommand?: unknown,
     requestedPrompt?: unknown,
     freshSession?: unknown,
+    executeImmediately?: unknown,
   ) => {
     const command = resolveProductChatLauncherCommand(requestedCommand)
     const prompt = typeof requestedPrompt === "string" ? requestedPrompt.trim() : ""
-    if (freshSession === true) {
+    if (shouldStartFreshProductChatSession(requestedCommand, freshSession)) {
       await vscode.commands.executeCommand("workbench.action.chat.newChat")
     }
     await vscode.commands.executeCommand("workbench.action.chat.open", {
       query: `@gaep /${command}${prompt ? ` ${prompt}` : " "}`,
-      isPartialQuery: true,
+      isPartialQuery: !shouldSubmitProductChatLauncher(requestedCommand, executeImmediately),
       mode: "ask",
       modelSelector: {
         vendor: "gaep-workflow",
@@ -1394,6 +1465,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     recoveryDiagnostic: () => recoveryDiagnostic,
     hasGaepState: async () => selectedFolder ? exists(join(selectedFolder.uri.fsPath, ".gaep")) : false,
     listInitiatives: async () => selectedFolder ? readInitiatives(selectedFolder.uri.fsPath) : [],
+    adoptionAcceleration: async () => {
+      if (!selectedFolder || !engine) return undefined
+      const plan = await readAdoptionAccelerationPlan(selectedFolder.uri.fsPath)
+      if (!plan) return undefined
+      const product = await engine.readProduct()
+      return adoptionPlanMatchesProduct(plan, {
+        id: product.id,
+        revision: product.revision,
+        digest: canonicalDigest(product),
+      }) ? plan : undefined
+    },
     listHandoffs: async () => {
       const runtimeEngine = engine
       if (!runtimeEngine) return {
@@ -1486,22 +1568,106 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("gaep.openProductStudio", async (route?: unknown) => {
       await studioProvider?.open(isStudioRoute(route) ? route : "overview")
     }),
+    vscode.commands.registerCommand("gaep.reviewProductJourneyCheckpoint", safely(async (checkpointId?: unknown) => {
+      const runtime = await requireRuntime()
+      const initiative = currentInitiative(await readInitiatives(runtime.path))
+      if (!initiative) throw new Error("Create or select a current Initiative before reviewing the Product Journey")
+      const review = await buildProductJourneyReview(runtime.engine, initiative.id, {
+        referenceLinks: await readReferenceLinks(runtime.path),
+      })
+      const document = await vscode.workspace.openTextDocument({ content: review.markdown, language: "markdown" })
+      const editor = await vscode.window.showTextDocument(document, { preview: false })
+      const selected = review.sections.find((section) => section.id === checkpointId)
+      if (selected) {
+        const line = document.getText().split("\n").findIndex((text) => text === selected.heading)
+        if (line >= 0) {
+          const range = new vscode.Range(line, 0, line, 0)
+          editor.selection = new vscode.Selection(range.start, range.start)
+          editor.revealRange(range, vscode.TextEditorRevealType.AtTop)
+        }
+      }
+      try {
+        await vscode.commands.executeCommand("markdown.showPreviewToSide", document.uri)
+      } catch {
+        /* Markdown preview unavailable; the source document remains open for review. */
+      }
+    })),
+    vscode.commands.registerCommand("gaep.addReferenceLink", safely(async () => {
+      const runtime = await requireRuntime()
+      const url = (await vscode.window.showInputBox({
+        title: "Add useful link (1/2)",
+        prompt: "Paste an http(s) URL GAEP may use as a candidate reference. GAEP will not fetch it.",
+        placeHolder: "https://…",
+        ignoreFocusOut: true,
+        validateInput: (value) => /^https?:\/\/\S+$/u.test(value.trim()) ? undefined : "Enter an http:// or https:// URL.",
+      }))?.trim()
+      if (!url) return
+      const label = (await vscode.window.showInputBox({
+        title: "Add useful link (2/2)",
+        prompt: "A short label for this link.",
+        ignoreFocusOut: true,
+        validateInput: (value) => value.trim() ? undefined : "A short label is required.",
+      }))?.trim()
+      if (!label) return
+      const note = (await vscode.window.showInputBox({
+        title: "Add useful link — note (optional)",
+        prompt: "Optional note on why this link is useful.",
+        ignoreFocusOut: true,
+      }))?.trim() ?? ""
+      const links = await addReferenceLink(runtime.path, { label, url, note })
+      void vscode.window.showInformationMessage(`Reference link saved (${links.length} total). GAEP will offer it as a candidate reference and never fetches it.`)
+    })),
+    vscode.commands.registerCommand("gaep.manageReferenceLinks", safely(async () => {
+      const runtime = await requireRuntime()
+      const links = await readReferenceLinks(runtime.path)
+      if (links.length === 0) {
+        const choice = await vscode.window.showInformationMessage("No reference links yet.", "Add link")
+        if (choice === "Add link") await vscode.commands.executeCommand("gaep.addReferenceLink")
+        return
+      }
+      const picked = await vscode.window.showQuickPick(
+        links.map((link) => ({ label: link.label, description: link.url, detail: link.note || undefined, id: link.id })),
+        { title: "Reference links — pick one to remove (Esc to keep all)", ignoreFocusOut: true },
+      )
+      if (!picked) return
+      const remaining = await removeReferenceLink(runtime.path, picked.id)
+      void vscode.window.showInformationMessage(`Removed. ${remaining.length} reference link(s) remain.`)
+    })),
+    vscode.commands.registerCommand("gaep.openGuide", safely(async () => {
+      const guide = vscode.Uri.joinPath(context.extensionUri, "media", "GAEP_GUIDE.md")
+      try {
+        await vscode.commands.executeCommand("markdown.showPreview", guide)
+      } catch {
+        const document = await vscode.workspace.openTextDocument(guide)
+        await vscode.window.showTextDocument(document, { preview: false })
+      }
+    })),
     vscode.commands.registerCommand("gaep.exportProductJourneyMarkdown", safely(async () => {
       const runtime = await requireRuntime()
       const initiative = currentInitiative(await readInitiatives(runtime.path))
       if (!initiative) throw new Error("Create or select a current Initiative before exporting the Product Journey")
-      const markdown = await buildProductJourneyMarkdown(runtime.engine, initiative.id)
-      const target = await vscode.window.showSaveDialog({
-        title: "Export Product Journey as Markdown",
-        defaultUri: vscode.Uri.joinPath(vscode.Uri.file(runtime.path), "GAEP_PRODUCT_JOURNEY.md"),
-        filters: { Markdown: ["md"] },
-        saveLabel: "Export Product Journey",
+      const picked = await vscode.window.showOpenDialog({
+        title: "Export Product Journey — choose a destination folder",
+        canSelectFiles: false,
+        canSelectFolders: true,
+        canSelectMany: false,
+        defaultUri: vscode.Uri.file(runtime.path),
+        openLabel: "Export here",
       })
-      if (!target) return
-      await vscode.workspace.fs.writeFile(target, new TextEncoder().encode(markdown))
-      const document = await vscode.workspace.openTextDocument(target)
-      await vscode.window.showTextDocument(document, { preview: false })
-      void vscode.window.showInformationMessage("GAEP Product Journey Markdown exported")
+      const parent = picked?.[0]
+      if (!parent) return
+      const files = await buildProductJourneyExportFiles(runtime.engine, initiative.id, {
+        referenceLinks: await readReferenceLinks(runtime.path),
+      })
+      const root = vscode.Uri.joinPath(parent, "GAEP_Product_Journey")
+      const encoder = new TextEncoder()
+      for (const file of files) {
+        const target = vscode.Uri.joinPath(root, ...file.path.split("/"))
+        await vscode.workspace.fs.writeFile(target, encoder.encode(file.contents))
+      }
+      const readme = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(root, "README.md"))
+      await vscode.window.showTextDocument(readme, { preview: false })
+      void vscode.window.showInformationMessage(`GAEP Product Journey exported to a folder (${files.length} files)`)
     })),
   )
 

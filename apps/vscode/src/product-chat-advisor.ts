@@ -213,10 +213,132 @@ function buildStructuredCanonicalPrompt(request: ProductAnswerChallengeRequest):
   ].join("\n")
 }
 
-function claudeStructuredSchema(value: unknown): object {
+function structuredOutputSchema(value: unknown): object {
   const schema = structuredClone(value) as Record<string, unknown>
   delete schema.$schema
   return schema
+}
+
+function jsonRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value))
+}
+
+function schemaAllowsNull(value: unknown): boolean {
+  if (!jsonRecord(value)) return false
+  if (value.type === "null") return true
+  if (Array.isArray(value.type) && value.type.includes("null")) return true
+  return [value.anyOf, value.oneOf].some((branches) =>
+    Array.isArray(branches) && branches.some(schemaAllowsNull))
+}
+
+function nullableStructuredSchema(value: unknown): unknown {
+  return schemaAllowsNull(value) ? value : { anyOf: [value, { type: "null" }] }
+}
+
+function normalizeCodexSchemaNode(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(normalizeCodexSchemaNode)
+  if (!jsonRecord(value)) return value
+  const normalized = Object.fromEntries(Object.entries(value)
+    .filter(([key]) => key !== "$schema")
+    .map(([key, entry]) => [key, normalizeCodexSchemaNode(entry)])) as Record<string, unknown>
+  if (!jsonRecord(value.properties)) return normalized
+  const required = new Set(Array.isArray(value.required)
+    ? value.required.filter((entry): entry is string => typeof entry === "string")
+    : [])
+  const properties = Object.fromEntries(Object.entries(value.properties).map(([key, property]) => {
+    const candidate = normalizeCodexSchemaNode(property)
+    return [key, required.has(key) ? candidate : nullableStructuredSchema(candidate)]
+  }))
+  return {
+    ...normalized,
+    properties,
+    required: Object.keys(value.properties),
+    additionalProperties: false,
+  }
+}
+
+/**
+ * Codex Structured Outputs requires every object property to be listed in
+ * `required`. GAEP keeps optional contract fields nullable at the provider
+ * boundary, then removes provider-emitted null placeholders before canonical
+ * contract validation.
+ */
+export function codexStructuredOutputSchema(value: unknown): object {
+  const normalized = normalizeCodexSchemaNode(structuredOutputSchema(value))
+  if (!jsonRecord(normalized)) throw new ProductChatAdvisorError("invalid-response", "The canonical output schema must be an object.")
+  return normalized
+}
+
+function resolvedSchema(value: unknown, root: Record<string, unknown>): unknown {
+  if (!jsonRecord(value) || typeof value.$ref !== "string" || !value.$ref.startsWith("#/")) return value
+  let current: unknown = root
+  for (const part of value.$ref.slice(2).split("/")) {
+    if (!jsonRecord(current)) return value
+    current = current[part.replaceAll("~1", "/").replaceAll("~0", "~")]
+  }
+  return current ?? value
+}
+
+function schemaBranchScore(value: unknown, schema: unknown): number {
+  if (!jsonRecord(schema)) return 0
+  if (schema.type === "null") return value === null ? 100 : -100
+  if (schema.type === "object" || jsonRecord(schema.properties)) {
+    if (!jsonRecord(value)) return -100
+    let score = 10
+    if (jsonRecord(schema.properties)) {
+      for (const [key, property] of Object.entries(schema.properties)) {
+        if (!(key in value) || !jsonRecord(property)) continue
+        if ("const" in property && value[key] === property.const) score += 20
+        if (Array.isArray(property.enum) && property.enum.includes(value[key])) score += 10
+      }
+    }
+    return score
+  }
+  if (schema.type === "array") return Array.isArray(value) ? 10 : -100
+  if (schema.type === "string") return typeof value === "string" ? 10 : -100
+  if (schema.type === "number" || schema.type === "integer") return typeof value === "number" ? 10 : -100
+  if (schema.type === "boolean") return typeof value === "boolean" ? 10 : -100
+  return 0
+}
+
+function omitOptionalNulls(value: unknown, schemaValue: unknown, root: Record<string, unknown>): unknown {
+  const schema = resolvedSchema(schemaValue, root)
+  if (!jsonRecord(schema)) return value
+  const union = Array.isArray(schema.anyOf) ? schema.anyOf : Array.isArray(schema.oneOf) ? schema.oneOf : undefined
+  if (union) {
+    const branch = [...union].sort((left, right) =>
+      schemaBranchScore(value, resolvedSchema(right, root)) - schemaBranchScore(value, resolvedSchema(left, root)))[0]
+    return branch ? omitOptionalNulls(value, branch, root) : value
+  }
+  let normalized = value
+  if (Array.isArray(schema.allOf)) {
+    for (const branch of schema.allOf) normalized = omitOptionalNulls(normalized, branch, root)
+  }
+  if (Array.isArray(normalized) && schema.items) {
+    return normalized.map((entry) => omitOptionalNulls(entry, schema.items, root))
+  }
+  if (!jsonRecord(normalized) || !jsonRecord(schema.properties)) return normalized
+  const required = new Set(Array.isArray(schema.required)
+    ? schema.required.filter((entry): entry is string => typeof entry === "string")
+    : [])
+  const result = { ...normalized }
+  for (const [key, property] of Object.entries(schema.properties)) {
+    if (!(key in result)) continue
+    if (result[key] === null && !required.has(key)) delete result[key]
+    else result[key] = omitOptionalNulls(result[key], property, root)
+  }
+  return result
+}
+
+export function restoreCanonicalOptionalOmissions(output: string, schemaValue: unknown): string {
+  if (!jsonRecord(schemaValue)) return output
+  const candidate = firstCompleteJsonObject(output)
+  if (!candidate) return output
+  try {
+    return JSON.stringify(omitOptionalNulls(JSON.parse(candidate), schemaValue, schemaValue))
+  } catch {
+    return output
+  }
 }
 
 function priorAnswers(answers: object): string {
@@ -361,7 +483,7 @@ async function runClaude(
     contextPack: structuredCanonicalRecord && candidateSchema
       ? buildStructuredCanonicalPrompt(request)
       : buildProductAnswerChallengePrompt(request),
-    ...(candidateSchema ? { jsonSchema: claudeStructuredSchema(candidateSchema) } : {}),
+    ...(candidateSchema ? { jsonSchema: structuredOutputSchema(candidateSchema) } : {}),
     timeoutMs: request.question.key === "initiative-applicability" || request.question.key === "phase1-canonical-record" ? 480_000 : 120_000,
     maxOutputBytes: 512 * 1_024,
     maxLineBytes: 256 * 1_024,
@@ -434,6 +556,7 @@ async function runCodex(
       ...(structuredCanonicalRecord || request.question.key === "initiative-applicability"
         ? { effort: "low" as const }
         : {}),
+      ...(candidateSchema ? { outputSchema: codexStructuredOutputSchema(candidateSchema) } : {}),
       policy: { allowCommands: false, allowFileChanges: false },
       appServerOptions: { requestTimeoutMs: 30_000 },
     })
@@ -457,7 +580,7 @@ async function runCodex(
           `Codex did not complete the governed advisory turn (${diagnostic}).`,
         )
       }
-      return output
+      return candidateSchema ? restoreCanonicalOptionalOmissions(output, candidateSchema) : output
     } finally {
       removeAbort()
       await drained.catch(() => undefined)

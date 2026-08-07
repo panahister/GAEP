@@ -54,7 +54,19 @@ import {
   journeyCheckpointLabels,
   parseExistingProductJourneyCoverage,
   type ExistingProductJourneyCoverage,
+  type ExistingProductJourneyCheckpointId,
 } from "./existing-product-journey-coverage.js"
+import { productJourneyRoadmapDiagram } from "./product-journey-roadmap.js"
+import {
+  existingProductAdoptionCheckpointMarkdown,
+  existingProductAdoptionCheckpointSelectionMarkdown,
+  existingProductAdoptionFollowThrough,
+  existingProductAdoptionOverviewMarkdown,
+  isExistingProductAdoptionReviewState,
+  setExistingProductAdoptionReviewPhase,
+  startExistingProductAdoptionReview,
+  type ExistingProductAdoptionReviewState,
+} from "./existing-product-adoption-review.js"
 import {
   productChatConversationOutlineHtml,
   type ProductChatConversationTurn,
@@ -88,6 +100,7 @@ import {
   initiativeClassificationQuestion,
   isInitiativeClassificationChatState,
   startInitiativeClassificationChat,
+  suggestedInitiativeClassificationBrief,
   suggestedInitiativeClassificationResolution,
   type InitiativeClassificationChatState,
 } from "./interactive-initiative-classification-chat.js"
@@ -103,6 +116,7 @@ import {
 import {
   isImplicitChatInstructionReference,
   markdownTable,
+  nonWrappingTableLabel,
   sourceAdvisorFailureMarkdown,
   sourceAlignmentNextCheckpoint,
   sourceAlignmentTableRows,
@@ -111,8 +125,29 @@ import {
   sourceUnderstandingInstruction,
 } from "./product-chat-source-intake.js"
 import type { CandidateSourceAttachment } from "./product-chat-source-recording.js"
-import { phase1CanonicalRecordKinds, type Phase1CanonicalRecordKind } from "./phase1-canonical-authoring.js"
-import { phase1CanonicalPresentation } from "./phase1-canonical-presentation.js"
+import {
+  reviewStateFromAdoptionPlan,
+  type AdoptionAccelerationPlan,
+} from "./adoption-acceleration.js"
+import {
+  acceptSourceFoundationProposal,
+  isSourceFoundationProposalState,
+  setSourceFoundationProposalPhase,
+  startSourceFoundationProposal,
+  type SourceFoundationProposalState,
+} from "./source-foundation-proposal.js"
+import {
+  phase1CanonicalGroupByCheckpoint,
+  phase1CanonicalAuthoringFailureMarkdown,
+  phase1CanonicalRecordCatalog,
+  phase1CanonicalRecordKinds,
+  type Phase1CanonicalGroupCheckpointId,
+  type Phase1CanonicalRecordKind,
+} from "./phase1-canonical-authoring.js"
+import {
+  phase1CanonicalExactDraftPresentation,
+  phase1CanonicalPresentation,
+} from "./phase1-canonical-presentation.js"
 import {
   canSafelyRebindInitiativeClassification,
   initiativeApplicabilityAttentionItems,
@@ -149,7 +184,7 @@ export interface GaepProductChatOptions {
     applicability?: InitiativeApplicabilityMatrixInput
     priorApplicability?: InitiativeApplicabilityMatrixInput
   } | undefined>
-  commitInitiative(input: InitiativeInput): Promise<{ title: string; state: string; revision: number }>
+  commitInitiative(input: InitiativeInput): Promise<{ id?: string; title: string; state: string; revision: number }>
   reviseInitiative(
     initiativeId: string,
     input: InitiativeInput,
@@ -179,9 +214,19 @@ export interface GaepProductChatOptions {
     recorded: Array<{ id: string; title: string; contentDigest: string }>
     reused: Array<{ id: string; title: string; contentDigest: string }>
   }>
+  persistAdoptionAcceleration?(review: ExistingProductAdoptionReviewState): Promise<{
+    sourceCount: number
+    checkpointCount: number
+  }>
+  adoptionAcceleration?(): Promise<AdoptionAccelerationPlan | undefined>
+  consumeAdoptionSources?(initiativeId: string): Promise<{
+    recorded: Array<{ id: string; title: string; contentDigest: string }>
+    reused: Array<{ id: string; title: string; contentDigest: string }>
+  }>
   sourceCheckpoint(initiativeId: string): Promise<{
     sourceCount: number
     sourceTitles: string[]
+    sourceMembershipDigest: string
     baseline?: { id: string; revision: number; memberCount: number; membershipDigest: string; status: "current" | "stale" | "incomplete" }
     provenanceCount: number
   }>
@@ -298,8 +343,31 @@ function latestSourceAlignmentState(context: vscode.ChatContext): SourceAlignmen
   return undefined
 }
 
+function sourceFoundationMetadata(state: SourceFoundationProposalState): vscode.ChatResult {
+  return { metadata: { gaepSourceFoundationProposal: state } }
+}
+
+function latestSourceFoundationState(context: vscode.ChatContext): SourceFoundationProposalState | undefined {
+  for (const turn of [...context.history].reverse()) {
+    if (!("result" in turn)) continue
+    const candidate = turn.result.metadata?.gaepSourceFoundationProposal
+    if (isSourceFoundationProposalState(candidate)) return candidate
+  }
+  return undefined
+}
+
 function metadata(state: ProductInitializationChatState): vscode.ChatResult {
   return { metadata: { gaepProductInitialization: state } }
+}
+
+function adoptionMetadata(
+  state: ProductInitializationChatState | undefined,
+  adoption: ExistingProductAdoptionReviewState,
+): vscode.ChatResult {
+  return { metadata: {
+    ...(state ? { gaepProductInitialization: state } : {}),
+    gaepExistingProductAdoption: adoption,
+  } }
 }
 
 function latestState(context: vscode.ChatContext): ProductInitializationChatState | undefined {
@@ -307,6 +375,15 @@ function latestState(context: vscode.ChatContext): ProductInitializationChatStat
     if (!("result" in turn)) continue
     const candidate = turn.result.metadata?.gaepProductInitialization
     if (isProductInitializationChatState(candidate)) return candidate
+  }
+  return undefined
+}
+
+function latestAdoptionState(context: vscode.ChatContext): ExistingProductAdoptionReviewState | undefined {
+  for (const turn of [...context.history].reverse()) {
+    if (!("result" in turn)) continue
+    const candidate = turn.result.metadata?.gaepExistingProductAdoption
+    if (isExistingProductAdoptionReviewState(candidate)) return candidate
   }
   return undefined
 }
@@ -430,6 +507,8 @@ function phase1AuthoringMarkdown(state: Phase1CanonicalAuthoringState): string {
     label: state.target.label,
     draft: state.draft,
   })
+  const directCanonicalCandidate = state.assessment.assessment ===
+    "The selected advisor produced the canonical candidate directly for GAEP contract validation."
   return [
     `# ${markdownValue(state.target.label)} — ${state.phase === "review" ? "exact review" : state.target.operation === "revise" ? "revision proposal" : "candidate proposal"}`,
     "",
@@ -439,7 +518,9 @@ function phase1AuthoringMarkdown(state: Phase1CanonicalAuthoringState): string {
       `Current governed revision: **${state.target.current.revision}** · immutable history: **${state.target.current.historyCount} revision(s)**`,
     ] : []),
     "",
-    `**Assessment:** ${markdownValue(state.assessment.assessment)}`,
+    directCanonicalCandidate
+      ? "**Proposal status:** Contract-valid candidate ready for your review. Nothing has been accepted or recorded yet."
+      : `**Assessment:** ${markdownValue(state.assessment.assessment)}`,
     ...(state.assessment.strengths.length > 0
       ? ["", "**Strengths retained**", ...state.assessment.strengths.map((item) => `- ${markdownValue(item)}`)]
       : []),
@@ -462,7 +543,44 @@ function phase1AuthoringMarkdown(state: Phase1CanonicalAuthoringState): string {
     "",
     state.phase === "review"
       ? "Send **`@gaep /commit CONFIRM`** to record this exact candidate, or **`@gaep /back`** to return to proposal review."
-      : "Reply naturally with corrections for another governed advisory round, or send **`@gaep /commit CONFIRM`** for one explicit Review and Record action. `/accept` remains available when you want a separate exact-review pause.",
+      : "Reply naturally with corrections for another governed advisory round, or send **`@gaep /accept`** to accept this exact proposal before commit.",
+  ].join("\n")
+}
+
+function sourceFoundationProposalMarkdown(state: SourceFoundationProposalState): string {
+  const label = journeyCheckpointLabels[state.checkpoint]
+  const displayedSources = state.sourceTitles.slice(0, 12)
+  const omittedCount = state.sourceTitles.length - displayedSources.length
+  const candidate = state.adoptedCandidate
+  return [
+    `# ${markdownValue(label)} — ${state.phase === "review" ? "exact review" : "candidate proposal"}`,
+    "",
+    markdownTable(["Binding", "Candidate value"], [
+      [nonWrappingTableLabel("Initiative"), `${state.initiativeId} · revision ${state.initiativeRevision}`],
+      [nonWrappingTableLabel("Exact Source membership"), `${state.sourceCount} revision(s)`],
+      [nonWrappingTableLabel("Membership digest"), `\`${state.sourceMembershipDigest}\``],
+      ...(state.baseline ? [
+        [nonWrappingTableLabel("Current Source Baseline"), `revision ${state.baseline.revision} · ${state.baseline.memberCount} member(s)`],
+        [nonWrappingTableLabel("Baseline digest"), `\`${state.baseline.membershipDigest}\``],
+      ] : []),
+      ...(candidate ? [
+        [nonWrappingTableLabel("Adopt coverage"), candidate.coverage],
+        [nonWrappingTableLabel("Supporting evidence"), candidate.evidence],
+        [nonWrappingTableLabel("Proposed treatment"), candidate.candidateProposal],
+        [nonWrappingTableLabel("Missing decisions"), candidate.missingDecisions],
+      ] : []),
+    ]),
+    "",
+    "## Exact reviewed Sources",
+    "",
+    ...displayedSources.map((title) => `- ${markdownValue(title)}`),
+    ...(omittedCount > 0 ? [`- …and **${omittedCount}** more exact Source revision(s)`] : []),
+    "",
+    "> This is a non-governed proposal. It creates no Baseline, Provenance, approval, authority, readiness, implementation, or release state until separate acceptance and explicit commit.",
+    "",
+    state.phase === "review"
+      ? `Send **\`@gaep /commit CONFIRM\`** to record this exact ${markdownValue(label)} proposal, or **\`@gaep /back\`** to return to proposal review.`
+      : `Send **\`@gaep /accept\`** to accept this exact ${markdownValue(label)} proposal before commit.`,
   ].join("\n")
 }
 
@@ -722,6 +840,15 @@ function markdownValue(value: string): string {
   return value.replace(/[\\`*_{}[\]()#+.!|>-]/gu, "\\$&")
 }
 
+/**
+ * Render the actual question GAEP is asking as a visually distinct callout so it
+ * stands out from surrounding explanation and the user cannot miss what to answer.
+ */
+function chatQuestionCallout(prompt: string): string {
+  const body = prompt.split("\n").map((line) => `> ${line}`.trimEnd()).join("\n")
+  return ["> ### ❓ GAEP is asking", ">", body].join("\n")
+}
+
 function sameAdvisor(left: ProductChatAdvisorSelection, right: ProductChatAdvisorSelection): boolean {
   return left.adapterId === right.adapterId && left.modelId === right.modelId
 }
@@ -740,7 +867,7 @@ function questionMarkdown(state: ProductInitializationChatState, challenge?: str
     `Advisor: **${markdownValue(state.advisor.agentLabel)} · ${markdownValue(state.advisor.modelLabel)}** (${state.advisor.modelTruthClass})`,
     "",
     ...(challenge ? [`> ${challenge}`, ""] : []),
-    question.prompt,
+    chatQuestionCallout(question.prompt),
     ...(state.workflow === "revision" && state.answers[question.key] !== undefined
       ? ["", `Current governed value: ${markdownValue(initializationValue(state.answers[question.key]!))}`]
       : []),
@@ -792,7 +919,7 @@ function initiativeQuestionMarkdown(state: InitiativeChatState, challenge?: stri
     `Advisor: **${markdownValue(state.advisor.agentLabel)} · ${markdownValue(state.advisor.modelLabel)}** (${state.advisor.modelTruthClass})`,
     "",
     ...(challenge ? [`> ${challenge}`, ""] : []),
-    question.prompt,
+    chatQuestionCallout(question.prompt),
     "",
     `Example: _${question.example.replace(/\n/gu, " · ")}_`,
     "",
@@ -1127,15 +1254,15 @@ function reviewMarkdown(state: ProductInitializationChatState): string {
     "## Product initialization review",
     "",
     markdownTable(["Field", "Proposed value"], [
-      ["Product name", input.name],
-      ["One-sentence summary", input.summary],
-      ["Problem", input.problem],
-      ["Affected users", input.affectedUsers],
-      ["Desired outcome", input.desiredOutcome],
-      ["Success signals", input.successSignals.join("\n")],
-      ["First workflow", input.firstWorkflow],
-      ["Initial exclusions", input.exclusions.join("\n") || "None declared"],
-      ["Profile", input.profile],
+      [nonWrappingTableLabel("Product name"), input.name],
+      [nonWrappingTableLabel("One-sentence summary"), input.summary],
+      [nonWrappingTableLabel("Problem"), input.problem],
+      [nonWrappingTableLabel("Affected users"), input.affectedUsers],
+      [nonWrappingTableLabel("Desired outcome"), input.desiredOutcome],
+      [nonWrappingTableLabel("Success signals"), input.successSignals.join("\n")],
+      [nonWrappingTableLabel("First workflow"), input.firstWorkflow],
+      [nonWrappingTableLabel("Initial exclusions"), input.exclusions.join("\n") || "None declared"],
+      [nonWrappingTableLabel("Profile"), input.profile],
     ]),
     "",
     markdownTable(["Evidence context", "Value"], [
@@ -1144,23 +1271,86 @@ function reviewMarkdown(state: ProductInitializationChatState): string {
       ["Authority", "Candidate only — explicit commit is still required"],
     ]),
     "",
-    "> Conversation and attachments are not yet the engineering source of truth. Only the explicit commit below creates governed Product state; attachments require a later Source Intake.",
+    "> Conversation and attachments are not yet the engineering source of truth. Only explicit commit creates governed Product state; an Adopt commit captures reviewed attachments for Source Intake without granting them authority.",
     "",
     state.workflow === "revision"
       ? "Use **`@gaep /revise`** to edit another field. To create an audited Product revision, send **`@gaep /commit CONFIRM`**. Use `/cancel` to discard this revision draft."
-      : "To create `.gaep`, send **`@gaep /commit CONFIRM`**. Use `/back` to revise the last answer or `/cancel` to discard this chat draft.",
+      : "This first Product proposal is read-only until commit. To create `.gaep`, send **`@gaep /commit CONFIRM`**; use `/cancel` to discard it. After commit, use **`@gaep /revise`** for field-by-field changes.",
   ].join("\n")
+}
+
+function adoptionOverviewActions(response: vscode.ChatResponseStream): void {
+  response.button({ command: "gaep.openInteractiveChat", title: "Commit Reviewed Product", arguments: ["commit", "CONFIRM"] })
+  response.button({ command: "gaep.openInteractiveChat", title: "Review Checkpoint Details", arguments: ["adopt", "review"] })
+  response.button({ command: "gaep.openInteractiveChat", title: "Cancel Adoption Proposal", arguments: ["cancel"] })
+}
+
+function adoptionCheckpointSelectionActions(
+  response: vscode.ChatResponseStream,
+  state: ExistingProductAdoptionReviewState,
+): void {
+  for (const row of state.checkpoints) {
+    response.button({
+      command: "gaep.openInteractiveChat",
+      title: `Review ${journeyCheckpointLabels[row.checkpoint]}`,
+      arguments: ["adopt", `review:${row.checkpoint}`],
+    })
+  }
+  response.button({ command: "gaep.openInteractiveChat", title: "Back to Adoption Summary", arguments: ["review"] })
+}
+
+function adoptionCheckpointActions(
+  response: vscode.ChatResponseStream,
+  state: ExistingProductAdoptionReviewState,
+  checkpoint: ExistingProductJourneyCheckpointId,
+): void {
+  const action = existingProductAdoptionFollowThrough(checkpoint)
+  if (state.phase === "committed") {
+    response.button({ command: "gaep.openInteractiveChat", title: action.title, arguments: [action.command, action.prompt, true] })
+  }
+  response.button({ command: "gaep.openInteractiveChat", title: "Review Another Checkpoint", arguments: ["adopt", "review"] })
+  response.button({ command: "gaep.openInteractiveChat", title: "Back to Adoption Summary", arguments: ["review"] })
+  if (state.phase === "review") {
+    response.button({ command: "gaep.openInteractiveChat", title: "Commit Reviewed Product", arguments: ["commit", "CONFIRM"] })
+  }
+}
+
+function proposalAcceptanceAction(response: vscode.ChatResponseStream, title = "Accept AI Proposal"): void {
+  response.button({ command: "gaep.openInteractiveChat", title, arguments: ["accept"] })
+}
+
+function proposalCommitAction(response: vscode.ChatResponseStream, title: string): void {
+  response.button({ command: "gaep.openInteractiveChat", title, arguments: ["commit", "CONFIRM"] })
+}
+
+function phase1ProposalActions(response: vscode.ChatResponseStream, state: Phase1CanonicalAuthoringState): void {
+  if (state.phase === "proposal") proposalAcceptanceAction(response, `Accept ${state.target.label} Proposal`)
+  if (state.phase === "review") proposalCommitAction(response, `Commit ${state.target.label}`)
+  if (state.phase === "proposal" || state.phase === "review") {
+    response.button({ command: "gaep.openInteractiveChat", title: "Inspect Exact Candidate JSON", arguments: ["inspect"] })
+  }
+}
+
+function sourceFoundationProposalActions(response: vscode.ChatResponseStream, state: SourceFoundationProposalState): void {
+  const label = journeyCheckpointLabels[state.checkpoint]
+  if (state.phase === "proposal") proposalAcceptanceAction(response, `Accept ${label} Proposal`)
+  if (state.phase === "review") proposalCommitAction(response, `Commit ${label}`)
+  if (state.phase === "proposal" || state.phase === "review") {
+    response.button({ command: "gaep.openInteractiveChat", title: "Cancel Proposal", arguments: ["cancel"] })
+  }
 }
 
 function helpMarkdown(): string {
   return [
     "## GAEP interactive Product workspace",
     "",
+    "**New here?** Run **`@gaep /status`** for a visual roadmap that highlights what is done, where you are, and the next step — or open the **GAEP: Open Guide** command for a 10-minute overview.",
+    "",
     "- `/initialize` — start a challenged Product initialization",
     "- `/adopt` — analyze an existing Product and propose Product Definition plus evidence-backed coverage for the complete Product Journey",
     "- `/revise` — revise one or more fields of an existing Product without replacing its identity",
     "- `/initiative` — review and revise one field of the current Initiative definition",
-    "- `/edit` — choose and edit any field in the current complete Product draft",
+    "- `/edit` — choose and edit a field only inside a governed Product revision draft",
     "- `/continue` — inspect governed state and start the next valid conversational workflow",
     "- `/classification` — review and resolve open questions in the current Initiative classification",
     "- `/applicability` — review and resolve pending human decisions in the current Initiative applicability matrix",
@@ -1168,9 +1358,10 @@ function helpMarkdown(): string {
     "- `/align` — create a separate editable GAEP lifecycle alignment after reviewing attachment content",
     "- `/manifest` — audit the exact included and excluded attachment paths, formats, sizes, and digests",
     "- `/record` — record the exact reviewed files as non-authoritative candidate Sources",
-    "- `/baseline` — review and record an exact candidate Baseline from current candidate Sources",
-    "- `/provenance` — record conservative exact Source-to-Initiative lineage for the current baseline",
+    "- `/baseline` — generate, accept, and explicitly commit an exact candidate Baseline proposal from current candidate Sources",
+    "- `/provenance` — generate, accept, and explicitly commit conservative exact Source-to-Initiative lineage",
     "- `/author` — generate, challenge, review, and record the next Product Journey record",
+    "- `/inspect` — explicitly show exact JSON for the active canonical candidate in a separate advanced audit response",
     "- `/mode` — choose Quick, Guided, or Assured journey presentation without weakening governed records",
     "- `/suggest` — generate and submit a safe context-aware starter for the active lifecycle question",
     "- `/roles` — inspect editable standard owner and accountable-approver recommendations for all applicability subjects",
@@ -1179,9 +1370,9 @@ function helpMarkdown(): string {
     "- `/model` — switch models within the current agent",
     "- `/advisor` — combined agent-and-model selector (compatibility alias)",
     "- `/accept` — explicitly accept the current AI-assisted proposal and advance",
-    "- `/status` — inspect governed Product and draft state",
+    "- `/status` — visual Product Journey roadmap highlighting done, current, and next steps, plus governed and draft state",
     "- `/review` — review a completed initialization draft",
-    "- `/back` — revise the previous answer",
+    "- `/back` — revise the previous answer while a guided collection is still in progress",
     "- `/commit CONFIRM` — explicitly create governed Product state",
     "- `/cancel` — discard the current chat draft",
     "",
@@ -1235,11 +1426,18 @@ export function registerGaepProductChat(
     const discoveredAttachments = await attachmentResources(
       request,
       response,
-      command === "intake" || command === "adopt" ? options.takeChosenFiles() : [],
+      command === "intake" || (command === "adopt" && !/^(?:review|create:|consume\b)/u.test(request.prompt.trim()))
+        ? options.takeChosenFiles()
+        : [],
     )
     const referencedResources = discoveredAttachments.resources
     const attached = referencedResources.map((resource) => resource.label)
     let state = latestState(chatContext)
+    let adoptionState = latestAdoptionState(chatContext)
+    const persistedAdoption = options.adoptionAcceleration ? await options.adoptionAcceleration().catch((error) => {
+      options.reportDiagnostic?.("Persisted adoption acceleration could not be read", error)
+      return undefined
+    }) : undefined
     let initiativeState = latestInitiativeState(chatContext)
     const resolutionState = latestResolutionState(chatContext)
     let classificationState = resolutionState?.kind === "gaep-initiative-classification-chat-state"
@@ -1249,6 +1447,7 @@ export function registerGaepProductChat(
       ? resolutionState
       : undefined
     let sourceAlignmentState = latestSourceAlignmentState(chatContext)
+    let sourceFoundationState = latestSourceFoundationState(chatContext)
     let phase1AuthoringState = latestPhase1AuthoringState(chatContext)
     const sessionAdvisor = options.currentAdvisor()
     if (state && sessionAdvisor && !sameAdvisor(state.advisor, sessionAdvisor)) {
@@ -1310,11 +1509,13 @@ export function registerGaepProductChat(
           }, signal))
         } catch (error) {
           options.reportDiagnostic?.(`Product Journey ${target.label} advisory failed`, error)
-          response.markdown(sourceAdvisorFailureMarkdown({
+          response.markdown(phase1CanonicalAuthoringFailureMarkdown({
+            label: target.label,
             advisorLabel: `${advisor.agentLabel} · ${advisor.modelLabel}`,
             error,
-            priorReviewPreserved: Boolean(previous),
+            priorCandidatePreserved: Boolean(previousAssessment),
           }))
+          response.button({ command: "gaep.openInteractiveChat", title: "Retry Canonical Draft", arguments: ["author", `create:${target.kind}`, true] })
           response.button({ command: "gaep.selectProductChatAgent", title: "Switch Agent" })
           response.button({ command: "gaep.selectProductChatModel", title: "Switch Model" })
           response.button({ command: "gaep.showDiagnostics", title: "Show Diagnostics" })
@@ -1366,6 +1567,11 @@ export function registerGaepProductChat(
               product: current.product,
               initiative: current.initiative,
               ...(current.currentClassification ? { currentClassification: current.currentClassification } : {}),
+              ...(persistedAdoption ? {
+                adoptedCheckpointCandidate: persistedAdoption.checkpoints.find((row) => row.checkpoint === "initiative-classification"),
+                adoptedSourceMetadata: persistedAdoption.sources,
+                adoptedCandidateBoundary: persistedAdoption.authorityBoundary,
+              } : {}),
                 revisionBinding: {
                   initiativeRevision: current.initiativeRevision,
                   productRevision: current.productRevision,
@@ -1399,6 +1605,83 @@ export function registerGaepProductChat(
         response.button({ command: "gaep.showDiagnostics", title: "Show Diagnostics" })
         return undefined
       }
+    }
+    const initiativeAdvisorContext = async (current: InitiativeChatState): Promise<object> => {
+      const product = await options.productState()
+      const accepted = initiativeAdvisorAcceptedAnswers(
+        current.answers,
+        product.state === "initialized"
+          ? { revision: product.revision, input: product.input }
+          : undefined,
+      )
+      const candidate = persistedAdoption?.checkpoints.find((row) => row.checkpoint === "initiative-definition")
+      return candidate ? {
+        ...accepted,
+        adoptedCandidate: candidate,
+        adoptedCandidateSources: persistedAdoption!.sources,
+        adoptedCandidateBoundary: persistedAdoption!.authorityBoundary,
+      } : accepted
+    }
+    const proposeInitiativeAnswer = async (
+      current: InitiativeChatState,
+      userAnswer: string,
+    ): Promise<InitiativeChatState | undefined> => {
+      const question = currentInitiativeQuestion(current)
+      if (!question) return current
+      try {
+        const acceptedAnswers = await initiativeAdvisorContext(current)
+        const result = await assessInitiativeAnswerWithAutomaticRepair(
+          current,
+          userAnswer,
+          async ({ attempt, contractErrors, previousAssessment }) => {
+            response.progress(attempt === 1
+              ? `Asking ${current.advisor.agentLabel} · ${current.advisor.modelLabel} to draft and challenge this Initiative answer`
+              : `GAEP is replacing an invalid or placeholder Initiative answer with a concrete context-grounded candidate (${attempt}/3)…`)
+            return withChatCancellation(token, (signal) => options.challengeAnswer({
+              advisor: current.advisor,
+              question,
+              acceptedAnswers: {
+                ...acceptedAnswers,
+                ...(contractErrors.length > 0 ? { contractErrorsToRepair: contractErrors } : {}),
+              },
+              userAnswer: attempt === 1
+                ? userAnswer
+                : `${userAnswer}\n\nGAEP automatic answer repair: return a concrete, field-valid proposal derived from the governed and adopted context. Replace every placeholder. Do not ask the human to repeat known Product facts.`,
+              ...(previousAssessment ? { previousAssessment } : {}),
+            }, signal))
+          },
+        )
+        return result.state
+      } catch (error) {
+        options.reportDiagnostic?.("Initiative answer automatic normalization failed", error)
+        response.markdown(initiativeQuestionMarkdown(current, "GAEP could not produce a concrete field-valid proposal after three automatic repair attempts. Your draft is preserved; switch the agent/model or retry without learning GAEP's internal format."))
+        response.button({ command: "gaep.showDiagnostics", title: "Show Diagnostics" })
+        return undefined
+      }
+    }
+    const adoptedInitiativeInstruction = (current: InitiativeChatState): string | undefined => {
+      const candidate = persistedAdoption?.checkpoints.find((row) => row.checkpoint === "initiative-definition")
+      const question = currentInitiativeQuestion(current)
+      if (!candidate || !question) return undefined
+      return [
+        `Propose the strongest concrete ${question.title} from the reviewed Existing Product evidence; do not ask the human to restate known facts.`,
+        `Adopted candidate proposal: ${candidate.candidateProposal}`,
+        `Supporting evidence: ${candidate.evidence}`,
+        `Missing human decisions: ${candidate.missingDecisions}`,
+        "Make a conservative editable proposal. Preserve unsupported knowledge as a named gap and do not invent authority, approval, readiness, implementation, or release status.",
+      ].join("\n")
+    }
+    const renderInitiativeProposal = (current: InitiativeChatState): void => {
+      response.markdown(initiativeAssessedMarkdown(current))
+      proposalAcceptanceAction(response, "Accept Initiative Proposal")
+    }
+    const renderClassificationProposal = (current: InitiativeClassificationChatState): void => {
+      response.markdown(classificationAssessedMarkdown(current))
+      proposalAcceptanceAction(response, "Accept Classification Proposal")
+    }
+    const renderApplicabilityProposal = (current: InitiativeApplicabilityChatState): void => {
+      response.markdown(applicabilityAssessedMarkdown(current))
+      proposalAcceptanceAction(response, "Accept Applicability Proposal")
     }
     if (command === "initiative") {
       const current = await options.currentInitiative()
@@ -1531,6 +1814,11 @@ export function registerGaepProductChat(
               question: initiativeApplicabilityQuestion(current),
               acceptedAnswers: {
                 ...applicabilityAdvisorContext(current),
+                ...(persistedAdoption ? {
+                  adoptedCheckpointCandidate: persistedAdoption.checkpoints.find((row) => row.checkpoint === "initiative-applicability"),
+                  adoptedSourceMetadata: persistedAdoption.sources,
+                  adoptedCandidateBoundary: persistedAdoption.authorityBoundary,
+                } : {}),
                 ...(contractErrors.length > 0 ? { contractErrorsToRepair: contractErrors } : {}),
               },
               userAnswer: attempt === 1
@@ -1578,13 +1866,29 @@ export function registerGaepProductChat(
       target: T,
     ): T => {
       const batch = sourceAlignmentState?.cacheKey ? sourceReviewCache.get(sourceAlignmentState.cacheKey) : undefined
-      if (!batch) return target
+      const checkpoint = target.group === "Product discovery" ? "product-discovery"
+        : target.group === "Business architecture" ? "business-architecture"
+          : target.group === "Solution and security architecture" ? "solution-security-architecture"
+            : target.group === "Detailed design and assurance" ? "detailed-design-assurance"
+              : target.group === "Pre-Figma readiness and handoff" ? "design-implementation-handoff"
+                : undefined
+      const adoptionCandidate = checkpoint
+        ? persistedAdoption?.checkpoints.find((row) => row.checkpoint === checkpoint)
+        : undefined
+      if (!batch && !adoptionCandidate) return target
       return {
         ...target,
         context: {
           ...target.context,
-          candidateDocumentContent: attachmentAlignmentInput(batch),
-          candidateDocumentBoundary: "review-cache-only-non-authoritative-content-not-portable-product-truth",
+          ...(batch ? {
+            candidateDocumentContent: attachmentAlignmentInput(batch),
+            candidateDocumentBoundary: "review-cache-only-non-authoritative-content-not-portable-product-truth",
+          } : {}),
+          ...(adoptionCandidate ? {
+            adoptedCheckpointCandidate: adoptionCandidate,
+            adoptedSourceMetadata: persistedAdoption!.sources,
+            adoptedCandidateBoundary: persistedAdoption!.authorityBoundary,
+          } : {}),
         },
       }
     }
@@ -1594,9 +1898,141 @@ export function registerGaepProductChat(
     const understandingActive = Boolean(sourceReviewActive && sourceAlignmentState?.purpose === "understanding")
     const canonicalAuthoringActive = Boolean(phase1AuthoringState &&
       !["committed", "cancelled"].includes(phase1AuthoringState.phase))
+    const sourceFoundationActive = Boolean(sourceFoundationState &&
+      !["committed", "cancelled"].includes(sourceFoundationState.phase))
+
+    if (sourceFoundationActive && sourceFoundationState) {
+      const currentDraft = sourceFoundationState
+      if (command === "cancel") {
+        sourceFoundationState = setSourceFoundationProposalPhase(currentDraft, "cancelled")
+        response.markdown(`The ${journeyCheckpointLabels[currentDraft.checkpoint]} proposal was discarded. No governed Source foundation record changed.`)
+        return sourceFoundationMetadata(sourceFoundationState)
+      }
+      if (command === "continue" || command === "baseline" || command === "provenance") {
+        response.markdown(sourceFoundationProposalMarkdown(currentDraft))
+        sourceFoundationProposalActions(response, currentDraft)
+        return sourceFoundationMetadata(currentDraft)
+      }
+      if (command === "back") {
+        sourceFoundationState = { ...currentDraft, phase: "proposal" }
+        response.markdown(sourceFoundationProposalMarkdown(sourceFoundationState))
+        sourceFoundationProposalActions(response, sourceFoundationState)
+        return sourceFoundationMetadata(sourceFoundationState)
+      }
+      if (command === "accept") {
+        try {
+          sourceFoundationState = acceptSourceFoundationProposal(currentDraft)
+        } catch (error) {
+          response.markdown(error instanceof Error ? error.message : "No Source foundation proposal is awaiting acceptance.")
+          return sourceFoundationMetadata(currentDraft)
+        }
+        response.markdown(sourceFoundationProposalMarkdown(sourceFoundationState))
+        sourceFoundationProposalActions(response, sourceFoundationState)
+        return sourceFoundationMetadata(sourceFoundationState)
+      }
+      if (command === "commit") {
+        if (currentDraft.phase !== "review") {
+          response.markdown(`Commit was not performed. Accept the exact ${journeyCheckpointLabels[currentDraft.checkpoint]} proposal first with **\`@gaep /accept\`**.`)
+          sourceFoundationProposalActions(response, currentDraft)
+          return sourceFoundationMetadata(currentDraft)
+        }
+        if (request.prompt.trim() !== "CONFIRM") {
+          response.markdown("Commit was not performed. Send exactly **`@gaep /commit CONFIRM`**.")
+          return sourceFoundationMetadata(currentDraft)
+        }
+        const current = await options.currentInitiative()
+        const checkpoint = current ? await options.sourceCheckpoint(current.id) : undefined
+        const sourceBindingChanged = !current || !checkpoint || current.id !== currentDraft.initiativeId ||
+          current.revision !== currentDraft.initiativeRevision || checkpoint.sourceCount !== currentDraft.sourceCount ||
+          checkpoint.sourceMembershipDigest !== currentDraft.sourceMembershipDigest ||
+          JSON.stringify(checkpoint.sourceTitles) !== JSON.stringify(currentDraft.sourceTitles)
+        const baselineBindingChanged = currentDraft.checkpoint === "source-provenance" && (
+          !checkpoint?.baseline || checkpoint.baseline.status !== "current" || !currentDraft.baseline ||
+          checkpoint.baseline.revision !== currentDraft.baseline.revision ||
+          checkpoint.baseline.memberCount !== currentDraft.baseline.memberCount ||
+          checkpoint.baseline.membershipDigest !== currentDraft.baseline.membershipDigest
+        )
+        if (sourceBindingChanged || baselineBindingChanged) {
+          response.markdown([
+            `# ${markdownValue(journeyCheckpointLabels[currentDraft.checkpoint])} proposal is stale`,
+            "",
+            "The Initiative, exact Source membership, or prerequisite Baseline changed after this proposal was generated. Nothing was recorded.",
+            "",
+            `Cancel this draft and generate a fresh ${markdownValue(journeyCheckpointLabels[currentDraft.checkpoint])} proposal from Product Journey.`,
+          ].join("\n"))
+          response.button({ command: "gaep.openInteractiveChat", title: "Cancel Stale Proposal", arguments: ["cancel"] })
+          response.button({ command: "gaep.openProductStudio", title: "Open Product Journey", arguments: ["overview"] })
+          return sourceFoundationMetadata(currentDraft)
+        }
+        try {
+          if (currentDraft.checkpoint === "source-baseline") {
+            response.progress("Recording the accepted exact Source membership as a candidate Baseline…")
+            const result = await options.createCandidateSourceBaseline(currentDraft.initiativeId)
+            sourceFoundationState = setSourceFoundationProposalPhase(currentDraft, "committed")
+            response.markdown([
+              "# Candidate Source Baseline recorded",
+              "",
+              `**${result.memberCount} exact Source revision(s)** · Baseline revision **${result.revision}**${result.reused ? " · existing exact Baseline reused" : ""}`,
+              "",
+              `Membership digest: \`${markdownValue(result.membershipDigest)}\``,
+              "",
+              "> This candidate snapshot does not approve, designate, validate, authorize, or supersede any Source.",
+              "",
+              "Next: generate and review the Source Provenance proposal.",
+            ].join("\n"))
+            response.button({ command: "gaep.openInteractiveChat", title: "Generate Source Provenance Proposal", arguments: ["provenance"] })
+          } else {
+            response.progress("Recording the accepted exact Source-to-Initiative lineage…")
+            const result = await options.recordInitiativeSourceProvenance(currentDraft.initiativeId)
+            sourceFoundationState = setSourceFoundationProposalPhase(currentDraft, "committed")
+            response.markdown([
+              "# Source Provenance recorded",
+              "",
+              `**${result.sourceCount} exact Source revision(s)** linked to Initiative revision **${result.targetRevision}**${result.reused ? " · existing exact Provenance reused" : ""}.`,
+              "",
+              "Disposition remains **unknown** until claim-level review. No content truth, Source authority, approval, readiness, implementation, or release authority was inferred.",
+              "",
+              "Next: continue to Product planning.",
+            ].join("\n"))
+            response.button({ command: "gaep.openInteractiveChat", title: "Continue Product Journey", arguments: ["continue"] })
+          }
+          response.button({ command: "gaep.openProductStudio", title: "Open Product Journey", arguments: ["overview"] })
+          return sourceFoundationMetadata(sourceFoundationState)
+        } catch (error) {
+          options.reportDiagnostic?.(`${journeyCheckpointLabels[currentDraft.checkpoint]} commit failed`, error)
+          response.markdown([
+            `# ${markdownValue(journeyCheckpointLabels[currentDraft.checkpoint])} was not recorded`,
+            "",
+            "The Engine rejected the accepted proposal during exact current-state validation. No partial Source foundation record was persisted.",
+            "",
+            `Diagnostic: ${markdownValue(error instanceof Error ? error.message : "Unknown validation failure")}`,
+          ].join("\n"))
+          response.button({ command: "gaep.showDiagnostics", title: "Show Diagnostics" })
+          return sourceFoundationMetadata(currentDraft)
+        }
+      }
+      if (!command && request.prompt.trim()) {
+        response.markdown([
+          `The ${journeyCheckpointLabels[currentDraft.checkpoint]} proposal is derived from exact current governed identifiers and digests, so its membership cannot be edited as free text.`,
+          "",
+          "To change it, cancel this proposal, revise the candidate Sources or prerequisite Baseline, then generate a fresh proposal. No governed state changed.",
+        ].join("\n"))
+        sourceFoundationProposalActions(response, currentDraft)
+        return sourceFoundationMetadata(currentDraft)
+      }
+    }
 
     if (canonicalAuthoringActive && phase1AuthoringState) {
       const currentDraft = phase1AuthoringState
+      if (command === "inspect") {
+        response.markdown(phase1CanonicalExactDraftPresentation({
+          kind: currentDraft.target.kind,
+          label: currentDraft.target.label,
+          draft: currentDraft.draft,
+        }))
+        phase1ProposalActions(response, currentDraft)
+        return phase1AuthoringMetadata(currentDraft)
+      }
       if (command === "cancel") {
         phase1AuthoringState = { ...currentDraft, phase: "cancelled" }
         response.markdown("The Product Journey candidate was discarded. No governed record changed.")
@@ -1604,19 +2040,27 @@ export function registerGaepProductChat(
       }
       if (command === "continue" || command === "author") {
         response.markdown(phase1AuthoringMarkdown(currentDraft))
+        phase1ProposalActions(response, currentDraft)
         return phase1AuthoringMetadata(currentDraft)
       }
       if (command === "back") {
         phase1AuthoringState = { ...currentDraft, phase: "proposal" }
         response.markdown(phase1AuthoringMarkdown(phase1AuthoringState))
+        phase1ProposalActions(response, phase1AuthoringState)
         return phase1AuthoringMetadata(phase1AuthoringState)
       }
       if (command === "accept") {
         phase1AuthoringState = { ...currentDraft, phase: "review" }
         response.markdown(phase1AuthoringMarkdown(phase1AuthoringState))
+        phase1ProposalActions(response, phase1AuthoringState)
         return phase1AuthoringMetadata(phase1AuthoringState)
       }
       if (command === "commit") {
+        if (currentDraft.phase !== "review") {
+          response.markdown(`Commit was not performed. Accept the exact ${markdownValue(currentDraft.target.label)} proposal first with **\`@gaep /accept\`**.`)
+          phase1ProposalActions(response, currentDraft)
+          return phase1AuthoringMetadata(currentDraft)
+        }
         if (request.prompt.trim() !== "CONFIRM") {
           response.markdown("Commit was not performed. Send exactly **`@gaep /commit CONFIRM`**.")
           return phase1AuthoringMetadata(currentDraft)
@@ -1699,6 +2143,7 @@ export function registerGaepProductChat(
           round: currentDraft.round + 1,
         }
         response.markdown(phase1AuthoringMarkdown(phase1AuthoringState))
+        phase1ProposalActions(response, phase1AuthoringState)
         return phase1AuthoringMetadata(phase1AuthoringState)
       }
     }
@@ -1715,11 +2160,55 @@ export function registerGaepProductChat(
         return
       }
       const authorPrompt = request.prompt.trim()
-      const requested = authorPrompt.match(/^(?:edit|review):([a-z0-9-]+)$/u)
-      const requestedKind = requested?.[1] && phase1CanonicalRecordKinds.includes(requested[1] as Phase1CanonicalRecordKind)
-        ? requested[1] as Phase1CanonicalRecordKind
+      const groupMatch = authorPrompt.match(/^group:([a-z0-9-]+)$/u)
+      const groupId = groupMatch?.[1] && Object.hasOwn(phase1CanonicalGroupByCheckpoint, groupMatch[1])
+        ? groupMatch[1] as Phase1CanonicalGroupCheckpointId
         : undefined
-      const reviewOnly = authorPrompt.startsWith("review:")
+      if (groupId) {
+        const groupLabel = phase1CanonicalGroupByCheckpoint[groupId]
+        const groupCatalog = phase1CanonicalRecordCatalog.filter((entry) => entry.group === groupLabel)
+        const targets = (await Promise.all(groupCatalog.map((entry) =>
+          options.nextPhase1AuthoringTarget(current.id, entry.kind))))
+          .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+        const next = targets.find((entry) => !entry.current)
+        response.markdown([
+          `# ${markdownValue(groupLabel)} — governed record workspace`,
+          "",
+          markdownTable(["Record", "State", "Current revision", "Immutable history"], targets.map((entry) => [
+            entry.label,
+            entry.current ? "Recorded" : "Not recorded",
+            entry.current ? String(entry.current.revision) : "—",
+            entry.current ? `${entry.current.history.length} revision(s)` : "—",
+          ])),
+          "",
+          next
+            ? `Next authoring action: **${markdownValue(next.label)}**. No record is created until its candidate is reviewed and explicitly committed.`
+            : "Every record in this checkpoint is present. Review any exact record before creating a governed revision.",
+          "",
+          "> Candidate records do not grant approval, readiness, implementation, release, or action authority.",
+        ].join("\n"))
+        for (const entry of targets.filter((candidate) => candidate.current)) {
+          response.button({
+            command: "gaep.openInteractiveChat",
+            title: `Review ${entry.label}`,
+            arguments: ["author", `review:${entry.kind}`, true],
+          })
+        }
+        if (next) {
+          response.button({
+            command: "gaep.openInteractiveChat",
+            title: `Author ${next.label}`,
+            arguments: ["author", `create:${next.kind}`, true],
+          })
+        }
+        response.button({ command: "gaep.openProductStudio", title: "Back to Product Journey", arguments: ["overview"] })
+        return
+      }
+      const requested = authorPrompt.match(/^(create|edit|review):([a-z0-9-]+)$/u)
+      const requestedKind = requested?.[2] && phase1CanonicalRecordKinds.includes(requested[2] as Phase1CanonicalRecordKind)
+        ? requested[2] as Phase1CanonicalRecordKind
+        : undefined
+      const reviewOnly = requested?.[1] === "review"
       const rawTarget = await options.nextPhase1AuthoringTarget(current.id, requestedKind)
       const target = rawTarget ? withAvailableCandidateDocumentContent(rawTarget) : undefined
       if (!target) {
@@ -1757,9 +2246,11 @@ export function registerGaepProductChat(
       const proposed = await proposeCanonicalRecord(
         target,
         advisor,
-        requestedKind
+        requestedKind && target.current
           ? `Revise the current ${target.label} using the governed Product, Initiative, Sources, current record, revision history, and upstream records. Preserve valid facts, improve weaknesses, and identify downstream realignment. Do not ask the human to rewrite internal structures.`
-          : authorPrompt || "Generate the strongest conservative candidate supported by the governed Product, Initiative, Sources, and exact upstream records.",
+          : requestedKind
+            ? `Create the strongest conservative ${target.label} candidate supported by the governed Product, Initiative, Sources, and exact upstream records.`
+            : authorPrompt || "Generate the strongest conservative candidate supported by the governed Product, Initiative, Sources, and exact upstream records.",
       )
       if (!proposed) return
       phase1AuthoringState = {
@@ -1785,7 +2276,7 @@ export function registerGaepProductChat(
         authorityBoundary: "phase1-authoring-draft-is-advisory-until-explicit-review-and-commit",
       }
       response.markdown(phase1AuthoringMarkdown(phase1AuthoringState))
-      response.button({ command: "gaep.openInteractiveChat", title: `Review and Record ${target.label}`, arguments: ["commit", "CONFIRM"] })
+      phase1ProposalActions(response, phase1AuthoringState)
       return phase1AuthoringMetadata(phase1AuthoringState)
     }
     if (command === "intake") {
@@ -1986,65 +2477,58 @@ export function registerGaepProductChat(
       const current = await options.currentInitiative()
       if (!current || current.applicabilityStatus !== "current") {
         response.markdown("A Candidate Source Baseline requires a current Initiative and applicability matrix. Use **`@gaep /continue`** first.")
-        return sourceAlignmentState ? sourceAlignmentMetadata(sourceAlignmentState) : undefined
+        return
       }
       const checkpoint = await options.sourceCheckpoint(current.id)
       if (checkpoint.sourceCount === 0) {
         response.markdown("No recorded candidate Source is available. Review attachments with **`@gaep /intake`**, then use **`@gaep /record`** first.")
-        return sourceAlignmentState ? sourceAlignmentMetadata(sourceAlignmentState) : undefined
+        return
       }
-      response.progress("Recording the exact current Source revisions as a candidate Baseline…")
-      try {
-        const result = await options.createCandidateSourceBaseline(current.id)
-        response.markdown([
-          "# Candidate Source Baseline recorded",
-          "",
-          `**${result.memberCount} exact Source revision(s)** · Baseline revision **${result.revision}**${result.reused ? " · existing exact Baseline reused" : ""}`,
-          "",
-          `Membership digest: \`${markdownValue(result.membershipDigest)}\``,
-          "",
-          "> This is a candidate snapshot only. It does not approve, designate, validate, authorize, or supersede any Source.",
-          "",
-          "Next: record exact Source Provenance for the current Initiative.",
-        ].join("\n"))
-        response.button({ command: "gaep.openInteractiveChat", title: "Record Source Provenance", arguments: ["provenance"] })
-      } catch (error) {
-        options.reportDiagnostic?.("Candidate Source Baseline recording failed", error)
-        response.markdown("# Candidate Source Baseline failed\n\nNo Baseline was recorded. Inspect Diagnostics and retry **`@gaep /baseline`**.")
-        response.button({ command: "gaep.showDiagnostics", title: "Show Diagnostics" })
-      }
-      return sourceAlignmentState ? sourceAlignmentMetadata(sourceAlignmentState) : undefined
+      sourceFoundationState = startSourceFoundationProposal({
+        checkpoint: "source-baseline",
+        initiativeId: current.id,
+        initiativeRevision: current.revision,
+        sourceCount: checkpoint.sourceCount,
+        sourceTitles: checkpoint.sourceTitles,
+        sourceMembershipDigest: checkpoint.sourceMembershipDigest,
+        ...(persistedAdoption?.checkpoints.find((row) => row.checkpoint === "source-baseline")
+          ? { adoptedCandidate: persistedAdoption.checkpoints.find((row) => row.checkpoint === "source-baseline") }
+          : {}),
+      })
+      response.markdown(sourceFoundationProposalMarkdown(sourceFoundationState))
+      sourceFoundationProposalActions(response, sourceFoundationState)
+      return sourceFoundationMetadata(sourceFoundationState)
     }
     if (command === "provenance") {
       const current = await options.currentInitiative()
       if (!current || current.applicabilityStatus !== "current") {
         response.markdown("Source Provenance requires a current Initiative and applicability matrix. Use **`@gaep /continue`** first.")
-        return sourceAlignmentState ? sourceAlignmentMetadata(sourceAlignmentState) : undefined
+        return
       }
       const checkpoint = await options.sourceCheckpoint(current.id)
       if (!checkpoint.baseline || checkpoint.baseline.status !== "current") {
         response.markdown("Record a current Candidate Source Baseline with **`@gaep /baseline`** before Source Provenance.")
-        return sourceAlignmentState ? sourceAlignmentMetadata(sourceAlignmentState) : undefined
+        return
       }
-      response.progress("Recording exact conservative Source-to-Initiative lineage…")
-      try {
-        const result = await options.recordInitiativeSourceProvenance(current.id)
-        response.markdown([
-          "# Source Provenance recorded",
-          "",
-          `**${result.sourceCount} exact Source revision(s)** linked to Initiative revision **${result.targetRevision}**${result.reused ? " · existing exact Provenance reused" : ""}.`,
-          "",
-          "Disposition remains **unknown** until claim-level review. No content truth, Source authority, approval, readiness, implementation, or release authority was inferred.",
-          "",
-          "Next: continue to Product planning.",
-        ].join("\n"))
-        response.button({ command: "gaep.openInteractiveChat", title: "Continue Product Journey", arguments: ["continue"] })
-      } catch (error) {
-        options.reportDiagnostic?.("Source Provenance recording failed", error)
-        response.markdown("# Source Provenance failed\n\nNo Provenance was recorded. Inspect Diagnostics and retry **`@gaep /provenance`**.")
-        response.button({ command: "gaep.showDiagnostics", title: "Show Diagnostics" })
-      }
-      return sourceAlignmentState ? sourceAlignmentMetadata(sourceAlignmentState) : undefined
+      sourceFoundationState = startSourceFoundationProposal({
+        checkpoint: "source-provenance",
+        initiativeId: current.id,
+        initiativeRevision: current.revision,
+        sourceCount: checkpoint.sourceCount,
+        sourceTitles: checkpoint.sourceTitles,
+        sourceMembershipDigest: checkpoint.sourceMembershipDigest,
+        baseline: {
+          revision: checkpoint.baseline.revision,
+          memberCount: checkpoint.baseline.memberCount,
+          membershipDigest: checkpoint.baseline.membershipDigest,
+        },
+        ...(persistedAdoption?.checkpoints.find((row) => row.checkpoint === "source-provenance")
+          ? { adoptedCandidate: persistedAdoption.checkpoints.find((row) => row.checkpoint === "source-provenance") }
+          : {}),
+      })
+      response.markdown(sourceFoundationProposalMarkdown(sourceFoundationState))
+      sourceFoundationProposalActions(response, sourceFoundationState)
+      return sourceFoundationMetadata(sourceFoundationState)
     }
     if (understandingActive && sourceAlignmentState) {
       const currentReview = sourceAlignmentState
@@ -2158,11 +2642,246 @@ export function registerGaepProductChat(
 
     if (command === "help") {
       response.markdown(helpMarkdown())
-      return applicabilityState ? applicabilityMetadata(applicabilityState)
+      return sourceFoundationState ? sourceFoundationMetadata(sourceFoundationState)
+        : applicabilityState ? applicabilityMetadata(applicabilityState)
         : classificationState ? classificationMetadata(classificationState)
         : initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
     }
     if (command === "adopt") {
+      const adoptionPrompt = request.prompt.trim()
+      const checkpointReview = adoptionPrompt.match(/^review:([a-z0-9-]+)$/u)?.[1]
+      if (adoptionPrompt === "review" || checkpointReview) {
+        if ((!adoptionState || adoptionState.phase === "cancelled") && persistedAdoption) {
+          adoptionState = setExistingProductAdoptionReviewPhase(reviewStateFromAdoptionPlan(persistedAdoption), "committed")
+        }
+        if (!adoptionState || adoptionState.phase === "cancelled") {
+          response.markdown("No active Existing Product adoption proposal is available. Run `/adopt` with the intended Product documents to create a new read-only review.")
+          return state ? metadata(state) : undefined
+        }
+        if (checkpointReview) {
+          if (!existingProductJourneyCheckpointIds.includes(checkpointReview as ExistingProductJourneyCheckpointId)) {
+            response.markdown(`The requested adoption checkpoint **${markdownValue(checkpointReview)}** is not supported.`)
+            return adoptionMetadata(state, adoptionState)
+          }
+          response.markdown(existingProductAdoptionCheckpointMarkdown(
+            adoptionState,
+            checkpointReview as ExistingProductJourneyCheckpointId,
+          ))
+          adoptionCheckpointActions(response, adoptionState, checkpointReview as ExistingProductJourneyCheckpointId)
+          return adoptionMetadata(state, adoptionState)
+        }
+        response.markdown(existingProductAdoptionCheckpointSelectionMarkdown(adoptionState))
+        adoptionCheckpointSelectionActions(response, adoptionState)
+        return adoptionMetadata(state, adoptionState)
+      }
+      const candidateCreation = adoptionPrompt.match(/^create:(initiative-definition|initiative-classification|initiative-applicability|product-discovery|business-architecture|solution-security-architecture|detailed-design-assurance|design-implementation-handoff)$/u)?.[1]
+      if (candidateCreation) {
+        if (!persistedAdoption) {
+          response.markdown("No committed adoption candidate set is available. Review the Product documents through `/adopt` first.")
+          return
+        }
+        const product = await options.productState()
+        const current = await options.currentInitiative()
+        if (product.state !== "initialized") {
+          response.markdown("A governed Product is required before the adopted checkpoint candidate can be generated.")
+          response.button({ command: "gaep.openInteractiveChat", title: "Continue Product Journey", arguments: ["continue"] })
+          return
+        }
+        const advisor = preferredProductChatAdvisor(
+          options.currentAdvisor(),
+          applicabilityState?.advisor ?? classificationState?.advisor ?? initiativeState?.advisor,
+          state?.advisor,
+        ) ?? await options.selectAdvisor()
+        if (!advisor) {
+          response.markdown("The adopted proposal was not generated because no executable Codex or Claude Code advisor/model was selected.")
+          return
+        }
+        if (candidateCreation === "initiative-definition") {
+          if (current) {
+            response.markdown(`Initiative **${markdownValue(current.title)}** is already governed at revision ${current.revision}. Use the audited Initiative revision workflow instead of replacing it from an Adopt candidate.`)
+            response.button({ command: "gaep.openInteractiveChat", title: "Revise Initiative Definition", arguments: ["initiative"] })
+            return
+          }
+          initiativeState = startInitiativeChat(advisor)
+          const instruction = adoptedInitiativeInstruction(initiativeState)
+          const proposed = instruction ? await proposeInitiativeAnswer(initiativeState, instruction) : undefined
+          if (proposed) {
+            initiativeState = proposed
+            renderInitiativeProposal(initiativeState)
+          }
+          return initiativeMetadata(initiativeState)
+        }
+        if (!current) {
+          response.markdown("A governed Initiative is required before the adopted Classification or Applicability candidate can be generated.")
+          response.button({ command: "gaep.openInteractiveChat", title: "Generate Initiative Proposal", arguments: ["adopt", "create:initiative-definition", true] })
+          return
+        }
+        if (candidateCreation === "initiative-classification") {
+          const candidate = persistedAdoption.checkpoints.find((row) => row.checkpoint === "initiative-classification")
+          if (!candidate) throw new Error("The committed adoption plan has no Initiative classification candidate")
+          classificationState = startInitiativeClassificationChat(advisor, {
+            initiativeId: current.id,
+            initiativeRevision: current.revision,
+            productRevision: product.revision,
+            product: { name: product.name, profile: product.input.profile, summary: product.input.summary },
+            initiative: {
+              title: current.title,
+              outcome: current.outcome,
+              scope: [...current.scope],
+              exclusions: [...current.exclusions],
+            },
+          })
+          const proposed = await proposeInitiativeClassification(classificationState, [
+            "Generate the complete editable Initiative classification from the reviewed Adopt candidate and current governed Product/Initiative context.",
+            `Candidate proposal: ${candidate.candidateProposal}`,
+            `Evidence: ${candidate.evidence}`,
+            `Missing human decisions: ${candidate.missingDecisions}`,
+            "Keep unsupported knowledge explicit in unresolvedQuestions; do not invent named owners, authorities, regulation, approval, readiness, implementation, or release status.",
+          ].join("\n"))
+          if (proposed) {
+            classificationState = proposed
+            renderClassificationProposal(classificationState)
+          }
+          return classificationMetadata(classificationState)
+        }
+        const canonicalCheckpoint = candidateCreation === "product-discovery" ||
+          candidateCreation === "business-architecture" ||
+          candidateCreation === "solution-security-architecture" ||
+          candidateCreation === "detailed-design-assurance" ||
+          candidateCreation === "design-implementation-handoff"
+          ? candidateCreation
+          : undefined
+        if (canonicalCheckpoint) {
+          if (current.applicabilityStatus !== "current") {
+            response.markdown(`The adopted ${journeyCheckpointLabels[canonicalCheckpoint]} proposal requires a current governed Initiative applicability matrix.`)
+            response.button({ command: "gaep.openInteractiveChat", title: "Continue to Applicability", arguments: ["continue"] })
+            return
+          }
+          const source = await options.sourceCheckpoint(current.id)
+          if (!source.baseline || source.baseline.status !== "current" || source.provenanceCount === 0) {
+            response.markdown(`The adopted ${journeyCheckpointLabels[canonicalCheckpoint]} proposal requires the accepted Source Baseline and Source Provenance checkpoints first.`)
+            response.button({ command: "gaep.openInteractiveChat", title: "Continue Source Foundation", arguments: ["continue"] })
+            return
+          }
+          const groupId: Phase1CanonicalGroupCheckpointId = canonicalCheckpoint === "design-implementation-handoff"
+            ? "p0-p4-readiness"
+            : canonicalCheckpoint
+          const groupLabel = phase1CanonicalGroupByCheckpoint[groupId]
+          const groupCatalog = phase1CanonicalRecordCatalog.filter((entry) => entry.group === groupLabel)
+          const targets = (await Promise.all(groupCatalog.map((entry) =>
+            options.nextPhase1AuthoringTarget(current.id, entry.kind))))
+            .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+          const rawTarget = targets.find((entry) => !entry.current)
+          if (!rawTarget) {
+            response.markdown([
+              `# ${markdownValue(groupLabel)} is already recorded`,
+              "",
+              "Every canonical record in this checkpoint is present. Open its governed workspace to review or revise an exact record.",
+            ].join("\n"))
+            response.button({ command: "gaep.openInteractiveChat", title: `Open ${groupLabel}`, arguments: ["author", `group:${groupId}`, true] })
+            response.button({ command: "gaep.openProductStudio", title: "Open Product Journey", arguments: ["overview"] })
+            return
+          }
+          const target = withAvailableCandidateDocumentContent(rawTarget)
+          const proposed = await proposeCanonicalRecord(
+            target,
+            advisor,
+            [
+              `Generate the first exact ${target.label} proposal for the adopted ${groupLabel} checkpoint.`,
+              "Use the supplied Adopt checkpoint evidence, proposed values, exact Source metadata, governed Product/Initiative context, and upstream records.",
+              "Preserve every missing decision explicitly. Do not infer approval, authority, readiness, implementation, or release status.",
+            ].join(" "),
+          )
+          if (!proposed) return
+          phase1AuthoringState = {
+            schemaVersion: 1,
+            phase: "proposal",
+            initiativeId: current.id,
+            target: {
+              kind: target.kind,
+              label: target.label,
+              group: target.group,
+              ordinal: target.ordinal,
+              total: target.total,
+              operation: target.operation,
+              ...(target.current ? {
+                current: { id: target.current.id, revision: target.current.revision, historyCount: target.current.history.length },
+              } : {}),
+              downstreamRecorded: target.downstream.filter((entry) => entry.recorded)
+                .map((entry) => ({ kind: entry.kind, label: entry.label })),
+            },
+            advisor,
+            assessment: proposed.assessment,
+            draft: proposed.draft,
+            round: 1,
+            authorityBoundary: "phase1-authoring-draft-is-advisory-until-explicit-review-and-commit",
+          }
+          response.markdown(phase1AuthoringMarkdown(phase1AuthoringState))
+          phase1ProposalActions(response, phase1AuthoringState)
+          return phase1AuthoringMetadata(phase1AuthoringState)
+        }
+        if (!current.classification || !current.applicabilityCatalog) {
+          response.markdown("The adopted Applicability proposal cannot be generated until Initiative Classification is governed and the canonical subject catalog is available.")
+          response.button({ command: "gaep.openInteractiveChat", title: "Continue to Classification", arguments: ["continue"] })
+          return
+        }
+        const candidate = persistedAdoption.checkpoints.find((row) => row.checkpoint === "initiative-applicability")
+        if (!candidate) throw new Error("The committed adoption plan has no Initiative applicability candidate")
+        applicabilityState = startInitiativeApplicabilityChat(advisor, {
+          initiativeId: current.id,
+          initiativeRevision: current.revision,
+          productRevision: product.revision,
+          product: { name: product.name, profile: product.input.profile, summary: product.input.summary },
+          initiative: {
+            title: current.title,
+            outcome: current.outcome,
+            scope: [...current.scope],
+            exclusions: [...current.exclusions],
+          },
+          classification: current.classification,
+          catalog: current.applicabilityCatalog,
+          ...(current.priorApplicability ? { currentApplicability: current.priorApplicability } : {}),
+        })
+        const proposed = await proposeInitiativeApplicability(applicabilityState, [
+          suggestedInitiativeApplicabilityBrief(applicabilityState),
+          `Adopted candidate proposal: ${candidate.candidateProposal}`,
+          `Adopted evidence: ${candidate.evidence}`,
+          `Missing human decisions: ${candidate.missingDecisions}`,
+          "Preserve unsupported knowledge as unresolved; do not invent waivers, owners, approvers, readiness, implementation, or release authority.",
+        ].join("\n\n"))
+        if (proposed) {
+          applicabilityState = proposed
+          renderApplicabilityProposal(applicabilityState)
+        }
+        return applicabilityMetadata(applicabilityState)
+      }
+      if (adoptionPrompt === "consume") {
+        const current = await options.currentInitiative()
+        if (!persistedAdoption) {
+          response.markdown("No committed adoption candidate set is available. Run `/adopt` with the Product documents and commit the reviewed Product first.")
+          return
+        }
+        if (!current) {
+          response.markdown("The exact reviewed attachments are safely captured as non-governed Source Intake candidates. Create the governed Initiative first; GAEP will then bind these candidates to that Initiative.")
+          response.button({ command: "gaep.openInteractiveChat", title: "Create Initiative", arguments: ["continue"] })
+          return
+        }
+        if (!options.consumeAdoptionSources) {
+          response.markdown("Automatic candidate consumption is unavailable in this extension build. Use Source Intake to record the reviewed candidates explicitly.")
+          return
+        }
+        const consumed = await options.consumeAdoptionSources(current.id)
+        response.markdown([
+          "# Reviewed adoption sources bound to the Initiative",
+          "",
+          `**${consumed.recorded.length}** exact Source record(s) created · **${consumed.reused.length}** already-current Source record(s) reused.`,
+          "",
+          "The files remain non-authoritative candidates. This records exact Source Intake only; it does not create a Baseline, Provenance, approval, or readiness authority.",
+        ].join("\n"))
+        response.button({ command: "gaep.openInteractiveChat", title: "Review Source Baseline", arguments: ["baseline"] })
+        response.button({ command: "gaep.openProductStudio", title: "Open Product Journey", arguments: ["overview"] })
+        return
+      }
       const product = await options.productState()
       if (product.state === "initialized") {
         response.markdown([
@@ -2183,7 +2902,7 @@ export function registerGaepProductChat(
         response.markdown([
           "# Adopt an existing Product",
           "",
-          "Choose one or more Product files, or a folder containing the current Product documents. GAEP will read supported content, propose the Product Definition, assess all Product Journey checkpoints, and stop at an editable review before creating `.gaep`.",
+          "Choose one or more Product files, or a folder containing the current Product documents. GAEP will read supported content, propose the Product Definition, assess all Product Journey checkpoints, and stop at a read-only review before creating `.gaep`.",
           "",
           "> Documents remain non-authoritative candidates. Fast-start does not silently create Source, Baseline, approval, implementation, or release authority.",
         ].join("\n"))
@@ -2295,40 +3014,16 @@ export function registerGaepProductChat(
             throw new Error(coverageErrors[0] ?? "The Product Journey coverage was not contract-valid")
           }
           state = startProductInitializationReview(advisor, input, batch.candidates.map((candidate) => candidate.label))
-          response.markdown([
-            "# Existing Product adoption proposal",
-            "",
-            "The documents were used twice: first to prefill the governed Product Definition, then to assess every Product Journey checkpoint. Nothing below is committed or authoritative yet.",
-            "",
-            `**Assessment:** ${markdownValue(assessment.assessment)}`,
-            ...(assessment.gaps.length > 0 ? ["", "**Evidence gaps to review:**", ...assessment.gaps.map((gap) => `- ${markdownValue(gap)}`)] : []),
-            "",
-            reviewMarkdown(state),
-            "",
-            "## Journey acceleration preview",
-            "",
-            markdownTable(["Checkpoint", "Coverage", "Candidate proposal", "Missing decisions"], journeyCoverage.map((row) => [
-              journeyCheckpointLabels[row.checkpoint],
-              row.coverage,
-              row.candidateProposal,
-              row.missingDecisions,
-            ])),
-            "",
-            "```mermaid",
-            "flowchart LR",
-            "  PD[\"Product definition\"] --> ID[\"Initiative definition\"] --> IC[\"Initiative classification\"] --> IA[\"Initiative applicability\"]",
-            "  IA --> SI[\"Source intake\"] --> SB[\"Source baseline\"] --> SP[\"Source provenance\"]",
-            "  SP --> DISC[\"Product discovery\"] --> BA[\"Business architecture\"] --> SA[\"Solution and security architecture\"]",
-            "  SA --> DD[\"Detailed design and assurance, including Event Storming\"] --> DH[\"Pre-Figma readiness and handoff\"]",
-            "```",
-            "",
-            `**Journey assessment:** ${markdownValue(coverageAssessment.assessment)}`,
-            "",
-            "> This preview accelerates the Journey by showing what GAEP can prefill at every checkpoint. Each proposal remains editable and a checkpoint is recorded only after its own review and explicit confirmation.",
-          ].join("\n"))
-          response.button({ command: "gaep.openInteractiveChat", title: "Commit Reviewed Product", arguments: ["commit", "CONFIRM"] })
-          response.button({ command: "gaep.openInteractiveChat", title: "Edit Proposed Fields", arguments: ["edit"] })
-          return metadata(state)
+          adoptionState = startExistingProductAdoptionReview({
+            productAssessment: assessment.assessment,
+            productGaps: assessment.gaps,
+            journeyAssessment: coverageAssessment.assessment,
+            sources: portableAttachmentMetadata(batch),
+            checkpoints: journeyCoverage,
+          })
+          response.markdown(existingProductAdoptionOverviewMarkdown(adoptionState, reviewMarkdown(state)))
+          adoptionOverviewActions(response)
+          return adoptionMetadata(state, adoptionState)
         } catch (error) {
           contractErrors = [error instanceof Error ? error.message : "The Product proposal was not contract-valid"]
         }
@@ -2360,7 +3055,9 @@ export function registerGaepProductChat(
       const advisorStatus = advisor
         ? `${markdownValue(advisor.agentLabel)} · ${markdownValue(advisor.modelLabel)} (${advisor.modelTruthClass})`
         : "not selected"
-      const draftStatus = phase1AuthoringState && !["committed", "cancelled"].includes(phase1AuthoringState.phase)
+      const draftStatus = sourceFoundationState && !["committed", "cancelled"].includes(sourceFoundationState.phase)
+        ? `${journeyCheckpointLabels[sourceFoundationState.checkpoint]} ${sourceFoundationState.phase} (Initiative revision ${sourceFoundationState.initiativeRevision})`
+        : phase1AuthoringState && !["committed", "cancelled"].includes(phase1AuthoringState.phase)
         ? `Product Journey ${phase1AuthoringState.target.label} ${phase1AuthoringState.phase} (record ${phase1AuthoringState.target.ordinal}/${phase1AuthoringState.target.total})`
         : applicabilityState && !["committed", "cancelled"].includes(applicabilityState.phase)
         ? `Initiative applicability ${applicabilityState.phase} (Initiative revision ${applicabilityState.initiativeRevision})`
@@ -2374,44 +3071,53 @@ export function registerGaepProductChat(
         ["Initiative definition", current ? "Recorded" : "Not started", current ? `Revision ${current.revision}` : "—"],
         ["Initiative classification", current?.classificationStatus ?? "Not started", current?.classification ? `${current.classification.unresolvedQuestions.length} open question(s)` : "—"],
         ["Initiative applicability", current?.applicabilityStatus ?? "Not started", current?.applicability ? `${current.applicability.decisions.length} mapped · ${current.applicability.unresolvedSubjects.length} unresolved` : "—"],
-        ["Source intake", source?.sourceCount ? "Recorded" : "Not started", source?.sourceCount ? `${source.sourceCount} exact candidate Source(s)` : "—"],
+        ["Source intake", source?.sourceCount || persistedAdoption?.sources.length ? "Recorded" : "Not started", source?.sourceCount
+          ? `${source.sourceCount} exact candidate Source(s)`
+          : persistedAdoption?.sources.length
+            ? `${persistedAdoption.sources.length} exact reviewed attachment(s) captured; Initiative binding pending`
+            : "—"],
         ["Source baseline", source?.baseline?.status ?? "Not started", source?.baseline ? `Revision ${source.baseline.revision} · ${source.baseline.memberCount} members` : "—"],
         ["Source provenance", source?.provenanceCount ? "Recorded" : "Not started", source?.provenanceCount ? `${source.provenanceCount} lineage record(s)` : "—"],
         ...(phase1?.groups ?? []).map((group) => [group.label, group.complete ? "Recorded" : "In progress", `${group.recorded}/${group.total}`]),
       ]
-      const nodeState = (done: boolean, active = false) => done ? "✓" : active ? "→" : "○"
       const productDone = product.state === "initialized"
       const initiativeDone = Boolean(current)
       const classificationDone = current?.classificationStatus === "current"
       const applicabilityDone = current?.applicabilityStatus === "current"
-      const intakeDone = Boolean(source?.sourceCount)
+      const intakeDone = Boolean(source?.sourceCount || persistedAdoption?.sources.length)
       const baselineDone = source?.baseline?.status === "current"
       const provenanceDone = Boolean(source?.provenanceCount)
       const phaseGroup = (id: string) => phase1?.groups.find((group) => group.id === id)
-      const completedBefore = [productDone, initiativeDone, classificationDone, applicabilityDone, intakeDone, baselineDone, provenanceDone]
-      const activeIndex = completedBefore.findIndex((done) => !done)
-      const journeyDiagram = [
-        "```mermaid",
-        "flowchart TD",
-        `  P["${nodeState(productDone, activeIndex === 0)} Product definition"] --> I["${nodeState(initiativeDone, activeIndex === 1)} Initiative definition"]`,
-        `  I --> C["${nodeState(classificationDone, activeIndex === 2)} Initiative classification"]`,
-        `  C --> A["${nodeState(applicabilityDone, activeIndex === 3)} Initiative applicability"]`,
-        `  A --> SI["${nodeState(intakeDone, activeIndex === 4)} Source intake"]`,
-        `  SI --> SB["${nodeState(baselineDone, activeIndex === 5)} Source baseline"]`,
-        `  SB --> SP["${nodeState(provenanceDone, activeIndex === 6)} Source provenance"]`,
-        `  SP --> PD["${nodeState(Boolean(phaseGroup("product-discovery")?.complete), provenanceDone && !phaseGroup("product-discovery")?.complete)} Product discovery"]`,
-        `  PD --> BA["${nodeState(Boolean(phaseGroup("business-architecture")?.complete))} Business architecture"]`,
-        `  BA --> SA["${nodeState(Boolean(phaseGroup("solution-security-architecture")?.complete))} Solution and security architecture"]`,
-        `  SA --> DD["${nodeState(Boolean(phaseGroup("detailed-design-assurance")?.complete))} Detailed design and assurance"]`,
-        `  DD --> R["${nodeState(Boolean(phaseGroup("p0-p4-readiness")?.complete))} Pre-Figma readiness and handoff"]`,
-        "```",
-      ].join("\n")
+      const journeyNodes = [
+        { id: "P", label: "Product definition", done: productDone },
+        { id: "I", label: "Initiative definition", done: initiativeDone },
+        { id: "C", label: "Initiative classification", done: classificationDone },
+        { id: "A", label: "Initiative applicability", done: applicabilityDone },
+        { id: "SI", label: "Source intake", done: intakeDone },
+        { id: "SB", label: "Source baseline", done: baselineDone },
+        { id: "SP", label: "Source provenance", done: provenanceDone },
+        { id: "PD", label: "Product discovery", done: Boolean(phaseGroup("product-discovery")?.complete) },
+        { id: "BA", label: "Business architecture", done: Boolean(phaseGroup("business-architecture")?.complete) },
+        { id: "SA", label: "Solution and security architecture", done: Boolean(phaseGroup("solution-security-architecture")?.complete) },
+        { id: "DD", label: "Detailed design and assurance", done: Boolean(phaseGroup("detailed-design-assurance")?.complete) },
+        { id: "R", label: "Pre-Figma readiness and handoff", done: Boolean(phaseGroup("p0-p4-readiness")?.complete) },
+      ]
+      const currentIndex = journeyNodes.findIndex((node) => !node.done)
+      const nextIndex = currentIndex >= 0 ? journeyNodes.findIndex((node, index) => index > currentIndex && !node.done) : -1
+      const journeyDiagram = productJourneyRoadmapDiagram(journeyNodes, currentIndex, nextIndex)
+      const currentLabel = currentIndex >= 0 ? journeyNodes[currentIndex]!.label : "Product Journey recorded"
+      const nextLabel = nextIndex >= 0 ? journeyNodes[nextIndex]!.label : "—"
+      const youAreHere = currentIndex >= 0
+        ? `**You are here:** ${markdownValue(currentLabel)} · **Next:** ${markdownValue(nextLabel)} · use **\`@gaep /continue\`**.`
+        : "**All governed checkpoints are recorded.** Review or export the Product Journey when ready."
       response.markdown([
         "# Product Journey status",
         "",
-        markdownTable(["Checkpoint", "State", "Recorded detail"], statusRows),
+        youAreHere,
         "",
         journeyDiagram,
+        "",
+        markdownTable(["Checkpoint", "State", "Recorded detail"], statusRows),
         "",
         markdownTable(["Session", "Value"], [
           ["Active advisor", advisorStatus],
@@ -2421,7 +3127,8 @@ export function registerGaepProductChat(
         "Use **`@gaep /continue`** for the next checkpoint. Open Product Studio to inspect recorded field values, revisions, impacts, and checkpoint-specific review/edit actions.",
       ].join("\n"))
       response.button({ command: "gaep.openProductStudio", title: "Open Product Journey", arguments: ["overview"] })
-      return phase1AuthoringState ? phase1AuthoringMetadata(phase1AuthoringState)
+      return sourceFoundationState ? sourceFoundationMetadata(sourceFoundationState)
+        : phase1AuthoringState ? phase1AuthoringMetadata(phase1AuthoringState)
         : applicabilityState ? applicabilityMetadata(applicabilityState)
         : classificationState ? classificationMetadata(classificationState)
         : initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
@@ -2564,6 +3271,18 @@ export function registerGaepProductChat(
         response.markdown("No complete Product draft is available to edit. Complete `/initialize`, `/adopt`, or `/revise` first.")
         return state ? metadata(state) : undefined
       }
+      if (state.workflow === "initialization") {
+        response.markdown(adoptionState && adoptionState.phase === "review"
+          ? `${existingProductAdoptionOverviewMarkdown(adoptionState, reviewMarkdown(state))}\n\nPre-commit editing is intentionally unavailable. Commit the reviewed Product as one unit, or cancel it; field-by-field revision begins only after a governed Product exists.`
+          : `${reviewMarkdown(state)}\n\nPre-commit editing is intentionally unavailable. Commit the reviewed Product as one unit, or cancel it; field-by-field revision begins only after a governed Product exists.`)
+        if (adoptionState && adoptionState.phase === "review") {
+          adoptionOverviewActions(response)
+          return adoptionMetadata(state, adoptionState)
+        }
+        response.button({ command: "gaep.openInteractiveChat", title: "Commit Reviewed Product", arguments: ["commit", "CONFIRM"] })
+        response.button({ command: "gaep.openInteractiveChat", title: "Cancel Product Proposal", arguments: ["cancel"] })
+        return metadata(state)
+      }
       const field = await options.selectRevisionField()
       if (!field) {
         response.markdown(`${reviewMarkdown(state)}\n\nNo field was selected; the complete draft was preserved.`)
@@ -2616,11 +3335,11 @@ export function registerGaepProductChat(
                 "",
                 "## Next: Candidate Source Baseline",
                 "",
-                "Review and record the exact current Source revisions as one candidate snapshot. Membership remains editable by revising the Source set before this action.",
+                "Generate a reviewable proposal for the exact current Source revisions. Nothing is recorded until the proposal is accepted and explicitly committed; membership remains changeable by revising the Source set before commit.",
                 "",
-                "> This low-risk Review and Record action creates no Source authority, approval, readiness, implementation, or release authority.",
+                "> The proposal creates no Source authority, approval, readiness, implementation, or release authority.",
               ].join("\n"))
-              response.button({ command: "gaep.openInteractiveChat", title: "Review and Record Baseline", arguments: ["baseline"] })
+              response.button({ command: "gaep.openInteractiveChat", title: "Generate Baseline Proposal", arguments: ["baseline"] })
               return applicabilityState ? applicabilityMetadata(applicabilityState)
                 : classificationState ? classificationMetadata(classificationState)
                   : initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
@@ -2631,9 +3350,9 @@ export function registerGaepProductChat(
                 "",
                 `The current candidate Baseline is **${checkpoint.baseline.status}** against the recorded Source revisions.`,
                 "",
-                "Review the current candidate Sources, then record a new exact Baseline.",
+                "Review the current candidate Sources, then generate and accept a new exact Baseline proposal before commit.",
               ].join("\n"))
-              response.button({ command: "gaep.openInteractiveChat", title: "Record Current Baseline", arguments: ["baseline"] })
+              response.button({ command: "gaep.openInteractiveChat", title: "Generate Current Baseline Proposal", arguments: ["baseline"] })
               return applicabilityState ? applicabilityMetadata(applicabilityState)
                 : classificationState ? classificationMetadata(classificationState)
                   : initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
@@ -2646,9 +3365,9 @@ export function registerGaepProductChat(
                 "",
                 "## Next: Source Provenance",
                 "",
-                "Record conservative exact lineage from these candidate Sources to the current Initiative. Claim-level truth remains unresolved.",
+                "Generate a reviewable conservative lineage proposal from these candidate Sources to the current Initiative. Claim-level truth remains unresolved, and nothing is recorded until separate acceptance and explicit commit.",
               ].join("\n"))
-              response.button({ command: "gaep.openInteractiveChat", title: "Review and Record Provenance", arguments: ["provenance"] })
+              response.button({ command: "gaep.openInteractiveChat", title: "Generate Provenance Proposal", arguments: ["provenance"] })
               return applicabilityState ? applicabilityMetadata(applicabilityState)
                 : classificationState ? classificationMetadata(classificationState)
                   : initiativeState ? initiativeMetadata(initiativeState) : state ? metadata(state) : undefined
@@ -2748,6 +3467,21 @@ export function registerGaepProductChat(
             catalog: current.applicabilityCatalog,
             ...(current.priorApplicability ? { currentApplicability: current.priorApplicability } : {}),
           })
+          const adoptedApplicability = persistedAdoption?.checkpoints.find((row) => row.checkpoint === "initiative-applicability")
+          if (adoptedApplicability) {
+            const proposed = await proposeInitiativeApplicability(applicabilityState, [
+              suggestedInitiativeApplicabilityBrief(applicabilityState),
+              `Adopted candidate proposal: ${adoptedApplicability.candidateProposal}`,
+              `Adopted evidence: ${adoptedApplicability.evidence}`,
+              `Missing human decisions: ${adoptedApplicability.missingDecisions}`,
+              "Preserve unsupported knowledge as unresolved; do not invent waivers, owners, approvers, readiness, implementation, or release authority.",
+            ].join("\n\n"))
+            if (proposed) {
+              applicabilityState = proposed
+              renderApplicabilityProposal(applicabilityState)
+              return applicabilityMetadata(applicabilityState)
+            }
+          }
           response.markdown([
             current.applicabilityStatus === "stale"
               ? "# Rebuild GAEP Initiative applicability"
@@ -2759,6 +3493,7 @@ export function registerGaepProductChat(
             "",
             applicabilityQuestionMarkdown(applicabilityState),
           ].join("\n"))
+          response.button({ command: "gaep.openInteractiveChat", title: "Generate Applicability Proposal", arguments: ["suggest"] })
           return applicabilityMetadata(applicabilityState)
         }
         const advisor = preferredProductChatAdvisor(
@@ -2787,6 +3522,21 @@ export function registerGaepProductChat(
             exclusions: [...current.exclusions],
           },
         })
+        const adoptedClassification = persistedAdoption?.checkpoints.find((row) => row.checkpoint === "initiative-classification")
+        if (adoptedClassification) {
+          const proposed = await proposeInitiativeClassification(classificationState, [
+            "Generate the complete editable Initiative classification from the reviewed Adopt candidate and current governed Product/Initiative context.",
+            `Candidate proposal: ${adoptedClassification.candidateProposal}`,
+            `Evidence: ${adoptedClassification.evidence}`,
+            `Missing human decisions: ${adoptedClassification.missingDecisions}`,
+            "Keep unsupported knowledge explicit in unresolvedQuestions; do not invent named owners, authorities, regulation, approval, readiness, implementation, or release status.",
+          ].join("\n"))
+          if (proposed) {
+            classificationState = proposed
+            renderClassificationProposal(classificationState)
+            return classificationMetadata(classificationState)
+          }
+        }
         response.markdown([
           "# GAEP Initiative classification",
           "",
@@ -2794,6 +3544,7 @@ export function registerGaepProductChat(
           "",
           classificationQuestionMarkdown(classificationState),
         ].join("\n"))
+        response.button({ command: "gaep.openInteractiveChat", title: "Generate Classification Proposal", arguments: ["suggest"] })
         return classificationMetadata(classificationState)
       }
       const advisor = preferredProductChatAdvisor(options.currentAdvisor(), initiativeState?.advisor, state?.advisor) ?? await options.selectAdvisor()
@@ -2802,6 +3553,15 @@ export function registerGaepProductChat(
         return state ? metadata(state) : undefined
       }
       initiativeState = startInitiativeChat(advisor)
+      const adoptedInstruction = adoptedInitiativeInstruction(initiativeState)
+      if (adoptedInstruction) {
+        const proposed = await proposeInitiativeAnswer(initiativeState, adoptedInstruction)
+        if (proposed) {
+          initiativeState = proposed
+          renderInitiativeProposal(initiativeState)
+          return initiativeMetadata(initiativeState)
+        }
+      }
       response.markdown([
         "# GAEP Initiative creation",
         "",
@@ -2809,6 +3569,7 @@ export function registerGaepProductChat(
         "",
         initiativeQuestionMarkdown(initiativeState),
       ].join("\n"))
+      response.button({ command: "gaep.openInteractiveChat", title: "Generate Initiative Proposal", arguments: ["suggest"] })
       return initiativeMetadata(initiativeState)
     }
     if (applicabilityState && !["committed", "cancelled"].includes(applicabilityState.phase)) {
@@ -2827,7 +3588,7 @@ export function registerGaepProductChat(
         const proposed = await proposeInitiativeApplicability(applicabilityState, clarification)
         if (proposed) {
           applicabilityState = proposed
-          response.markdown(applicabilityAssessedMarkdown(applicabilityState))
+          renderApplicabilityProposal(applicabilityState)
         }
         return applicabilityMetadata(applicabilityState)
       }
@@ -2843,7 +3604,7 @@ export function registerGaepProductChat(
         const proposed = await proposeInitiativeApplicability(applicabilityState, suggestedBrief)
         if (proposed) {
           applicabilityState = proposed
-          response.markdown(applicabilityAssessedMarkdown(applicabilityState))
+          renderApplicabilityProposal(applicabilityState)
         }
         return applicabilityMetadata(applicabilityState)
       }
@@ -2868,6 +3629,8 @@ export function registerGaepProductChat(
             : applicabilityState.phase === "awaiting-approval"
               ? applicabilityAssessedMarkdown(applicabilityState)
               : applicabilityQuestionMarkdown(applicabilityState, "The selected agent and model are already active."))
+          if (applicabilityState.phase === "awaiting-approval") proposalAcceptanceAction(response, "Accept Applicability Proposal")
+          if (applicabilityState.phase === "review") proposalCommitAction(response, "Commit Applicability Matrix")
           return applicabilityMetadata(applicabilityState)
         }
         const pending = applicabilityState.pending
@@ -2876,7 +3639,7 @@ export function registerGaepProductChat(
           const proposed = await proposeInitiativeApplicability(applicabilityState, pending.originalAnswer)
           if (proposed) {
             applicabilityState = proposed
-            response.markdown(applicabilityAssessedMarkdown(applicabilityState))
+            renderApplicabilityProposal(applicabilityState)
           }
           return applicabilityMetadata(applicabilityState)
         }
@@ -2895,6 +3658,8 @@ export function registerGaepProductChat(
           : applicabilityState.phase === "awaiting-approval"
             ? applicabilityAssessedMarkdown(applicabilityState)
             : applicabilityQuestionMarkdown(applicabilityState, "Provide and accept an applicability brief before review."))
+        if (applicabilityState.phase === "awaiting-approval") proposalAcceptanceAction(response, "Accept Applicability Proposal")
+        if (applicabilityState.phase === "review") proposalCommitAction(response, "Commit Applicability Matrix")
         return applicabilityMetadata(applicabilityState)
       }
       if (command === "accept") {
@@ -2926,6 +3691,7 @@ export function registerGaepProductChat(
         }
         applicabilityState = acceptInitiativeApplicability(applicabilityState)
         response.markdown(applicabilityReviewMarkdown(applicabilityState))
+        proposalCommitAction(response, "Commit Applicability Matrix")
         return applicabilityMetadata(applicabilityState)
       }
       if (command === "commit") {
@@ -2966,21 +3732,37 @@ export function registerGaepProductChat(
       const proposed = await proposeInitiativeApplicability(applicabilityState, request.prompt)
       if (proposed) {
         applicabilityState = proposed
-        response.markdown(applicabilityAssessedMarkdown(applicabilityState))
+        renderApplicabilityProposal(applicabilityState)
       }
       return applicabilityMetadata(applicabilityState)
     }
     if (classificationState && !["committed", "cancelled"].includes(classificationState.phase)) {
-      if (command === "suggest" || command === "resolve") {
-        if (!classificationState.currentClassification) {
-          response.markdown(classificationQuestionMarkdown(classificationState, "Describe the Initiative classification before requesting a proposal."))
+      if (command === "suggest") {
+        if (classificationState.phase === "review") {
+          response.markdown(`${classificationReviewMarkdown(classificationState)}\n\nUse \`/back\` before replacing the accepted proposal.`)
+          proposalCommitAction(response, "Commit Classification")
           return classificationMetadata(classificationState)
         }
+        if (classificationState.phase === "awaiting-approval") {
+          classificationState = backInitiativeClassification(classificationState)
+        }
+        const proposed = await proposeInitiativeClassification(
+          classificationState,
+          suggestedInitiativeClassificationBrief(classificationState),
+        )
+        if (proposed) {
+          classificationState = proposed
+          renderClassificationProposal(classificationState)
+        }
+        return classificationMetadata(classificationState)
+      }
+      if (command === "resolve") {
         const resolution = suggestedInitiativeClassificationResolution(classificationState)
         if (!resolution) {
           response.markdown(classificationState.phase === "awaiting-approval"
             ? `${classificationAssessedMarkdown(classificationState)}\n\nThe current proposal has no open classification question requiring a GAEP resolution.`
             : classificationQuestionMarkdown(classificationState, "The current governed classification has no open question requiring a GAEP resolution."))
+          if (classificationState.phase === "awaiting-approval") proposalAcceptanceAction(response, "Accept Classification Proposal")
           return classificationMetadata(classificationState)
         }
         const proposed = await proposeInitiativeClassification(
@@ -2989,7 +3771,7 @@ export function registerGaepProductChat(
         )
         if (proposed) {
           classificationState = proposed
-          response.markdown(classificationAssessedMarkdown(classificationState))
+          renderClassificationProposal(classificationState)
         }
         return classificationMetadata(classificationState)
       }
@@ -3012,6 +3794,8 @@ export function registerGaepProductChat(
           response.markdown(classificationState.phase === "awaiting-approval"
             ? classificationAssessedMarkdown(classificationState)
             : classificationQuestionMarkdown(classificationState, "The selected agent and model are already active."))
+          if (classificationState.phase === "awaiting-approval") proposalAcceptanceAction(response, "Accept Classification Proposal")
+          if (classificationState.phase === "review") proposalCommitAction(response, "Commit Classification")
           return classificationMetadata(classificationState)
         }
         const pending = classificationState.pending
@@ -3020,7 +3804,7 @@ export function registerGaepProductChat(
           const proposed = await proposeInitiativeClassification(classificationState, pending.originalAnswer)
           if (proposed) {
             classificationState = proposed
-            response.markdown(classificationAssessedMarkdown(classificationState))
+            renderClassificationProposal(classificationState)
           }
           return classificationMetadata(classificationState)
         }
@@ -3039,6 +3823,8 @@ export function registerGaepProductChat(
           : classificationState.phase === "awaiting-approval"
             ? classificationAssessedMarkdown(classificationState)
             : classificationQuestionMarkdown(classificationState, "Provide and accept a classification brief before review."))
+        if (classificationState.phase === "awaiting-approval") proposalAcceptanceAction(response, "Accept Classification Proposal")
+        if (classificationState.phase === "review") proposalCommitAction(response, "Commit Classification")
         return classificationMetadata(classificationState)
       }
       if (command === "accept") {
@@ -3061,6 +3847,7 @@ export function registerGaepProductChat(
         }
         classificationState = acceptInitiativeClassification(classificationState)
         response.markdown(classificationReviewMarkdown(classificationState))
+        proposalCommitAction(response, "Commit Classification")
         return classificationMetadata(classificationState)
       }
       if (command === "commit") {
@@ -3115,20 +3902,11 @@ export function registerGaepProductChat(
       const proposed = await proposeInitiativeClassification(classificationState, request.prompt)
       if (proposed) {
         classificationState = proposed
-        response.markdown(classificationAssessedMarkdown(classificationState))
+        renderClassificationProposal(classificationState)
       }
       return classificationMetadata(classificationState)
     }
     if (initiativeState && !["committed", "cancelled"].includes(initiativeState.phase)) {
-      const initiativeAdvisorContext = async (): Promise<object> => {
-        const product = await options.productState()
-        return initiativeAdvisorAcceptedAnswers(
-          initiativeState!.answers,
-          product.state === "initialized"
-            ? { revision: product.revision, input: product.input }
-            : undefined,
-        )
-      }
       if (command === "cancel") {
         initiativeState = { ...initiativeState, phase: "cancelled" }
         response.markdown("The Initiative chat draft was discarded. No governed Initiative was created or changed.")
@@ -3159,12 +3937,12 @@ export function registerGaepProductChat(
             const assessment = await options.challengeAnswer({
               advisor,
               question,
-              acceptedAnswers: await initiativeAdvisorContext(),
+              acceptedAnswers: await initiativeAdvisorContext(initiativeState),
               userAnswer: pending.originalAnswer,
               previousAssessment: pending,
             }, abort.signal)
             initiativeState = assessInitiativeAnswer(initiativeState, pending.originalAnswer, assessment)
-            response.markdown(initiativeAssessedMarkdown(initiativeState))
+            renderInitiativeProposal(initiativeState)
           } catch {
             response.markdown(`${initiativeAssessedMarkdown(initiativeState)}\n\nRe-evaluation failed; GAEP did not advance.`)
           } finally {
@@ -3185,6 +3963,17 @@ export function registerGaepProductChat(
         response.markdown(initiativeState.phase === "review"
           ? initiativeReviewMarkdown(initiativeState)
           : initiativeQuestionMarkdown(initiativeState, "Complete the remaining Initiative questions before review."))
+        if (initiativeState.phase === "review") proposalCommitAction(response, "Commit Initiative Proposal")
+        return initiativeMetadata(initiativeState)
+      }
+      if (command === "suggest") {
+        const instruction = adoptedInitiativeInstruction(initiativeState) ??
+          "Propose the strongest concrete answer for this Initiative field from the governed Product and already accepted Initiative fields. Keep unsupported knowledge explicit and editable."
+        const proposed = await proposeInitiativeAnswer(initiativeState, instruction)
+        if (proposed) {
+          initiativeState = proposed
+          renderInitiativeProposal(initiativeState)
+        }
         return initiativeMetadata(initiativeState)
       }
       if (command === "accept") {
@@ -3193,9 +3982,19 @@ export function registerGaepProductChat(
           return initiativeMetadata(initiativeState)
         }
         initiativeState = acceptInitiativeAnswer(initiativeState)
-        response.markdown(initiativeState.phase === "review"
-          ? initiativeReviewMarkdown(initiativeState)
-          : initiativeQuestionMarkdown(initiativeState, "The previous Initiative proposal was explicitly accepted."))
+        if (initiativeState.phase === "review") {
+          response.markdown(initiativeReviewMarkdown(initiativeState))
+          proposalCommitAction(response, "Commit Initiative Proposal")
+          return initiativeMetadata(initiativeState)
+        }
+        const instruction = adoptedInitiativeInstruction(initiativeState)
+        const proposed = instruction ? await proposeInitiativeAnswer(initiativeState, instruction) : undefined
+        if (proposed) {
+          initiativeState = proposed
+          renderInitiativeProposal(initiativeState)
+        } else {
+          response.markdown(initiativeQuestionMarkdown(initiativeState, "The previous Initiative proposal was explicitly accepted."))
+        }
         return initiativeMetadata(initiativeState)
       }
       if (command === "commit") {
@@ -3216,6 +4015,10 @@ export function registerGaepProductChat(
               initiativeState.baseInitiativeRevision!,
             )
           : await options.commitInitiative(initiativeInput(initiativeState))
+        const initiativeId = "id" in initiative && typeof initiative.id === "string" ? initiative.id : undefined
+        const consumed = !isRevision && initiativeId && options.consumeAdoptionSources
+          ? await options.consumeAdoptionSources(initiativeId)
+          : undefined
         initiativeState = { ...initiativeState, phase: "committed" }
         response.markdown([
           isRevision
@@ -3225,6 +4028,7 @@ export function registerGaepProductChat(
           isRevision
             ? "The changed definition invalidates downstream Classification and Applicability until they are reviewed and recorded again. Prior audit evidence is preserved."
             : "It remains proposed and grants no execution or implementation authority.",
+          ...(consumed ? ["", `Adoption Source Intake consumed **${consumed.recorded.length + consumed.reused.length}** exact reviewed attachment(s): ${consumed.recorded.length} recorded and ${consumed.reused.length} reused.`] : []),
           "",
           "Next: run **`@gaep /continue`** to classify this Initiative conversationally.",
         ].join("\n"))
@@ -3236,38 +4040,40 @@ export function registerGaepProductChat(
         response.markdown(initiativeQuestionMarkdown(initiativeState, candidate.challenge))
         return initiativeMetadata(initiativeState)
       }
-      const question = currentInitiativeQuestion(initiativeState)!
-      try {
-        const acceptedAnswers = await initiativeAdvisorContext()
-        const result = await assessInitiativeAnswerWithAutomaticRepair(
-          initiativeState,
-          request.prompt,
-          async ({ attempt, contractErrors, previousAssessment }) => {
-            response.progress(attempt === 1
-              ? `Asking ${initiativeState!.advisor.agentLabel} · ${initiativeState!.advisor.modelLabel} to draft and challenge this Initiative answer`
-              : `GAEP is replacing an invalid or placeholder Initiative answer with a concrete context-grounded candidate (${attempt}/3)…`)
-            return withChatCancellation(token, (signal) => options.challengeAnswer({
-              advisor: initiativeState!.advisor,
-              question,
-              acceptedAnswers: {
-                ...acceptedAnswers,
-                ...(contractErrors.length > 0 ? { contractErrorsToRepair: contractErrors } : {}),
-              },
-              userAnswer: attempt === 1
-                ? request.prompt
-                : `${request.prompt}\n\nGAEP automatic answer repair: return a concrete, field-valid proposal derived from the governed context. Replace every placeholder. Do not ask the human to repeat known Product facts.`,
-              ...(previousAssessment ? { previousAssessment } : {}),
-            }, signal))
-          },
-        )
-        initiativeState = result.state
-        response.markdown(initiativeAssessedMarkdown(initiativeState))
-      } catch (error) {
-        options.reportDiagnostic?.("Initiative answer automatic normalization failed", error)
-        response.markdown(initiativeQuestionMarkdown(initiativeState, "GAEP could not produce a concrete field-valid proposal after three automatic repair attempts. Your draft is preserved; switch the agent/model or retry without learning GAEP's internal format."))
-        response.button({ command: "gaep.showDiagnostics", title: "Show Diagnostics" })
+      const proposed = await proposeInitiativeAnswer(initiativeState, request.prompt)
+      if (proposed) {
+        initiativeState = proposed
+        renderInitiativeProposal(initiativeState)
       }
       return initiativeMetadata(initiativeState)
+    }
+    if ((!state || ["committed", "cancelled"].includes(state.phase)) &&
+        ["accept", "back", "cancel", "commit", "review", "resolve", "suggest"].includes(command)) {
+      const current = await options.currentInitiative()
+      const recovery = persistedAdoption
+        ? !current
+          ? { command: "adopt", prompt: "create:initiative-definition", title: "Regenerate Initiative Proposal" }
+          : current.classificationStatus !== "current"
+            ? { command: "adopt", prompt: "create:initiative-classification", title: "Regenerate Classification Proposal" }
+            : current.applicabilityStatus !== "current"
+              ? { command: "adopt", prompt: "create:initiative-applicability", title: "Regenerate Applicability Proposal" }
+              : { command: "continue", prompt: "", title: "Continue Product Journey" }
+        : { command: "continue", prompt: "", title: "Continue Product Journey" }
+      response.markdown([
+        "# No active proposal in this Chat",
+        "",
+        `**\`/${command}\`** was not applied because this Chat does not contain the portable metadata for a visible proposal. This usually happens after **Start Over**, reload, or opening the action in a new Chat.`,
+        "",
+        "GAEP will not accept or commit an unseen candidate. Regenerate or resume the proposal below, review the displayed AI proposal, then accept and commit it in that same Chat.",
+        "",
+        "> Governed Product and Initiative records, Adopt evidence, and prior audit history were not changed.",
+      ].join("\n"))
+      response.button({
+        command: "gaep.openInteractiveChat",
+        title: recovery.title,
+        arguments: [recovery.command, recovery.prompt, true],
+      })
+      return
     }
     if (!state || state.phase === "cancelled" || state.phase === "committed") {
       response.markdown(`${helpMarkdown()}\n\nStart with **\`@gaep /initialize\`** for a new Product or **\`@gaep /revise\`** for an existing Product.`)
@@ -3275,8 +4081,11 @@ export function registerGaepProductChat(
     }
     if (command === "cancel") {
       state = { ...state, phase: "cancelled" }
+      if (adoptionState?.phase === "review") {
+        adoptionState = setExistingProductAdoptionReviewPhase(adoptionState, "cancelled")
+      }
       response.markdown("The conversational draft was discarded. No governed Product state was created or changed.")
-      return metadata(state)
+      return adoptionState ? adoptionMetadata(state, adoptionState) : metadata(state)
     }
     if (command === "advisor" || command === "agent" || command === "model") {
       const advisor = command === "model"
@@ -3336,6 +4145,16 @@ export function registerGaepProductChat(
       return metadata(state)
     }
     if (command === "back") {
+      if (state.workflow === "initialization" && state.phase === "review") {
+        response.markdown(adoptionState && adoptionState.phase === "review"
+          ? `${existingProductAdoptionOverviewMarkdown(adoptionState, reviewMarkdown(state))}\n\nThe first complete Product proposal remains read-only until commit. Use **/cancel** to reject it; after commit, use **/revise** for field-by-field changes.`
+          : `${reviewMarkdown(state)}\n\nThe first complete Product proposal remains read-only until commit. Use **/cancel** to reject it; after commit, use **/revise** for field-by-field changes.`)
+        if (adoptionState && adoptionState.phase === "review") {
+          adoptionOverviewActions(response)
+          return adoptionMetadata(state, adoptionState)
+        }
+        return metadata(state)
+      }
       state = goBackProductInitialization(state)
       response.markdown(questionMarkdown(state, "The previous answer was removed. Provide its replacement."))
       return metadata(state)
@@ -3345,7 +4164,13 @@ export function registerGaepProductChat(
         response.markdown(questionMarkdown(state, "Complete the remaining questions before review."))
         return metadata(state)
       }
+      if (adoptionState && adoptionState.phase === "review") {
+        response.markdown(existingProductAdoptionOverviewMarkdown(adoptionState, reviewMarkdown(state)))
+        adoptionOverviewActions(response)
+        return adoptionMetadata(state, adoptionState)
+      }
       response.markdown(reviewMarkdown(state))
+      proposalCommitAction(response, state.workflow === "revision" ? "Commit Product Revision" : "Commit Product")
       return metadata(state)
     }
     if (command === "accept") {
@@ -3354,8 +4179,10 @@ export function registerGaepProductChat(
         return metadata(state)
       }
       state = acceptProductAnswer(state)
-      if (state.phase === "review") response.markdown(reviewMarkdown(state))
-      else response.markdown(questionMarkdown(state, "The previous proposal was explicitly accepted. Continue with the next question."))
+      if (state.phase === "review") {
+        response.markdown(reviewMarkdown(state))
+        proposalCommitAction(response, state.workflow === "revision" ? "Commit Product Revision" : "Commit Product")
+      } else response.markdown(questionMarkdown(state, "The previous proposal was explicitly accepted. Continue with the next question."))
       return metadata(state)
     }
     if (command === "commit") {
@@ -3372,7 +4199,13 @@ export function registerGaepProductChat(
       const product = state.workflow === "revision"
         ? await options.reviseProduct(input, state.baseProductRevision!)
         : await options.commitProduct(input)
+      const acceleration = state.workflow === "initialization" && adoptionState?.phase === "review" && options.persistAdoptionAcceleration
+        ? await options.persistAdoptionAcceleration(adoptionState)
+        : undefined
       state = { ...state, phase: "committed" }
+      if (state.workflow === "initialization" && adoptionState?.phase === "review") {
+        adoptionState = setExistingProductAdoptionReviewPhase(adoptionState, "committed")
+      }
       response.markdown(state.workflow === "revision" ? [
         `Governed Product **${markdownValue(product.name)}** was revised successfully at revision **${"revision" in product ? product.revision : state.baseProductRevision! + 1}**.`,
         "",
@@ -3399,17 +4232,27 @@ export function registerGaepProductChat(
       ].join("\n") : [
         `Governed Product **${markdownValue(product.name)}** was initialized successfully.`,
         "",
-        "The chat transcript is not the source of truth; `.gaep` now is. Candidate attachments were not silently imported or granted authority.",
+        acceleration
+          ? `The chat transcript is not the source of truth; \`.gaep\` now is. **${acceleration.sourceCount}** exact reviewed attachment(s) were captured for Source Intake, and **${acceleration.checkpointCount}** downstream proposals were saved under \`.gaep/candidates\` as non-governed candidates.`
+          : "The chat transcript is not the source of truth; `.gaep` now is. Candidate attachments were not granted authority.",
         "",
-        "Next: create an Initiative and run governed Source Intake for the attached Product documents.",
+        acceleration
+          ? "Next: create the Initiative. GAEP will consume the captured Source Intake candidates and use the relevant proposal/evidence at each checkpoint."
+          : "Next: create an Initiative and run governed Source Intake for the attached Product documents.",
       ].join("\n"))
       if (state.workflow === "revision") {
         response.button({ command: "gaep.openProductStudio", title: "Review Product Journey", arguments: ["overview"] })
       }
-      return metadata(state)
+      return adoptionState ? adoptionMetadata(state, adoptionState) : metadata(state)
     }
     if (state.phase === "review") {
+      if (adoptionState && adoptionState.phase === "review") {
+        response.markdown(existingProductAdoptionOverviewMarkdown(adoptionState, reviewMarkdown(state)))
+        adoptionOverviewActions(response)
+        return adoptionMetadata(state, adoptionState)
+      }
       response.markdown(reviewMarkdown(state))
+      proposalCommitAction(response, state.workflow === "revision" ? "Commit Product Revision" : "Commit Product")
       return metadata(state)
     }
 
@@ -3445,6 +4288,7 @@ export function registerGaepProductChat(
       )
       state = result.state
       response.markdown(assessedAnswerMarkdown(state))
+      proposalAcceptanceAction(response, "Accept Product Proposal")
     } catch (error) {
       options.reportDiagnostic?.("Product answer automatic normalization failed", error)
       response.markdown(questionMarkdown(
@@ -3497,6 +4341,31 @@ export function registerGaepProductChat(
   participant.iconPath = vscode.Uri.joinPath(context.extensionUri, "media", "gaep.svg")
   participant.followupProvider = {
     provideFollowups: (result) => {
+      const adoption = result.metadata?.gaepExistingProductAdoption
+      if (isExistingProductAdoptionReviewState(adoption)) {
+        if (adoption.phase === "review") return [
+          { prompt: "/commit CONFIRM", label: "Commit reviewed Product" },
+          { prompt: "/adopt review", label: "Review checkpoint details" },
+          { prompt: "/cancel", label: "Discard adoption proposal" },
+        ]
+        if (adoption.phase === "committed") return [
+          { prompt: "/continue", label: "Continue Product Journey" },
+          { prompt: "/adopt review", label: "Review adoption evidence" },
+          { prompt: "/revise", label: "Revise a Product field" },
+        ]
+      }
+      const sourceFoundation = result.metadata?.gaepSourceFoundationProposal
+      if (isSourceFoundationProposalState(sourceFoundation)) {
+        if (sourceFoundation.phase === "proposal") return [
+          { prompt: "/accept", label: `Accept ${journeyCheckpointLabels[sourceFoundation.checkpoint]} proposal` },
+          { prompt: "/cancel", label: "Discard proposal" },
+        ]
+        if (sourceFoundation.phase === "review") return [
+          { prompt: "/commit CONFIRM", label: `Commit ${journeyCheckpointLabels[sourceFoundation.checkpoint]}` },
+          { prompt: "/back", label: "Back to proposal" },
+        ]
+        return [{ prompt: "/continue", label: "Continue Product Journey" }]
+      }
       const sourceReview = result.metadata?.gaepSourceAlignment
       if (isSourceAlignmentChatState(sourceReview)) {
         if (sourceReview.purpose === "understanding" && sourceReview.phase === "proposal") return [
@@ -3510,6 +4379,20 @@ export function registerGaepProductChat(
           { prompt: "/agent", label: "Switch agent" },
           { prompt: "/model", label: "Switch model" },
         ]
+      }
+      const phase1 = result.metadata?.gaepPhase1CanonicalAuthoring
+      if (isPhase1CanonicalAuthoringState(phase1)) {
+        if (phase1.phase === "proposal") return [
+          { prompt: "/accept", label: `Accept ${phase1.target.label} proposal` },
+          { prompt: "/inspect", label: "Inspect exact candidate JSON" },
+          { prompt: "/cancel", label: "Discard proposal" },
+        ]
+        if (phase1.phase === "review") return [
+          { prompt: "/commit CONFIRM", label: `Commit ${phase1.target.label}` },
+          { prompt: "/inspect", label: "Inspect exact candidate JSON" },
+          { prompt: "/back", label: "Revise proposal" },
+        ]
+        return [{ prompt: "/continue", label: "Continue Product Journey" }]
       }
       const applicability = result.metadata?.gaepInitiativeApplicability
       if (isInitiativeApplicabilityChatState(applicability)) {

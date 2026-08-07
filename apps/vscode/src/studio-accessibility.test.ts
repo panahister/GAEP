@@ -1103,6 +1103,9 @@ describe("Product Studio rendered accessibility", () => {
     })
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(dom.window.document.activeElement?.textContent).toBe("Next Changes page")
+    const actionNotice = dom.window.document.querySelector<HTMLElement>(".action-notice")
+    expect(actionNotice?.textContent).toBe("Loaded the next Changes page.")
+    expect(actionNotice?.getAttribute("role")).toBe("status")
   })
 
   it("keeps table sorting keyboard-focused, filters visible metadata, and exports only the visible CSV rows", async () => {

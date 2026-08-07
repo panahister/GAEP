@@ -4,6 +4,7 @@ import {
   defaultSourceUnderstandingInstruction,
   isImplicitChatInstructionReference,
   markdownTable,
+  nonWrappingTableLabel,
   sourceAdvisorFailureMarkdown,
   sourceAlignmentNextCheckpoint,
   sourceAlignmentTableRows,
@@ -69,6 +70,11 @@ describe("Product Chat Source Intake UX", () => {
       "| --- | --- |",
       "| Product Definition | Vision \\| Requirements<br>Conflict retained |",
     ].join("\n"))
+  })
+
+  it("keeps compact field labels on one readable line in constrained Chat tables", () => {
+    expect(nonWrappingTableLabel("One-sentence summary")).toBe("One\u2011sentence\u00a0summary")
+    expect(nonWrappingTableLabel("Product name")).toBe("Product\u00a0name")
   })
 
   it("normalizes the seven lifecycle alignment rows into a stable decision table", () => {

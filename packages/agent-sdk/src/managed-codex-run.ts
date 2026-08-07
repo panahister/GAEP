@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import { CodexAppServerSupervisor, type CodexAppServerOptions } from "./codex-app-server.js"
-import type { CodexReasoningEffort } from "./codex-app-server-v2.types.js"
+import type { CodexJsonValue, CodexReasoningEffort } from "./codex-app-server-v2.types.js"
 import { canonicalDigest } from "./digest.js"
 import {
   BoundedAsyncQueue,
@@ -38,6 +38,7 @@ export interface ManagedCodexStagedRunRequest {
   prompt: string
   developerInstructions?: string
   effort?: CodexReasoningEffort
+  outputSchema?: object
   /** Machine-local provider thread identity; never persist this value in GAEP records. */
   resumeThreadId?: string
   runtimeVersion?: string
@@ -445,6 +446,22 @@ export async function startManagedCodexStagedRun(
   const developerInstructions = request.developerInstructions === undefined
     ? undefined
     : requireBoundedText(request.developerInstructions, "Developer instructions", 256 * 1_024)
+  let outputSchema: CodexJsonValue | undefined
+  if (request.outputSchema !== undefined) {
+    if (!request.outputSchema || typeof request.outputSchema !== "object" || Array.isArray(request.outputSchema)) {
+      throw new Error("Managed Codex output schema must be a JSON object")
+    }
+    let serializedSchema: string
+    try {
+      serializedSchema = JSON.stringify(request.outputSchema)
+    } catch {
+      throw new Error("Managed Codex output schema must be JSON-serializable")
+    }
+    if (Buffer.byteLength(serializedSchema) > 512 * 1_024) {
+      throw new Error("Managed Codex output schema exceeds its configured bound")
+    }
+    outputSchema = JSON.parse(serializedSchema) as CodexJsonValue
+  }
   const resumeThreadId = request.resumeThreadId === undefined
     ? undefined
     : requireBoundedText(request.resumeThreadId, "Codex resume thread ID", 4 * 1_024)
@@ -547,6 +564,7 @@ export async function startManagedCodexStagedRun(
         prompt,
         model,
         ...(request.effort === undefined ? {} : { effort: request.effort }),
+        ...(outputSchema === undefined ? {} : { outputSchema }),
       })
       turnId = turn.turnId
       timer = setTimeout(() => {

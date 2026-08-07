@@ -148,7 +148,7 @@ GAEP uses the smallest visual form that makes the information easy to scan:
 - use a list for short sequences, warnings, and non-comparable actions;
 - use prose for interpretation and challenge, not for encoding a large matrix;
 - use a rendered Mermaid diagram for multi-checkpoint flows, architecture relationships, Event Storming flows, traceability, and change-impact propagation; and
-- keep exact JSON and raw record views available as advanced inspection, not as the primary Product experience.
+- keep exact JSON and raw record views available only through an explicit advanced inspection action or recorded-state inspector; never append raw JSON inline to the primary Chat review because unsupported HTML disclosure can expose the entire technical payload.
 
 ```mermaid
 flowchart LR

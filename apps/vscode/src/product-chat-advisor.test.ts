@@ -5,12 +5,18 @@ import type { startManagedClaudeContextRun, startManagedCodexStagedRun } from "@
 import type { ProductChatAdvisorSelection } from "./interactive-product-chat.js"
 import {
   buildProductAnswerChallengePrompt,
+  codexStructuredOutputSchema,
   parseProductAdvisorOutput,
   parseProductAnswerAssessment,
   ProductChatAdvisorError,
+  restoreCanonicalOptionalOmissions,
   runProductAnswerChallenge,
   type ProductChatAdvisorDependencies,
 } from "./product-chat-advisor.js"
+import {
+  phase1CanonicalInputJsonSchema,
+  phase1CanonicalRecordKinds,
+} from "./phase1-canonical-authoring.js"
 
 const assessmentJson = JSON.stringify({
   assessment: "The answer names the domain but not the decision outcome.",
@@ -120,6 +126,69 @@ function authenticationUnavailableDependencies(): ProductChatAdvisorDependencies
 }
 
 describe("Product Chat AI advisor", () => {
+  it("normalizes all 23 canonical schemas for Codex strict Structured Outputs", () => {
+    const assertStrictObjects = (value: unknown): void => {
+      if (Array.isArray(value)) {
+        value.forEach(assertStrictObjects)
+        return
+      }
+      if (!value || typeof value !== "object") return
+      const record = value as Record<string, unknown>
+      if (record.properties && typeof record.properties === "object" && !Array.isArray(record.properties)) {
+        const keys = Object.keys(record.properties)
+        expect(record.additionalProperties).toBe(false)
+        expect(record.required).toEqual(keys)
+      }
+      Object.values(record).forEach(assertStrictObjects)
+    }
+
+    for (const kind of phase1CanonicalRecordKinds) {
+      const schema = codexStructuredOutputSchema(phase1CanonicalInputJsonSchema(kind))
+      expect(schema).not.toHaveProperty("$schema")
+      assertStrictObjects(schema)
+    }
+  })
+
+  it("round-trips optional canonical fields through nullable provider placeholders", () => {
+    const schema = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "object",
+      properties: {
+        initiativeId: { type: "string" },
+        opportunity: { type: "string" },
+        unresolvedQuestions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              ownerRoleKey: { type: "string" },
+            },
+            required: ["id"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["initiativeId", "unresolvedQuestions"],
+      additionalProperties: false,
+    }
+    const normalized = codexStructuredOutputSchema(schema) as Record<string, unknown>
+    const properties = normalized.properties as Record<string, Record<string, unknown>>
+    expect(normalized.required).toEqual(["initiativeId", "opportunity", "unresolvedQuestions"])
+    expect(properties.opportunity?.anyOf).toEqual([{ type: "string" }, { type: "null" }])
+    const item = properties.unresolvedQuestions?.items as Record<string, unknown>
+    expect(item.required).toEqual(["id", "ownerRoleKey"])
+
+    expect(JSON.parse(restoreCanonicalOptionalOmissions(JSON.stringify({
+      initiativeId: "initiative-1",
+      opportunity: null,
+      unresolvedQuestions: [{ id: "question-1", ownerRoleKey: null }],
+    }), schema))).toEqual({
+      initiativeId: "initiative-1",
+      unresolvedQuestions: [{ id: "question-1" }],
+    })
+  })
+
   it("answers the human's attachment task before offering lifecycle alignment", () => {
     const prompt = buildProductAnswerChallengePrompt({
       ...request(claude),
@@ -382,8 +451,13 @@ describe("Product Chat AI advisor", () => {
       appServerOptions: { requestTimeoutMs: 30_000 },
       effort: "low",
       timeoutMs: 480_000,
+      outputSchema: {
+        type: "object",
+        required: ["initiativeId"],
+        additionalProperties: false,
+      },
     })
-    expect(setup.startCodex.mock.calls[0]?.[0]).not.toHaveProperty("outputSchema")
+    expect(setup.startCodex.mock.calls[0]?.[0].outputSchema).not.toHaveProperty("$schema")
     expect(setup.startCodex.mock.calls[0]?.[0].prompt).toContain("Do not return an assessment wrapper")
   })
 

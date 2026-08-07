@@ -66,6 +66,11 @@ export function markdownTable(headers: readonly string[], rows: readonly (readon
   ].join("\n")
 }
 
+/** Keeps compact label columns readable in VS Code's constrained Chat table layout. */
+export function nonWrappingTableLabel(value: string): string {
+  return value.replaceAll("-", "\u2011").replaceAll(" ", "\u00a0")
+}
+
 function markdownTableCell(value: string): string {
   return value
     .replace(/\r?\n/gu, "<br>")

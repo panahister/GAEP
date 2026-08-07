@@ -67,6 +67,7 @@ export interface CodexStagedTurnOptions {
   prompt: string
   model?: string
   effort?: CodexReasoningEffort
+  outputSchema?: CodexJsonValue
 }
 
 export interface CodexManagedResultOptions {
@@ -324,6 +325,7 @@ export class CodexAppServerSupervisor {
         : { type: "readOnly", networkAccess: false },
       model: options.model ?? null,
       ...(options.effort === undefined ? {} : { effort: options.effort }),
+      ...(options.outputSchema === undefined ? {} : { outputSchema: options.outputSchema }),
     }), "turn/start result")
     const turn = object(result.turn, "turn/start turn")
     const turnId = textField(turn, "id")

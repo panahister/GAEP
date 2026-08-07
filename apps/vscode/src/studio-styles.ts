@@ -233,6 +233,20 @@ button[aria-current="page"] .nav-state {
   min-width: 0;
 }
 
+.action-notice {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--vscode-notificationsInfoIcon-foreground);
+  border-radius: 4px;
+  color: var(--vscode-foreground);
+  background: var(--vscode-textBlockQuote-background);
+}
+
+.action-notice.rejected {
+  border-color: var(--vscode-inputValidation-errorBorder);
+  background: var(--vscode-inputValidation-errorBackground);
+}
+
 .page-header {
   margin-bottom: 24px;
 }
@@ -338,6 +352,32 @@ button[aria-current="page"] .nav-state {
   list-style: none;
 }
 
+.journey-phase-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 6px 0 4px;
+  border-top: 2px solid var(--vscode-focusBorder);
+}
+
+.journey-phase-header:first-child {
+  margin-top: 0;
+}
+
+.journey-phase-order {
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+}
+
+.journey-phase-label {
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
 .journey-row {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr);
@@ -364,6 +404,22 @@ button[aria-current="page"] .nav-state {
   color: var(--vscode-testing-iconPassed);
 }
 
+.journey-row.candidate-ready .journey-marker {
+  color: var(--vscode-textLink-foreground);
+  border: 1px solid var(--vscode-focusBorder);
+}
+
+.journey-row.needs-decisions .journey-marker {
+  color: var(--vscode-editorWarning-foreground);
+  border: 1px solid var(--vscode-inputValidation-warningBorder);
+  font-weight: 700;
+}
+
+.journey-row.blocked-by-prerequisite .journey-marker {
+  color: var(--vscode-descriptionForeground);
+  border: 1px dashed var(--vscode-descriptionForeground);
+}
+
 .journey-label {
   display: flex;
   align-items: center;
@@ -375,6 +431,30 @@ button[aria-current="page"] .nav-state {
   color: var(--vscode-editorWarning-foreground);
   font-size: 0.85em;
   font-weight: 600;
+}
+
+.journey-candidate-badge,
+.journey-decisions-badge,
+.journey-prerequisite-badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.journey-candidate-badge {
+  color: var(--vscode-textLink-foreground);
+  border: 1px solid var(--vscode-focusBorder);
+}
+
+.journey-decisions-badge {
+  color: var(--vscode-editorWarning-foreground);
+  border: 1px solid var(--vscode-inputValidation-warningBorder);
+}
+
+.journey-prerequisite-badge {
+  color: var(--vscode-descriptionForeground);
+  border: 1px dashed var(--vscode-descriptionForeground);
 }
 
 .journey-row .action-button {

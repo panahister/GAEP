@@ -155,6 +155,8 @@ import type { PortableHandoffObservation } from "./handoff-observation.js"
 import { managedRecoveryPresentation } from "./managed-recovery-presentation.js"
 import { readVerifiedManagedArtifacts } from "./managed-evidence-verifier.js"
 import type { PortableDesignSnapshot } from "./portable-design-workflow.js"
+import type { AdoptionAccelerationPlan } from "./adoption-acceleration.js"
+import { summarizeCanonicalRecord } from "./phase1-canonical-summary.js"
 import { agentStatus } from "./provider-truth.js"
 import { currentInitiative, initiativeRunEligibility, newestRun, unsafeSelectionReasons } from "./safety.js"
 import {
@@ -188,6 +190,7 @@ import {
   type StudioIssue,
   type StudioPageSnapshot,
   type ProductJourneyCheckpoint,
+  type ProductJourneyPhase,
   type ProductJourneySnapshot,
   type StudioRoute,
   type StudioSnapshot,
@@ -464,6 +467,7 @@ export interface CurrentStudioEngineReader {
 export type ExistingStudioCommand =
   | "gaep.initializeProduct"
   | "gaep.openProductStudio"
+  | "gaep.reviewProductJourneyCheckpoint"
   | "gaep.openInteractiveChat"
   | "gaep.selectWorkspaceRoot"
   | "gaep.createInitiative"
@@ -488,6 +492,7 @@ export interface CurrentEngineStudioContext {
   recoveryDiagnostic(): string | undefined
   hasGaepState(): Promise<boolean>
   listInitiatives(): Promise<Initiative[]>
+  adoptionAcceleration?(): Promise<AdoptionAccelerationPlan | undefined>
   listHandoffs?(): Promise<PortableHandoffObservation>
   probeAgents(): Promise<AdapterCapabilities[]>
   runtimeBindings(): RuntimeBindingIndex
@@ -498,6 +503,7 @@ export interface CurrentEngineStudioContext {
 
 interface ObservedStudioState {
   product?: Product
+  adoptionAcceleration?: AdoptionAccelerationPlan
   initiatives: Initiative[]
   initiativeEntryAssessments: Map<string, InitiativeEntryAssessment>
   businessUnderstandingProjections: Map<string, BusinessUnderstandingProjection>
@@ -3237,7 +3243,10 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     assessment.applicability.pendingApprovalCount > 0 ||
     assessment.state === "attention-required"
   )
-  const sourceIntakeComplete = (source?.assessment.sourceCount ?? 0) > 0
+  const adoption = state.adoptionAcceleration
+  const stagedSourceCount = adoption?.sources.length ?? 0
+  const sourceIntakeRecorded = (source?.assessment.sourceCount ?? 0) > 0
+  const sourceIntakeComplete = sourceIntakeRecorded || stagedSourceCount > 0
   const baselineComplete = Boolean(source?.assessment.currentBaseline)
   const provenanceComplete = (source?.assessment.provenanceCount ?? 0) > 0 &&
     (source?.assessment.unprovenancedSourceCount ?? 0) === 0
@@ -3277,6 +3286,40 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     "source-intake", "source-baseline", "source-provenance", "product-discovery", "business-architecture",
     "solution-security-architecture", "detailed-design-assurance", "p0-p4-readiness",
   ]
+  const journeyPhases: ReadonlyArray<{ phase: ProductJourneyPhase; checkpointIds: ProductJourneyCheckpoint["id"][] }> = [
+    {
+      phase: { id: "foundation", label: "Product & Initiative foundation", order: 1 },
+      checkpointIds: ["product-definition", "initiative-definition", "initiative-classification", "initiative-applicability"],
+    },
+    {
+      phase: { id: "trusted-sources", label: "Trusted sources", order: 2 },
+      checkpointIds: ["source-intake", "source-baseline", "source-provenance"],
+    },
+    {
+      phase: { id: "product-discovery", label: "Product discovery", order: 3 },
+      checkpointIds: ["product-discovery"],
+    },
+    {
+      phase: { id: "business-architecture", label: "Business architecture", order: 4 },
+      checkpointIds: ["business-architecture"],
+    },
+    {
+      phase: { id: "solution-security-architecture", label: "Solution & security architecture", order: 5 },
+      checkpointIds: ["solution-security-architecture"],
+    },
+    {
+      phase: { id: "detailed-design-assurance", label: "Detailed design & assurance", order: 6 },
+      checkpointIds: ["detailed-design-assurance"],
+    },
+    {
+      phase: { id: "pre-figma-handoff", label: "Pre-Figma readiness & handoff", order: 7 },
+      checkpointIds: ["p0-p4-readiness"],
+    },
+  ]
+  const phaseForCheckpoint = (id: ProductJourneyCheckpoint["id"]): ProductJourneyPhase => {
+    const group = journeyPhases.find((entry) => entry.checkpointIds.includes(id))
+    return group ? group.phase : { id: "foundation", label: "Product & Initiative foundation", order: 1 }
+  }
   const downstreamImpact = (id: ProductJourneyCheckpoint["id"]): ProductJourneyCheckpoint["impact"] => {
     const affectedCheckpointIds = checkpointOrder.slice(checkpointOrder.indexOf(id) + 1)
     return {
@@ -3294,15 +3337,18 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
   const listValue = (values: readonly string[]): string => values.length > 0 ? values.join("\n") : "None recorded"
   const componentDetails = (
     components: ReadonlyArray<readonly [label: string, record: unknown, kind: string]>,
-  ): ProductJourneyCheckpoint["details"] => components.map(([label, record, kind]) => ({
-    label,
-    value: record ? "Recorded" : "Missing",
-    kind: "status",
-    action: control(record ? "Review or edit" : "Create", {
-      kind: record ? "review-phase1-canonical-record" : "edit-phase1-canonical-record",
-      recordKind: kind,
-    }, true),
-  }))
+  ): ProductJourneyCheckpoint["details"] => components.map(([label, record, kind]) => {
+    const summary = summarizeCanonicalRecord(record)
+    return {
+      label,
+      value: summary.lines.join("\n"),
+      kind: "list" as const,
+      action: control(summary.present ? "Review or edit" : "Create", {
+        kind: summary.present ? "review-phase1-canonical-record" : "edit-phase1-canonical-record",
+        recordKind: kind,
+      }, true),
+    }
+  })
 
   let open = true
   const checkpoint = (
@@ -3319,15 +3365,47 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
         if (!action?.enabled) {
           throw new Error(`Product Journey invariant violated: attention checkpoint ${id} requires an enabled resolution action`)
         }
-        return { id, label, state: "attention-required", summary, action, ...metadata }
+        return { id, label, phase: phaseForCheckpoint(id), state: "attention-required", summary, action, ...metadata }
       }
-      return { id, label, state: "complete", summary, ...(action ? { action } : {}), ...metadata }
+      return { id, label, phase: phaseForCheckpoint(id), state: "complete", summary, ...(action ? { action } : {}), ...metadata }
+    }
+    const adoptionCheckpointId = id === "p0-p4-readiness" ? "design-implementation-handoff" : id
+    const candidate = adoption?.checkpoints.find((row) => row.checkpoint === adoptionCheckpointId)
+    if (candidate) {
+      open = false
+      const candidateState: ProductJourneyCheckpoint["state"] = candidate.coverage === "ready-to-propose"
+        ? "candidate-ready"
+        : candidate.coverage === "partially-supported"
+          ? "needs-decisions"
+          : candidate.coverage === "requires-governed-prerequisite"
+            ? "blocked-by-prerequisite"
+            : "not-started"
+      if (candidateState !== "not-started") {
+        return {
+          id,
+          label,
+          phase: phaseForCheckpoint(id),
+          state: candidateState,
+          summary: candidate.candidateProposal,
+          ...metadata,
+          details: [
+            { label: "Adoption coverage", value: candidate.coverage, kind: "status" },
+            { label: "Supporting evidence", value: candidate.evidence },
+            { label: "Evidence digest", value: candidate.evidenceDigest },
+            { label: "Candidate proposal", value: candidate.candidateProposal },
+            { label: "Proposal digest", value: candidate.proposalDigest },
+            { label: "Missing decisions", value: candidate.missingDecisions, kind: "status" },
+            ...(metadata.details ?? []),
+          ],
+          reviewAction: control("Review and commit proposal", { kind: "review-adoption-candidate", checkpointId: id }, true),
+        }
+      }
     }
     if (open) {
       open = false
-      return { id, label, state: "next", summary, ...metadata }
+      return { id, label, phase: phaseForCheckpoint(id), state: "next", summary, ...metadata }
     }
-    return { id, label, state: "not-started", summary, ...metadata }
+    return { id, label, phase: phaseForCheckpoint(id), state: "not-started", summary, ...metadata }
   }
 
   const checkpoints: ProductJourneyCheckpoint[] = [
@@ -3388,7 +3466,7 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
         reviseAction: edit("initiative-definition", "Edit Initiative definition"),
       } : {
         impact: downstreamImpact("initiative-definition"),
-        reviseAction: edit("initiative-definition", "Start Initiative definition"),
+        reviseAction: control("Start Initiative definition", { kind: "continue-product-journey" }, true),
       },
     ),
     checkpoint(
@@ -3436,7 +3514,7 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
         }, true),
       } : {
         impact: downstreamImpact("initiative-classification"),
-        reviseAction: edit("initiative-classification", "Start Initiative classification"),
+        reviseAction: control("Start Initiative classification", { kind: "continue-product-journey" }, true),
       },
     ),
     checkpoint(
@@ -3468,14 +3546,27 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
       applicabilityRecorded && initiative?.applicability ? {
         revision: initiative.applicability.revision,
         details: [
+          {
+            label: "Mapped subjects",
+            value: `${initiative.applicability.decisions.length} canonical subject(s) mapped · ${initiative.applicability.unresolvedSubjects.length} unresolved`,
+            kind: "status" as const,
+          },
           ...Object.entries(initiative.applicability.decisions.reduce<Record<string, number>>((counts, decision) => {
             counts[decision.status] = (counts[decision.status] ?? 0) + 1
             return counts
           }, {})).sort(([left], [right]) => left.localeCompare(right)).map(([status, count]) => ({
-            label: status,
+            label: `Status · ${status}`,
             value: `${count} subject(s)`,
             kind: "status" as const,
           })),
+          ...initiative.applicability.decisions
+            .slice()
+            .sort((left, right) => left.subject.label.localeCompare(right.subject.label))
+            .map((decision) => ({
+              label: decision.subject.label,
+              value: `${decision.status} · ${decision.subject.type} · Responsible: ${decision.owner}${decision.accountableApprover ? ` · Accountable: ${decision.accountableApprover}` : ""}`,
+              kind: "status" as const,
+            })),
           ...initiative.applicability.unresolvedSubjects.map((entry) => ({
             label: entry.subject.label,
             value: `Unresolved — ${entry.reason} · owner: ${entry.owner}`,
@@ -3492,7 +3583,7 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
         }, true),
       } : {
         impact: downstreamImpact("initiative-applicability"),
-        reviseAction: edit("initiative-applicability", "Start Initiative applicability"),
+        reviseAction: control("Start Initiative applicability", { kind: "continue-product-journey" }, true),
       },
     ),
     checkpoint(
@@ -3500,35 +3591,63 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
       "Source intake",
       sourceIntakeComplete,
       sourceIntakeComplete
-        ? `${source!.assessment.sourceCount} exact candidate Source record(s).`
-        : "Attach existing Product documents, work with their content, and record the reviewed candidates.",
+        ? sourceIntakeRecorded
+          ? `${source!.assessment.sourceCount} exact candidate Source record(s).`
+          : `${stagedSourceCount} exact reviewed attachment(s) captured by Adopt; Initiative binding is pending.`
+        : "Point GAEP at the real documents that describe this product — specs, tickets, policies, exports. Everything downstream is grounded in these exact sources instead of guesses.",
       false,
       undefined,
       {
         ...(sourceIntakeComplete ? {
-          revision: source!.initiative.revision,
-          details: source!.sources.map((candidate) => ({
-          label: candidate.title,
-          value: `${candidate.sourceType} · revision ${candidate.revision} · ${candidate.semanticAuthority.standing} · ${candidate.freshness}`,
-          kind: "status" as const,
-          })),
+          ...(sourceIntakeRecorded ? { revision: source!.initiative.revision } : {}),
+          details: [
+            {
+              label: "Why this matters",
+              value: "Source intake is where you tell GAEP which real documents are trustworthy inputs. Later AI proposals cite these exact sources, so nothing is invented and every claim can be traced back.",
+              kind: "value" as const,
+            },
+            ...(sourceIntakeRecorded
+              ? source!.sources.map((candidate) => ({
+                  label: candidate.title,
+                  value: `${candidate.sourceType} · revision ${candidate.revision} · ${candidate.semanticAuthority.standing} · ${candidate.freshness}`,
+                  kind: "status" as const,
+                }))
+              : adoption!.sources.map((candidate) => ({
+                  label: candidate.label,
+                  value: `${candidate.format.toUpperCase()} · ${candidate.byteLength} bytes · ${candidate.contentDigest}`,
+                  kind: "status" as const,
+                }))),
+          ],
         } : {}),
         impact: downstreamImpact("source-intake"),
-        ...(sourceIntakeComplete ? { reviewAction: review("source-intake") } : {}),
-        reviseAction: edit("source-intake", sourceIntakeComplete ? "Revise candidate Sources" : "Start Source intake"),
+        ...(sourceIntakeRecorded
+          ? { reviewAction: review("source-intake"), reviseAction: edit("source-intake", "Revise candidate Sources") }
+          : sourceIntakeComplete
+            ? {
+                reviewAction: control("Review captured Source Intake", { kind: "review-adoption-candidate", checkpointId: "source-intake" }, true),
+                reviseAction: control("Bind reviewed Sources to Initiative", { kind: "review-adoption-candidate", checkpointId: "source-intake" }, true),
+              }
+            : { reviseAction: edit("source-intake", "Start Source intake") }),
       },
     ),
     checkpoint(
       "source-baseline",
       "Source baseline",
       baselineComplete,
-      baselineComplete ? "A current candidate source baseline exists." : "Freeze the exact reviewed source set for this Initiative.",
+      baselineComplete
+        ? "A frozen snapshot of the exact source versions you reviewed is on record."
+        : "Take a frozen snapshot of exactly which source versions were reviewed, so decisions stay traceable to those exact inputs even if the files change later.",
       false,
       undefined,
       {
         ...(baselineComplete ? {
           revision: source!.assessment.currentBaseline!.revision,
           details: [
+          {
+            label: "Why this matters",
+            value: "A baseline pins the exact revisions of every reviewed source at a moment in time. If a source file changes tomorrow, GAEP can still show which precise version a decision was based on.",
+            kind: "value" as const,
+          },
           { label: "Baseline state", value: source!.assessment.currentBaseline!.status, kind: "status" },
           { label: "Exact members", value: `${source!.assessment.currentBaseline!.memberCount} Source revision(s)` },
           { label: "Membership digest", value: source!.assessment.currentBaseline!.membershipDigest },
@@ -3543,13 +3662,20 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
       "source-provenance",
       "Source provenance",
       provenanceComplete,
-      provenanceComplete ? "All governed sources have recorded lineage." : "Record how accepted Product facts trace back to exact source revisions.",
+      provenanceComplete
+        ? "Each accepted fact is linked to the exact source version it came from."
+        : "Link the facts you accept back to the exact source version they came from, so any claim in the journey can be reconstructed and audited later.",
       false,
       undefined,
       {
         ...(provenanceComplete ? {
           revision: source!.initiative.revision,
           details: [
+          {
+            label: "Why this matters",
+            value: "Provenance answers 'where did this come from?' for every accepted fact. It connects a claim to the exact source revision behind it, so reviewers and auditors can reconstruct any decision without re-doing the work.",
+            kind: "value" as const,
+          },
           { label: "Provenance records", value: `${source!.assessment.provenanceCount}` },
           { label: "Unprovenanced Sources", value: `${source!.assessment.unprovenancedSourceCount}`, kind: "status" },
           { label: "Boundary", value: "Recorded lineage attributes candidate evidence; it does not establish content truth or Source authority.", kind: "authority" },
@@ -3576,7 +3702,7 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
           ["Outcomes and success measures", discovery?.outcomeModel, "outcome-model"],
         ]),
         impact: downstreamImpact("product-discovery"),
-        reviewAction: control("Open Product discovery", { kind: "navigate", route: "direction" }, true),
+        reviewAction: review("product-discovery"),
         reviseAction: edit("product-discovery", "Edit Product discovery"),
       } : {},
     ),
@@ -3598,7 +3724,7 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
           ["Business architecture baseline candidate", state.businessArchitectureBaselineProjections.get(initiative.id)?.baseline, "business-architecture-baseline"],
         ]),
         impact: downstreamImpact("business-architecture"),
-        reviewAction: control("Open Business architecture", { kind: "navigate", route: "architecture" }, true),
+        reviewAction: review("business-architecture"),
         reviseAction: edit("business-architecture", "Edit Business architecture"),
       } : {},
     ),
@@ -3618,7 +3744,7 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
           ["Security, privacy, and threat assessment", state.securityPrivacyAssessmentProjections.get(initiative.id)?.assessment, "security-privacy-assessment"],
         ]),
         impact: downstreamImpact("solution-security-architecture"),
-        reviewAction: control("Open Solution architecture", { kind: "navigate", route: "architecture" }, true),
+        reviewAction: review("solution-security-architecture"),
         reviseAction: edit("solution-security-architecture", "Edit solution and security architecture"),
       } : {},
     ),
@@ -3645,7 +3771,7 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
           ["End-to-end traceability", state.endToEndTraceabilityProjections.get(initiative.id)?.traceability, "end-to-end-traceability"],
         ]),
         impact: downstreamImpact("detailed-design-assurance"),
-        reviewAction: control("Open Detailed design", { kind: "navigate", route: "risks-decisions" }, true),
+        reviewAction: review("detailed-design-assurance"),
         reviseAction: edit("detailed-design-assurance", "Edit detailed design and assurance"),
       } : {},
     ),
@@ -3664,20 +3790,22 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
           ["Pre-Figma handoff package", state.p5HandoffPackageProjections.get(initiative.id)?.handoff, "p5-handoff-package"],
         ]),
         impact: downstreamImpact("p0-p4-readiness"),
-        reviewAction: control("Review handoff", { kind: "navigate", route: "readiness" }, true),
+        reviewAction: review("p0-p4-readiness"),
         reviseAction: edit("p0-p4-readiness", "Edit handoff inputs"),
       } : {},
     ),
   ]
-  const nextCheckpoint = checkpoints.find((candidate) => candidate.state === "next")
+  const nextCheckpoint = checkpoints.find((candidate) => ["next", "candidate-ready", "needs-decisions", "blocked-by-prerequisite"].includes(candidate.state))
   const attentionCount = checkpoints.filter((candidate) => candidate.state === "attention-required").length
+  const candidateCount = checkpoints.filter((candidate) => candidate.state === "candidate-ready").length
+  const decisionCount = checkpoints.filter((candidate) => candidate.state === "needs-decisions").length
   const recordedCount = checkpoints.filter((candidate) =>
     candidate.state === "complete" || candidate.state === "attention-required").length
   const next = nextCheckpoint
     ? {
         label: nextCheckpoint.label,
         summary: nextCheckpoint.summary,
-        action: control("Continue in Product Chat", { kind: "continue-product-journey" }, true, "primary"),
+        action: nextCheckpoint.reviewAction ?? control("Continue in Product Chat", { kind: "continue-product-journey" }, true, "primary"),
       }
     : {
         label: "Product Journey recorded",
@@ -3688,6 +3816,8 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     recordedCount,
     totalCount: checkpoints.length,
     attentionCount,
+    candidateCount,
+    decisionCount,
     checkpoints,
     next,
     authorityBoundary: "product-journey-is-a-read-only-projection-and-does-not-grant-approval-readiness-or-action-authority",
@@ -7395,54 +7525,34 @@ function surfaceFor(route: StudioRoute, context: CurrentEngineStudioContext, sta
 }
 
 function commandFor(action: StudioAction): { command: ExistingStudioCommand; args: unknown[]; announcement: string } | undefined {
+  const canonicalGroupCheckpointIds = new Set<ProductJourneyCheckpoint["id"]>([
+    "product-discovery",
+    "business-architecture",
+    "solution-security-architecture",
+    "detailed-design-assurance",
+    "p0-p4-readiness",
+  ])
   switch (action.kind) {
     case "continue-product-journey": return {
       command: "gaep.openInteractiveChat",
       args: ["continue"],
       announcement: "Opened Product Chat at the next governed lifecycle checkpoint.",
     }
-    case "review-product-journey-checkpoint": {
-      const chatCommandByCheckpoint: Partial<Record<ProductJourneyCheckpoint["id"], string>> = {
-        "product-definition": "status",
-        "initiative-definition": "status",
-        "initiative-classification": "classification",
-        "initiative-applicability": "applicability",
-        "source-intake": "manifest",
-        "source-baseline": "baseline",
-        "source-provenance": "provenance",
-      }
-      const studioRouteByCheckpoint: Partial<Record<ProductJourneyCheckpoint["id"], StudioRoute>> = {
-        "product-discovery": "direction",
-        "business-architecture": "architecture",
-        "solution-security-architecture": "architecture",
-        "detailed-design-assurance": "risks-decisions",
-        "p0-p4-readiness": "readiness",
-      }
-      const studioRoute = studioRouteByCheckpoint[action.checkpointId]
-      if (studioRoute) return {
-        command: "gaep.openProductStudio",
-        args: [studioRoute],
-        announcement: `Opened Product Studio for ${action.checkpointId.replaceAll("-", " ")} review.`,
-      }
-      return {
-        command: "gaep.openInteractiveChat",
-        args: [chatCommandByCheckpoint[action.checkpointId] ?? "status"],
-        announcement: `Opened Product Chat for ${action.checkpointId.replaceAll("-", " ")} review.`,
-      }
+    case "review-product-journey-checkpoint": return {
+      command: "gaep.reviewProductJourneyCheckpoint",
+      args: [action.checkpointId],
+      announcement: `Opened the visual Product Journey review at ${action.checkpointId.replaceAll("-", " ")}, with diagrams and navigation to every checkpoint.`,
+    }
+    case "review-adoption-candidate": return {
+      command: "gaep.openInteractiveChat",
+      args: ["adopt", `review:${action.checkpointId === "p0-p4-readiness" ? "design-implementation-handoff" : action.checkpointId}`, true, true],
+      announcement: `Opened the adopted ${action.checkpointId.replaceAll("-", " ")} candidate for review and governed follow-through.`,
     }
     case "edit-product-journey-checkpoint": {
-      const studioRouteByCheckpoint: Partial<Record<ProductJourneyCheckpoint["id"], StudioRoute>> = {
-        "product-discovery": "direction",
-        "business-architecture": "architecture",
-        "solution-security-architecture": "architecture",
-        "detailed-design-assurance": "risks-decisions",
-        "p0-p4-readiness": "readiness",
-      }
-      const studioRoute = studioRouteByCheckpoint[action.checkpointId]
-      if (studioRoute) return {
-        command: "gaep.openProductStudio",
-        args: [studioRoute],
-        announcement: `Opened the editable ${action.checkpointId.replaceAll("-", " ")} workspace.`,
+      if (canonicalGroupCheckpointIds.has(action.checkpointId)) return {
+        command: "gaep.openInteractiveChat",
+        args: ["author", `group:${action.checkpointId}`, true, true],
+        announcement: `Opened the editable canonical ${action.checkpointId.replaceAll("-", " ")} record workspace in Product Chat.`,
       }
       const chatCommandByCheckpoint: Partial<Record<ProductJourneyCheckpoint["id"], string>> = {
         "product-definition": "revise",
@@ -8310,6 +8420,18 @@ export class CurrentEngineStudioDataSource implements StudioDataSource {
       empty.productState = hasState ? "invalid" : "absent"
       if (hasState) this.context.logDiagnostic("Product Studio could not read existing Product state", error)
       return empty
+    }
+    if (this.context.adoptionAcceleration) {
+      try {
+        empty.adoptionAcceleration = await this.context.adoptionAcceleration()
+      } catch (error) {
+        this.context.logDiagnostic("Product Studio could not read the non-governed adoption acceleration plan", error)
+        empty.issues.push(issue(
+          "adoption-acceleration-unavailable",
+          "The committed adoption candidate plan could not be verified. Product truth remains available, but candidate acceleration is withheld.",
+          "warning",
+        ))
+      }
     }
     const outcomes = await Promise.allSettled([
       this.context.listInitiatives(),

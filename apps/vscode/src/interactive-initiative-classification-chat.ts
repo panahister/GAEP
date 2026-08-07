@@ -146,6 +146,19 @@ export function suggestedInitiativeClassificationResolution(
   ].join("\n")
 }
 
+export function suggestedInitiativeClassificationBrief(
+  state: InitiativeClassificationChatState,
+): string {
+  return [
+    "GAEP-generated Initiative classification proposal for explicit human review.",
+    `Classify '${state.initiative.title}' inside Product '${state.product.name}' from the supplied governed Product and Initiative context.`,
+    "Infer the strongest conservative complete classification supported by that context instead of asking the human to reproduce GAEP's internal contract.",
+    "Use standard role titles only as editable candidate owners or accountable authorities; never claim an appointment or invent a named person.",
+    "Represent unsupported external facts with unknown enum values and explicit unresolvedQuestions. Do not infer that an obligation, integration, asset, policy, approval, readiness, implementation, or release state is absent merely because it is undocumented.",
+    "Return one complete editable proposal. Nothing becomes governed until the human reviews it, uses /accept, and then /commit CONFIRM.",
+  ].join("\n")
+}
+
 export function startInitiativeClassificationChat(
   advisor: ProductChatAdvisorSelection,
   context: InitiativeClassificationContext,

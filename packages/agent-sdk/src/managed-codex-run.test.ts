@@ -16,6 +16,7 @@ import { ManagedStageRegistry } from "./managed-stage-registry.js"
 import { WorkspaceStagingService } from "./workspace-staging.js"
 
 const fakeServer = fileURLToPath(new URL("../test/fixtures/fake-codex-app-server.mjs", import.meta.url))
+const outputSchemaFakeServer = fileURLToPath(new URL("../test/fixtures/fake-codex-output-schema-app-server.mjs", import.meta.url))
 
 async function collect(handle: ManagedCodexStagedRunHandle): Promise<{
   events: ManagedRuntimeEvent[]
@@ -50,6 +51,8 @@ describe("managed Codex staged-run coordinator", () => {
       stagingService?: WorkspaceStagingService
       stageRegistry?: ManagedStageRegistry
       managedRunId?: string
+      outputSchema?: object
+      appServerFixture?: string
     } = {},
   ): Promise<ManagedCodexStagedRunHandle> {
     return startManagedCodexStagedRun({
@@ -58,6 +61,7 @@ describe("managed Codex staged-run coordinator", () => {
       model: "fake-model",
       prompt,
       timeoutMs: options.timeoutMs,
+      outputSchema: options.outputSchema,
       policy: {
         allowCommands: options.allowCommands ?? false,
         allowFileChanges: options.allowFileChanges ?? false,
@@ -73,7 +77,7 @@ describe("managed Codex staged-run coordinator", () => {
           }
         : {}),
       appServerOptions: {
-        args: [fakeServer],
+        args: [options.appServerFixture ?? fakeServer],
         requestTimeoutMs: 1_000,
         terminationGraceMs: 50,
       },
@@ -96,6 +100,26 @@ describe("managed Codex staged-run coordinator", () => {
     expect(await readFile(join(source, "source.txt"), "utf8")).toBe("baseline")
     await review.discard()
     expect(review.state).toBe("discarded")
+  })
+
+  it("forwards a bounded output schema to the managed Codex turn", async () => {
+    const source = await sourceWorkspace()
+    const outputSchema = {
+      type: "object",
+      properties: { status: { type: "string", const: "ok" } },
+      required: ["status"],
+      additionalProperties: false,
+    }
+    const { events, review } = await collect(await start(source, "inspect-policy", {
+      outputSchema,
+      appServerFixture: outputSchemaFakeServer,
+    }))
+    const policy = events.find((event) => event.type === "output-delta" && event.text.startsWith("policy="))
+    if (!policy || policy.type !== "output-delta") throw new Error("Expected managed policy output")
+
+    expect(JSON.parse(policy.text.slice("policy=".length))).toMatchObject({ outputSchema })
+    expect(review.result.portable.terminalDisposition).toBe("completed")
+    await review.discard()
   })
 
   it("applies exactly the approved staged inventory and keeps portable evidence path-free", async () => {

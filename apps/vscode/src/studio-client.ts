@@ -136,6 +136,7 @@ class StudioShell {
   private revisitTriggers = new Map<string, string>()
   private draftDirty = false
   private pendingActionFocusLabel?: string
+  private actionNotice?: { message: string; status: "accepted" | "rejected" }
   private readonly sortState = new Map<string, { key: string; direction: "ascending" | "descending" }>()
   private readonly filterState = new Map<string, string>()
   private pendingTableFocus?: {
@@ -175,6 +176,7 @@ class StudioShell {
         this.applySnapshot(message.snapshot)
         break
       case "studio.action-result":
+        this.actionNotice = { message: message.result.announcement, status: message.result.status }
         this.announce(message.result.announcement, message.result.status === "rejected" ? "assertive" : "polite")
         if (message.snapshot && message.result.status === "accepted") this.applySnapshot(message.snapshot)
         else if (message.result.status === "rejected") this.pendingActionFocusLabel = undefined
@@ -226,6 +228,11 @@ class StudioShell {
     const main = element("main", "studio-main")
     main.id = "studio-main"
     main.tabIndex = -1
+    if (this.actionNotice) {
+      const notice = element("div", `action-notice ${this.actionNotice.status}`, this.actionNotice.message)
+      notice.setAttribute("role", this.actionNotice.status === "rejected" ? "alert" : "status")
+      main.append(notice)
+    }
     if (snapshot.surface.kind === "ready") {
       main.append(this.renderPage(snapshot))
       // Delivery-phase dashboards are governance/implementation projections, not
@@ -370,32 +377,63 @@ class StudioShell {
     const journeyTitle = element("div")
     journeyTitle.append(
       element("h3", undefined, "Product Journey"),
-      element("div", "muted", `${page.journey.recordedCount} of ${page.journey.totalCount} checkpoints recorded · ${page.journey.attentionCount} need attention`),
+      element("div", "muted", [
+        `${page.journey.recordedCount} of ${page.journey.totalCount} checkpoints recorded`,
+        `${page.journey.candidateCount ?? 0} candidates ready`,
+        `${page.journey.decisionCount ?? 0} need decisions`,
+        `${page.journey.attentionCount} need attention`,
+      ].join(" · ")),
     )
     journeyHeading.append(journeyTitle, element("strong", `journey-state ${page.journey.state}`, page.journey.state.replaceAll("-", " ")))
     journey.append(journeyHeading)
     const journeyList = element("ol", "journey-list")
+    let renderedPhaseId: string | undefined
     for (const checkpoint of page.journey.checkpoints) {
+      if (checkpoint.phase && checkpoint.phase.id !== renderedPhaseId) {
+        renderedPhaseId = checkpoint.phase.id
+        const phaseHeader = element("li", "journey-phase-header")
+        phaseHeader.setAttribute("role", "presentation")
+        phaseHeader.append(
+          element("span", "journey-phase-order", `Phase ${checkpoint.phase.order}`),
+          element("span", "journey-phase-label", checkpoint.phase.label),
+        )
+        journeyList.append(phaseHeader)
+      }
       const row = element("li", `journey-row ${checkpoint.state}`)
       const recorded = checkpoint.state === "complete" || checkpoint.state === "attention-required"
-      const marker = element("span", "journey-marker", recorded ? "✓" : checkpoint.state === "next" ? "→" : "○")
-      marker.setAttribute("aria-label", checkpoint.state === "attention-required" ? "Recorded; needs attention" : checkpoint.state)
-      marker.title = checkpoint.state === "attention-required" ? "Recorded; needs attention" : checkpoint.state
+      const candidateReady = checkpoint.state === "candidate-ready"
+      const needsDecisions = checkpoint.state === "needs-decisions"
+      const stateLabel = checkpoint.state === "attention-required" ? "Recorded; needs attention"
+        : candidateReady ? "Candidate ready for review"
+          : needsDecisions ? "Needs decisions"
+            : checkpoint.state === "blocked-by-prerequisite" ? "Waiting for prerequisite"
+              : checkpoint.state
+      const marker = element("span", "journey-marker", recorded ? "✓" : candidateReady ? "◆" : needsDecisions ? "!" : checkpoint.state === "next" ? "→" : "○")
+      marker.setAttribute("aria-label", stateLabel)
+      marker.title = stateLabel
       const detail = element("div")
       const label = element("div", "journey-label")
       label.append(element("strong", undefined, checkpoint.label))
       if (checkpoint.state === "attention-required") {
         label.append(element("span", "journey-attention-badge", "Needs attention"))
+      } else if (candidateReady) {
+        label.append(element("span", "journey-candidate-badge", "Candidate ready for review"))
+      } else if (needsDecisions) {
+        label.append(element("span", "journey-decisions-badge", "Needs decisions"))
+      } else if (checkpoint.state === "blocked-by-prerequisite") {
+        label.append(element("span", "journey-prerequisite-badge", "Waiting for prerequisite"))
       }
       detail.append(label, element("div", "muted", checkpoint.summary))
       const checkpointControls = [checkpoint.action, checkpoint.reviewAction, checkpoint.reviseAction].filter(
         (candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate),
       )
       if (checkpointControls.length > 0) detail.append(this.renderActionRow(checkpointControls))
-      if (recorded && checkpoint.details && checkpoint.details.length > 0) {
+      if (checkpoint.details && checkpoint.details.length > 0) {
         const disclosure = element("details", "journey-details")
         const revisionLabel = checkpoint.revision ? ` · Revision ${checkpoint.revision}` : ""
-        disclosure.append(element("summary", undefined, `View recorded values${revisionLabel}`))
+        disclosure.append(element("summary", undefined, recorded
+          ? `View recorded values${revisionLabel}`
+          : "View candidate evidence and proposed values"))
 
         const tableRegion = element("div", "journey-table-scroll")
         const table = element("table", "journey-values-table")

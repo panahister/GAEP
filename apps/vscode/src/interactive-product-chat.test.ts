@@ -86,10 +86,8 @@ describe("interactive Product initialization chat", () => {
     expect(productInitializationInput(state).name).toBe(answers[0])
     expect(isProductInitializationChatState(state)).toBe(true)
 
-    const edited = editProductField(state, "problem")
-    expect(edited).toMatchObject({ workflow: "initialization", phase: "collecting", step: 2 })
-    expect(currentProductInitializationQuestion(edited)?.key).toBe("problem")
-    expect(edited.answers.name).toBe(answers[0])
+    expect(() => editProductField(state, "problem")).toThrow("read-only until its first explicit commit")
+    expect(goBackProductInitialization(state)).toBe(state)
   })
 
   it("requires an AI assessment and explicit acceptance before every step advances", () => {

@@ -10,6 +10,7 @@ import type { ManagedRuntimeEvent } from "./managed-runtime.js"
 import { WorkspaceStagingService, type WorkspaceStage } from "./workspace-staging.js"
 
 const fakeServer = fileURLToPath(new URL("../test/fixtures/fake-codex-app-server.mjs", import.meta.url))
+const outputSchemaFakeServer = fileURLToPath(new URL("../test/fixtures/fake-codex-output-schema-app-server.mjs", import.meta.url))
 
 async function nextMatching(
   iterator: AsyncIterator<ManagedRuntimeEvent>,
@@ -49,7 +50,7 @@ async function expectProcessGone(pid: number): Promise<void> {
 describe("Codex app-server managed transport", () => {
   const roots: string[] = []
 
-  async function setup(approvalMediator?: ConstructorParameters<typeof CodexAppServerSupervisor>[0]["approvalMediator"], limits: Partial<ConstructorParameters<typeof CodexAppServerSupervisor>[0]> = {}): Promise<{
+  async function setup(approvalMediator?: ConstructorParameters<typeof CodexAppServerSupervisor>[0]["approvalMediator"], limits: Partial<ConstructorParameters<typeof CodexAppServerSupervisor>[0]> = {}, server = fakeServer): Promise<{
     supervisor: CodexAppServerSupervisor
     service: WorkspaceStagingService
     stage: WorkspaceStage
@@ -61,7 +62,7 @@ describe("Codex app-server managed transport", () => {
     const stage = await service.create(source)
     const supervisor = new CodexAppServerSupervisor({
       executable: process.execPath,
-      args: [fakeServer],
+      args: [server],
       stagingService: service,
       approvalMediator,
       requestTimeoutMs: 1_000,
@@ -100,10 +101,20 @@ describe("Codex app-server managed transport", () => {
     const { supervisor, service, stage } = await setup(undefined, {
       allowShellTool: false,
       allowFileChanges: false,
-    })
+    }, outputSchemaFakeServer)
     const iterator = supervisor.events[Symbol.asyncIterator]()
     const { threadId } = await supervisor.startStagedThread({ stage, model: "fake-model" })
-    await supervisor.startStagedTurn({ stage, threadId, prompt: "inspect-policy" })
+    await supervisor.startStagedTurn({
+      stage,
+      threadId,
+      prompt: "inspect-policy",
+      outputSchema: {
+        type: "object",
+        properties: { status: { type: "string", const: "ok" } },
+        required: ["status"],
+        additionalProperties: false,
+      },
+    })
     const output = await nextMatching(iterator, (event) => event.type === "output-delta" && event.text.startsWith("policy="))
     if (output.type !== "output-delta") throw new Error("Expected a policy inspection event")
     const policy = JSON.parse(output.text.slice("policy=".length)) as Record<string, any>
@@ -128,6 +139,11 @@ describe("Codex app-server managed transport", () => {
         },
       },
       turnSandboxPolicy: { type: "readOnly", networkAccess: false },
+      outputSchema: {
+        type: "object",
+        required: ["status"],
+        additionalProperties: false,
+      },
     })
     await supervisor.stop()
     await service.cleanup(stage)

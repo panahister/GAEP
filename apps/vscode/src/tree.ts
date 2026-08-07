@@ -232,7 +232,7 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         return [...recovery, productChatEntry(), {
           label: "Adopt Existing Product",
           description: "start from documents",
-          tooltip: "Choose an existing Product folder. GAEP proposes Product Definition and complete Product Journey coverage for editable review before creating governed state.",
+          tooltip: "Choose an existing Product folder. GAEP proposes Product Definition and complete Product Journey coverage for read-only review before creating governed state.",
           icon: "folder-opened",
           command: { command: "gaep.chooseFolder", title: "Adopt Existing Product", arguments: ["adopt"] },
         }, {
@@ -271,11 +271,32 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         },
         studioEntry("overview"),
         {
+          label: "Review Product Journey",
+          description: "visual preview",
+          tooltip: "Open a visual, navigable Markdown preview of the whole Product Journey with rendered diagrams (architecture, value streams, Event Storming) and a table of contents.",
+          icon: "preview",
+          command: { command: "gaep.reviewProductJourneyCheckpoint", title: "Review Product Journey (visual)" },
+        },
+        {
+          label: "Open Guide",
+          description: "what GAEP does",
+          tooltip: "Open the GAEP guide: a newcomer-friendly overview of what GAEP is, how the Product Journey works, and how it differs from AIDLC.",
+          icon: "book",
+          command: { command: "gaep.openGuide", title: "Open Guide" },
+        },
+        {
+          label: "Add Useful Link",
+          description: "candidate reference",
+          tooltip: "Save an http(s) link GAEP may offer as a candidate reference while advancing the journey. GAEP never fetches it and derives no authority from it. Use 'Manage Useful Links' to review or remove.",
+          icon: "link",
+          command: { command: "gaep.addReferenceLink", title: "Add Useful Link" },
+        },
+        {
           label: "Export Product Journey",
-          description: "Markdown",
-          tooltip: "Export the governed Product Journey, record history, sources, Event Storming, architecture, and Pre-Figma readiness as a portable Markdown file.",
-          icon: "markdown",
-          command: { command: "gaep.exportProductJourneyMarkdown", title: "Export Product Journey as Markdown" },
+          description: "folder",
+          tooltip: "Export the governed Product Journey as a folder: one subfolder per checkpoint, each section a Markdown file with YAML frontmatter, plus record history, sources, architecture, and Pre-Figma readiness.",
+          icon: "folder-library",
+          command: { command: "gaep.exportProductJourneyMarkdown", title: "Export Product Journey" },
         },
         {
           label: String(product.name),

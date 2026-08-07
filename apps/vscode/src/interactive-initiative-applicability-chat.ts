@@ -90,10 +90,12 @@ const standardRoleGroups: ReadonlyArray<{
   { owner: "Product Owner", subjects: ["phase:intake"] },
   { owner: "Product Owner", accountableApprover: "Business Sponsor", subjects: ["approval:initiative-entry"] },
   { owner: "Product Owner", subjects: [
-    "phase:initiative-classification", "phase:applicability-assessment", "activity:product-discovery",
-    "artifact:initiative-profile", "artifact:applicability-matrix", "artifact:requirements-acceptance",
+    "phase:initiative-classification", "phase:applicability-assessment",
+    "artifact:initiative-profile", "artifact:applicability-matrix",
     "evidence-obligation:classification", "evidence-obligation:applicability", "evidence-obligation:approval",
   ] },
+  { owner: "Product Manager", subjects: ["activity:product-discovery"] },
+  { owner: "Business Analyst", subjects: ["artifact:requirements-acceptance"] },
   { owner: "Risk Owner", subjects: ["phase:scope-criticality-assessment"] },
   { owner: "Solution Architect", subjects: [
     "phase:existing-system-assessment", "phase:architecture-assurance-resolution",

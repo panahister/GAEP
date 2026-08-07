@@ -131,6 +131,8 @@ describe("interactive Initiative applicability chat", () => {
     expect(new Set(coverage.map(({ subject }) => `${subject.type}:${subject.key}`)).size).toBe(subjects.length)
     expect(coverage.find(({ subject }) => subject.key === "architecture-assets")?.owner).toBe("Solution Architect")
     expect(coverage.find(({ subject }) => subject.key === "business-architecture")?.owner).toBe("Business Architect")
+    expect(coverage.find(({ subject }) => subject.key === "product-discovery")?.owner).toBe("Product Manager")
+    expect(coverage.find(({ subject }) => subject.key === "requirements-acceptance")?.owner).toBe("Business Analyst")
     expect(coverage.find(({ subject }) => subject.key === "security-testing")?.owner).toBe("Security Architect")
     expect(coverage.find(({ subject }) => subject.key === "unit-testing")?.owner).toBe("Software Engineer")
     expect(coverage.find(({ subject }) => subject.key === "architecture")?.accountableApprover).toBe("Architecture Authority")

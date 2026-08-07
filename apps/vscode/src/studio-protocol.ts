@@ -181,6 +181,9 @@ export interface OverviewSectionStatus {
 export type ProductJourneyCheckpointState =
   | "complete"
   | "attention-required"
+  | "candidate-ready"
+  | "needs-decisions"
+  | "blocked-by-prerequisite"
   | "current"
   | "next"
   | "not-started"
@@ -199,11 +202,24 @@ export type ProductJourneyCheckpointId =
   | "detailed-design-assurance"
   | "p0-p4-readiness"
 
+/**
+ * The twelve Product Journey checkpoints group into a small number of ordered
+ * phases. Hosts use this to render a hierarchical phase → checkpoint → record
+ * view instead of a flat list. It is presentation grouping only and grants no
+ * approval, readiness or action authority.
+ */
+export interface ProductJourneyPhase {
+  id: string
+  label: string
+  order: number
+}
+
 interface ProductJourneyCheckpointBase {
   id: ProductJourneyCheckpointId
   label: string
   summary: string
   revision?: number
+  phase?: ProductJourneyPhase
   details?: ProductJourneyCheckpointDetail[]
   impact?: ProductJourneyCheckpointImpact
   reviewAction?: StudioActionControl
@@ -238,6 +254,8 @@ export interface ProductJourneySnapshot {
   recordedCount: number
   totalCount: number
   attentionCount: number
+  candidateCount?: number
+  decisionCount?: number
   checkpoints: ProductJourneyCheckpoint[]
   next: {
     label: string
@@ -563,6 +581,7 @@ export type StudioAction =
   | { kind: "navigate"; route: StudioRoute }
   | { kind: "continue-product-journey" }
   | { kind: "review-product-journey-checkpoint"; checkpointId: ProductJourneyCheckpoint["id"] }
+  | { kind: "review-adoption-candidate"; checkpointId: ProductJourneyCheckpoint["id"] }
   | { kind: "edit-product-journey-checkpoint"; checkpointId: ProductJourneyCheckpoint["id"] }
   | { kind: "review-phase1-canonical-record"; recordKind: string }
   | { kind: "edit-phase1-canonical-record"; recordKind: string }
@@ -1232,6 +1251,7 @@ export function isStudioAction(value: unknown): value is StudioAction {
     case "retry-recovery":
       return hasOnlyKeys(value, ["kind"])
     case "review-product-journey-checkpoint":
+    case "review-adoption-candidate":
     case "edit-product-journey-checkpoint":
       return hasOnlyKeys(value, ["kind", "checkpointId"]) && typeof value.checkpointId === "string" &&
         productJourneyCheckpointIdSet.has(value.checkpointId)
@@ -1463,18 +1483,24 @@ function isDesignSection(value: unknown, route: StudioRoute): value is StudioDes
 
 function isProductJourney(value: unknown): value is ProductJourneySnapshot {
   const checkpointIds = productJourneyCheckpointIdSet
-  const checkpointStates = new Set(["complete", "attention-required", "current", "next", "not-started"])
+  const checkpointStates = new Set(["complete", "attention-required", "candidate-ready", "needs-decisions", "blocked-by-prerequisite", "current", "next", "not-started"])
   if (!(isRecord(value) && hasOnlyKeys(value, [
-    "state", "recordedCount", "totalCount", "attentionCount", "checkpoints", "next", "authorityBoundary",
+    "state", "recordedCount", "totalCount", "attentionCount", "candidateCount", "decisionCount", "checkpoints", "next", "authorityBoundary",
   ]) && ["in-progress", "attention-required", "ready"].includes(String(value.state)) &&
     isNonNegativeInteger(value.recordedCount) && isNonNegativeInteger(value.totalCount) &&
-    isNonNegativeInteger(value.attentionCount) && value.totalCount === 12 &&
+    isNonNegativeInteger(value.attentionCount) &&
+    (value.candidateCount === undefined || isNonNegativeInteger(value.candidateCount)) &&
+    (value.decisionCount === undefined || isNonNegativeInteger(value.decisionCount)) && value.totalCount === 12 &&
     Array.isArray(value.checkpoints) && value.checkpoints.length === value.totalCount &&
     value.checkpoints.every((candidate) => isRecord(candidate) && hasOnlyKeys(candidate, [
-      "id", "label", "state", "summary", "revision", "details", "impact", "reviewAction", "reviseAction", "action",
+      "id", "label", "phase", "state", "summary", "revision", "details", "impact", "reviewAction", "reviseAction", "action",
     ]) &&
       checkpointIds.has(String(candidate.id)) && isNonEmptyString(candidate.label) &&
       checkpointStates.has(String(candidate.state)) && isNonEmptyString(candidate.summary) &&
+      (candidate.phase === undefined || (isRecord(candidate.phase) &&
+        hasOnlyKeys(candidate.phase, ["id", "label", "order"]) &&
+        isNonEmptyString(candidate.phase.id) && isNonEmptyString(candidate.phase.label) &&
+        isNonNegativeInteger(candidate.phase.order))) &&
       (candidate.revision === undefined || (isNonNegativeInteger(candidate.revision) && candidate.revision > 0)) &&
       (candidate.details === undefined || (Array.isArray(candidate.details) && candidate.details.length <= 512 &&
         candidate.details.every((detail) => isRecord(detail) && hasOnlyKeys(detail, ["label", "value", "kind", "action"]) &&
@@ -1505,12 +1531,17 @@ function isProductJourney(value: unknown): value is ProductJourneySnapshot {
   const recordedCount = checkpoints.filter((candidate) =>
     candidate.state === "complete" || candidate.state === "attention-required").length
   const attentionCount = checkpoints.filter((candidate) => candidate.state === "attention-required").length
+  const candidateCount = checkpoints.filter((candidate) => candidate.state === "candidate-ready").length
+  const decisionCount = checkpoints.filter((candidate) => candidate.state === "needs-decisions").length
   const nextCount = checkpoints.filter((candidate) => candidate.state === "next").length
-  if (value.recordedCount !== recordedCount || value.attentionCount !== attentionCount || nextCount > 1) return false
+  if (value.recordedCount !== recordedCount || value.attentionCount !== attentionCount ||
+      (value.candidateCount !== undefined && value.candidateCount !== candidateCount) ||
+      (value.decisionCount !== undefined && value.decisionCount !== decisionCount) || nextCount > 1) return false
 
-  const expectedState = attentionCount > 0 ? "attention-required" : nextCount === 1 ? "in-progress" : "ready"
+  const incompleteCount = checkpoints.length - recordedCount
+  const expectedState = attentionCount > 0 ? "attention-required" : incompleteCount > 0 ? "in-progress" : "ready"
   if (value.state !== expectedState) return false
-  if (nextCount === 1 && (!isRecord(value.next) || value.next.action === undefined ||
+  if (incompleteCount > 0 && (!isRecord(value.next) || value.next.action === undefined ||
     !isStudioActionControl(value.next.action) || !value.next.action.enabled)) return false
 
   return true
