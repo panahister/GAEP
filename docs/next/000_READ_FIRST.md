@@ -3,7 +3,7 @@ id: GAEP-NEXT-000
 title: GAEP Next Candidate Baseline - Read First
 document_type: navigation
 schema_version: 1.0
-version: 0.2.0
+version: 0.2.1
 status: proposed
 owner_role: GAEP Specification Steward
 scope: GAEP Next candidate baseline
@@ -122,7 +122,7 @@ Read `01_Constitution/`, including the methodology-composition boundary in `004_
 
 ### Methodology and external-reference review
 
-Read `01_Constitution/004_METHODOLOGY_CONSTITUTION.md` for GAEP's applicability-driven Product-to-Operations method boundary. The machine-readable source of current external-reference assessment is `99_Registries_and_References/011_METHODOLOGY_REFERENCE_CATALOG.json`; `002_EXTERNAL_STANDARDS_CROSSWALK.md` is its human-readable projection, and `003_REFERENCE_ENTRY_CONTRACT.md` defines the entry contract. External references remain informative and version-bound unless an owning GAEP requirement explicitly adopts a concept.
+Read `01_Constitution/004_METHODOLOGY_CONSTITUTION.md` for GAEP's applicability-driven Product-to-Operations method boundary. The machine-readable source of current external-reference assessment is `99_Registries_and_References/011_METHODOLOGY_REFERENCE_CATALOG.json`; `002_EXTERNAL_STANDARDS_CROSSWALK.md` is its human-readable projection, and `003_REFERENCE_ENTRY_CONTRACT.md` defines the entry contract. Review `06_GAEP_On_GAEP/015_P01_CORRECTION_EXECUTION_REPORT.md` before relying on the original P01 execution report. External references remain informative and version-bound unless an owning GAEP requirement explicitly adopts a concept.
 
 ### Security, privacy, AI, and assurance review
 

@@ -3,7 +3,7 @@ id: GAEP-SELF-014
 title: P01 Methodology, Reference, and Naming Execution Report
 document_type: workspace-record
 schema_version: 1.0
-version: 1.0.0
+version: 1.1.0
 status: proposed
 owner_role: GAEP Specification Steward
 scope: P01 baseline preservation, research, methodology constitution, reference catalog, naming recommendation, validation, package, installation, and acceptance readiness
@@ -23,10 +23,13 @@ informative_references:
   - ../99_Registries_and_References/011_METHODOLOGY_REFERENCE_CATALOG.schema.json
   - ../00_GAEP_Product_Strategy/004_POSITIONING_AND_ALTERNATIVES.md
   - ../../06_Roadmap/057_P00_BASELINE_AND_CURRENT_STATE_AUDIT.md
+  - 015_P01_CORRECTION_EXECUTION_REPORT.md
 supersedes: []
 ---
 
 # P01 Methodology, Reference, and Naming Execution Report
+
+> **CORRECTION NOTICE — independent review invalidated this report's original acceptance-readiness evidence.** The original P01 implementation parsed the JSON Schema and checked its `$id` but did not execute Draft 2020-12 validation. It also omitted catalog-wide checks for unknown and one-sided supersession, malformed deferred identities, canonical concern-name parity, and reciprocal mapping/reference concern relationships. In addition, the normative `GAEP-REG-003` contract required access/review dates, mapping assessor/owner/version governance, and rights status that schema `1.0.0` and catalog `0.2.0` did not implement. The exact corrective evidence is [GAEP-SELF-015](015_P01_CORRECTION_EXECUTION_REPORT.md). This earlier report is retained as historical evidence, but its original PASS and readiness statements cannot support acceptance alone and are superseded for correction review by `GAEP-SELF-015`.
 
 ## Record and authority boundary
 
