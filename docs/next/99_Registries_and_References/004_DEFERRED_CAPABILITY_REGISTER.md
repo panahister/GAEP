@@ -3,7 +3,7 @@ id: GAEP-REG-004
 title: Deferred Capability Register
 document_type: registry
 schema_version: 1.0
-version: 0.1.0
+version: 0.2.0
 status: proposed
 owner_role: GAEP Product Owner
 scope: Capabilities deliberately excluded from the first-horizon Core and implementation readiness work
@@ -38,6 +38,8 @@ Deferral means the Core may preserve a compatible extension point, not that GAEP
 | commercial pricing and partner channels | product mode and demand unvalidated | external product strategy is approved | customer evidence, support economics, license and liability model |
 | complete standards certification | expensive and potentially category-defining | target market requires a named certification | licensed standards review, competent assessor and business case |
 | real-time global policy service | availability and central authority risk | distributed policy resolution proves insufficient | service objectives, cache/degraded semantics and trust model |
+| P02 executive competitive benchmark and claim registry | category, alternative, competitor, and executive claims require separate current evidence and Product Owner scope | P01 is independently accepted and P02 is explicitly authorized | canonical P01 catalog, claim policy, market evidence method, owners, approval and expiry model |
+| P03 complete visual Guideline | visual projection must consume accepted canonical methodology and reference data rather than create parallel truth | P01 is independently accepted and the Guideline audience and information architecture are authorized | catalog projection contract, lifecycle rationale, accessibility criteria and visual acceptance plan |
 
 ## Anti-roadmap rule
 

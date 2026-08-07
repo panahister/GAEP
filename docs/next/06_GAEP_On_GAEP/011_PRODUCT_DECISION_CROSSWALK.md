@@ -75,12 +75,12 @@ Every row has Decision authoring lifecycle `draft` and Decision Outcome `unresol
 
 | Source decision | Roll-up Decision Record | Candidate accountable role and authority status | Evidence and disposition route |
 |---|---|---|---|
-| GAEP-STR-POS-DEC-001 | GAEP-DEC-001 | GAEP Product Owner; unassigned | comprehension and category research; Product evidence stage |
+| GAEP-STR-POS-DEC-001 | GAEP-DEC-001 | GAEP Product Owner; unassigned | P01 recommends retaining the current name and descriptor as Proposed; comprehension, category, localization and naming acceptance remain Product evidence work |
 | GAEP-STR-POS-DEC-002 | GAEP-DEC-001 | GAEP Product Owner and GAEP Product Research Owner; unassigned | incumbent workflow and alternative comparison; Product evidence stage |
 | GAEP-STR-POS-DEC-003 | GAEP-DEC-001 | GAEP Product Owner; unassigned | value and defensibility evidence with claim limitations; Candidate Baseline Gate |
 | GAEP-STR-POS-DEC-004 | GAEP-DEC-005, GAEP-DEC-016 | GAEP Product Owner and GAEP Specification Steward; unassigned | build/buy/compose and layer-placement analysis; Complexity and Subtraction Gate |
 | GAEP-STR-POS-DEC-005 | GAEP-DEC-009 | GAEP Workspace Steward and GAEP Assurance Authority; unassigned | provider-substitution scenario and evidence invalidation; Candidate Baseline Gate |
-| GAEP-STR-POS-DEC-006 | GAEP-DEC-010 | GAEP Product Owner and GAEP Legal, IP, and Supplier Authority; unassigned | claim evidence, audience, legal, and distribution review; Candidate Baseline Gate |
+| GAEP-STR-POS-DEC-006 | GAEP-DEC-010 | GAEP Product Owner and GAEP Legal, IP, and Supplier Authority; unassigned | P01 supplies the candidate methodology claim policy; public claim evidence, audience, legal, trademark and distribution review remain Candidate Baseline Gate work |
 
 ## Scope and capability decisions
 

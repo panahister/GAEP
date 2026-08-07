@@ -3,13 +3,13 @@ id: GAEP-STR-004
 title: Positioning and Alternatives
 document_type: product-strategy
 schema_version: 1.0
-version: 0.1.0
+version: 0.2.0
 status: proposed
 owner_role: GAEP Product Owner
 scope: GAEP category, alternatives, differentiation hypotheses, and product claims
 normative_level: mixed
 classification: internal
-provenance: GAEP pre-implementation product restructuring
+provenance: GAEP pre-implementation product restructuring and P01 naming decision support
 approval:
   state: not-approved
   approved_by: []
@@ -160,6 +160,42 @@ The default is not to build. A capability may be valuable and still belong to an
 | Steward | Maintain portable meaning without becoming a manual integration team | Maintenance and migration burden evidence |
 | Assurance or audit | Reconstruct why an outcome was accepted | Evidence completeness and sensitive-data minimization |
 
+## Product naming recommendation
+
+The following naming package is a **recommended candidate**, not an Approved name, Baseline designation, trademark conclusion, public claim authorization, or repository-wide rename instruction:
+
+| Element | Recommended candidate | Intended use |
+|---|---|---|
+| Canonical name | **Governed AI Engineering Platform** | Preserve the established `GAEP` identity while naming the durable product concern: governed human-AI engineering across the Product-to-Operations span. |
+| Acronym | **GAEP** | Stable short identity. |
+| Descriptor | **An evidence-driven, adaptive product-to-operations engineering system.** | Explain lifecycle reach and evidence orientation without claiming a universal fixed method. |
+| Optional tagline | **From product intent to operational evidence.** | Short explanatory copy only; not a normative product boundary or performance claim. |
+| Recommendation state | `recommended-candidate` | Human review remains required. |
+| Approval state | `not-approved` | No naming authority is created by this document. |
+
+**Decision status:** Proposed — awaiting explicit Product Owner acceptance.
+
+`Governed` is deliberate: AI participation, claims, decisions, and effects remain bounded by visible authority and evidence. `Engineering` covers Product discovery, architecture, design, backlog, implementation, assurance, release, operations, and controlled evolution; it is not limited to coding or to engineering AI systems. `Enterprise` remains an important applicability context, but making it part of the name would unnecessarily imply that GAEP excludes smaller or non-enterprise contexts. Adding `Product` could wrongly imply that non-Product Engineering Initiatives are unsupported. The acronym is already embedded across documents, identifiers, packages, commands, and user-facing surfaces, so a rename would create broad migration cost without current evidence of proportionate value.
+
+### Alternatives considered
+
+| Alternative | Useful signal | Reason not recommended as the canonical candidate |
+|---|---|---|
+| Governance AI Enterprise Platform | Retains the acronym and signals organizational use | “Governance AI” is grammatically and semantically ambiguous; “Enterprise” may incorrectly narrow applicability to organization size or suggest an ERP category. |
+| Governed AI Product and Engineering Platform | Makes Product work explicit | It is longer, weakens acronym continuity, and may imply that Product is a separate product class rather than one concern in the complete engineering span. |
+| Governed AI Engineering Lifecycle Platform | Makes lifecycle coverage explicit | It may imply a fixed prescriptive lifecycle and understate GAEP's evidence, authority, state, and operating-system concerns. |
+| Retain the established name and add the descriptor | Preserves continuity while clarifying scope | **Recommended candidate** because it creates the least migration burden and best fits the current vendor-, tool-, architecture-, provider-, and methodology-neutral boundary. |
+
+### Naming claim boundary
+
+The recommended name and descriptor may be used inside candidate documentation when their state is kept visible. They SHALL NOT be represented as Approved, Baseline, legally cleared, trademark-cleared, validated market positioning, or authorization for public or commercial publication. Category comprehension, competitor differentiation, trademark review, localization, and audience testing remain downstream decision work.
+
+### Naming drift inventory
+
+P01 found the canonical expansion `Governed AI Engineering Platform` consistently embedded across the principal current and proposed authority surfaces. The evaluated alternatives are not current aliases and must not be introduced as expansions. Generic uses of “GAEP platform,” “engineering platform,” or “enterprise” describe a context, not a second canonical name. Historical or implementation labels such as `Pre-Figma` are lifecycle/tool terminology issues, not alternative Product names, and P01 does not rewrite them.
+
+Any later incorrect expansion, acronym replacement, capitalization rule, descriptor change, package rename, command rename, or public-brand migration must be inventoried by exact consumer and changed through a separately reviewed migration plan. P01 creates no rename instruction.
+
 ## Claims GAEP must avoid
 
 Until separately evidenced and approved, GAEP must not claim that it:
@@ -186,6 +222,8 @@ Until separately evidenced and approved, GAEP must not claim that it:
 | GAEP-STR-POS-REQ-006 | GAEP SHALL NOT require itself to become authoritative for an artifact when a fit external authority can remain governable by reference. | Authority-map review |
 | GAEP-STR-POS-REQ-007 | A public or commercial claim SHALL identify its evidence status and accountable approval. | Publication gate |
 | GAEP-STR-POS-REQ-008 | Positioning SHALL include material disqualifiers and tradeoffs; it SHALL NOT represent applicability limits as implementation defects automatically. | Positioning review |
+| GAEP-STR-POS-REQ-009 | A candidate product name, descriptor, or tagline SHALL expose its recommendation, evidence, approval, and publication-authority state. | Naming review |
+| GAEP-STR-POS-REQ-010 | A naming recommendation SHALL NOT trigger repository-wide replacement, public publication, trademark claims, or category claims without separately scoped decisions and authorization. | Change and publication review |
 
 ## Open decisions
 
@@ -197,5 +235,4 @@ Until separately evidenced and approved, GAEP must not claim that it:
 | GAEP-STR-POS-DEC-004 | Which capabilities should be composed from existing systems rather than owned by GAEP? |
 | GAEP-STR-POS-DEC-005 | What provider-substitution test is sufficient for the first portability claim? |
 | GAEP-STR-POS-DEC-006 | Which claims may be made internally, publicly, or commercially at each evidence stage? |
-
-No competitive or category conclusion is approved by this document.
+No naming, competitive, category, legal, trademark, or publication conclusion is approved by this document.

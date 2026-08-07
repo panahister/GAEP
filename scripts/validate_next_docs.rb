@@ -31,6 +31,7 @@ METHODOLOGY_REFERENCE_CATALOG = NEXT_DOCS.join("99_Registries_and_References", "
 METHODOLOGY_REFERENCE_SCHEMA = NEXT_DOCS.join("99_Registries_and_References", "011_METHODOLOGY_REFERENCE_CATALOG.schema.json")
 METHODOLOGY_CROSSWALK = NEXT_DOCS.join("99_Registries_and_References", "002_EXTERNAL_STANDARDS_CROSSWALK.md")
 METHODOLOGY_REFERENCE_CONTRACT = NEXT_DOCS.join("99_Registries_and_References", "003_REFERENCE_ENTRY_CONTRACT.md")
+POSITIONING_AND_NAMING = NEXT_DOCS.join("00_GAEP_Product_Strategy", "004_POSITIONING_AND_ALTERNATIVES.md")
 ROOT_TEXT_FILES = %w[
   .gitignore
   README.md
@@ -402,6 +403,19 @@ if METHODOLOGY_REFERENCE_CONTRACT.file?
   %w[compliant certified guarantees eliminates enterprise-ready production-ready secure safe audit-proof regulator-approved industry\ standard superior].each do |claim|
     phrase = claim.tr("\\", "")
     errors << "#{METHODOLOGY_REFERENCE_CONTRACT.relative_path_from(ROOT)}: missing restricted claim phrase #{phrase.inspect}" unless claims_text.downcase.include?(phrase)
+  end
+end
+
+if POSITIONING_AND_NAMING.file?
+  naming_text = POSITIONING_AND_NAMING.read
+  {
+    "canonical name" => "Governed AI Engineering Platform",
+    "descriptor" => "An evidence-driven, adaptive product-to-operations engineering system.",
+    "tagline" => "From product intent to operational evidence.",
+    "decision state" => "Proposed — awaiting explicit Product Owner acceptance",
+    "drift inventory" => "## Naming drift inventory"
+  }.each do |label, value|
+    errors << "#{POSITIONING_AND_NAMING.relative_path_from(ROOT)}: missing naming #{label}" unless naming_text.include?(value)
   end
 end
 

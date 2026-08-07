@@ -3,7 +3,7 @@ id: GAEP-REG-005
 title: Canonical Terminology Index
 document_type: registry
 schema_version: 1.0
-version: 0.2.0
+version: 0.3.0
 status: proposed
 owner_role: GAEP Semantic Registry Steward
 scope: Human-readable index of GAEP Next canonical concepts
@@ -19,6 +19,8 @@ normative_dependencies:
 informative_references:
   - ../../99_References/991_GLOSSARY.md
   - ../../99_References/992_TERMINOLOGY.md
+  - ../01_Constitution/004_METHODOLOGY_CONSTITUTION.md
+  - 011_METHODOLOGY_REFERENCE_CATALOG.json
 supersedes: []
 ---
 
@@ -102,6 +104,12 @@ This is a navigation index, not a second definition owner. The listed owning con
 | Realization | implementation-independent mapping of Core contracts to a workspace or runtime form | GAEP-REAL-001 and GAEP-REAL-002 |
 | Adapter | versioned translator between GAEP semantics and a provider, agent, tool or external system | GAEP-ADAPT-001 |
 | Conformance | scoped, version-bound and evidence-backed claim against declared GAEP requirements | GAEP-CST-003 |
+| Methodology composition | applicability-driven selection and combination of concerns, external references, methods, evidence, and rigor; not one universal GAEP methodology | GAEP-CST-004 |
+| External reference | exact version-bound standard, framework, methodology, method, model, principle set, research program, metric framework, regulatory guidance, or visualization model used within declared access and claim limits | GAEP-REG-003 and GAEP-REG-011 |
+| Method | selectable way of performing applicable engineering or Product work; support does not make it mandatory | GAEP-CST-004 |
+| Tool or adapter | replaceable work surface or translator that does not define lifecycle, method, authority, or canonical truth | GAEP-CST-004 |
+| Product Design | applicable Product-to-Operations capability for experience and interaction evidence; Figma may be an adapter but is not the capability or a lifecycle phase | GAEP-CST-004 |
+| Architecture sufficiency | consequential architecture resolved deeply enough to authorize the affected slice while remaining iterative, incremental, and revisable under governed change | GAEP-CST-004 |
 
 ## Discouraged ambiguous terms
 
