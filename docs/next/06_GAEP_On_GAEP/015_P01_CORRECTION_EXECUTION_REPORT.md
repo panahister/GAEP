@@ -17,6 +17,7 @@ approval:
 normative_dependencies: []
 informative_references:
   - 014_P01_METHODOLOGY_REFERENCE_AND_NAMING_REPORT.md
+  - 016_P01_FINAL_CORRECTION_EXECUTION_REPORT.md
   - ../01_Constitution/004_METHODOLOGY_CONSTITUTION.md
   - ../99_Registries_and_References/002_EXTERNAL_STANDARDS_CROSSWALK.md
   - ../99_Registries_and_References/003_REFERENCE_ENTRY_CONTRACT.md
@@ -27,6 +28,8 @@ supersedes: []
 ---
 
 # P01 Corrective Follow-up Execution Report
+
+> **FINAL CORRECTION NOTICE — independent review found four remaining acceptance blockers after this first correction.** `GAEP-REF-REQ-006` still contradicted assessed `snapshot-bound` records; `test:methodology-catalog` did not directly execute canonical-catalog validation; cross-state access/content-review contradictions and excessive review depth were accepted; and no explicit syntactically valid non-HTTPS URI regression existed. The first correction evidence below is retained unchanged as history, but its readiness conclusion cannot support acceptance alone. The final contract, tests, package, and close-state evidence are recorded in [GAEP-SELF-016](016_P01_FINAL_CORRECTION_EXECUTION_REPORT.md).
 
 ## Status and authority boundary
 
