@@ -20,6 +20,9 @@ ROOT_MEMBERS = %w[
 TOOL_MEMBERS = %w[
   scripts/validate_next_docs.rb
   scripts/build_candidate_revision_set.rb
+  scripts/lib/methodology_reference_catalog.rb
+  scripts/methodology_reference_catalog.test.rb
+  scripts/render_methodology_crosswalk.rb
 ].freeze
 
 options = {
@@ -95,7 +98,8 @@ end
 options[:purpose] ||= "pre-implementation working-candidate inspection"
 
 candidate_documents = ROOT.join("docs", "next").glob("**/*.md").map { |path| path.relative_path_from(ROOT).to_s }
-member_paths = (ROOT_MEMBERS + candidate_documents + TOOL_MEMBERS).uniq.sort
+candidate_data = ROOT.join("docs", "next").glob("**/*.json").map { |path| path.relative_path_from(ROOT).to_s }
+member_paths = (ROOT_MEMBERS + candidate_documents + candidate_data + TOOL_MEMBERS).uniq.sort
 
 members = member_paths.map do |relative|
   path = ROOT.join(relative).cleanpath
@@ -157,6 +161,7 @@ manifest = {
   },
   "inclusions" => [
     "docs/next/**/*.md",
+    "docs/next/**/*.json machine-readable registries and schemas",
     "root governance and repository text files declared by the validator",
     "candidate documentation validation and set-manifest tooling"
   ],

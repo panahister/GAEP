@@ -7,6 +7,7 @@ require "json"
 require "open3"
 require "set"
 require "yaml"
+require_relative "lib/methodology_reference_catalog"
 
 ROOT = Pathname.new(__dir__).join("..").expand_path
 NEXT_DOCS = ROOT.join("docs", "next")
@@ -25,6 +26,11 @@ MANUAL_REHEARSAL_PLAN = NEXT_DOCS.join("06_GAEP_On_GAEP", "006_MANUAL_PILOT_AND_
 APPLICABILITY_WORKSHEET = NEXT_DOCS.join("06_GAEP_On_GAEP", "002_APPLICABILITY_AND_SCOPE.md")
 ROLE_ASSIGNMENT_RECORD = NEXT_DOCS.join("06_GAEP_On_GAEP", "009_STAKEHOLDER_AND_ROLE_ASSIGNMENT.md")
 ASSURANCE_CASE = NEXT_DOCS.join("06_GAEP_On_GAEP", "005_ASSURANCE_CASE.md")
+METHODOLOGY_CONSTITUTION = NEXT_DOCS.join("01_Constitution", "004_METHODOLOGY_CONSTITUTION.md")
+METHODOLOGY_REFERENCE_CATALOG = NEXT_DOCS.join("99_Registries_and_References", "011_METHODOLOGY_REFERENCE_CATALOG.json")
+METHODOLOGY_REFERENCE_SCHEMA = NEXT_DOCS.join("99_Registries_and_References", "011_METHODOLOGY_REFERENCE_CATALOG.schema.json")
+METHODOLOGY_CROSSWALK = NEXT_DOCS.join("99_Registries_and_References", "002_EXTERNAL_STANDARDS_CROSSWALK.md")
+METHODOLOGY_REFERENCE_CONTRACT = NEXT_DOCS.join("99_Registries_and_References", "003_REFERENCE_ENTRY_CONTRACT.md")
 ROOT_TEXT_FILES = %w[
   .gitignore
   README.md
@@ -36,6 +42,9 @@ ROOT_TEXT_FILES = %w[
 CRS_TOOL_FILES = %w[
   scripts/validate_next_docs.rb
   scripts/build_candidate_revision_set.rb
+  scripts/lib/methodology_reference_catalog.rb
+  scripts/methodology_reference_catalog.test.rb
+  scripts/render_methodology_crosswalk.rb
 ].freeze
 VALIDATION_MODES = %w[structural candidate baseline implementation-readiness].freeze
 ACTIVE_CORE_IDS = %w[
@@ -116,6 +125,7 @@ document_statuses = %w[draft proposed approved baselined deprecated retired].fre
 normative_levels = %w[normative informative mixed].freeze
 
 files = NEXT_DOCS.glob("**/*.md").sort
+data_files = NEXT_DOCS.glob("**/*.json").sort
 errors << "No candidate Markdown files found under #{NEXT_DOCS}" if files.empty?
 
 files.each do |path|
@@ -292,6 +302,106 @@ files.each do |path|
                  path.dirname.join(clean).cleanpath
                end
     errors << "#{relative}: broken local link #{target}" unless resolved.exist?
+  end
+end
+
+methodology_reference_count = 0
+methodology_concern_count = 0
+methodology_mapping_count = 0
+methodology_deferred_count = 0
+methodology_catalog_digest = nil
+methodology_catalog = nil
+if !METHODOLOGY_REFERENCE_CATALOG.file?
+  errors << "missing Methodology Reference Catalog #{METHODOLOGY_REFERENCE_CATALOG.relative_path_from(ROOT)}"
+else
+  raw_catalog = METHODOLOGY_REFERENCE_CATALOG.read
+  begin
+    methodology_catalog = JSON.parse(raw_catalog)
+  rescue JSON::ParserError => e
+    errors << "#{METHODOLOGY_REFERENCE_CATALOG.relative_path_from(ROOT)}: invalid JSON: #{e.message}"
+  end
+  if methodology_catalog
+    MethodologyReferenceCatalog.validate(methodology_catalog, raw_text: raw_catalog).each do |error|
+      errors << "#{METHODOLOGY_REFERENCE_CATALOG.relative_path_from(ROOT)}: #{error}"
+    end
+    methodology_reference_count = Array(methodology_catalog["references"]).length
+    methodology_concern_count = Array(methodology_catalog["concerns"]).length
+    methodology_mapping_count = Array(methodology_catalog["mappings"]).length
+    methodology_deferred_count = Array(methodology_catalog["deferredCandidates"]).length
+    methodology_catalog_digest = Digest::SHA256.hexdigest(raw_catalog)
+    catalog_id = methodology_catalog["catalogId"]
+    catalog_relative = METHODOLOGY_REFERENCE_CATALOG.relative_path_from(ROOT).to_s
+    if documents.key?(catalog_id)
+      errors << "duplicate document or catalog id #{catalog_id}: #{documents[catalog_id]} and #{catalog_relative}"
+    else
+      documents[catalog_id] = catalog_relative
+    end
+  end
+end
+
+if !METHODOLOGY_REFERENCE_SCHEMA.file?
+  errors << "missing Methodology Reference Catalog schema #{METHODOLOGY_REFERENCE_SCHEMA.relative_path_from(ROOT)}"
+else
+  begin
+    schema = JSON.parse(METHODOLOGY_REFERENCE_SCHEMA.read)
+    errors << "#{METHODOLOGY_REFERENCE_SCHEMA.relative_path_from(ROOT)}: wrong schema id" unless schema["$id"].to_s.include?("methodology-reference-catalog-1.0.0")
+  rescue JSON::ParserError => e
+    errors << "#{METHODOLOGY_REFERENCE_SCHEMA.relative_path_from(ROOT)}: invalid JSON: #{e.message}"
+  end
+end
+
+if methodology_catalog && METHODOLOGY_CROSSWALK.file?
+  crosswalk_text = METHODOLOGY_CROSSWALK.read
+  expected_digest = "Catalog SHA-256: `#{methodology_catalog_digest}`"
+  errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: catalog digest projection is stale" unless crosswalk_text.include?(expected_digest)
+  errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: catalog version projection is stale" unless crosswalk_text.include?("Catalog version: `#{methodology_catalog['version']}`")
+  errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: assessed-reference count projection is stale" unless crosswalk_text.include?("Catalog assessed references: `#{methodology_reference_count}`")
+  errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: concern-mapping count projection is stale" unless crosswalk_text.include?("Catalog concern mappings: `#{methodology_mapping_count}`")
+  Array(methodology_catalog["references"]).each do |reference|
+    reference_id = reference["referenceId"]
+    errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: missing assessed reference #{reference_id}" unless crosswalk_text.include?("`#{reference_id}`")
+  end
+  Array(methodology_catalog["mappings"]).each do |mapping|
+    concern_id = mapping["concernId"]
+    errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: missing concern mapping #{concern_id}" unless crosswalk_text.match?(/^\| `#{Regexp.escape(concern_id)}` \|/)
+  end
+  {
+    "concern crosswalk" => ["<!-- BEGIN GENERATED CONCERN CROSSWALK -->", "<!-- END GENERATED CONCERN CROSSWALK -->", MethodologyReferenceCatalog.mapping_projection(methodology_catalog)],
+    "reference inventory" => ["<!-- BEGIN GENERATED REFERENCE INVENTORY -->", "<!-- END GENERATED REFERENCE INVENTORY -->", MethodologyReferenceCatalog.reference_projection(methodology_catalog)]
+  }.each do |label, (start_marker, end_marker, expected_projection)|
+    match = crosswalk_text.match(/#{Regexp.escape(start_marker)}\n(.*?)\n#{Regexp.escape(end_marker)}/m)
+    if !match
+      errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: missing generated #{label} markers"
+    elsif match[1] != expected_projection
+      errors << "#{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}: generated #{label} projection is stale"
+    end
+  end
+elsif !METHODOLOGY_CROSSWALK.file?
+  errors << "missing Methodology Crosswalk #{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}"
+end
+
+if methodology_catalog && METHODOLOGY_CONSTITUTION.file?
+  constitution_text = METHODOLOGY_CONSTITUTION.read
+  Array(methodology_catalog["concerns"]).each do |concern|
+    errors << "#{METHODOLOGY_CONSTITUTION.relative_path_from(ROOT)}: missing concern #{concern['concernId']}" unless constitution_text.include?(concern["concernId"])
+  end
+  (1..18).each do |number|
+    requirement_id = format("GAEP-MTH-REQ-%03d", number)
+    errors << "#{METHODOLOGY_CONSTITUTION.relative_path_from(ROOT)}: missing requirement #{requirement_id}" unless constitution_text.include?(requirement_id)
+  end
+else
+  errors << "missing Methodology Constitution #{METHODOLOGY_CONSTITUTION.relative_path_from(ROOT)}" unless METHODOLOGY_CONSTITUTION.file?
+end
+
+if METHODOLOGY_REFERENCE_CONTRACT.file?
+  claims_text = METHODOLOGY_REFERENCE_CONTRACT.read
+  %w[aligned\ with informed\ by adapted\ from uses\ concepts\ from designed\ to\ support candidate\ conformance\ mapping not\ independently\ verified].each do |claim|
+    phrase = claim.tr("\\", "")
+    errors << "#{METHODOLOGY_REFERENCE_CONTRACT.relative_path_from(ROOT)}: missing allowed claim phrase #{phrase.inspect}" unless claims_text.downcase.include?(phrase)
+  end
+  %w[compliant certified guarantees eliminates enterprise-ready production-ready secure safe audit-proof regulator-approved industry\ standard superior].each do |claim|
+    phrase = claim.tr("\\", "")
+    errors << "#{METHODOLOGY_REFERENCE_CONTRACT.relative_path_from(ROOT)}: missing restricted claim phrase #{phrase.inspect}" unless claims_text.downcase.include?(phrase)
   end
 end
 
@@ -776,7 +886,7 @@ if manifest_path
       duplicates = member_paths.compact.group_by { |path| path }.select { |_path, entries| entries.length > 1 }
       duplicates.each_key { |path| errors << "Candidate Revision Set manifest contains duplicate member #{path}" }
 
-      expected_members = (ROOT_TEXT_FILES + files.map { |path| path.relative_path_from(ROOT).to_s } + CRS_TOOL_FILES).uniq.sort
+      expected_members = (ROOT_TEXT_FILES + files.map { |path| path.relative_path_from(ROOT).to_s } + data_files.map { |path| path.relative_path_from(ROOT).to_s } + CRS_TOOL_FILES).uniq.sort
       actual_members = member_paths.compact.sort
       missing_members = expected_members - actual_members
       extra_members = actual_members - expected_members
@@ -962,6 +1072,11 @@ puts "Repository gap statuses: #{repository_gap_status_counts.sort.to_h}"
 puts "paper scenario results: #{paper_scenario_result_count}"
 puts "paper scenario outcomes: #{paper_scenario_outcomes.sort.to_h}"
 puts "migration rehearsal cases: #{migration_rehearsal_case_count}"
+puts "methodology references: #{methodology_reference_count}"
+puts "methodology concerns: #{methodology_concern_count}"
+puts "methodology mappings: #{methodology_mapping_count}"
+puts "methodology deferred candidates: #{methodology_deferred_count}"
+puts "methodology catalog digest: #{methodology_catalog_digest ? "sha256:#{methodology_catalog_digest}" : 'unavailable'}"
 puts "GAEP-on-GAEP rehearsal steps: #{manual_rehearsal_step_count}"
 puts "semantic rehearsal input files: #{semantic_input_paths.length}"
 puts "semantic rehearsal input digest: sha256:#{semantic_input_digest}"

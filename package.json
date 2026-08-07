@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "check": "npm run typecheck && npm run test && npm run test:ci-contract && npm run test:example && npm run validate:docs",
+    "check": "npm run typecheck && npm run test && npm run test:ci-contract && npm run test:example && npm run test:methodology-catalog && npm run validate:docs",
     "check:founder": "npm run check && npm run test:vscode:extension-host",
     "clean": "npm run clean --workspaces --if-present",
     "package:kiro": "npm --prefix apps/kiro run package",
@@ -60,6 +60,7 @@
     "verify:phase0-report": "node scripts/phase0_acceptance_report.mjs --verify",
     "verify:ide-conformance": "node scripts/verify_ide_conformance.mjs",
     "test:watch": "vitest",
+    "test:methodology-catalog": "ruby scripts/methodology_reference_catalog.test.rb",
     "typecheck": "tsc -b",
     "validate:docs": "ruby scripts/validate_next_docs.rb"
   },

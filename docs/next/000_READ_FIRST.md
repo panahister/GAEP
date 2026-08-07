@@ -3,7 +3,7 @@ id: GAEP-NEXT-000
 title: GAEP Next Candidate Baseline - Read First
 document_type: navigation
 schema_version: 1.0
-version: 0.1.0
+version: 0.2.0
 status: proposed
 owner_role: GAEP Specification Steward
 scope: GAEP Next candidate baseline
@@ -109,7 +109,8 @@ This directory has not yet reached that approved state. Every document is `propo
 1. This document.
 2. `00_GAEP_Product_Strategy/001_PRODUCT_CHARTER.md`.
 3. `01_Constitution/001_GAEP_CONSTITUTION.md`.
-4. `08_Roadmap_and_Adoption/001_PRE_IMPLEMENTATION_ROADMAP.md`.
+4. `01_Constitution/004_METHODOLOGY_CONSTITUTION.md`.
+5. `08_Roadmap_and_Adoption/001_PRE_IMPLEMENTATION_ROADMAP.md`.
 
 ### Product and sponsorship review
 
@@ -117,7 +118,11 @@ Read `00_GAEP_Product_Strategy/` and the GAEP-on-GAEP workspace in `06_GAEP_On_G
 
 ### Specification review
 
-Read `01_Constitution/`, then `02_Core_Specification/`, then the applicable documents in `03_Profiles/`. Review `99_Registries_and_References/009_CORE_OPEN_DECISION_REGISTER.md` and `010_CORE_BOUNDARY_AND_COMPLEXITY_BUDGET.md` before treating the Core as a candidate baseline.
+Read `01_Constitution/`, including the methodology-composition boundary in `004_METHODOLOGY_CONSTITUTION.md`, then `02_Core_Specification/`, then the applicable documents in `03_Profiles/`. Review `99_Registries_and_References/009_CORE_OPEN_DECISION_REGISTER.md` and `010_CORE_BOUNDARY_AND_COMPLEXITY_BUDGET.md` before treating the Core as a candidate baseline.
+
+### Methodology and external-reference review
+
+Read `01_Constitution/004_METHODOLOGY_CONSTITUTION.md` for GAEP's applicability-driven Product-to-Operations method boundary. The machine-readable source of current external-reference assessment is `99_Registries_and_References/011_METHODOLOGY_REFERENCE_CATALOG.json`; `002_EXTERNAL_STANDARDS_CROSSWALK.md` is its human-readable projection, and `003_REFERENCE_ENTRY_CONTRACT.md` defines the entry contract. External references remain informative and version-bound unless an owning GAEP requirement explicitly adopts a concept.
 
 ### Security, privacy, AI, and assurance review
 
