@@ -1,8 +1,8 @@
 {
   "catalogId": "GAEP-REG-011",
-  "schemaId": "https://gaep.example/schemas/methodology-reference-catalog-2.0.0.json",
-  "schemaVersion": "2.0.0",
-  "version": "0.3.0",
+  "schemaId": "https://gaep.example/schemas/methodology-reference-catalog-2.1.0.json",
+  "schemaVersion": "2.1.0",
+  "version": "0.4.0",
   "status": "proposed",
   "ownerRole": "GAEP Reference Steward",
   "freshnessCheckedAt": "2026-08-07",
@@ -126,6 +126,7 @@
       "issuingAuthority": "National Institute of Standards and Technology",
       "versionOrEdition": "NIST AI 100-1, Version 1.0",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": "2023-01-26",
       "status": "current-under-revision",
       "officialUri": "https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10",
@@ -192,6 +193,7 @@
       "issuingAuthority": "National Institute of Standards and Technology",
       "versionOrEdition": "NIST AI 600-1",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": "2024-07-26",
       "status": "current",
       "officialUri": "https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence",
@@ -256,6 +258,7 @@
       "issuingAuthority": "National Institute of Standards and Technology",
       "versionOrEdition": "SP 800-218, SSDF Version 1.1",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": "2022-02-03",
       "status": "current",
       "officialUri": "https://csrc.nist.gov/pubs/sp/800/218/final",
@@ -324,6 +327,7 @@
       "issuingAuthority": "ISO and IEC",
       "versionOrEdition": "2023, Edition 2",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": "2023-11-15",
       "status": "current",
       "officialUri": "https://www.iso.org/standard/78176.html",
@@ -392,6 +396,7 @@
       "issuingAuthority": "ISO, IEC and IEEE",
       "versionOrEdition": "2022, Edition 2",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": "2022-11-07",
       "status": "current",
       "officialUri": "https://www.iso.org/standard/74393.html",
@@ -460,6 +465,7 @@
       "issuingAuthority": "ISO, IEC and IEEE",
       "versionOrEdition": "2018, Edition 2",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": "2018-11-28",
       "status": "current-under-revision",
       "officialUri": "https://www.iso.org/standard/72089.html",
@@ -529,6 +535,7 @@
       "issuingAuthority": "ISO, IEC and IEEE",
       "versionOrEdition": "2026, Edition 2",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": "2026-04-29",
       "status": "current",
       "officialUri": "https://www.iso.org/standard/90219.html",
@@ -599,6 +606,7 @@
       "issuingAuthority": "World Wide Web Consortium",
       "versionOrEdition": "W3C Recommendation, 2024-12-12",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": "2024-12-12",
       "status": "current",
       "officialUri": "https://www.w3.org/TR/WCAG22/",
@@ -665,6 +673,7 @@
       "issuingAuthority": "ISO, IEC and IEEE",
       "versionOrEdition": "2023, Edition 2",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": "2023-05-16",
       "status": "current",
       "officialUri": "https://www.iso.org/standard/81702.html",
@@ -735,6 +744,7 @@
       "issuingAuthority": "The Open Group Architecture Forum",
       "versionOrEdition": "10th Edition; Technical Corrigendum 1 listed separately",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": "2022-04-25",
       "status": "current",
       "officialUri": "https://publications.opengroup.org/standards/togaf",
@@ -802,6 +812,7 @@
       "issuingAuthority": "Simon Brown",
       "versionOrEdition": "living official website; no numbered edition",
       "versionCertainty": "snapshot-bound",
+      "snapshotDate": "2026-08-07",
       "publicationDate": null,
       "status": "current",
       "officialUri": "https://c4model.com/",
@@ -869,6 +880,7 @@
       "issuingAuthority": "The seventeen Manifesto authors",
       "versionOrEdition": "original 2001 publication",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": null,
       "status": "current",
       "officialUri": "https://agilemanifesto.org/",
@@ -939,6 +951,7 @@
       "issuingAuthority": "DORA",
       "versionOrEdition": "living guidance; last updated 2026-01-05",
       "versionCertainty": "snapshot-bound",
+      "snapshotDate": "2026-08-07",
       "publicationDate": "2026-01-05",
       "status": "current",
       "officialUri": "https://dora.dev/guides/dora-metrics/",
@@ -1006,6 +1019,7 @@
       "issuingAuthority": "Matthew Skelton and Manuel Pais",
       "versionOrEdition": "Second Edition",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": "2025-09-23",
       "status": "current",
       "officialUri": "https://teamtopologies.com/book",
@@ -1075,6 +1089,7 @@
       "issuingAuthority": "Eric Evans / Domain Language, Inc.",
       "versionOrEdition": "2015-03 reference edition",
       "versionCertainty": "exact",
+      "snapshotDate": null,
       "publicationDate": null,
       "status": "current",
       "officialUri": "https://www.domainlanguage.com/ddd/reference/",
@@ -1145,6 +1160,7 @@
       "issuingAuthority": "Alberto Brandolini",
       "versionOrEdition": "living Leanpub book; incomplete",
       "versionCertainty": "snapshot-bound",
+      "snapshotDate": "2026-08-07",
       "publicationDate": null,
       "status": "candidate",
       "officialUri": "https://www.eventstorming.com/book/",
@@ -1214,11 +1230,13 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-013",
-          "versionOrEdition": "2026, Edition 2"
+          "versionOrEdition": "2026, Edition 2",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-020",
-          "versionOrEdition": "2023, Edition 2"
+          "versionOrEdition": "2023, Edition 2",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -1255,7 +1273,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1265,7 +1283,8 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-012",
-          "versionOrEdition": "2018, Edition 2"
+          "versionOrEdition": "2018, Edition 2",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -1303,7 +1322,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1313,19 +1332,23 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-011",
-          "versionOrEdition": "2022, Edition 2"
+          "versionOrEdition": "2022, Edition 2",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-021",
-          "versionOrEdition": "10th Edition; Technical Corrigendum 1 listed separately"
+          "versionOrEdition": "10th Edition; Technical Corrigendum 1 listed separately",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-022",
-          "versionOrEdition": "living official website; no numbered edition"
+          "versionOrEdition": "living official website; no numbered edition",
+          "snapshotDate": "2026-08-07"
         },
         {
           "referenceId": "GAEP-XREF-026",
-          "versionOrEdition": "2015-03 reference edition"
+          "versionOrEdition": "2015-03 reference edition",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -1363,7 +1386,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1373,7 +1396,8 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-005",
-          "versionOrEdition": "2023, Edition 2"
+          "versionOrEdition": "2023, Edition 2",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -1411,7 +1435,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1421,19 +1445,23 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-013",
-          "versionOrEdition": "2026, Edition 2"
+          "versionOrEdition": "2026, Edition 2",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-020",
-          "versionOrEdition": "2023, Edition 2"
+          "versionOrEdition": "2023, Edition 2",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-023",
-          "versionOrEdition": "original 2001 publication"
+          "versionOrEdition": "original 2001 publication",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-024",
-          "versionOrEdition": "living guidance; last updated 2026-01-05"
+          "versionOrEdition": "living guidance; last updated 2026-01-05",
+          "snapshotDate": "2026-08-07"
         }
       ],
       "conceptUsed": [
@@ -1472,7 +1500,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1482,7 +1510,8 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-025",
-          "versionOrEdition": "Second Edition"
+          "versionOrEdition": "Second Edition",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -1520,7 +1549,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1530,7 +1559,8 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-026",
-          "versionOrEdition": "2015-03 reference edition"
+          "versionOrEdition": "2015-03 reference edition",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -1569,7 +1599,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1579,7 +1609,8 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-027",
-          "versionOrEdition": "living Leanpub book; incomplete"
+          "versionOrEdition": "living Leanpub book; incomplete",
+          "snapshotDate": "2026-08-07"
         }
       ],
       "conceptUsed": [
@@ -1616,7 +1647,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1626,7 +1657,8 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-004",
-          "versionOrEdition": "SP 800-218, SSDF Version 1.1"
+          "versionOrEdition": "SP 800-218, SSDF Version 1.1",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -1663,7 +1695,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1673,11 +1705,13 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-001",
-          "versionOrEdition": "NIST AI 100-1, Version 1.0"
+          "versionOrEdition": "NIST AI 100-1, Version 1.0",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-002",
-          "versionOrEdition": "NIST AI 600-1"
+          "versionOrEdition": "NIST AI 600-1",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -1715,7 +1749,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1725,7 +1759,8 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-015",
-          "versionOrEdition": "W3C Recommendation, 2024-12-12"
+          "versionOrEdition": "W3C Recommendation, 2024-12-12",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -1763,7 +1798,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1773,15 +1808,18 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-013",
-          "versionOrEdition": "2026, Edition 2"
+          "versionOrEdition": "2026, Edition 2",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-020",
-          "versionOrEdition": "2023, Edition 2"
+          "versionOrEdition": "2023, Edition 2",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-024",
-          "versionOrEdition": "living guidance; last updated 2026-01-05"
+          "versionOrEdition": "living guidance; last updated 2026-01-05",
+          "snapshotDate": "2026-08-07"
         }
       ],
       "conceptUsed": [
@@ -1819,7 +1857,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1864,7 +1902,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": true
     },
@@ -1909,7 +1947,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": true
     },
@@ -1919,15 +1957,18 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-023",
-          "versionOrEdition": "original 2001 publication"
+          "versionOrEdition": "original 2001 publication",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-026",
-          "versionOrEdition": "2015-03 reference edition"
+          "versionOrEdition": "2015-03 reference edition",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-027",
-          "versionOrEdition": "living Leanpub book; incomplete"
+          "versionOrEdition": "living Leanpub book; incomplete",
+          "snapshotDate": "2026-08-07"
         }
       ],
       "conceptUsed": [
@@ -1966,7 +2007,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -1976,15 +2017,18 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-021",
-          "versionOrEdition": "10th Edition; Technical Corrigendum 1 listed separately"
+          "versionOrEdition": "10th Edition; Technical Corrigendum 1 listed separately",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-026",
-          "versionOrEdition": "2015-03 reference edition"
+          "versionOrEdition": "2015-03 reference edition",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-027",
-          "versionOrEdition": "living Leanpub book; incomplete"
+          "versionOrEdition": "living Leanpub book; incomplete",
+          "snapshotDate": "2026-08-07"
         }
       ],
       "conceptUsed": [
@@ -2022,7 +2066,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -2032,15 +2076,18 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-005",
-          "versionOrEdition": "2023, Edition 2"
+          "versionOrEdition": "2023, Edition 2",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-015",
-          "versionOrEdition": "W3C Recommendation, 2024-12-12"
+          "versionOrEdition": "W3C Recommendation, 2024-12-12",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-023",
-          "versionOrEdition": "original 2001 publication"
+          "versionOrEdition": "original 2001 publication",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -2079,7 +2126,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -2089,11 +2136,13 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-012",
-          "versionOrEdition": "2018, Edition 2"
+          "versionOrEdition": "2018, Edition 2",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-023",
-          "versionOrEdition": "original 2001 publication"
+          "versionOrEdition": "original 2001 publication",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -2131,7 +2180,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -2141,15 +2190,18 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-004",
-          "versionOrEdition": "SP 800-218, SSDF Version 1.1"
+          "versionOrEdition": "SP 800-218, SSDF Version 1.1",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-005",
-          "versionOrEdition": "2023, Edition 2"
+          "versionOrEdition": "2023, Edition 2",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-015",
-          "versionOrEdition": "W3C Recommendation, 2024-12-12"
+          "versionOrEdition": "W3C Recommendation, 2024-12-12",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -2188,7 +2240,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -2198,19 +2250,23 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-011",
-          "versionOrEdition": "2022, Edition 2"
+          "versionOrEdition": "2022, Edition 2",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-021",
-          "versionOrEdition": "10th Edition; Technical Corrigendum 1 listed separately"
+          "versionOrEdition": "10th Edition; Technical Corrigendum 1 listed separately",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-022",
-          "versionOrEdition": "living official website; no numbered edition"
+          "versionOrEdition": "living official website; no numbered edition",
+          "snapshotDate": "2026-08-07"
         },
         {
           "referenceId": "GAEP-XREF-026",
-          "versionOrEdition": "2015-03 reference edition"
+          "versionOrEdition": "2015-03 reference edition",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -2248,7 +2304,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -2258,15 +2314,18 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-011",
-          "versionOrEdition": "2022, Edition 2"
+          "versionOrEdition": "2022, Edition 2",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-025",
-          "versionOrEdition": "Second Edition"
+          "versionOrEdition": "Second Edition",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-026",
-          "versionOrEdition": "2015-03 reference edition"
+          "versionOrEdition": "2015-03 reference edition",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -2304,7 +2363,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -2349,7 +2408,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": true
     },
@@ -2359,11 +2418,13 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-004",
-          "versionOrEdition": "SP 800-218, SSDF Version 1.1"
+          "versionOrEdition": "SP 800-218, SSDF Version 1.1",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-012",
-          "versionOrEdition": "2018, Edition 2"
+          "versionOrEdition": "2018, Edition 2",
+          "snapshotDate": null
         }
       ],
       "conceptUsed": [
@@ -2402,7 +2463,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     },
@@ -2448,7 +2509,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": true
     },
@@ -2458,15 +2519,18 @@
       "referenceBindings": [
         {
           "referenceId": "GAEP-XREF-004",
-          "versionOrEdition": "SP 800-218, SSDF Version 1.1"
+          "versionOrEdition": "SP 800-218, SSDF Version 1.1",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-013",
-          "versionOrEdition": "2026, Edition 2"
+          "versionOrEdition": "2026, Edition 2",
+          "snapshotDate": null
         },
         {
           "referenceId": "GAEP-XREF-024",
-          "versionOrEdition": "living guidance; last updated 2026-01-05"
+          "versionOrEdition": "living guidance; last updated 2026-01-05",
+          "snapshotDate": "2026-08-07"
         }
       ],
       "conceptUsed": [
@@ -2505,7 +2569,7 @@
         "artifactId": "GAEP-CST-004",
         "artifactVersion": "0.3.0",
         "catalogId": "GAEP-REG-011",
-        "catalogVersion": "0.3.0"
+        "catalogVersion": "0.4.0"
       },
       "gaepNative": false
     }

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gaep.example/schemas/methodology-reference-catalog-2.0.0.json",
+  "$id": "https://gaep.example/schemas/methodology-reference-catalog-2.1.0.json",
   "title": "GAEP Methodology Reference Catalog",
   "type": "object",
   "additionalProperties": false,
@@ -22,9 +22,9 @@
   ],
   "properties": {
     "catalogId": { "const": "GAEP-REG-011" },
-    "schemaId": { "const": "https://gaep.example/schemas/methodology-reference-catalog-2.0.0.json" },
-    "schemaVersion": { "const": "2.0.0" },
-    "version": { "const": "0.3.0" },
+    "schemaId": { "const": "https://gaep.example/schemas/methodology-reference-catalog-2.1.0.json" },
+    "schemaVersion": { "const": "2.1.0" },
+    "version": { "const": "0.4.0" },
     "status": { "const": "proposed" },
     "ownerRole": { "const": "GAEP Reference Steward" },
     "freshnessCheckedAt": { "type": "string", "format": "date" },
@@ -208,6 +208,7 @@
         "issuingAuthority",
         "versionOrEdition",
         "versionCertainty",
+        "snapshotDate",
         "publicationDate",
         "status",
         "officialUri",
@@ -252,7 +253,8 @@
         },
         "issuingAuthority": { "$ref": "#/$defs/nonEmptyString" },
         "versionOrEdition": { "$ref": "#/$defs/nonEmptyString" },
-        "versionCertainty": { "enum": ["exact", "snapshot-bound", "uncertain", "unverifiable"] },
+        "versionCertainty": { "enum": ["exact", "snapshot-bound", "unverifiable"] },
+        "snapshotDate": { "$ref": "#/$defs/nullableDate" },
         "publicationDate": { "$ref": "#/$defs/nullableDate" },
         "status": { "enum": ["current", "current-under-revision", "superseded", "historical", "candidate", "unverifiable"] },
         "officialUri": { "type": "string", "format": "uri", "pattern": "^https://" },
@@ -288,15 +290,49 @@
         "reviewTrigger": { "$ref": "#/$defs/nonEmptyString" },
         "nextReviewDate": { "type": "string", "format": "date" },
         "notes": { "$ref": "#/$defs/nonEmptyString" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "versionCertainty": { "const": "exact" } }, "required": ["versionCertainty"] },
+          "then": { "properties": { "snapshotDate": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "versionCertainty": { "const": "snapshot-bound" } }, "required": ["versionCertainty"] },
+          "then": {
+            "properties": {
+              "snapshotDate": { "type": "string", "format": "date" },
+              "status": { "enum": ["current", "current-under-revision", "candidate"] },
+              "access": { "type": "object", "properties": { "status": { "const": "accessed" } } },
+              "contentReview": { "type": "object", "properties": { "status": { "const": "reviewed" } } },
+              "blockedClaims": { "type": "array", "minItems": 1 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "versionCertainty": { "const": "unverifiable" } }, "required": ["versionCertainty"] },
+          "then": {
+            "properties": {
+              "snapshotDate": { "type": "null" },
+              "status": { "const": "unverifiable" },
+              "evidenceStatus": { "const": "unverified" },
+              "blockedClaims": { "type": "array", "minItems": 1 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "unverifiable" } }, "required": ["status"] },
+          "then": { "properties": { "versionCertainty": { "const": "unverifiable" } } }
+        }
+      ]
     },
     "referenceBinding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["referenceId", "versionOrEdition"],
+      "required": ["referenceId", "versionOrEdition", "snapshotDate"],
       "properties": {
         "referenceId": { "$ref": "#/$defs/referenceId" },
-        "versionOrEdition": { "$ref": "#/$defs/nonEmptyString" }
+        "versionOrEdition": { "$ref": "#/$defs/nonEmptyString" },
+        "snapshotDate": { "$ref": "#/$defs/nullableDate" }
       }
     },
     "mappingAssessment": {
@@ -319,7 +355,7 @@
         "artifactId": { "const": "GAEP-CST-004" },
         "artifactVersion": { "const": "0.3.0" },
         "catalogId": { "const": "GAEP-REG-011" },
-        "catalogVersion": { "const": "0.3.0" }
+        "catalogVersion": { "const": "0.4.0" }
       }
     },
     "mapping": {

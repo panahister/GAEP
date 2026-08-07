@@ -6,9 +6,9 @@ require "set"
 
 module MethodologyReferenceCatalog
   CATALOG_ID = "GAEP-REG-011"
-  CATALOG_VERSION = "0.3.0"
-  SCHEMA_ID = "https://gaep.example/schemas/methodology-reference-catalog-2.0.0.json"
-  SCHEMA_VERSION = "2.0.0"
+  CATALOG_VERSION = "0.4.0"
+  SCHEMA_ID = "https://gaep.example/schemas/methodology-reference-catalog-2.1.0.json"
+  SCHEMA_VERSION = "2.1.0"
   TARGET_ARTIFACT_ID = "GAEP-CST-004"
   TARGET_ARTIFACT_VERSION = "0.3.0"
 
@@ -20,7 +20,7 @@ module MethodologyReferenceCatalog
   CONCERN_FIELDS = %w[concernId canonicalName].freeze
   REFERENCE_FIELDS = %w[
     referenceId canonicalName shortName referenceType issuingAuthority versionOrEdition
-    versionCertainty publicationDate status officialUri access contentReview freshnessCheckedAt
+    versionCertainty snapshotDate publicationDate status officialUri access contentReview freshnessCheckedAt
     rightsStatus licenseOrCopyrightNote supersedes supersededBy underRevision gaepConcernIds
     adoptedConcepts adaptedConcepts explicitlyNotAdopted applicabilityProfiles limitations
     blockedClaims claimLanguage evidenceStatus reviewTrigger nextReviewDate notes
@@ -32,7 +32,7 @@ module MethodologyReferenceCatalog
     applicability affectedArtifactsOrBehaviors requiredEvidence limitations assessment gaepTarget
     gaepNative
   ].freeze
-  REFERENCE_BINDING_FIELDS = %w[referenceId versionOrEdition].freeze
+  REFERENCE_BINDING_FIELDS = %w[referenceId versionOrEdition snapshotDate].freeze
   ASSESSMENT_FIELDS = %w[assessor ownerRole assessmentDate reviewTrigger nextReviewDate].freeze
   PRINCIPAL_ASSESSOR_FIELDS = %w[kind principalId].freeze
   UNASSIGNED_ASSESSOR_FIELDS = %w[kind role].freeze
@@ -46,7 +46,7 @@ module MethodologyReferenceCatalog
   REFERENCE_STATUSES = %w[
     current current-under-revision superseded historical candidate unverifiable
   ].freeze
-  VERSION_CERTAINTIES = %w[exact snapshot-bound uncertain unverifiable].freeze
+  VERSION_CERTAINTIES = %w[exact snapshot-bound unverifiable].freeze
   ACCESS_STATUSES = %w[accessed not-accessed].freeze
   ACCESS_EVIDENCE = %w[
     full-primary-source licensed-copy official-publication official-summary
@@ -57,6 +57,14 @@ module MethodologyReferenceCatalog
     full-primary-source licensed-copy official-publication official-summary
     official-abstract not-reviewed
   ].freeze
+  ACCESS_REVIEW_DEPTH_COMPATIBILITY = {
+    "full-primary-source" => %w[full-primary-source official-publication official-summary official-abstract not-reviewed],
+    "licensed-copy" => %w[licensed-copy official-summary official-abstract not-reviewed],
+    "official-publication" => %w[official-publication official-summary official-abstract not-reviewed],
+    "official-summary" => %w[official-summary official-abstract not-reviewed],
+    "official-abstract" => %w[official-abstract not-reviewed],
+    "not-accessed" => %w[not-reviewed]
+  }.freeze
   RIGHTS_STATUSES = %w[
     confirmed-permitted link-and-summary-only permission-required unresolved
   ].freeze
@@ -150,7 +158,8 @@ module MethodologyReferenceCatalog
     ]
     rows = Array(catalog["mappings"]).sort_by { |mapping| mapping.fetch("concernId") }.map do |mapping|
       bindings = mapping.fetch("referenceBindings").map do |binding|
-        "`#{binding.fetch('referenceId')}` @ #{binding.fetch('versionOrEdition')}"
+        snapshot = binding.fetch("snapshotDate") || "none"
+        "`#{binding.fetch('referenceId')}` @ #{binding.fetch('versionOrEdition')} (snapshot: #{snapshot})"
       end
       values = [
         "`#{mapping.fetch('concernId')}`",
@@ -200,8 +209,8 @@ module MethodologyReferenceCatalog
 
   def reference_projection(catalog)
     header = [
-      "| Reference ID | Current source | Type | Version or edition | Certainty | Status | Access | Content review | Rights | Freshness check | Next review | Evidence status |",
-      "|---|---|---|---|---|---|---|---|---|---|---|---|"
+      "| Reference ID | Current source | Type | Version or edition | Certainty | Snapshot date | Status | Access | Content review | Rights | Freshness check | Next review | Evidence status |",
+      "|---|---|---|---|---|---|---|---|---|---|---|---|---|"
     ]
     rows = Array(catalog["references"]).sort_by { |reference| reference.fetch("referenceId") }.map do |reference|
       access = reference.fetch("access")
@@ -212,6 +221,7 @@ module MethodologyReferenceCatalog
         "`#{reference.fetch('referenceType')}`",
         reference.fetch("versionOrEdition"),
         "`#{reference.fetch('versionCertainty')}`",
+        reference.fetch("snapshotDate") || "none",
         "`#{reference.fetch('status')}`",
         "`#{access.fetch('status')}` / `#{access.fetch('evidence')}` / #{access.fetch('date') || 'no date'}",
         "`#{review.fetch('status')}` / `#{review.fetch('depth')}` / #{review.fetch('date') || 'no date'}",
@@ -308,15 +318,8 @@ module MethodologyReferenceCatalog
     if reference["underRevision"] == true && !%w[current-under-revision candidate].include?(reference["status"])
       errors << "#{prefix} underRevision true requires current-under-revision or candidate status"
     end
-    if reference["status"] == "unverifiable" && reference["versionCertainty"] != "unverifiable"
-      errors << "#{prefix} unverifiable status requires unverifiable version certainty"
-    end
-    if reference["versionCertainty"] == "unverifiable" && reference["status"] != "unverifiable"
-      errors << "#{prefix} unverifiable version certainty requires unverifiable status"
-    end
-    if reference["versionCertainty"] != "exact" && Array(reference["blockedClaims"]).empty?
-      errors << "#{prefix} non-exact version certainty requires blocked claims"
-    end
+    validate_version_certainty(errors, reference, prefix)
+    validate_access_review_state(errors, reference, prefix)
     if reference["evidenceStatus"] == "version-pending" && !reference["underRevision"] && reference["versionCertainty"] == "exact"
       errors << "#{prefix} version-pending evidence conflicts with an exact, non-revising reference"
     end
@@ -324,12 +327,18 @@ module MethodologyReferenceCatalog
     publication = parse_date(reference["publicationDate"])
     access = parse_date(reference.dig("access", "date"))
     review = parse_date(reference.dig("contentReview", "date"))
+    snapshot = parse_date(reference["snapshotDate"])
     freshness = parse_date(reference["freshnessCheckedAt"])
     next_review = parse_date(reference["nextReviewDate"])
     errors << "#{prefix}.access.date is earlier than publicationDate" if publication && access && access < publication
     errors << "#{prefix}.contentReview.date is earlier than access.date" if access && review && review < access
-    errors << "#{prefix}.freshnessCheckedAt is earlier than access or content review" if freshness && [access, review].compact.any? { |date| freshness < date }
-    errors << "#{prefix}.nextReviewDate is earlier than freshnessCheckedAt" if freshness && next_review && next_review < freshness
+    errors << "#{prefix}.snapshotDate is earlier than access or content review" if snapshot && [access, review].compact.any? { |date| snapshot < date }
+    if freshness && [access, review, snapshot].compact.any? { |date| freshness < date }
+      errors << "#{prefix}.freshnessCheckedAt is earlier than access, content review, or snapshot"
+    end
+    if next_review && [freshness, snapshot].compact.any? { |date| next_review < date }
+      errors << "#{prefix}.nextReviewDate is earlier than freshnessCheckedAt or snapshotDate"
+    end
 
     if reference["evidenceStatus"] == "unverified" && strong_claim?(reference["claimLanguage"])
       errors << "#{prefix} unverified source supports a strong claim"
@@ -362,6 +371,12 @@ module MethodologyReferenceCatalog
       next unless reference
       if binding["versionOrEdition"] != reference["versionOrEdition"]
         errors << "#{prefix} reference binding version is stale for #{binding['referenceId']}"
+      end
+      if binding["snapshotDate"] != reference["snapshotDate"]
+        errors << "#{prefix} reference binding snapshot date is stale for #{binding['referenceId']}"
+      end
+      if mapping["gaepNative"] != true && reference["versionCertainty"] == "unverifiable"
+        errors << "#{prefix} non-native mapping cannot use unverifiable reference #{binding['referenceId']}"
       end
     end
 
@@ -428,6 +443,58 @@ module MethodologyReferenceCatalog
           errors << "reference #{reference['referenceId']} names #{concern_id} without reciprocal mapping binding"
         end
       end
+    end
+  end
+
+  def validate_version_certainty(errors, reference, prefix)
+    certainty = reference["versionCertainty"]
+    snapshot = reference["snapshotDate"]
+    blocked_claims = Array(reference["blockedClaims"])
+
+    if certainty == "exact" && !snapshot.nil?
+      errors << "#{prefix} exact version certainty requires a null snapshotDate"
+    elsif certainty == "snapshot-bound"
+      errors << "#{prefix} snapshot-bound version certainty requires snapshotDate" if snapshot.nil?
+      if snapshot && snapshot != reference["freshnessCheckedAt"]
+        errors << "#{prefix} snapshotDate must equal freshnessCheckedAt"
+      end
+      unless %w[current current-under-revision candidate].include?(reference["status"])
+        errors << "#{prefix} snapshot-bound status is incompatible with assessed living evidence"
+      end
+      errors << "#{prefix} snapshot-bound reference requires accessed evidence" unless reference.dig("access", "status") == "accessed"
+      errors << "#{prefix} snapshot-bound reference requires reviewed content" unless reference.dig("contentReview", "status") == "reviewed"
+      errors << "#{prefix} snapshot-bound reference requires blocked claims" if blocked_claims.empty?
+      unless blocked_claims.any? { |claim| claim.match?(/remains current|unchanged after/i) }
+        errors << "#{prefix} snapshot-bound reference must block post-snapshot currency claims"
+      end
+    elsif certainty == "unverifiable"
+      errors << "#{prefix} unverifiable version certainty requires unverifiable status" unless reference["status"] == "unverifiable"
+      errors << "#{prefix} unverifiable version certainty requires unverified evidence" unless reference["evidenceStatus"] == "unverified"
+      errors << "#{prefix} unverifiable version certainty requires a null snapshotDate" unless snapshot.nil?
+      errors << "#{prefix} unverifiable version certainty requires blocked claims" if blocked_claims.empty?
+    end
+
+    if reference["status"] == "unverifiable" && certainty != "unverifiable"
+      errors << "#{prefix} unverifiable status requires unverifiable version certainty"
+    end
+  end
+
+  def validate_access_review_state(errors, reference, prefix)
+    access_status = reference.dig("access", "status")
+    review_status = reference.dig("contentReview", "status")
+    access_evidence = reference.dig("access", "evidence")
+    review_depth = reference.dig("contentReview", "depth")
+
+    valid_state = [
+      ["not-accessed", "not-reviewed"],
+      ["accessed", "not-reviewed"],
+      ["accessed", "reviewed"]
+    ].include?([access_status, review_status])
+    errors << "#{prefix} access/content-review state is contradictory" unless valid_state
+
+    compatible_depths = ACCESS_REVIEW_DEPTH_COMPATIBILITY.fetch(access_evidence, [])
+    unless compatible_depths.include?(review_depth)
+      errors << "#{prefix}.contentReview.depth is stronger than access evidence"
     end
   end
 
