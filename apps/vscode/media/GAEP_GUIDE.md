@@ -149,6 +149,24 @@ not-approved and not-published. Product counts, Evidence coverage, and maturity 
 winner score. This guide creates no independent benchmark, superiority, procurement, or
 publication authority.
 
+- **Evidence strength sets the ceiling of a conclusion.** Identity-only Evidence can identify a
+  Product but cannot prove a feature; partial Evidence supports only a bounded Partial cell; a
+  Verified cell needs a current, exact Product-and-capability assertion plus compatible official
+  availability Evidence when shown as shipped.
+- **Unknown protects the decision.** It means the reviewed Evidence does not establish a result,
+  not that the Product lacks the capability. Turning it into No would manufacture a competitor
+  absence claim.
+- **No total winner score is produced.** Different executive scenarios value different
+  capabilities, and aggregating Unknowns would create false precision. Inspect the scenario,
+  exact Evidence, limitations, and freshness date instead.
+- **GAEP maturity is separate from market support.** Implemented, partial, and planned/deferred
+  repository states describe current code observation at a commit; none implies Product Owner
+  acceptance, readiness, or that roadmap intent is already delivered.
+- **Executive reading path:** select the relevant scenario in `GAEP-STR-004`, review its fit and
+  non-fit conditions, inspect the capability rows and Unknowns, then define an unmeasured
+  proof-of-value baseline, observation window, owner, confounders, and decision threshold before
+  procurement or rollout.
+
 ---
 
 ## 8. Handy commands
