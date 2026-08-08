@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "check": "npm run typecheck && npm run test && npm run test:ci-contract && npm run test:example && npm run test:methodology-catalog && npm run validate:docs",
+    "check": "npm run typecheck && npm run test && npm run test:ci-contract && npm run test:example && npm run test:methodology-catalog && npm run test:market-benchmark && npm run validate:docs",
     "check:founder": "npm run check && npm run test:vscode:extension-host",
     "clean": "npm run clean --workspaces --if-present",
     "package:kiro": "npm --prefix apps/kiro run package",
@@ -63,9 +63,14 @@
     "test:methodology-schema": "node --test scripts/methodology_reference_schema.test.mjs",
     "test:methodology-semantics": "ruby scripts/methodology_reference_catalog.test.rb && ruby scripts/methodology_reference_catalog_integrity.test.rb && ruby scripts/methodology_reference_catalog_parity.test.rb",
     "test:methodology-catalog": "npm run validate:methodology-schema && npm run test:methodology-schema && npm run test:methodology-semantics",
+    "test:market-benchmark-schema": "node --test scripts/market_benchmark_schema.test.mjs",
+    "test:market-benchmark-semantics": "node --test scripts/market_benchmark_semantics.test.mjs",
+    "test:market-benchmark": "npm run validate:market-benchmark && npm run test:market-benchmark-schema && npm run test:market-benchmark-semantics",
     "typecheck": "tsc -b",
     "validate:methodology-schema": "node scripts/validate_methodology_reference_schema.mjs",
-    "validate:docs": "npm run validate:methodology-schema && ruby scripts/validate_next_docs.rb"
+    "validate:market-benchmark": "node scripts/validate_market_benchmark_registry.mjs",
+    "format:market-benchmark": "node scripts/format_market_benchmark_registry.mjs",
+    "validate:docs": "npm run validate:methodology-schema && npm run validate:market-benchmark && ruby scripts/validate_next_docs.rb"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",
