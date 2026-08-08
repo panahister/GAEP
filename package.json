@@ -20,6 +20,7 @@
     "package:kiro": "npm --prefix apps/kiro run package",
     "package:rider": "./apps/rider/gradlew -p apps/rider --no-daemon buildPlugin --no-parallel",
     "package:vscode": "npm run package -w gaep-vscode",
+    "package:vscode:deterministic": "node scripts/package_vscode_deterministic.mjs",
     "report:local-packages": "node scripts/report_local_packages.mjs",
     "report:phase0": "node scripts/phase0_acceptance_report.mjs --output",
     "example:phase0": "npm run build && node scripts/run_phase0_example.mjs",
