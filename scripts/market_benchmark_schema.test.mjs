@@ -52,7 +52,7 @@ test("canonical P02 registry validates actual committed artifacts", () => {
 test("canonical P02 CLI begins from and validates the actual registry", () => {
   const result = spawnSync(process.execPath, [CLI_PATH], { cwd: ROOT, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /15 products, 17 evidence records, 255 benchmark cells/);
+  assert.match(result.stdout, /15 products, 49 evidence records, 220 support assertions, 450 benchmark cells/);
 });
 
 test("JSON Schema is strict Draft 2020-12 and compiles offline", () => {
@@ -96,6 +96,24 @@ test("hostile benchmark support enum is rejected", () => {
   const hostile = clone(registry);
   hostile.benchmarkRows[0].cells[0].supportLevel = "yes";
   assertSchemaInvalid(hostile, "/benchmarkRows/0/cells/0/supportLevel");
+});
+
+test("hostile malformed Evidence assertion identifier is rejected", () => {
+  const hostile = clone(registry);
+  hostile.evidenceAssertions[0].assertionId = "bad-assertion";
+  assertSchemaInvalid(hostile, "/evidenceAssertions/0/assertionId");
+});
+
+test("hostile taxonomy cardinality below 30 is rejected by Schema", () => {
+  const hostile = clone(registry);
+  hostile.capabilities.pop();
+  assertSchemaInvalid(hostile, "/capabilities");
+});
+
+test("hostile benchmark row with fewer than 30 cells is rejected by Schema", () => {
+  const hostile = clone(registry);
+  hostile.benchmarkRows[0].cells.pop();
+  assertSchemaInvalid(hostile, "/benchmarkRows/0/cells");
 });
 
 test("hostile Product status enum is rejected", () => {
