@@ -136,15 +136,17 @@ Where key records are produced: **Bounded Context** in *Solution & security arch
 ## 7. Market comparison authority
 
 This bundled guide intentionally contains no independently maintained competitor table or
-positioning copy. Current Proposed market identities, evidence-bound comparison cells, GAEP
-maturity states, claims, limitations, and research dates are owned by `GAEP-REG-013` and
-projected for human review in `GAEP-STR-004`. Methodology and standards truth remains in
-`GAEP-REG-011`.
+positioning copy. Current Proposed market identities, the exact 30-dimension capability taxonomy,
+evidence-bound comparison cells, GAEP maturity states, claims, limitations, and research dates are
+owned by `GAEP-REG-013` v0.2.0 and projected for human review in generated `GAEP-STR-004`.
+Methodology and standards truth remains in `GAEP-REG-011`; the 17 retired capability identities
+remain migration history and must not be reused as current dimensions.
 
 Use the repository documents to inspect those records and their official evidence. The
 extension must preserve Unknown rather than display it as No, distinguish shipped capability
 from preview, extension, inference, and roadmap states, and keep every claim visibly
-not-approved and not-published. This guide creates no benchmark, superiority, procurement, or
+not-approved and not-published. Product counts, Evidence coverage, and maturity states are not a
+winner score. This guide creates no independent benchmark, superiority, procurement, or
 publication authority.
 
 ---

@@ -33,6 +33,22 @@ test("projection includes every evaluated Product identity", () => {
   for (const product of registry.products) assert.ok(projection.includes(product.canonicalName), `missing ${product.productId}`);
 });
 
+test("projection exposes all 30 exact capability names in readable grouped views", () => {
+  assert.equal(registry.capabilities.length, 30);
+  for (const capability of registry.capabilities) assert.ok(projection.includes(capability.name), `missing ${capability.capabilityId}`);
+  for (const group of [
+    "Product and Initiative governance",
+    "Business, domain, architecture, and planning",
+    "Design, backlog, assurance, and traceability",
+    "Security, repositories, delivery, operations, evidence, and administration",
+  ]) assert.ok(projection.includes(group), `missing capability group ${group}`);
+});
+
+test("projection represents the complete 15 by 30 matrix without presenting SAP as padding", () => {
+  assert.match(projection, /15 × 30 = 450/);
+  assert.match(projection, /SAP S\/4HANA does not pad the 15-Product benchmark matrix/);
+});
+
 test("projection legend preserves Unknown and evidence-state distinctions", () => {
   for (const label of ["Verified", "Partial", "Unsupported by reviewed evidence", "Unknown", "N/A"]) assert.match(projection, new RegExp(label));
   assert.match(projection, /Unknown means not assessed or not established by reviewed evidence; it never means No/);
@@ -60,4 +76,9 @@ test("projection blocks winner scoring and public authority", () => {
   assert.match(projection, /No aggregate winner score is permitted/);
   assert.match(projection, /not approved/);
   assert.match(projection, /not published/);
+});
+
+test("P03 projection boundary is explicit and no P03 implementation is claimed", () => {
+  assert.match(projection, /P03 has not started/);
+  assert.match(projection, /P03 must consume registry version and digest/);
 });
