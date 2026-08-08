@@ -35,6 +35,7 @@ try {
     console.log(
       `Market benchmark registry valid: ${result.registry.products.length} products, ` +
         `${result.registry.evidence.length} evidence records, ` +
+        `${result.registry.evidenceAssertions.length} support assertions, ` +
         `${result.registry.benchmarkRows.reduce((count, row) => count + row.cells.length, 0)} benchmark cells.`,
     );
   }

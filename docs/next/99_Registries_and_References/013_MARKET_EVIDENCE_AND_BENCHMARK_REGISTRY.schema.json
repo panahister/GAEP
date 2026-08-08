@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gaep.example/schemas/market-evidence-benchmark-registry-1.0.0.schema.json",
+  "$id": "https://gaep.example/schemas/market-evidence-benchmark-registry-1.1.0.schema.json",
   "title": "GAEP Market Evidence and Benchmark Registry",
   "type": "object",
   "additionalProperties": false,
@@ -17,6 +17,10 @@
     "marketCategories",
     "capabilities",
     "evidence",
+    "evidenceAssertions",
+    "repositoryAssertions",
+    "methodologyBindings",
+    "excludedIdentities",
     "seedResolutions",
     "products",
     "landscapeEvaluations",
@@ -25,19 +29,60 @@
     "claims",
     "scenarios",
     "proofOfValueMetrics",
+    "researchCoverage",
     "migration",
     "researchDebt",
     "projection"
   ],
   "properties": {
-    "schemaId": { "const": "https://gaep.example/schemas/market-evidence-benchmark-registry-1.0.0.schema.json" },
-    "schemaVersion": { "const": "1.0.0" },
+    "schemaId": { "const": "https://gaep.example/schemas/market-evidence-benchmark-registry-1.1.0.schema.json" },
+    "schemaVersion": { "const": "1.1.0" },
     "registryId": { "const": "GAEP-REG-013" },
     "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
     "status": { "const": "proposed" },
     "ownerRole": { "const": "GAEP Product Research Owner" },
     "researchAsOf": { "$ref": "#/$defs/date" },
     "approval": { "$ref": "#/$defs/approval" },
+    "p01Bindings": { "$ref": "#/$defs/p01Bindings" },
+    "marketCategories": { "type": "array", "minItems": 5, "items": { "$ref": "#/$defs/category" } },
+    "capabilities": { "type": "array", "minItems": 17, "maxItems": 17, "items": { "$ref": "#/$defs/capability" } },
+    "evidence": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/evidence" } },
+    "evidenceAssertions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidenceAssertion" } },
+    "repositoryAssertions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/repositoryAssertion" } },
+    "methodologyBindings": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/methodologyBinding" } },
+    "excludedIdentities": { "type": "array", "items": { "$ref": "#/$defs/excludedIdentity" } },
+    "seedResolutions": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/seedResolution" } },
+    "products": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/product" } },
+    "landscapeEvaluations": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/landscapeEvaluation" } },
+    "benchmarkRows": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/benchmarkRow" } },
+    "gaepMaturity": { "type": "array", "minItems": 17, "maxItems": 17, "items": { "$ref": "#/$defs/gaepMaturity" } },
+    "claims": { "type": "array", "minItems": 8, "items": { "$ref": "#/$defs/claim" } },
+    "scenarios": { "type": "array", "minItems": 7, "items": { "$ref": "#/$defs/scenario" } },
+    "proofOfValueMetrics": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/metric" } },
+    "researchCoverage": { "$ref": "#/$defs/researchCoverage" },
+    "migration": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/documentMigration" } },
+    "researchDebt": { "type": "array", "items": { "$ref": "#/$defs/researchDebt" } },
+    "projection": { "$ref": "#/$defs/projection" }
+  },
+  "$defs": {
+    "date": { "type": "string", "format": "date" },
+    "id": { "type": "string", "pattern": "^GAEP-[A-Z]+-[0-9]{3}$" },
+    "nonEmpty": { "type": "string", "minLength": 1 },
+    "httpsUri": { "type": "string", "format": "uri", "pattern": "^https://" },
+    "stringSet": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmpty" } },
+    "nonEmptyStringSet": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmpty" } },
+    "idSet": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "approvedBy", "approvedAt", "publicationState"],
+      "properties": {
+        "state": { "const": "not-approved" },
+        "approvedBy": { "type": "array", "maxItems": 0 },
+        "approvedAt": { "type": "null" },
+        "publicationState": { "const": "not-published" }
+      }
+    },
     "p01Bindings": {
       "type": "object",
       "additionalProperties": false,
@@ -50,39 +95,6 @@
         "claimsModel": { "const": "GAEP-CORE-007" },
         "constitution": { "const": "GAEP-CST-004" },
         "positioningProjection": { "const": "GAEP-STR-004" }
-      }
-    },
-    "marketCategories": { "type": "array", "minItems": 5, "items": { "$ref": "#/$defs/category" } },
-    "capabilities": { "type": "array", "minItems": 17, "items": { "$ref": "#/$defs/capability" } },
-    "evidence": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/evidence" } },
-    "seedResolutions": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/seedResolution" } },
-    "products": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/product" } },
-    "landscapeEvaluations": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/landscapeEvaluation" } },
-    "benchmarkRows": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/benchmarkRow" } },
-    "gaepMaturity": { "type": "array", "minItems": 17, "items": { "$ref": "#/$defs/gaepMaturity" } },
-    "claims": { "type": "array", "minItems": 8, "items": { "$ref": "#/$defs/claim" } },
-    "scenarios": { "type": "array", "minItems": 7, "items": { "$ref": "#/$defs/scenario" } },
-    "proofOfValueMetrics": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/metric" } },
-    "migration": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/migration" } },
-    "researchDebt": { "type": "array", "items": { "$ref": "#/$defs/researchDebt" } },
-    "projection": { "$ref": "#/$defs/projection" }
-  },
-  "$defs": {
-    "date": { "type": "string", "format": "date" },
-    "id": { "type": "string", "pattern": "^GAEP-[A-Z]+-[0-9]{3}$" },
-    "nonEmpty": { "type": "string", "minLength": 1 },
-    "httpsUri": { "type": "string", "format": "uri", "pattern": "^https://" },
-    "stringSet": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmpty" } },
-    "idSet": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
-    "approval": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["state", "approvedBy", "approvedAt", "publicationState"],
-      "properties": {
-        "state": { "const": "not-approved" },
-        "approvedBy": { "type": "array", "maxItems": 0 },
-        "approvedAt": { "type": "null" },
-        "publicationState": { "const": "not-published" }
       }
     },
     "category": {
@@ -110,7 +122,7 @@
     "evidence": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["evidenceId", "subject", "publisher", "sourceType", "officialUri", "publicationOrVersion", "accessedAt", "asOfDate", "contentReviewState", "reviewDepth", "accessResult", "freshnessTrigger", "nextReviewAt", "rightsStatus", "supportedClaims", "blockedClaims", "limitations", "supersedes", "supersededBy", "sourceDigest"],
+      "required": ["evidenceId", "subject", "publisher", "sourceType", "officialUri", "publicationOrVersion", "accessedAt", "asOfDate", "contentReviewState", "reviewDepth", "accessResult", "freshnessTrigger", "nextReviewAt", "rightsStatus", "reviewSummary", "blockedClaims", "limitations", "supersedes", "supersededBy", "sourceDigest"],
       "properties": {
         "evidenceId": { "$ref": "#/$defs/id" },
         "subject": { "$ref": "#/$defs/nonEmpty" },
@@ -126,24 +138,98 @@
         "freshnessTrigger": { "$ref": "#/$defs/nonEmpty" },
         "nextReviewAt": { "$ref": "#/$defs/date" },
         "rightsStatus": { "enum": ["citation-only", "quotation-limited", "captured-with-permission", "unknown"] },
-        "supportedClaims": { "$ref": "#/$defs/stringSet" },
+        "reviewSummary": { "$ref": "#/$defs/nonEmpty" },
         "blockedClaims": { "$ref": "#/$defs/stringSet" },
-        "limitations": { "$ref": "#/$defs/stringSet" },
+        "limitations": { "$ref": "#/$defs/nonEmptyStringSet" },
         "supersedes": { "$ref": "#/$defs/idSet" },
         "supersededBy": { "$ref": "#/$defs/idSet" },
         "sourceDigest": { "type": ["string", "null"], "pattern": "^sha256:[a-f0-9]{64}$" }
       }
     },
+    "evidenceAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assertionId", "evidenceId", "subjectType", "productId", "methodologyId", "excludedIdentityId", "capabilityId", "assertionType", "proposition", "supportStrength", "deliveryState", "locator", "reviewedAt", "asOfDate", "limitations", "polarity", "sequence", "status", "supersedes", "supersededBy", "migrationNote"],
+      "properties": {
+        "assertionId": { "$ref": "#/$defs/id" },
+        "evidenceId": { "$ref": "#/$defs/id" },
+        "subjectType": { "enum": ["product", "methodology", "excluded-identity"] },
+        "productId": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "methodologyId": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "excludedIdentityId": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "capabilityId": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "assertionType": { "enum": ["availability", "capability-support", "explicit-negative", "identity", "landscape-classification"] },
+        "proposition": { "$ref": "#/$defs/nonEmpty" },
+        "supportStrength": { "enum": ["verified", "partial", "identity-only"] },
+        "deliveryState": { "enum": ["announced-roadmap", "community-extension", "inference", "not-assessed", "preview-beta", "shipped"] },
+        "locator": { "$ref": "#/$defs/nonEmpty" },
+        "reviewedAt": { "$ref": "#/$defs/date" },
+        "asOfDate": { "$ref": "#/$defs/date" },
+        "limitations": { "$ref": "#/$defs/nonEmptyStringSet" },
+        "polarity": { "enum": ["explicit-negative", "identity-only", "partial", "positive"] },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "status": { "enum": ["active", "invalidated", "superseded"] },
+        "supersedes": { "$ref": "#/$defs/idSet" },
+        "supersededBy": { "$ref": "#/$defs/idSet" },
+        "migrationNote": { "type": ["string", "null"] }
+      }
+    },
+    "repositoryAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repositoryAssertionId", "capabilityId", "repositoryPaths", "proposition", "strength", "maturityState", "asOfCommit", "limitations", "sequence", "status"],
+      "properties": {
+        "repositoryAssertionId": { "$ref": "#/$defs/id" },
+        "capabilityId": { "$ref": "#/$defs/id" },
+        "repositoryPaths": { "$ref": "#/$defs/nonEmptyStringSet" },
+        "proposition": { "$ref": "#/$defs/nonEmpty" },
+        "strength": { "enum": ["automated-tested", "observed-implementation", "planned-document-only", "partial-implementation"] },
+        "maturityState": { "enum": ["candidate-proposed", "implemented-and-automated-tested", "implemented-awaiting-product-owner-acceptance", "partial", "planned-deferred-coming-soon", "unknown-not-assessed"] },
+        "asOfCommit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "limitations": { "$ref": "#/$defs/nonEmptyStringSet" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "status": { "enum": ["active", "invalidated", "superseded"] }
+      }
+    },
+    "methodologyBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["methodologyId", "canonicalName", "identityType", "p01ReferenceId", "assertionIds", "relevantCapabilityIds", "status", "limitation"],
+      "properties": {
+        "methodologyId": { "$ref": "#/$defs/id" },
+        "canonicalName": { "$ref": "#/$defs/nonEmpty" },
+        "identityType": { "enum": ["external-research-candidate", "p01-catalog-reference"] },
+        "p01ReferenceId": { "type": ["string", "null"], "pattern": "^GAEP-XREF-[0-9]{3}$" },
+        "assertionIds": { "$ref": "#/$defs/idSet" },
+        "relevantCapabilityIds": { "$ref": "#/$defs/idSet" },
+        "status": { "enum": ["active-reference", "research-deferred"] },
+        "limitation": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
+    "excludedIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["excludedIdentityId", "canonicalName", "identityType", "reason", "assertionIds", "historicalProductId", "status"],
+      "properties": {
+        "excludedIdentityId": { "$ref": "#/$defs/id" },
+        "canonicalName": { "$ref": "#/$defs/nonEmpty" },
+        "identityType": { "enum": ["enterprise-application-boundary", "ambiguous-name", "methodology-not-product", "out-of-scope-product"] },
+        "reason": { "$ref": "#/$defs/nonEmpty" },
+        "assertionIds": { "$ref": "#/$defs/idSet" },
+        "historicalProductId": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "status": { "const": "excluded-with-reason" }
+      }
+    },
     "seedResolution": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["seedId", "inputName", "resolutionState", "selectedIdentity", "evidenceIds", "rationale", "ambiguities"],
+      "required": ["seedId", "inputName", "resolutionState", "selectedIdentity", "assertionIds", "rationale", "ambiguities"],
       "properties": {
         "seedId": { "$ref": "#/$defs/id" },
         "inputName": { "$ref": "#/$defs/nonEmpty" },
         "resolutionState": { "enum": ["resolved-product", "resolved-project", "methodology-framework", "excluded", "research-deferred"] },
         "selectedIdentity": { "type": ["string", "null"] },
-        "evidenceIds": { "$ref": "#/$defs/idSet" },
+        "assertionIds": { "$ref": "#/$defs/idSet" },
         "rationale": { "$ref": "#/$defs/nonEmpty" },
         "ambiguities": { "$ref": "#/$defs/stringSet" }
       }
@@ -151,7 +237,7 @@
     "product": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["productId", "canonicalName", "vendorOrSteward", "officialUri", "categoryIds", "lifecycleScope", "deploymentModel", "licensingStatus", "evidenceIds", "knownUnknowns", "lastReviewedAt", "status"],
+      "required": ["productId", "canonicalName", "vendorOrSteward", "officialUri", "categoryIds", "lifecycleScope", "deploymentModel", "licensingStatus", "identityAssertionIds", "knownUnknowns", "lastReviewedAt", "status"],
       "properties": {
         "productId": { "$ref": "#/$defs/id" },
         "canonicalName": { "$ref": "#/$defs/nonEmpty" },
@@ -161,21 +247,21 @@
         "lifecycleScope": { "$ref": "#/$defs/stringSet" },
         "deploymentModel": { "$ref": "#/$defs/stringSet" },
         "licensingStatus": { "$ref": "#/$defs/nonEmpty" },
-        "evidenceIds": { "$ref": "#/$defs/idSet" },
+        "identityAssertionIds": { "$ref": "#/$defs/idSet" },
         "knownUnknowns": { "$ref": "#/$defs/stringSet" },
         "lastReviewedAt": { "$ref": "#/$defs/date" },
-        "status": { "enum": ["active-current", "renamed", "superseded", "discontinued", "unverifiable", "research-deferred"] }
+        "status": { "enum": ["active-current", "discontinued", "renamed", "research-deferred", "superseded", "unverifiable"] }
       }
     },
     "landscapeEvaluation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["productId", "classification", "rationale", "evidenceIds"],
+      "required": ["productId", "classification", "rationale", "assertionIds"],
       "properties": {
         "productId": { "$ref": "#/$defs/id" },
-        "classification": { "enum": ["direct-competitor", "adjacent-alternative", "partial-substitute", "complement-integration-candidate", "excluded-with-reason", "research-deferred"] },
+        "classification": { "enum": ["adjacent-alternative", "complement-integration-candidate", "direct-competitor", "partial-substitute", "research-deferred"] },
         "rationale": { "$ref": "#/$defs/nonEmpty" },
-        "evidenceIds": { "$ref": "#/$defs/idSet" }
+        "assertionIds": { "$ref": "#/$defs/idSet" }
       }
     },
     "benchmarkRow": {
@@ -184,31 +270,33 @@
       "required": ["productId", "cells"],
       "properties": {
         "productId": { "$ref": "#/$defs/id" },
-        "cells": { "type": "array", "minItems": 17, "items": { "$ref": "#/$defs/benchmarkCell" } }
+        "cells": { "type": "array", "minItems": 17, "maxItems": 17, "items": { "$ref": "#/$defs/benchmarkCell" } }
       }
     },
     "benchmarkCell": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["capabilityId", "supportLevel", "evidenceIds", "asOfDate", "rationale", "limitation", "deliveryState"],
+      "required": ["capabilityId", "supportLevel", "supportAssertionIds", "availabilityAssertionIds", "asOfDate", "rationale", "limitation", "deliveryState", "applicabilityRationale"],
       "properties": {
         "capabilityId": { "$ref": "#/$defs/id" },
-        "supportLevel": { "enum": ["verified-supported", "partially-supported", "unsupported-by-reviewed-evidence", "unknown", "not-applicable"] },
-        "evidenceIds": { "$ref": "#/$defs/idSet" },
+        "supportLevel": { "enum": ["not-applicable", "partially-supported", "unknown", "unsupported-by-reviewed-evidence", "verified-supported"] },
+        "supportAssertionIds": { "$ref": "#/$defs/idSet" },
+        "availabilityAssertionIds": { "$ref": "#/$defs/idSet" },
         "asOfDate": { "$ref": "#/$defs/date" },
         "rationale": { "$ref": "#/$defs/nonEmpty" },
         "limitation": { "$ref": "#/$defs/nonEmpty" },
-        "deliveryState": { "enum": ["shipped", "preview-beta", "announced-roadmap", "community-extension", "inference", "not-assessed"] }
+        "deliveryState": { "enum": ["announced-roadmap", "community-extension", "inference", "not-assessed", "preview-beta", "shipped"] },
+        "applicabilityRationale": { "type": ["string", "null"] }
       }
     },
     "gaepMaturity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["capabilityId", "maturityState", "repositoryEvidence", "rationale", "limitation"],
+      "required": ["capabilityId", "maturityState", "repositoryAssertionIds", "rationale", "limitation"],
       "properties": {
         "capabilityId": { "$ref": "#/$defs/id" },
-        "maturityState": { "enum": ["implemented-and-automated-tested", "implemented-awaiting-product-owner-acceptance", "candidate-proposed", "partial", "planned-deferred-coming-soon", "unknown-not-assessed"] },
-        "repositoryEvidence": { "$ref": "#/$defs/stringSet" },
+        "maturityState": { "enum": ["candidate-proposed", "implemented-and-automated-tested", "implemented-awaiting-product-owner-acceptance", "partial", "planned-deferred-coming-soon", "unknown-not-assessed"] },
+        "repositoryAssertionIds": { "$ref": "#/$defs/idSet" },
         "rationale": { "$ref": "#/$defs/nonEmpty" },
         "limitation": { "$ref": "#/$defs/nonEmpty" }
       }
@@ -216,17 +304,20 @@
     "claim": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["claimId", "audience", "useContext", "wording", "claimClass", "evidenceIds", "gaepCapabilityIds", "disposition", "limitations", "requiredQualifiers", "freshnessTrigger", "ownerRole", "approvalState", "publicationState"],
+      "required": ["claimId", "audience", "useContext", "wording", "claimClass", "supportAssertionIds", "productIds", "capabilityIds", "repositoryAssertionIds", "asOfDate", "disposition", "limitations", "requiredQualifiers", "freshnessTrigger", "ownerRole", "approvalState", "publicationState"],
       "properties": {
         "claimId": { "$ref": "#/$defs/id" },
         "audience": { "$ref": "#/$defs/stringSet" },
         "useContext": { "$ref": "#/$defs/nonEmpty" },
         "wording": { "$ref": "#/$defs/nonEmpty" },
-        "claimClass": { "enum": ["substantiated-bounded-fact", "evidence-bounded-comparison", "positioning-hypothesis", "customer-outcome-hypothesis", "prohibited-claim", "pending-human-decision"] },
-        "evidenceIds": { "$ref": "#/$defs/idSet" },
-        "gaepCapabilityIds": { "$ref": "#/$defs/idSet" },
-        "disposition": { "enum": ["allowed-internal", "prohibited", "pending-human-decision"] },
-        "limitations": { "$ref": "#/$defs/stringSet" },
+        "claimClass": { "enum": ["customer-outcome-hypothesis", "evidence-bounded-comparison", "pending-human-decision", "positioning-hypothesis", "prohibited-claim", "substantiated-bounded-fact"] },
+        "supportAssertionIds": { "$ref": "#/$defs/idSet" },
+        "productIds": { "$ref": "#/$defs/idSet" },
+        "capabilityIds": { "$ref": "#/$defs/idSet" },
+        "repositoryAssertionIds": { "$ref": "#/$defs/idSet" },
+        "asOfDate": { "$ref": "#/$defs/date" },
+        "disposition": { "enum": ["allowed-internal", "pending-human-decision", "prohibited"] },
+        "limitations": { "$ref": "#/$defs/nonEmptyStringSet" },
         "requiredQualifiers": { "$ref": "#/$defs/stringSet" },
         "freshnessTrigger": { "$ref": "#/$defs/nonEmpty" },
         "ownerRole": { "$ref": "#/$defs/nonEmpty" },
@@ -254,7 +345,7 @@
     "metric": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["metricId", "name", "definition", "baseline", "observationWindow", "dataOwner", "confounders", "decisionThreshold"],
+      "required": ["metricId", "name", "definition", "baseline", "observationWindow", "dataOwner", "confounders", "decisionThreshold", "measurementState"],
       "properties": {
         "metricId": { "$ref": "#/$defs/id" },
         "name": { "$ref": "#/$defs/nonEmpty" },
@@ -263,17 +354,31 @@
         "observationWindow": { "$ref": "#/$defs/nonEmpty" },
         "dataOwner": { "$ref": "#/$defs/nonEmpty" },
         "confounders": { "$ref": "#/$defs/stringSet" },
-        "decisionThreshold": { "$ref": "#/$defs/nonEmpty" }
+        "decisionThreshold": { "$ref": "#/$defs/nonEmpty" },
+        "measurementState": { "const": "unmeasured-proposal" }
       }
     },
-    "migration": {
+    "researchCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["searchedCategoryIds", "candidateIdentitiesConsidered", "ambiguousNames", "excludedIdentities", "insufficientEvidenceCategories", "saturationRationale"],
+      "properties": {
+        "searchedCategoryIds": { "$ref": "#/$defs/idSet" },
+        "candidateIdentitiesConsidered": { "$ref": "#/$defs/stringSet" },
+        "ambiguousNames": { "$ref": "#/$defs/stringSet" },
+        "excludedIdentities": { "$ref": "#/$defs/stringSet" },
+        "insufficientEvidenceCategories": { "$ref": "#/$defs/stringSet" },
+        "saturationRationale": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
+    "documentMigration": {
       "type": "object",
       "additionalProperties": false,
       "required": ["legacyPath", "priorAuthority", "disposition", "canonicalTarget", "historicalPreserved"],
       "properties": {
         "legacyPath": { "$ref": "#/$defs/nonEmpty" },
         "priorAuthority": { "$ref": "#/$defs/nonEmpty" },
-        "disposition": { "enum": ["generated-projection", "cross-reference", "historical-superseded", "retained-non-authoritative"] },
+        "disposition": { "enum": ["cross-reference", "generated-projection", "historical-superseded", "retained-non-authoritative"] },
         "canonicalTarget": { "$ref": "#/$defs/nonEmpty" },
         "historicalPreserved": { "const": true }
       }
@@ -294,12 +399,13 @@
     "projection": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["documentId", "path", "generatedSections", "registryVersion"],
+      "required": ["documentId", "path", "generatedSections", "registryVersion", "capabilityCount"],
       "properties": {
         "documentId": { "const": "GAEP-STR-004" },
         "path": { "const": "docs/next/00_GAEP_Product_Strategy/004_POSITIONING_AND_ALTERNATIVES.md" },
         "generatedSections": { "type": "array", "minItems": 8, "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmpty" } },
-        "registryVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+        "registryVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "capabilityCount": { "type": "integer", "minimum": 17 }
       }
     }
   }
