@@ -16,7 +16,40 @@ export const METHODOLOGY_CATALOG_PATH = path.join(ROOT, "docs/next/99_Registries
 export const AJV_VERSION = require("ajv/package.json").version;
 export const AJV_FORMATS_VERSION = require("ajv-formats/package.json").version;
 
-export const EXPECTED_CAPABILITY_COUNT = 17;
+export const EXPECTED_CAPABILITY_COUNT = 30;
+export const REQUIRED_CAPABILITIES = [
+  ["GAEP-CAP-101", "Product intent and problem discovery"],
+  ["GAEP-CAP-102", "Guided lifecycle navigation and user onboarding"],
+  ["GAEP-CAP-103", "Source intake and reference grounding"],
+  ["GAEP-CAP-104", "Source baseline and version control"],
+  ["GAEP-CAP-105", "Source provenance and lineage"],
+  ["GAEP-CAP-106", "Human authority and propose/review/accept/commit separation"],
+  ["GAEP-CAP-107", "Initiative definition and change boundary"],
+  ["GAEP-CAP-108", "Initiative classification, risk and exposure"],
+  ["GAEP-CAP-109", "Initiative applicability and lifecycle tailoring"],
+  ["GAEP-CAP-110", "Business architecture, capabilities and value streams"],
+  ["GAEP-CAP-111", "Domain discovery and EventStorming"],
+  ["GAEP-CAP-112", "DDD strategic design, bounded contexts and context mapping"],
+  ["GAEP-CAP-113", "Architecture views, quality attributes and ADRs"],
+  ["GAEP-CAP-114", "Architecture-before-slice implementation sequencing"],
+  ["GAEP-CAP-115", "Phase, wave and vertical-slice planning"],
+  ["GAEP-CAP-116", "Tool-neutral Product Design preparation and handoff"],
+  ["GAEP-CAP-117", "Architecture-bound backlog generation"],
+  ["GAEP-CAP-118", "Acceptance criteria, Definition of Ready and Definition of Done"],
+  ["GAEP-CAP-119", "Test design, test cases and quality assurance"],
+  ["GAEP-CAP-120", "Requirements-to-design-to-code-to-test traceability"],
+  ["GAEP-CAP-121", "Security, privacy, policy and compliance governance"],
+  ["GAEP-CAP-122", "Data, API, event and integration contract governance"],
+  ["GAEP-CAP-123", "Repository linking and implementation topology"],
+  ["GAEP-CAP-124", "Cross-repository slice distribution, synchronization and drift detection"],
+  ["GAEP-CAP-125", "Implementation agents and governed code generation"],
+  ["GAEP-CAP-126", "CI/CD, release and deployment governance"],
+  ["GAEP-CAP-127", "Runtime operations, observability, recovery and reliability"],
+  ["GAEP-CAP-128", "Audit trail, evidence records and decision history"],
+  ["GAEP-CAP-129", "Provider/tool neutrality, adapters and extensibility"],
+  ["GAEP-CAP-130", "Enterprise administration, deployment control, data residency and portability"],
+];
+export const REQUIRED_CAPABILITY_NAMES = REQUIRED_CAPABILITIES.map(([, name]) => name);
 export const SUPPORT_LEVELS = ["not-applicable", "partially-supported", "unknown", "unsupported-by-reviewed-evidence", "verified-supported"];
 export const DELIVERY_STATES = ["announced-roadmap", "community-extension", "inference", "not-assessed", "preview-beta", "shipped"];
 export const ASSERTION_STRENGTHS = ["identity-only", "partial", "verified"];
@@ -185,8 +218,8 @@ export function registryMetrics(registry) {
     unknownCells: cells.filter(cell => cell.supportLevel === "unknown").length,
     researchDebt: registry.researchDebt.length,
     orphanEvidence: registry.evidence.filter(item => !referencedEvidence.has(item.evidenceId)).length,
-    orphanAssertions: registry.evidenceAssertions.filter(item => !referencedAssertions.has(item.assertionId)).length,
-    orphanRepositoryAssertions: registry.repositoryAssertions.filter(item => !referencedRepositoryAssertions.has(item.repositoryAssertionId)).length,
+    orphanAssertions: registry.evidenceAssertions.filter(item => item.status === "active" && !referencedAssertions.has(item.assertionId)).length,
+    orphanRepositoryAssertions: registry.repositoryAssertions.filter(item => item.status === "active" && !referencedRepositoryAssertions.has(item.repositoryAssertionId)).length,
   };
 }
 
@@ -223,6 +256,26 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
   if (registry.marketCategories.length < 5) errors.push("research saturation requires at least five market categories");
   if (registry.products.length < 15) errors.push("research coverage requires at least fifteen evaluated current Product/project identities");
   if (registry.capabilities.length !== EXPECTED_CAPABILITY_COUNT) errors.push(`capability taxonomy must contain exactly ${EXPECTED_CAPABILITY_COUNT} dimensions`);
+  const actualCapabilities = registry.capabilities.map(({ capabilityId, name }) => [capabilityId, name]);
+  if (!same(actualCapabilities, REQUIRED_CAPABILITIES)) errors.push("capability taxonomy must use the exact canonical 30 IDs, names, and ordering");
+
+  const migration = registry.capabilityMigration;
+  const legacyIds = migration.legacyCapabilities.map(entry => entry.legacyCapabilityId);
+  const expectedLegacyIds = Array.from({ length: 17 }, (_, index) => `GAEP-CAP-${String(index + 1).padStart(3, "0")}`);
+  const currentCapabilityIds = new Set(REQUIRED_CAPABILITIES.map(([id]) => id));
+  if (!same(legacyIds, expectedLegacyIds)) errors.push("capability migration must preserve all 17 legacy IDs in canonical order");
+  if (migration.sourceRegistryVersions.join(",") !== "0.1.0,0.1.1" || migration.targetRegistryVersion !== "0.2.0") errors.push("capability migration has an incorrect source or target version binding");
+  if (legacyIds.some(id => currentCapabilityIds.has(id))) errors.push("legacy capability IDs must not be repurposed in the corrected taxonomy");
+  const targetIds = migration.legacyCapabilities.flatMap(entry => entry.targetCapabilityIds);
+  for (const targetId of targetIds) if (!currentCapabilityIds.has(targetId)) errors.push(`capability migration references unknown target ${targetId}`);
+  for (const entry of migration.legacyCapabilities) {
+    const expectedType = entry.targetCapabilityIds.length > 1 ? "one-to-many" : "one-to-one";
+    if (entry.migrationType !== expectedType) errors.push(`${entry.legacyCapabilityId}: migration type does not match target cardinality`);
+    if (entry.migrationType === "one-to-many" && entry.humanReviewRequired !== true) errors.push(`${entry.legacyCapabilityId}: one-to-many migration requires human review`);
+  }
+  const newCapabilityIds = migration.newCapabilities.map(entry => entry.capabilityId);
+  if (!same(newCapabilityIds, sorted(newCapabilityIds)) || new Set(newCapabilityIds).size !== newCapabilityIds.length) errors.push("new capability migration entries must be unique and canonically ordered");
+  for (const capabilityId of newCapabilityIds) if (!currentCapabilityIds.has(capabilityId)) errors.push(`capability migration declares unknown new capability ${capabilityId}`);
 
   for (const evidence of registry.evidence) {
     if (!evidence.officialUri.startsWith("https://")) errors.push(`${evidence.evidenceId}: official URI must use HTTPS`);
@@ -249,11 +302,11 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
     if (assertion.status === "active" && assertion.asOfDate !== registry.researchAsOf) errors.push(`${assertion.assertionId}: stale assertion does not match registry snapshot`);
     const targets = [assertion.productId, assertion.methodologyId, assertion.excludedIdentityId].filter(Boolean);
     if (targets.length !== 1) errors.push(`${assertion.assertionId}: Evidence assertion must identify exactly one subject`);
-    if (assertion.subjectType === "product" && (!assertion.productId || !productIds.has(assertion.productId))) errors.push(`${assertion.assertionId}: unknown or missing Product subject`);
-    if (assertion.subjectType === "methodology" && (!assertion.methodologyId || !methodologyIds.has(assertion.methodologyId))) errors.push(`${assertion.assertionId}: unknown or missing methodology subject`);
-    if (assertion.subjectType === "excluded-identity" && (!assertion.excludedIdentityId || !excludedIdentityIds.has(assertion.excludedIdentityId))) errors.push(`${assertion.assertionId}: unknown or missing excluded identity subject`);
+    if (assertion.status === "active" && assertion.subjectType === "product" && (!assertion.productId || !productIds.has(assertion.productId))) errors.push(`${assertion.assertionId}: unknown or missing current Product subject`);
+    if (assertion.status === "active" && assertion.subjectType === "methodology" && (!assertion.methodologyId || !methodologyIds.has(assertion.methodologyId))) errors.push(`${assertion.assertionId}: unknown or missing current methodology subject`);
+    if (assertion.status === "active" && assertion.subjectType === "excluded-identity" && (!assertion.excludedIdentityId || !excludedIdentityIds.has(assertion.excludedIdentityId))) errors.push(`${assertion.assertionId}: unknown or missing current excluded identity subject`);
     const featureAssertion = ["availability", "capability-support", "explicit-negative"].includes(assertion.assertionType);
-    if (featureAssertion && (!assertion.capabilityId || !capabilityIds.has(assertion.capabilityId))) errors.push(`${assertion.assertionId}: feature assertion requires an exact capability`);
+    if (assertion.status === "active" && featureAssertion && (!assertion.capabilityId || !capabilityIds.has(assertion.capabilityId))) errors.push(`${assertion.assertionId}: feature assertion requires an exact current capability`);
     if (!featureAssertion && assertion.capabilityId !== null) errors.push(`${assertion.assertionId}: identity or landscape assertion must not masquerade as feature support`);
     if (featureAssertion && (assertion.supportStrength === "identity-only" || assertion.polarity === "identity-only")) errors.push(`${assertion.assertionId}: identity-only Evidence used for feature support`);
     if (assertion.assertionType === "identity" && (assertion.supportStrength !== "identity-only" || assertion.polarity !== "identity-only")) errors.push(`${assertion.assertionId}: identity assertion must remain identity-only`);
@@ -281,6 +334,7 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
 
   for (const excluded of registry.excludedIdentities) {
     for (const assertionId of excluded.assertionIds) exactAssertion(errors, assertionById, evidenceById, assertionId, excluded.excludedIdentityId, { excludedIdentityId: excluded.excludedIdentityId, capabilityId: null, assertionTypes: ["identity"] }, "identity");
+    if (registry.products.some(product => product.canonicalName === excluded.canonicalName || product.officialUri === excluded.officialUri)) errors.push(`${excluded.excludedIdentityId}: excluded identity must not remain in the benchmark Product matrix`);
   }
 
   for (const seed of registry.seedResolutions) {
@@ -360,8 +414,16 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
 
   for (const [index, assertion] of registry.repositoryAssertions.entries()) {
     if (assertion.sequence !== index + 1) errors.push(`${assertion.repositoryAssertionId}: repository assertion sequence is noncanonical`);
-    if (!capabilityIds.has(assertion.capabilityId)) errors.push(`${assertion.repositoryAssertionId}: unknown capability ${assertion.capabilityId}`);
-    if (assertion.status !== "active") errors.push(`${assertion.repositoryAssertionId}: inactive repository assertion cannot support current GAEP maturity`);
+    if (assertion.status === "active" && !capabilityIds.has(assertion.capabilityId)) errors.push(`${assertion.repositoryAssertionId}: unknown current capability ${assertion.capabilityId}`);
+    if (assertion.status === "active" && assertion.supersededBy.length > 0) errors.push(`${assertion.repositoryAssertionId}: active repository assertion is superseded`);
+    for (const successor of assertion.supersededBy) {
+      const target = repositoryAssertionById.get(successor);
+      if (!target?.supersedes.includes(assertion.repositoryAssertionId)) errors.push(`${assertion.repositoryAssertionId}: missing reciprocal repository supersession from ${successor}`);
+    }
+    for (const predecessor of assertion.supersedes) {
+      const target = repositoryAssertionById.get(predecessor);
+      if (!target?.supersededBy.includes(assertion.repositoryAssertionId)) errors.push(`${assertion.repositoryAssertionId}: missing reciprocal repository supersession to ${predecessor}`);
+    }
   }
   const maturityIds = registry.gaepMaturity.map(entry => entry.capabilityId);
   if (!same(maturityIds, sorted(maturityIds))) errors.push("gaepMaturity must use canonical capability ordering");
@@ -372,6 +434,7 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
       const assertion = repositoryAssertionById.get(assertionId);
       if (!assertion) errors.push(`${maturity.capabilityId}: unknown repository assertion ${assertionId}`);
       else {
+        if (assertion.status !== "active") errors.push(`${maturity.capabilityId}: inactive repository assertion ${assertionId} cannot support current GAEP maturity`);
         if (assertion.capabilityId !== maturity.capabilityId) errors.push(`${maturity.capabilityId}: wrong-capability repository assertion ${assertionId}`);
         if (assertion.maturityState !== maturity.maturityState) errors.push(`${maturity.capabilityId}: repository assertion maturity mismatch`);
       }
@@ -400,6 +463,7 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
     }
     for (const assertionId of claim.repositoryAssertionIds) {
       const assertion = repositoryAssertionById.get(assertionId);
+      if (assertion && assertion.status !== "active") errors.push(`${claim.claimId}: inactive repository assertion ${assertionId}`);
       if (assertion && claim.capabilityIds.length > 0 && !claim.capabilityIds.includes(assertion.capabilityId)) errors.push(`${claim.claimId}: repository assertion ${assertionId} is outside claim capability scope`);
     }
     if (strong.test(claim.wording) && claim.disposition !== "prohibited") errors.push(`${claim.claimId}: unsupported strong claim is not prohibited`);
@@ -429,8 +493,8 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
     addReferences(referencedRepositoryAssertions, claim.repositoryAssertionIds);
   }
   for (const maturity of registry.gaepMaturity) addReferences(referencedRepositoryAssertions, maturity.repositoryAssertionIds);
-  for (const assertion of registry.evidenceAssertions) if (!referencedAssertions.has(assertion.assertionId)) errors.push(`${assertion.assertionId}: orphan Evidence assertion`);
-  for (const assertion of registry.repositoryAssertions) if (!referencedRepositoryAssertions.has(assertion.repositoryAssertionId)) errors.push(`${assertion.repositoryAssertionId}: orphan repository assertion`);
+  for (const assertion of registry.evidenceAssertions) if (assertion.status === "active" && !referencedAssertions.has(assertion.assertionId)) errors.push(`${assertion.assertionId}: orphan active Evidence assertion`);
+  for (const assertion of registry.repositoryAssertions) if (assertion.status === "active" && !referencedRepositoryAssertions.has(assertion.repositoryAssertionId)) errors.push(`${assertion.repositoryAssertionId}: orphan active repository assertion`);
   const referencedEvidence = new Set(registry.evidenceAssertions.map(assertion => assertion.evidenceId));
   for (const evidenceId of evidenceIds) if (!referencedEvidence.has(evidenceId)) errors.push(`${evidenceId}: orphan Evidence`);
 

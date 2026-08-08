@@ -3,7 +3,7 @@ id: GAEP-REG-012
 title: Market Evidence and Benchmark Contract
 document_type: registry
 schema_version: 1.0
-version: 0.1.1
+version: 0.2.0
 status: proposed
 owner_role: GAEP Product Research Owner
 scope: P02 market evidence, evaluated-product identity, capability comparison, executive claims, and adoption decision support
@@ -58,7 +58,44 @@ Every evaluated product/project has one canonical identity containing steward, o
 
 ## 5. Capability taxonomy and cells
 
-The taxonomy is stable and vendor-neutral. Every product has exactly one benchmark cell for every capability. Each cell carries:
+The corrected taxonomy is stable, vendor-neutral, and contains exactly these 30 independently assessable dimensions:
+
+| ID | Capability |
+|---|---|
+| `GAEP-CAP-101` | Product intent and problem discovery |
+| `GAEP-CAP-102` | Guided lifecycle navigation and user onboarding |
+| `GAEP-CAP-103` | Source intake and reference grounding |
+| `GAEP-CAP-104` | Source baseline and version control |
+| `GAEP-CAP-105` | Source provenance and lineage |
+| `GAEP-CAP-106` | Human authority and propose/review/accept/commit separation |
+| `GAEP-CAP-107` | Initiative definition and change boundary |
+| `GAEP-CAP-108` | Initiative classification, risk and exposure |
+| `GAEP-CAP-109` | Initiative applicability and lifecycle tailoring |
+| `GAEP-CAP-110` | Business architecture, capabilities and value streams |
+| `GAEP-CAP-111` | Domain discovery and EventStorming |
+| `GAEP-CAP-112` | DDD strategic design, bounded contexts and context mapping |
+| `GAEP-CAP-113` | Architecture views, quality attributes and ADRs |
+| `GAEP-CAP-114` | Architecture-before-slice implementation sequencing |
+| `GAEP-CAP-115` | Phase, wave and vertical-slice planning |
+| `GAEP-CAP-116` | Tool-neutral Product Design preparation and handoff |
+| `GAEP-CAP-117` | Architecture-bound backlog generation |
+| `GAEP-CAP-118` | Acceptance criteria, Definition of Ready and Definition of Done |
+| `GAEP-CAP-119` | Test design, test cases and quality assurance |
+| `GAEP-CAP-120` | Requirements-to-design-to-code-to-test traceability |
+| `GAEP-CAP-121` | Security, privacy, policy and compliance governance |
+| `GAEP-CAP-122` | Data, API, event and integration contract governance |
+| `GAEP-CAP-123` | Repository linking and implementation topology |
+| `GAEP-CAP-124` | Cross-repository slice distribution, synchronization and drift detection |
+| `GAEP-CAP-125` | Implementation agents and governed code generation |
+| `GAEP-CAP-126` | CI/CD, release and deployment governance |
+| `GAEP-CAP-127` | Runtime operations, observability, recovery and reliability |
+| `GAEP-CAP-128` | Audit trail, evidence records and decision history |
+| `GAEP-CAP-129` | Provider/tool neutrality, adapters and extensibility |
+| `GAEP-CAP-130` | Enterprise administration, deployment control, data residency and portability |
+
+The 17 legacy `GAEP-CAP-001`–`017` identities are retired, never repurposed, and preserved in `capabilityMigration`. Every legacy identity maps explicitly to one or more corrected identities. One-to-many mappings require human review: they do not fan out an old support or maturity conclusion automatically. Capabilities with no legacy equivalent are declared separately as new dimensions. Superseded Evidence and repository assertions remain historical and cannot support current cells, maturity, or claims.
+
+Every product has exactly one benchmark cell for every capability (15 × 30 = 450 current cells). Each cell carries:
 
 - `supportLevel`: `verified-supported`, `partially-supported`, `unsupported-by-reviewed-evidence`, `unknown`, or `not-applicable`;
 - exact support-assertion and availability-assertion IDs, as-of date, bounded rationale, and limitation;
@@ -113,6 +150,8 @@ Validation fails closed for duplicate/unknown IDs, wrong-Product or wrong-capabi
 | GAEP-MKT-REQ-012 | Approval and publication states SHALL remain not-approved/not-published in P02. | Authority-boundary test |
 | GAEP-MKT-REQ-013 | Every non-Unknown benchmark conclusion SHALL bind an active, accessible, strength-compatible assertion for the exact Product and capability. | Relational assertion validator |
 | GAEP-MKT-REQ-014 | Every shipped cell SHALL bind compatible official availability Evidence. | Delivery-state hostile tests |
+| GAEP-MKT-REQ-015 | The current taxonomy SHALL contain the exact 30 canonical IDs/names; legacy IDs SHALL remain unrepurposed and deterministically mapped. | Taxonomy parity and migration tests |
+| GAEP-MKT-REQ-016 | Superseded Evidence or repository assertions SHALL NOT support a current cell, maturity conclusion, or claim. | Supersession hostile tests |
 
 ## 11. P03 projection boundary
 

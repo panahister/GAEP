@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gaep.example/schemas/market-evidence-benchmark-registry-1.1.0.schema.json",
+  "$id": "https://gaep.example/schemas/market-evidence-benchmark-registry-2.0.0.schema.json",
   "title": "GAEP Market Evidence and Benchmark Registry",
   "type": "object",
   "additionalProperties": false,
@@ -16,6 +16,7 @@
     "p01Bindings",
     "marketCategories",
     "capabilities",
+    "capabilityMigration",
     "evidence",
     "evidenceAssertions",
     "repositoryAssertions",
@@ -35,8 +36,8 @@
     "projection"
   ],
   "properties": {
-    "schemaId": { "const": "https://gaep.example/schemas/market-evidence-benchmark-registry-1.1.0.schema.json" },
-    "schemaVersion": { "const": "1.1.0" },
+    "schemaId": { "const": "https://gaep.example/schemas/market-evidence-benchmark-registry-2.0.0.schema.json" },
+    "schemaVersion": { "const": "2.0.0" },
     "registryId": { "const": "GAEP-REG-013" },
     "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
     "status": { "const": "proposed" },
@@ -45,7 +46,8 @@
     "approval": { "$ref": "#/$defs/approval" },
     "p01Bindings": { "$ref": "#/$defs/p01Bindings" },
     "marketCategories": { "type": "array", "minItems": 5, "items": { "$ref": "#/$defs/category" } },
-    "capabilities": { "type": "array", "minItems": 17, "maxItems": 17, "items": { "$ref": "#/$defs/capability" } },
+    "capabilities": { "type": "array", "minItems": 30, "maxItems": 30, "items": { "$ref": "#/$defs/capability" } },
+    "capabilityMigration": { "$ref": "#/$defs/capabilityMigration" },
     "evidence": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/evidence" } },
     "evidenceAssertions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidenceAssertion" } },
     "repositoryAssertions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/repositoryAssertion" } },
@@ -55,7 +57,7 @@
     "products": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/product" } },
     "landscapeEvaluations": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/landscapeEvaluation" } },
     "benchmarkRows": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/benchmarkRow" } },
-    "gaepMaturity": { "type": "array", "minItems": 17, "maxItems": 17, "items": { "$ref": "#/$defs/gaepMaturity" } },
+    "gaepMaturity": { "type": "array", "minItems": 30, "maxItems": 30, "items": { "$ref": "#/$defs/gaepMaturity" } },
     "claims": { "type": "array", "minItems": 8, "items": { "$ref": "#/$defs/claim" } },
     "scenarios": { "type": "array", "minItems": 7, "items": { "$ref": "#/$defs/scenario" } },
     "proofOfValueMetrics": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/metric" } },
@@ -119,6 +121,40 @@
         "definition": { "$ref": "#/$defs/nonEmpty" }
       }
     },
+    "capabilityMigration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceRegistryVersions", "targetRegistryVersion", "legacyCapabilities", "newCapabilities", "policy"],
+      "properties": {
+        "sourceRegistryVersions": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" } },
+        "targetRegistryVersion": { "const": "0.2.0" },
+        "legacyCapabilities": { "type": "array", "minItems": 17, "maxItems": 17, "items": { "$ref": "#/$defs/legacyCapabilityMigration" } },
+        "newCapabilities": { "type": "array", "items": { "$ref": "#/$defs/newCapabilityMigration" } },
+        "policy": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
+    "legacyCapabilityMigration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["legacyCapabilityId", "legacyName", "targetCapabilityIds", "migrationType", "humanReviewRequired", "rationale"],
+      "properties": {
+        "legacyCapabilityId": { "$ref": "#/$defs/id" },
+        "legacyName": { "$ref": "#/$defs/nonEmpty" },
+        "targetCapabilityIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "migrationType": { "enum": ["one-to-many", "one-to-one"] },
+        "humanReviewRequired": { "type": "boolean" },
+        "rationale": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
+    "newCapabilityMigration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilityId", "rationale"],
+      "properties": {
+        "capabilityId": { "$ref": "#/$defs/id" },
+        "rationale": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
     "evidence": {
       "type": "object",
       "additionalProperties": false,
@@ -177,7 +213,7 @@
     "repositoryAssertion": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["repositoryAssertionId", "capabilityId", "repositoryPaths", "proposition", "strength", "maturityState", "asOfCommit", "limitations", "sequence", "status"],
+      "required": ["repositoryAssertionId", "capabilityId", "repositoryPaths", "proposition", "strength", "maturityState", "asOfCommit", "limitations", "sequence", "status", "supersedes", "supersededBy", "migrationNote"],
       "properties": {
         "repositoryAssertionId": { "$ref": "#/$defs/id" },
         "capabilityId": { "$ref": "#/$defs/id" },
@@ -188,7 +224,10 @@
         "asOfCommit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
         "limitations": { "$ref": "#/$defs/nonEmptyStringSet" },
         "sequence": { "type": "integer", "minimum": 1 },
-        "status": { "enum": ["active", "invalidated", "superseded"] }
+        "status": { "enum": ["active", "invalidated", "superseded"] },
+        "supersedes": { "$ref": "#/$defs/idSet" },
+        "supersededBy": { "$ref": "#/$defs/idSet" },
+        "migrationNote": { "type": ["string", "null"] }
       }
     },
     "methodologyBinding": {
@@ -270,7 +309,7 @@
       "required": ["productId", "cells"],
       "properties": {
         "productId": { "$ref": "#/$defs/id" },
-        "cells": { "type": "array", "minItems": 17, "maxItems": 17, "items": { "$ref": "#/$defs/benchmarkCell" } }
+        "cells": { "type": "array", "minItems": 30, "maxItems": 30, "items": { "$ref": "#/$defs/benchmarkCell" } }
       }
     },
     "benchmarkCell": {
@@ -405,7 +444,7 @@
         "path": { "const": "docs/next/00_GAEP_Product_Strategy/004_POSITIONING_AND_ALTERNATIVES.md" },
         "generatedSections": { "type": "array", "minItems": 8, "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmpty" } },
         "registryVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
-        "capabilityCount": { "type": "integer", "minimum": 17 }
+        "capabilityCount": { "const": 30 }
       }
     }
   }
