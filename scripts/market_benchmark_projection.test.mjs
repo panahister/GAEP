@@ -18,6 +18,7 @@ test("actual generated human projection passes deterministic drift check", () =>
 
 test("projection binds exact canonical identity, version, digest, and research date", () => {
   const digest = crypto.createHash("sha256").update(fs.readFileSync(REGISTRY_PATH)).digest("hex");
+  assert.match(projection, new RegExp(`^version: ${registry.projection.documentVersion}$`, "m"));
   assert.match(projection, new RegExp(`${registry.registryId} v${registry.version}`));
   assert.match(projection, new RegExp(digest));
   assert.match(projection, new RegExp(registry.researchAsOf));
