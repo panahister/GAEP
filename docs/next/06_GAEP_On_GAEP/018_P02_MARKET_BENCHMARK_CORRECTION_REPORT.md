@@ -3,13 +3,13 @@ id: GAEP-SELF-018
 title: P02 Market Benchmark Correction Report
 document_type: workspace-record
 schema_version: 1.0
-version: 0.1.0
+version: 0.2.0
 status: proposed
 owner_role: GAEP Product Owner
-scope: P02 evidence-binding, 30-capability taxonomy, benchmark correction, validation, projection, Guide, package, and installation evidence
+scope: P02 and P02-C2 evidence-subject binding, exact Git proof, claim coverage, 30-capability benchmark validation, projection, package, and installation evidence
 normative_level: informative
 classification: internal
-provenance: Independent correction of the rejected P02 candidate at dbc3a9e85d155e3addb48574d8771202bf4524db
+provenance: P02-C2 correction of the independently rejected first correction at 1df74d31904b2d32c80ccdd30b45d41747132af8, preserving the original rejected P02 candidate at dbc3a9e85d155e3addb48574d8771202bf4524db
 approval:
   state: not-approved
   approved_by: []
@@ -30,7 +30,7 @@ supersedes: []
 
 ## Status and authority boundary
 
-This is a Proposed, informative, internal correction receipt. The P02 implementation at `dbc3a9e85d155e3addb48574d8771202bf4524db` was not accepted and remains preserved in Git history. This correction does not accept or approve a category, Product relationship, capability cell, Evidence assertion, claim, GAEP maturity conclusion, purchase, publication, rollout, release, or Product Owner decision. It does not establish that GAEP is enterprise-ready, production-ready, secure, compliant, superior, complete, end-to-end, or proven. P03 was not started.
+This is a Proposed, informative, internal correction receipt. The original P02 implementation at `dbc3a9e85d155e3addb48574d8771202bf4524db` was rejected. Independent review also rejected the first correction at `1df74d31904b2d32c80ccdd30b45d41747132af8`; it remained unaccepted because Evidence subject laundering, fabricated repository proof, and incomplete factual-claim coverage still failed open. Both states remain preserved in Git history. P02-C2 does not accept or approve a category, Product relationship, capability cell, Evidence assertion, claim, GAEP maturity conclusion, purchase, publication, rollout, release, or Product Owner decision. It does not establish that GAEP is enterprise-ready, production-ready, secure, compliant, superior, complete, end-to-end, or proven. P03 was not started.
 
 ## Opening preservation and delivery branch
 
@@ -39,21 +39,54 @@ This is a Proposed, informative, internal correction receipt. The P02 implementa
 | Repository | `/Users/mehdipanahi/Documents/test` |
 | Correction branch | `feature/p02-evidence-benchmark-correction` |
 | Rejected P02 starting SHA | `dbc3a9e85d155e3addb48574d8771202bf4524db`; opening HEAD and upstream identical, ahead/behind `0/0`, worktree clean, stash empty, one worktree |
+| P02-C2 starting SHA | `1df74d31904b2d32c80ccdd30b45d41747132af8`; HEAD and upstream identical; ahead/behind `0/0`; stash empty; inherited uncommitted P02-C2 candidate edits were audited, completed, and preserved rather than discarded |
 | Accepted prerequisite for roadmap progression | P01 `cb28f88220255244462a9699d6ec40e417430e6e`, preserved and reachable |
 | Preserved P00 | `78e10efa8ec4bbc39003edca2abf18c44d443c88`, preserved and reachable |
-| Final implementation/projection SHA before this report | `7da3e5a`; upstream identical after its milestone push |
-| Report revision | The commit whose subject is `docs(governance): record P02 correction evidence`; its immutable SHA is resolved from Git after commit rather than embedded self-referentially |
+| Final P02-C2 source/test SHA before this report | `aaabdc9a6edfb9a287a4e743e50418b79f82e7c3`; upstream identical after both milestone pushes |
+| Report revision | The commit whose subject is `docs(governance): record final P02 correction verification`; its immutable SHA is resolved from Git after commit rather than embedded self-referentially |
 | External V5 evidence root | `/Users/mehdipanahi/Documents/Project/Test GAEP V5`; read-only closing fingerprint over canonical relative path and per-file digest: 273 files, SHA-256 `b76a1d199203efed1394221b48d8f131a287dcde26cc6fec883e4ee555a65743` |
 
-No reset, rebase, amend, squash, merge, history rewrite, tag, release, deployment, or force-push occurred. The four rejected P02 commits remain reachable. P00/P01 records were not rewritten or retroactively accepted.
+No reset, rebase, amend, squash, merge, history rewrite, tag, release, deployment, or force-push occurred. The original and first-correction P02 commits remain reachable. P00/P01 records were not rewritten or retroactively accepted.
 
-## Root-cause correction
+## P02-C2 residual correction and exact replay
+
+The three independent-review replays were run against an isolated archive of exact starting SHA `1df74d31904b2d32c80ccdd30b45d41747132af8` before the inherited P02-C2 changes were completed. All three incorrectly returned `errors: []` at that SHA.
+
+| Residual defect | Systemic P02-C2 correction | Corrected deterministic replay result |
+|---|---|---|
+| Kiro assertion rebound only to SAP Evidence | Every Evidence receipt now owns exactly one canonical `subjectType` and exactly one Product, methodology, or excluded-identity ID. Every assertion and every consumer must match that exact identity. | `GAEP-AST-078: Evidence subject does not match assertion subject`; cell consumption also reports the exact Kiro assertion mismatch |
+| Active repository assertion changed to an all-zero commit and nonexistent path | `repositoryEvidence` now records safe repository-relative POSIX path, semantic role, exact Git blob object ID, and optional locator. Argument-based Git validation proves commit type/reachability and non-symlink blob identity at `asOfCommit`, not in the worktree. | `GAEP-REP-018: all-zero asOfCommit is prohibited`; separate hostile cases reject nonexistent commits, unreachable commits, missing paths, absolute/traversal paths, trees, symlinks, and blob mismatches |
+| One repository assertion removed from five-capability `GAEP-CLM-001` | Repository facts require one active, Git-valid assertion for every declared capability. Product facts require every declared Product × capability pair, or exact identity/landscape support when capability scope is legitimately absent. | `GAEP-CLM-001: repository-backed claim missing exact active support for GAEP-CAP-103` |
+
+The relationship is enforced for Product identities, methodologies, excluded identities, ambiguous-seed resolution, landscape classification, benchmark support and availability, GAEP maturity, and factual/comparative claims. Human-readable `subject` text remains display-only and never establishes canonical identity.
+
+### Corrected versions and proof inventory
+
+| Measure | Verified result |
+|---|---:|
+| Contract / registry / schema | `GAEP-REG-012` v0.2.1 / `GAEP-REG-013` v0.2.1 / schema v2.1.0 |
+| Generated projection | `GAEP-STR-004` v0.4.1, bound to registry v0.2.1 and exact registry SHA-256 |
+| Evidence subject bindings | 49 total: 46 Product, 1 methodology, 2 excluded-identity |
+| Active repository proof entries | 85 total: 27 contract, 41 implementation, 12 test, 2 workflow, 3 documentation |
+| Verified Git commits / distinct Git blobs | 1 / 33 |
+| Invalid Evidence-subject bindings | 0 |
+| Invalid repository commits | 0 |
+| Invalid repository paths, object types, or blob IDs | 0 |
+| Factual claims missing declared capability support | 0 |
+| Product × capability claim gaps | 0 |
+| Orphan Evidence / active Evidence assertions / active repository assertions | 0 / 0 / 0 |
+| Unattached repository proof entries | 0 |
+| Unauthorized Approved/Published states | 0 |
+
+P02-C2 did not redo the 49-source market review, 30-capability taxonomy, 15-Product matrix, methodology separation, or executive benchmark. It migrated the shared identity, repository-proof, and coverage patterns and regenerated only their deterministic projection consequences.
+
+## First-correction foundation retained
 
 The rejected model proved only that an `evidenceId` existed. It did not prove that Evidence applied to the Product, capability, strength, availability state, snapshot, or claim where it was reused. The correction introduces first-class `evidenceAssertions` and `repositoryAssertions` with exact subject/capability, bounded proposition, review strength, polarity, delivery state, locator, as-of date, limitations, canonical sequence, status, and reciprocal supersession.
 
 The validator now resolves every non-Unknown cell and factual/comparative claim relationally. Active Evidence must be accessible and sufficiently reviewed; Product and capability must match exactly; verified support requires verified strength; shipped requires separate official availability support; stale, identity-only, invalidated, or superseded assertions cannot establish a current conclusion. Multi-Product claims need Product-specific support. The same pattern governs Products, methodologies, exclusions, seed resolution, landscape classification, benchmark cells, GAEP maturity, claims, projections, Schema, serializer, tests, and this report.
 
-## Hostile defects reproduced and closed
+## First-correction hostile coverage retained
 
 Before correction, bounded independent replays confirmed that the rejected validator accepted: Kiro supported by SAP-specific Evidence, a verified cell backed by unavailable Evidence, a cell backed by the wrong capability, a comparative claim backed by unrelated Evidence, and verified support backed only by partial review. Permanent tests now reject all five deterministically.
 
@@ -61,11 +94,11 @@ The retained hostile suite also rejects unknown assertion IDs; identity-only fea
 
 ## Exact taxonomy and migration
 
-`GAEP-REG-013` v0.2.0 contains exactly 30 independently assessable, vendor-neutral dimensions, `GAEP-CAP-101` through `GAEP-CAP-130`, with names fixed by `GAEP-REG-012` and validator parity constants. The current matrix invariant is:
+`GAEP-REG-013` v0.2.1 contains exactly 30 independently assessable, vendor-neutral dimensions, `GAEP-CAP-101` through `GAEP-CAP-130`, with names fixed by `GAEP-REG-012` and validator parity constants. The current matrix invariant is:
 
 `450 cells = 15 evaluated Products/projects × 30 capabilities`
 
-The 17 candidate identities `GAEP-CAP-001` through `GAEP-CAP-017` are retired and never repurposed. `capabilityMigration` preserves every old identity and maps it explicitly to one or more current IDs. One-to-many splits require human review and do not fan out old support or maturity conclusions. Seventeen legacy repository assertions and superseded/invalidated Evidence assertions remain historical; only active current assertions may support current truth. The deterministic projection binds v0.2.0 and the registry digest, and stale 17-capability projections fail.
+The 17 candidate identities `GAEP-CAP-001` through `GAEP-CAP-017` are retired and never repurposed. `capabilityMigration` preserves every old identity and maps it explicitly to one or more current IDs. One-to-many splits require human review and do not fan out old support or maturity conclusions. Seventeen legacy repository assertions and superseded/invalidated Evidence assertions remain historical; only active current assertions may support current truth. The deterministic projection binds registry v0.2.1 and the exact registry digest, and stale 17-capability projections fail.
 
 ## Research-depth and saturation correction
 
@@ -100,8 +133,13 @@ Fifteen current Product/project identities are evaluated. Aha! Roadmaps is inclu
 | Claim dispositions | 4 allowed-internal; 1 pending-human-decision; 3 prohibited |
 | Unknown cells | 372 |
 | Research-debt records | 7 |
+| Evidence canonical subjects | 46 Product; 1 methodology; 2 excluded-identity |
+| Active repository proof roles | 27 contract; 41 implementation; 12 test; 2 workflow; 3 documentation |
+| Active repository proof entries / distinct commits / distinct blobs | 85 / 1 / 33 |
 | Orphan Evidence / active Evidence assertions / active repository assertions | 0 / 0 / 0 |
 | Invalid cross-Product / cross-capability bindings | 0 / 0 after canonical semantic validation |
+| Invalid Evidence-subject / repository-commit / repository-path-or-blob bindings | 0 / 0 / 0 |
+| Factual capability-support / Product × capability claim gaps | 0 / 0 |
 | Stale projections | 0 after deterministic drift check |
 | Unauthorized Approved/Published states | 0 |
 
@@ -109,10 +147,10 @@ Fifteen current Product/project identities are evaluated. Aha! Roadmaps is inclu
 
 | Artifact | Identity/version | SHA-256 |
 |---|---|---|
-| Market Evidence and Benchmark Contract | `GAEP-REG-012` v0.2.0 | `7091ad5859b0c97824d25392e346d97cbd72968b56625ce7c35a8ae4238095e3` |
-| Registry JSON Schema | schema v2.0.0 | `feceaa73a1b2e800bd7c0378f9b2ee190455fbde754840467600e0d4479d75df` |
-| Canonical market registry | `GAEP-REG-013` v0.2.0 | `761499ba02d25be9b98716a56527dc4991949f5cad4c5ad4244a11562dca7f59` |
-| Generated executive projection | `GAEP-STR-004` v0.4.0 | `84e54723739c100a457828db2fbaaab68e6e816712210e5bc35733094beed805` |
+| Market Evidence and Benchmark Contract | `GAEP-REG-012` v0.2.1 | `f4da6436ea25705e1c56f810cfe549a1a292ae9df29deb21a7c3cc283845159d` |
+| Registry JSON Schema | schema v2.1.0 | `009015fcd8c22fb313b8c6b67f0adee3befe80ac988ad6b847120f1c78663181` |
+| Canonical market registry | `GAEP-REG-013` v0.2.1 | `3dcfe5531a1bb4630dc3afdb2990389728e2d39cac2ac915986badb9fe9e5c17` |
+| Generated executive projection | `GAEP-STR-004` v0.4.1 | `dc082ca194506c01cdef83353d7232336ce4cc99c26ab714bd5ffc9d002e6f4c` |
 
 ## Human projection and Guide
 
@@ -126,10 +164,10 @@ The bundled Guide contains no second competitor table. It references the canonic
 |---|---|
 | Canonical market validation | PASS — 15 Products, 49 Evidence records, 220 support assertions, 450 cells |
 | Market JSON Schema/CLI | PASS — 15/15 |
-| Semantic/hostile/parity | PASS — 36/36 |
+| Semantic/hostile/parity | PASS — 56/56, including all required Evidence-subject, Git-proof, and claim-coverage attacks |
 | Projection/drift | PASS — 12/12 and generated projection current |
-| `npm run test:market-benchmark` | PASS — canonical validation first; all 63 P02 Node tests and drift check pass |
-| `npm run validate:docs` before this report | PASS — 89 Markdown documents, 91 document/catalog IDs, 911 requirement definitions, zero warnings |
+| `npm run test:market-benchmark` | PASS — canonical validation first; 15 schema + 56 semantic + 12 projection = 83 P02 Node tests; drift check passes |
+| `npm run validate:docs` before this report | PASS — 90 Markdown documents, 92 document/catalog IDs, 914 requirement definitions, zero warnings |
 | `npm run check` | PASS — 197 Vitest files; 1281 passed and one skipped of 1282; four Visual Studio contract tests; 41 provider/example scenarios; all P01/P02 validation and docs checks included |
 | P01 Node catalog tests | PASS — 34/34 |
 | P01 Ruby suites | PASS — 10 runs/25 assertions; 48/51; 5/145 |
@@ -137,7 +175,7 @@ The bundled Guide contains no second competitor table. It references the canonic
 
 The Extension Host harness documents that `@vscode/test-electron` disables workspace trust; untrusted-host behavior remains outside that harness. No failure is hidden by this limitation.
 
-## Ordered correction commits and push evidence
+## Ordered first-correction commits and push evidence
 
 | Order | Commit | Result |
 |---:|---|---|
@@ -147,9 +185,17 @@ The Extension Host harness documents that `@vscode/test-electron` disables works
 | 4 | `7da3e5a` — `docs(strategy): regenerate corrected benchmark projections` | Grouped human projection, Guide canonical integration, projection tests and docs validation passed; pushed normally |
 | 5 | Commit whose subject is `docs(governance): record P02 correction evidence` | This exact receipt and final safe-interpretation Guide clarification; immutable SHA is resolved after commit and pushed normally |
 
+### Ordered P02-C2 commits and push evidence
+
+| Order | Commit | Result |
+|---:|---|---|
+| 1 | `a430ebe50b2f905abb196cdffa0d5ad930ee8cf0` — `fix(governance): bind evidence and repository proof to exact subjects` | Evidence canonical subjects, schema/registry v2.1.0/v0.2.1 migration, safe exact Git proof, complete claim coverage, projection v0.4.1, and deterministic migration; targeted validation passed; pushed normally |
+| 2 | `aaabdc9a6edfb9a287a4e743e50418b79f82e7c3` — `test(governance): close residual P02 fail-closed gaps` | Permanent production-validator hostile cases for subject laundering, Git proof, role strength, and claim coverage; 83 P02 tests passed; pushed normally |
+| 3 | Commit whose subject is `docs(governance): record final P02 correction verification` | This measured report update; immutable SHA is resolved after commit and pushed normally |
+
 ## VSIX package and parity receipt
 
-The correction changes the bundled Guide, so packaging and installation remain mandatory even though no extension runtime logic changed. `apps/vscode/dist/gaep-vscode.vsix` is normalized for deterministic local entry order, metadata, and timestamps. The report itself is outside the VSIX inclusion surface; the same included inputs are rebuilt from the final report commit and must reproduce the values below before close.
+P02-C2 changes governance contracts, registry data, validation, tests, and the generated strategy projection; it does not change the extension inclusion surface. Packaging and installation remain mandatory. `apps/vscode/dist/gaep-vscode.vsix` was rebuilt deterministically from source/test SHA `aaabdc9a6edfb9a287a4e743e50418b79f82e7c3`; its byte-identical digest to the first correction is expected and verified, not assumed. The report is outside the VSIX inclusion surface; the same included inputs are rebuilt from the final report commit and must reproduce the values below before close.
 
 | Field | Result |
 |---|---|
@@ -158,8 +204,8 @@ The correction changes the bundled Guide, so packaging and installation remain m
 | `extension.cjs` source/package/installed | `5a63a32e1b5889b268a8629c5cbdb2783f6f2e54ce40f2681124829557679be4` / same / same |
 | `studio-client.js` source/package/installed | `58768500c5c13e3c20d6b95583dbedefe0dae26cbd0cf168844a10c97d8a09c9` / same / same |
 | `GAEP_GUIDE.md` source/package/installed | `d7b3a62ebe46bb08cd7820043c83ec42bab5ea09ff079e0db675f1cde2fafb7d` / same / same |
-| Source/package/installed parity | Required final close result: PASS for all three exact files |
-| Active-profile installation | Required final close result: exact final VSIX installed with `--force` and identity/version listed |
+| Source/package/installed parity | PASS for all three exact files |
+| Active-profile installation | PASS — exact VSIX installed with `--force`; active inventory lists `gaep.gaep-vscode@0.1.0` |
 
 The normalized digest proves only the recorded local build. No cross-platform or raw outer-ZIP reproducibility claim is made. Temporary extraction directories must be removed before close.
 
@@ -178,4 +224,4 @@ The normalized digest proves only the recorded local build. No cross-platform or
 
 Final delivery is valid only if the report commit is pushed; HEAD equals upstream with ahead/behind `0/0`; the worktree is clean; stash is empty; P00/P01 and all rejected P02/correction commits remain reachable; V5 remains unchanged; no P03 file or runtime work appears; the exact final-commit VSIX is rebuilt and installed; source/package/installed hashes match for all three core files; and temporary extraction state is removed. Any failed close check must be reported rather than concealed.
 
-P02 correction is complete but remains unaccepted pending independent review. P03 was not started.
+P02-C2 implementation is complete but remains unaccepted pending independent review. P03 was not started.
