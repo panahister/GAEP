@@ -1,0 +1,306 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gaep.example/schemas/market-evidence-benchmark-registry-1.0.0.schema.json",
+  "title": "GAEP Market Evidence and Benchmark Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "schemaVersion",
+    "registryId",
+    "version",
+    "status",
+    "ownerRole",
+    "researchAsOf",
+    "approval",
+    "p01Bindings",
+    "marketCategories",
+    "capabilities",
+    "evidence",
+    "seedResolutions",
+    "products",
+    "landscapeEvaluations",
+    "benchmarkRows",
+    "gaepMaturity",
+    "claims",
+    "scenarios",
+    "proofOfValueMetrics",
+    "migration",
+    "researchDebt",
+    "projection"
+  ],
+  "properties": {
+    "schemaId": { "const": "https://gaep.example/schemas/market-evidence-benchmark-registry-1.0.0.schema.json" },
+    "schemaVersion": { "const": "1.0.0" },
+    "registryId": { "const": "GAEP-REG-013" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "status": { "const": "proposed" },
+    "ownerRole": { "const": "GAEP Product Research Owner" },
+    "researchAsOf": { "$ref": "#/$defs/date" },
+    "approval": { "$ref": "#/$defs/approval" },
+    "p01Bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startingCommit", "referenceContract", "methodologyCatalog", "methodologyCatalogVersion", "claimsModel", "constitution", "positioningProjection"],
+      "properties": {
+        "startingCommit": { "const": "cb28f88220255244462a9699d6ec40e417430e6e" },
+        "referenceContract": { "const": "GAEP-REG-003" },
+        "methodologyCatalog": { "const": "GAEP-REG-011" },
+        "methodologyCatalogVersion": { "const": "0.4.0" },
+        "claimsModel": { "const": "GAEP-CORE-007" },
+        "constitution": { "const": "GAEP-CST-004" },
+        "positioningProjection": { "const": "GAEP-STR-004" }
+      }
+    },
+    "marketCategories": { "type": "array", "minItems": 5, "items": { "$ref": "#/$defs/category" } },
+    "capabilities": { "type": "array", "minItems": 17, "items": { "$ref": "#/$defs/capability" } },
+    "evidence": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/evidence" } },
+    "seedResolutions": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/seedResolution" } },
+    "products": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/product" } },
+    "landscapeEvaluations": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/landscapeEvaluation" } },
+    "benchmarkRows": { "type": "array", "minItems": 15, "items": { "$ref": "#/$defs/benchmarkRow" } },
+    "gaepMaturity": { "type": "array", "minItems": 17, "items": { "$ref": "#/$defs/gaepMaturity" } },
+    "claims": { "type": "array", "minItems": 8, "items": { "$ref": "#/$defs/claim" } },
+    "scenarios": { "type": "array", "minItems": 7, "items": { "$ref": "#/$defs/scenario" } },
+    "proofOfValueMetrics": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/metric" } },
+    "migration": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/migration" } },
+    "researchDebt": { "type": "array", "items": { "$ref": "#/$defs/researchDebt" } },
+    "projection": { "$ref": "#/$defs/projection" }
+  },
+  "$defs": {
+    "date": { "type": "string", "format": "date" },
+    "id": { "type": "string", "pattern": "^GAEP-[A-Z]+-[0-9]{3}$" },
+    "nonEmpty": { "type": "string", "minLength": 1 },
+    "httpsUri": { "type": "string", "format": "uri", "pattern": "^https://" },
+    "stringSet": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmpty" } },
+    "idSet": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "approvedBy", "approvedAt", "publicationState"],
+      "properties": {
+        "state": { "const": "not-approved" },
+        "approvedBy": { "type": "array", "maxItems": 0 },
+        "approvedAt": { "type": "null" },
+        "publicationState": { "const": "not-published" }
+      }
+    },
+    "category": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["categoryId", "name", "definition", "inclusionCriteria", "exclusionCriteria"],
+      "properties": {
+        "categoryId": { "$ref": "#/$defs/id" },
+        "name": { "$ref": "#/$defs/nonEmpty" },
+        "definition": { "$ref": "#/$defs/nonEmpty" },
+        "inclusionCriteria": { "$ref": "#/$defs/stringSet" },
+        "exclusionCriteria": { "$ref": "#/$defs/stringSet" }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilityId", "name", "definition"],
+      "properties": {
+        "capabilityId": { "$ref": "#/$defs/id" },
+        "name": { "$ref": "#/$defs/nonEmpty" },
+        "definition": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceId", "subject", "publisher", "sourceType", "officialUri", "publicationOrVersion", "accessedAt", "asOfDate", "contentReviewState", "reviewDepth", "accessResult", "freshnessTrigger", "nextReviewAt", "rightsStatus", "supportedClaims", "blockedClaims", "limitations", "supersedes", "supersededBy", "sourceDigest"],
+      "properties": {
+        "evidenceId": { "$ref": "#/$defs/id" },
+        "subject": { "$ref": "#/$defs/nonEmpty" },
+        "publisher": { "$ref": "#/$defs/nonEmpty" },
+        "sourceType": { "enum": ["official-documentation", "official-product-page", "official-repository", "official-release-note", "primary-research"] },
+        "officialUri": { "$ref": "#/$defs/httpsUri" },
+        "publicationOrVersion": { "type": ["string", "null"] },
+        "accessedAt": { "$ref": "#/$defs/date" },
+        "asOfDate": { "$ref": "#/$defs/date" },
+        "contentReviewState": { "enum": ["reviewed", "reviewed-partial", "access-unavailable"] },
+        "reviewDepth": { "enum": ["full-source-review", "substantive-page-review", "identity-only", "unavailable"] },
+        "accessResult": { "enum": ["success", "partial", "unavailable"] },
+        "freshnessTrigger": { "$ref": "#/$defs/nonEmpty" },
+        "nextReviewAt": { "$ref": "#/$defs/date" },
+        "rightsStatus": { "enum": ["citation-only", "quotation-limited", "captured-with-permission", "unknown"] },
+        "supportedClaims": { "$ref": "#/$defs/stringSet" },
+        "blockedClaims": { "$ref": "#/$defs/stringSet" },
+        "limitations": { "$ref": "#/$defs/stringSet" },
+        "supersedes": { "$ref": "#/$defs/idSet" },
+        "supersededBy": { "$ref": "#/$defs/idSet" },
+        "sourceDigest": { "type": ["string", "null"], "pattern": "^sha256:[a-f0-9]{64}$" }
+      }
+    },
+    "seedResolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seedId", "inputName", "resolutionState", "selectedIdentity", "evidenceIds", "rationale", "ambiguities"],
+      "properties": {
+        "seedId": { "$ref": "#/$defs/id" },
+        "inputName": { "$ref": "#/$defs/nonEmpty" },
+        "resolutionState": { "enum": ["resolved-product", "resolved-project", "methodology-framework", "excluded", "research-deferred"] },
+        "selectedIdentity": { "type": ["string", "null"] },
+        "evidenceIds": { "$ref": "#/$defs/idSet" },
+        "rationale": { "$ref": "#/$defs/nonEmpty" },
+        "ambiguities": { "$ref": "#/$defs/stringSet" }
+      }
+    },
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["productId", "canonicalName", "vendorOrSteward", "officialUri", "categoryIds", "lifecycleScope", "deploymentModel", "licensingStatus", "evidenceIds", "knownUnknowns", "lastReviewedAt", "status"],
+      "properties": {
+        "productId": { "$ref": "#/$defs/id" },
+        "canonicalName": { "$ref": "#/$defs/nonEmpty" },
+        "vendorOrSteward": { "$ref": "#/$defs/nonEmpty" },
+        "officialUri": { "$ref": "#/$defs/httpsUri" },
+        "categoryIds": { "$ref": "#/$defs/idSet" },
+        "lifecycleScope": { "$ref": "#/$defs/stringSet" },
+        "deploymentModel": { "$ref": "#/$defs/stringSet" },
+        "licensingStatus": { "$ref": "#/$defs/nonEmpty" },
+        "evidenceIds": { "$ref": "#/$defs/idSet" },
+        "knownUnknowns": { "$ref": "#/$defs/stringSet" },
+        "lastReviewedAt": { "$ref": "#/$defs/date" },
+        "status": { "enum": ["active-current", "renamed", "superseded", "discontinued", "unverifiable", "research-deferred"] }
+      }
+    },
+    "landscapeEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["productId", "classification", "rationale", "evidenceIds"],
+      "properties": {
+        "productId": { "$ref": "#/$defs/id" },
+        "classification": { "enum": ["direct-competitor", "adjacent-alternative", "partial-substitute", "complement-integration-candidate", "excluded-with-reason", "research-deferred"] },
+        "rationale": { "$ref": "#/$defs/nonEmpty" },
+        "evidenceIds": { "$ref": "#/$defs/idSet" }
+      }
+    },
+    "benchmarkRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["productId", "cells"],
+      "properties": {
+        "productId": { "$ref": "#/$defs/id" },
+        "cells": { "type": "array", "minItems": 17, "items": { "$ref": "#/$defs/benchmarkCell" } }
+      }
+    },
+    "benchmarkCell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilityId", "supportLevel", "evidenceIds", "asOfDate", "rationale", "limitation", "deliveryState"],
+      "properties": {
+        "capabilityId": { "$ref": "#/$defs/id" },
+        "supportLevel": { "enum": ["verified-supported", "partially-supported", "unsupported-by-reviewed-evidence", "unknown", "not-applicable"] },
+        "evidenceIds": { "$ref": "#/$defs/idSet" },
+        "asOfDate": { "$ref": "#/$defs/date" },
+        "rationale": { "$ref": "#/$defs/nonEmpty" },
+        "limitation": { "$ref": "#/$defs/nonEmpty" },
+        "deliveryState": { "enum": ["shipped", "preview-beta", "announced-roadmap", "community-extension", "inference", "not-assessed"] }
+      }
+    },
+    "gaepMaturity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilityId", "maturityState", "repositoryEvidence", "rationale", "limitation"],
+      "properties": {
+        "capabilityId": { "$ref": "#/$defs/id" },
+        "maturityState": { "enum": ["implemented-and-automated-tested", "implemented-awaiting-product-owner-acceptance", "candidate-proposed", "partial", "planned-deferred-coming-soon", "unknown-not-assessed"] },
+        "repositoryEvidence": { "$ref": "#/$defs/stringSet" },
+        "rationale": { "$ref": "#/$defs/nonEmpty" },
+        "limitation": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claimId", "audience", "useContext", "wording", "claimClass", "evidenceIds", "gaepCapabilityIds", "disposition", "limitations", "requiredQualifiers", "freshnessTrigger", "ownerRole", "approvalState", "publicationState"],
+      "properties": {
+        "claimId": { "$ref": "#/$defs/id" },
+        "audience": { "$ref": "#/$defs/stringSet" },
+        "useContext": { "$ref": "#/$defs/nonEmpty" },
+        "wording": { "$ref": "#/$defs/nonEmpty" },
+        "claimClass": { "enum": ["substantiated-bounded-fact", "evidence-bounded-comparison", "positioning-hypothesis", "customer-outcome-hypothesis", "prohibited-claim", "pending-human-decision"] },
+        "evidenceIds": { "$ref": "#/$defs/idSet" },
+        "gaepCapabilityIds": { "$ref": "#/$defs/idSet" },
+        "disposition": { "enum": ["allowed-internal", "prohibited", "pending-human-decision"] },
+        "limitations": { "$ref": "#/$defs/stringSet" },
+        "requiredQualifiers": { "$ref": "#/$defs/stringSet" },
+        "freshnessTrigger": { "$ref": "#/$defs/nonEmpty" },
+        "ownerRole": { "$ref": "#/$defs/nonEmpty" },
+        "approvalState": { "const": "not-approved" },
+        "publicationState": { "const": "not-published" }
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenarioId", "name", "decisionCriteria", "fitConditions", "nonFitConditions", "risksAndTradeoffs", "buildBuyAdoptAugment", "evaluationQuestions", "applicableCapabilityIds", "rankingPolicy"],
+      "properties": {
+        "scenarioId": { "$ref": "#/$defs/id" },
+        "name": { "$ref": "#/$defs/nonEmpty" },
+        "decisionCriteria": { "$ref": "#/$defs/stringSet" },
+        "fitConditions": { "$ref": "#/$defs/stringSet" },
+        "nonFitConditions": { "$ref": "#/$defs/stringSet" },
+        "risksAndTradeoffs": { "$ref": "#/$defs/stringSet" },
+        "buildBuyAdoptAugment": { "$ref": "#/$defs/stringSet" },
+        "evaluationQuestions": { "$ref": "#/$defs/stringSet" },
+        "applicableCapabilityIds": { "$ref": "#/$defs/idSet" },
+        "rankingPolicy": { "const": "no-total-score-preserve-unknowns" }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metricId", "name", "definition", "baseline", "observationWindow", "dataOwner", "confounders", "decisionThreshold"],
+      "properties": {
+        "metricId": { "$ref": "#/$defs/id" },
+        "name": { "$ref": "#/$defs/nonEmpty" },
+        "definition": { "$ref": "#/$defs/nonEmpty" },
+        "baseline": { "$ref": "#/$defs/nonEmpty" },
+        "observationWindow": { "$ref": "#/$defs/nonEmpty" },
+        "dataOwner": { "$ref": "#/$defs/nonEmpty" },
+        "confounders": { "$ref": "#/$defs/stringSet" },
+        "decisionThreshold": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["legacyPath", "priorAuthority", "disposition", "canonicalTarget", "historicalPreserved"],
+      "properties": {
+        "legacyPath": { "$ref": "#/$defs/nonEmpty" },
+        "priorAuthority": { "$ref": "#/$defs/nonEmpty" },
+        "disposition": { "enum": ["generated-projection", "cross-reference", "historical-superseded", "retained-non-authoritative"] },
+        "canonicalTarget": { "$ref": "#/$defs/nonEmpty" },
+        "historicalPreserved": { "const": true }
+      }
+    },
+    "researchDebt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["debtId", "subject", "reason", "requiredEvidence", "ownerRole", "status"],
+      "properties": {
+        "debtId": { "$ref": "#/$defs/id" },
+        "subject": { "$ref": "#/$defs/nonEmpty" },
+        "reason": { "$ref": "#/$defs/nonEmpty" },
+        "requiredEvidence": { "$ref": "#/$defs/stringSet" },
+        "ownerRole": { "$ref": "#/$defs/nonEmpty" },
+        "status": { "const": "open" }
+      }
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId", "path", "generatedSections", "registryVersion"],
+      "properties": {
+        "documentId": { "const": "GAEP-STR-004" },
+        "path": { "const": "docs/next/00_GAEP_Product_Strategy/004_POSITIONING_AND_ALTERNATIVES.md" },
+        "generatedSections": { "type": "array", "minItems": 8, "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "registryVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+      }
+    }
+  }
+}
