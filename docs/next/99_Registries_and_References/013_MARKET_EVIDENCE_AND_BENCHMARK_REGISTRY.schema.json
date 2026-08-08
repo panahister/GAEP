@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gaep.example/schemas/market-evidence-benchmark-registry-2.0.0.schema.json",
+  "$id": "https://gaep.example/schemas/market-evidence-benchmark-registry-2.1.0.schema.json",
   "title": "GAEP Market Evidence and Benchmark Registry",
   "type": "object",
   "additionalProperties": false,
@@ -36,8 +36,8 @@
     "projection"
   ],
   "properties": {
-    "schemaId": { "const": "https://gaep.example/schemas/market-evidence-benchmark-registry-2.0.0.schema.json" },
-    "schemaVersion": { "const": "2.0.0" },
+    "schemaId": { "const": "https://gaep.example/schemas/market-evidence-benchmark-registry-2.1.0.schema.json" },
+    "schemaVersion": { "const": "2.1.0" },
     "registryId": { "const": "GAEP-REG-013" },
     "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
     "status": { "const": "proposed" },
@@ -158,10 +158,14 @@
     "evidence": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["evidenceId", "subject", "publisher", "sourceType", "officialUri", "publicationOrVersion", "accessedAt", "asOfDate", "contentReviewState", "reviewDepth", "accessResult", "freshnessTrigger", "nextReviewAt", "rightsStatus", "reviewSummary", "blockedClaims", "limitations", "supersedes", "supersededBy", "sourceDigest"],
+      "required": ["evidenceId", "subject", "subjectType", "productId", "methodologyId", "excludedIdentityId", "publisher", "sourceType", "officialUri", "publicationOrVersion", "accessedAt", "asOfDate", "contentReviewState", "reviewDepth", "accessResult", "freshnessTrigger", "nextReviewAt", "rightsStatus", "reviewSummary", "blockedClaims", "limitations", "supersedes", "supersededBy", "sourceDigest"],
       "properties": {
         "evidenceId": { "$ref": "#/$defs/id" },
         "subject": { "$ref": "#/$defs/nonEmpty" },
+        "subjectType": { "enum": ["product", "methodology", "excluded-identity"] },
+        "productId": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "methodologyId": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "excludedIdentityId": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
         "publisher": { "$ref": "#/$defs/nonEmpty" },
         "sourceType": { "enum": ["official-documentation", "official-product-page", "official-repository", "official-release-note", "primary-research"] },
         "officialUri": { "$ref": "#/$defs/httpsUri" },
@@ -180,7 +184,12 @@
         "supersedes": { "$ref": "#/$defs/idSet" },
         "supersededBy": { "$ref": "#/$defs/idSet" },
         "sourceDigest": { "type": ["string", "null"], "pattern": "^sha256:[a-f0-9]{64}$" }
-      }
+      },
+      "oneOf": [
+        { "properties": { "subjectType": { "const": "product" }, "productId": { "$ref": "#/$defs/id" }, "methodologyId": { "type": "null" }, "excludedIdentityId": { "type": "null" } } },
+        { "properties": { "subjectType": { "const": "methodology" }, "productId": { "type": "null" }, "methodologyId": { "$ref": "#/$defs/id" }, "excludedIdentityId": { "type": "null" } } },
+        { "properties": { "subjectType": { "const": "excluded-identity" }, "productId": { "type": "null" }, "methodologyId": { "type": "null" }, "excludedIdentityId": { "$ref": "#/$defs/id" } } }
+      ]
     },
     "evidenceAssertion": {
       "type": "object",
@@ -208,16 +217,21 @@
         "supersedes": { "$ref": "#/$defs/idSet" },
         "supersededBy": { "$ref": "#/$defs/idSet" },
         "migrationNote": { "type": ["string", "null"] }
-      }
+      },
+      "oneOf": [
+        { "properties": { "subjectType": { "const": "product" }, "productId": { "$ref": "#/$defs/id" }, "methodologyId": { "type": "null" }, "excludedIdentityId": { "type": "null" } } },
+        { "properties": { "subjectType": { "const": "methodology" }, "productId": { "type": "null" }, "methodologyId": { "$ref": "#/$defs/id" }, "excludedIdentityId": { "type": "null" } } },
+        { "properties": { "subjectType": { "const": "excluded-identity" }, "productId": { "type": "null" }, "methodologyId": { "type": "null" }, "excludedIdentityId": { "$ref": "#/$defs/id" } } }
+      ]
     },
     "repositoryAssertion": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["repositoryAssertionId", "capabilityId", "repositoryPaths", "proposition", "strength", "maturityState", "asOfCommit", "limitations", "sequence", "status", "supersedes", "supersededBy", "migrationNote"],
+      "required": ["repositoryAssertionId", "capabilityId", "repositoryEvidence", "proposition", "strength", "maturityState", "asOfCommit", "limitations", "sequence", "status", "supersedes", "supersededBy", "migrationNote"],
       "properties": {
         "repositoryAssertionId": { "$ref": "#/$defs/id" },
         "capabilityId": { "$ref": "#/$defs/id" },
-        "repositoryPaths": { "$ref": "#/$defs/nonEmptyStringSet" },
+        "repositoryEvidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/repositoryEvidence" } },
         "proposition": { "$ref": "#/$defs/nonEmpty" },
         "strength": { "enum": ["automated-tested", "observed-implementation", "planned-document-only", "partial-implementation"] },
         "maturityState": { "enum": ["candidate-proposed", "implemented-and-automated-tested", "implemented-awaiting-product-owner-acceptance", "partial", "planned-deferred-coming-soon", "unknown-not-assessed"] },
@@ -228,6 +242,17 @@
         "supersedes": { "$ref": "#/$defs/idSet" },
         "supersededBy": { "$ref": "#/$defs/idSet" },
         "migrationNote": { "type": ["string", "null"] }
+      }
+    },
+    "repositoryEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "role", "gitBlobObjectId", "locator"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1, "pattern": "^(?!/)(?!:)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*[\\u0000-\\u001f\\u007f])[^/\\u0000]+(?:/[^/\\u0000]+)*$" },
+        "role": { "enum": ["contract", "implementation", "test", "workflow", "documentation"] },
+        "gitBlobObjectId": { "type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$" },
+        "locator": { "type": ["string", "null"] }
       }
     },
     "methodologyBinding": {
@@ -438,9 +463,10 @@
     "projection": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["documentId", "path", "generatedSections", "registryVersion", "capabilityCount"],
+      "required": ["documentId", "documentVersion", "path", "generatedSections", "registryVersion", "capabilityCount"],
       "properties": {
         "documentId": { "const": "GAEP-STR-004" },
+        "documentVersion": { "const": "0.4.1" },
         "path": { "const": "docs/next/00_GAEP_Product_Strategy/004_POSITIONING_AND_ALTERNATIVES.md" },
         "generatedSections": { "type": "array", "minItems": 8, "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmpty" } },
         "registryVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },

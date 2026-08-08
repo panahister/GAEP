@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import Ajv2020 from "ajv/dist/2020.js";
@@ -56,6 +57,8 @@ export const ASSERTION_STRENGTHS = ["identity-only", "partial", "verified"];
 export const ASSERTION_POLARITIES = ["explicit-negative", "identity-only", "partial", "positive"];
 export const ASSERTION_TYPES = ["availability", "capability-support", "explicit-negative", "identity", "landscape-classification"];
 export const GAEP_MATURITY_STATES = ["candidate-proposed", "implemented-and-automated-tested", "implemented-awaiting-product-owner-acceptance", "partial", "planned-deferred-coming-soon", "unknown-not-assessed"];
+export const SUBJECT_TYPES = ["excluded-identity", "methodology", "product"];
+export const REPOSITORY_EVIDENCE_ROLES = ["contract", "documentation", "implementation", "test", "workflow"];
 
 const sorted = values => [...values].sort((left, right) => String(left).localeCompare(String(right)));
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -63,6 +66,83 @@ const duplicateValues = values => [...new Set(values.filter((value, index) => va
 const validDate = value => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
 const hasLongExactQuotation = value => [...String(value).matchAll(/["“]([^"”]+)["”]/g)]
   .some(match => match[1].trim().split(/\s+/).filter(Boolean).length > 25);
+const GIT_COMMIT_ID = /^[a-f0-9]{40}$/;
+const GIT_OBJECT_ID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
+const gitCommitCache = new Map();
+const gitProofCache = new Map();
+
+function runGit(repositoryRoot, args) {
+  return spawnSync("git", args, { cwd: repositoryRoot, encoding: "utf8" });
+}
+
+function verifyReachableCommit(commit, repositoryRoot, reachableFrom) {
+  const key = `${repositoryRoot}\0${reachableFrom}\0${commit}`;
+  if (gitCommitCache.has(key)) return gitCommitCache.get(key);
+  let result;
+  if (/^0+$/.test(commit)) result = "all-zero asOfCommit is prohibited";
+  else if (!GIT_COMMIT_ID.test(commit)) result = "asOfCommit must be an exact 40-character lowercase Git object ID";
+  else {
+    const type = runGit(repositoryRoot, ["cat-file", "-t", commit]);
+    if (type.status !== 0 || type.stdout.trim() !== "commit") result = "nonexistent or invalid Git commit";
+    else {
+      const reachable = runGit(repositoryRoot, ["merge-base", "--is-ancestor", commit, reachableFrom]);
+      if (reachable.status !== 0) result = "Git commit is not permitted by reachability policy";
+      else result = null;
+    }
+  }
+  gitCommitCache.set(key, result);
+  return result;
+}
+
+function unsafeRepositoryPath(repositoryPath) {
+  if (typeof repositoryPath !== "string" || !repositoryPath || path.posix.isAbsolute(repositoryPath) || repositoryPath.includes("\\") || repositoryPath.startsWith(":")) return true;
+  if (/[\u0000-\u001f\u007f]/.test(repositoryPath)) return true;
+  const segments = repositoryPath.split("/");
+  return segments.some(segment => !segment || segment === "." || segment === "..");
+}
+
+function verifyRepositoryProof(commit, proof, repositoryRoot) {
+  const key = `${repositoryRoot}\0${commit}\0${proof.path}\0${proof.gitBlobObjectId}`;
+  if (gitProofCache.has(key)) return gitProofCache.get(key);
+  let result;
+  if (unsafeRepositoryPath(proof.path)) result = "unsafe repository path";
+  else if (!GIT_OBJECT_ID.test(proof.gitBlobObjectId)) result = "recorded Git blob object ID is invalid";
+  else {
+    const tree = runGit(repositoryRoot, ["ls-tree", "--full-tree", "-z", commit, "--", proof.path]);
+    if (tree.status !== 0 || !tree.stdout.trim()) result = "nonexistent repository path at declared commit";
+    else {
+      const match = /^(\d+)\s+(\w+)\s+([a-f0-9]+)\t([^\0]+)\0$/.exec(tree.stdout);
+      if (!match || match[4] !== proof.path || match[2] !== "blob" || match[1] === "120000") result = "repository path must resolve to an exact non-symlink Git blob";
+      else if (match[3] !== proof.gitBlobObjectId) result = "recorded Git blob object ID mismatch";
+      else result = null;
+    }
+  }
+  gitProofCache.set(key, result);
+  return result;
+}
+
+export function repositoryAssertionErrors(assertion, { repositoryRoot = ROOT, reachableFrom = "HEAD" } = {}) {
+  if (assertion.status !== "active") return [];
+  const errors = [];
+  const commitError = verifyReachableCommit(assertion.asOfCommit, repositoryRoot, reachableFrom);
+  if (commitError) errors.push(`${assertion.repositoryAssertionId}: ${commitError}`);
+  if (!commitError) {
+    for (const proof of assertion.repositoryEvidence) {
+      const proofError = verifyRepositoryProof(assertion.asOfCommit, proof, repositoryRoot);
+      if (proofError) errors.push(`${assertion.repositoryAssertionId}/${proof.path}: ${proofError}`);
+    }
+  }
+  const roles = new Set(assertion.repositoryEvidence.map(proof => proof.role));
+  if (assertion.strength === "automated-tested" || assertion.maturityState === "implemented-and-automated-tested") {
+    if (!["contract", "implementation"].some(role => roles.has(role))) errors.push(`${assertion.repositoryAssertionId}: automated-tested proof requires implementation or contract Evidence`);
+    if (!["test", "workflow"].some(role => roles.has(role))) errors.push(`${assertion.repositoryAssertionId}: automated-tested proof requires test or workflow Evidence`);
+  } else if (["partial-implementation", "observed-implementation"].includes(assertion.strength)) {
+    if (!["contract", "implementation"].some(role => roles.has(role))) errors.push(`${assertion.repositoryAssertionId}: implementation proof requires implementation or contract Evidence`);
+  } else if (assertion.strength === "planned-document-only" && !roles.has("documentation")) {
+    errors.push(`${assertion.repositoryAssertionId}: planned-document-only proof requires documentation Evidence`);
+  }
+  return errors;
+}
 
 export function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
@@ -160,6 +240,17 @@ function assertionEvidenceUsable(assertion, evidence, requiredStrength) {
     && ["partial", "verified"].includes(assertion.supportStrength);
 }
 
+function canonicalSubjectIdentity(record) {
+  if (record?.subjectType === "product") return `product:${record.productId ?? ""}`;
+  if (record?.subjectType === "methodology") return `methodology:${record.methodologyId ?? ""}`;
+  if (record?.subjectType === "excluded-identity") return `excluded-identity:${record.excludedIdentityId ?? ""}`;
+  return "invalid:";
+}
+
+function evidenceSubjectMatchesAssertion(evidence, assertion) {
+  return canonicalSubjectIdentity(evidence) === canonicalSubjectIdentity(assertion);
+}
+
 function exactAssertion(errors, assertionById, evidenceById, assertionId, context, expected, requiredStrength = "partial") {
   const assertion = assertionById.get(assertionId);
   if (!assertion) {
@@ -173,6 +264,7 @@ function exactAssertion(errors, assertionById, evidenceById, assertionId, contex
   if (expected.assertionTypes && !expected.assertionTypes.includes(assertion.assertionType)) errors.push(`${context}: incompatible assertion type ${assertion.assertionType} from ${assertionId}`);
   if (expected.polarities && !expected.polarities.includes(assertion.polarity)) errors.push(`${context}: incompatible assertion polarity ${assertion.polarity} from ${assertionId}`);
   const evidence = evidenceById.get(assertion.evidenceId);
+  if (evidence && !evidenceSubjectMatchesAssertion(evidence, assertion)) errors.push(`${context}: Evidence subject does not match assertion subject for ${assertionId}`);
   if (!assertionEvidenceUsable(assertion, evidence, requiredStrength)) errors.push(`${context}: unusable or insufficient-strength Evidence assertion ${assertionId}`);
   return assertion;
 }
@@ -212,7 +304,12 @@ export function registryMetrics(registry) {
     deliveryStates: countBy(cells, "deliveryState"),
     evidenceAccess: countBy(registry.evidence, "accessResult"),
     evidenceReviewDepth: countBy(registry.evidence, "reviewDepth"),
+    evidenceSubjects: countBy(registry.evidence, "subjectType"),
     assertionStrengths: countBy(registry.evidenceAssertions, "supportStrength"),
+    repositoryProofRoles: countBy(registry.repositoryAssertions.filter(item => item.status === "active").flatMap(item => item.repositoryEvidence), "role"),
+    repositoryProofEntries: registry.repositoryAssertions.filter(item => item.status === "active").flatMap(item => item.repositoryEvidence).length,
+    repositoryProofBlobs: new Set(registry.repositoryAssertions.filter(item => item.status === "active").flatMap(item => item.repositoryEvidence.map(proof => proof.gitBlobObjectId))).size,
+    repositoryProofCommits: new Set(registry.repositoryAssertions.filter(item => item.status === "active").map(item => item.asOfCommit)).size,
     gaepMaturity: countBy(registry.gaepMaturity, "maturityState"),
     claimClasses: countBy(registry.claims, "claimClass"),
     unknownCells: cells.filter(cell => cell.supportLevel === "unknown").length,
@@ -223,7 +320,7 @@ export function registryMetrics(registry) {
   };
 }
 
-export function semanticErrors(registry, { methodologyCatalog = readJson(METHODOLOGY_CATALOG_PATH), rawText } = {}) {
+export function semanticErrors(registry, { methodologyCatalog = readJson(METHODOLOGY_CATALOG_PATH), rawText, repositoryRoot = ROOT, reachableFrom = "HEAD" } = {}) {
   const errors = [];
   const collections = [
     [registry.marketCategories, "categoryId", "marketCategories"],
@@ -252,6 +349,11 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
   const evidenceById = new Map(registry.evidence.map(entry => [entry.evidenceId, entry]));
   const repositoryAssertionById = new Map(registry.repositoryAssertions.map(entry => [entry.repositoryAssertionId, entry]));
   const methodologyByReferenceId = new Map(methodologyCatalog.references.map(reference => [reference.referenceId, reference]));
+  const canonicalSubjectNames = new Map([
+    ...registry.products.map(product => [`product:${product.productId}`, product.canonicalName]),
+    ...registry.methodologyBindings.map(methodology => [`methodology:${methodology.methodologyId}`, methodology.canonicalName]),
+    ...registry.excludedIdentities.map(excluded => [`excluded-identity:${excluded.excludedIdentityId}`, excluded.canonicalName]),
+  ]);
 
   if (registry.marketCategories.length < 5) errors.push("research saturation requires at least five market categories");
   if (registry.products.length < 15) errors.push("research coverage requires at least fifteen evaluated current Product/project identities");
@@ -278,6 +380,15 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
   for (const capabilityId of newCapabilityIds) if (!currentCapabilityIds.has(capabilityId)) errors.push(`capability migration declares unknown new capability ${capabilityId}`);
 
   for (const evidence of registry.evidence) {
+    const subjectTargets = [evidence.productId, evidence.methodologyId, evidence.excludedIdentityId].filter(Boolean);
+    if (subjectTargets.length !== 1) errors.push(`${evidence.evidenceId}: Evidence must identify exactly one canonical subject`);
+    if (evidence.subjectType === "product") {
+      if (!evidence.productId || !productIds.has(evidence.productId) || evidence.methodologyId !== null || evidence.excludedIdentityId !== null) errors.push(`${evidence.evidenceId}: invalid Product Evidence subject`);
+    } else if (evidence.subjectType === "methodology") {
+      if (!evidence.methodologyId || !methodologyIds.has(evidence.methodologyId) || evidence.productId !== null || evidence.excludedIdentityId !== null) errors.push(`${evidence.evidenceId}: invalid methodology Evidence subject`);
+    } else if (evidence.subjectType === "excluded-identity") {
+      if (!evidence.excludedIdentityId || !excludedIdentityIds.has(evidence.excludedIdentityId) || evidence.productId !== null || evidence.methodologyId !== null) errors.push(`${evidence.evidenceId}: invalid excluded-identity Evidence subject`);
+    }
     if (!evidence.officialUri.startsWith("https://")) errors.push(`${evidence.evidenceId}: official URI must use HTTPS`);
     for (const field of ["accessedAt", "asOfDate", "nextReviewAt"]) if (!validDate(evidence[field])) errors.push(`${evidence.evidenceId}: ${field} is not a possible ISO date`);
     if (evidence.accessedAt > registry.researchAsOf || evidence.asOfDate > registry.researchAsOf) errors.push(`${evidence.evidenceId}: evidence chronology exceeds researchAsOf`);
@@ -297,14 +408,16 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
   for (const [index, assertion] of registry.evidenceAssertions.entries()) {
     if (assertion.sequence !== index + 1) errors.push(`${assertion.assertionId}: Evidence assertion sequence is noncanonical`);
     if (!evidenceIds.has(assertion.evidenceId)) errors.push(`${assertion.assertionId}: unknown Evidence ${assertion.evidenceId}`);
+    const boundEvidence = evidenceById.get(assertion.evidenceId);
+    if (boundEvidence && !evidenceSubjectMatchesAssertion(boundEvidence, assertion)) errors.push(`${assertion.assertionId}: Evidence subject does not match assertion subject`);
     if (!assertion.proposition.trim()) errors.push(`${assertion.assertionId}: supported proposition is empty`);
     if (assertion.reviewedAt > registry.researchAsOf || assertion.asOfDate > registry.researchAsOf) errors.push(`${assertion.assertionId}: stale or future assertion binding`);
     if (assertion.status === "active" && assertion.asOfDate !== registry.researchAsOf) errors.push(`${assertion.assertionId}: stale assertion does not match registry snapshot`);
     const targets = [assertion.productId, assertion.methodologyId, assertion.excludedIdentityId].filter(Boolean);
     if (targets.length !== 1) errors.push(`${assertion.assertionId}: Evidence assertion must identify exactly one subject`);
-    if (assertion.status === "active" && assertion.subjectType === "product" && (!assertion.productId || !productIds.has(assertion.productId))) errors.push(`${assertion.assertionId}: unknown or missing current Product subject`);
-    if (assertion.status === "active" && assertion.subjectType === "methodology" && (!assertion.methodologyId || !methodologyIds.has(assertion.methodologyId))) errors.push(`${assertion.assertionId}: unknown or missing current methodology subject`);
-    if (assertion.status === "active" && assertion.subjectType === "excluded-identity" && (!assertion.excludedIdentityId || !excludedIdentityIds.has(assertion.excludedIdentityId))) errors.push(`${assertion.assertionId}: unknown or missing current excluded identity subject`);
+    if (assertion.subjectType === "product" && (!assertion.productId || !productIds.has(assertion.productId) || assertion.methodologyId !== null || assertion.excludedIdentityId !== null)) errors.push(`${assertion.assertionId}: invalid Product assertion subject`);
+    if (assertion.subjectType === "methodology" && (!assertion.methodologyId || !methodologyIds.has(assertion.methodologyId) || assertion.productId !== null || assertion.excludedIdentityId !== null)) errors.push(`${assertion.assertionId}: invalid methodology assertion subject`);
+    if (assertion.subjectType === "excluded-identity" && (!assertion.excludedIdentityId || !excludedIdentityIds.has(assertion.excludedIdentityId) || assertion.productId !== null || assertion.methodologyId !== null)) errors.push(`${assertion.assertionId}: invalid excluded-identity assertion subject`);
     const featureAssertion = ["availability", "capability-support", "explicit-negative"].includes(assertion.assertionType);
     if (assertion.status === "active" && featureAssertion && (!assertion.capabilityId || !capabilityIds.has(assertion.capabilityId))) errors.push(`${assertion.assertionId}: feature assertion requires an exact current capability`);
     if (!featureAssertion && assertion.capabilityId !== null) errors.push(`${assertion.assertionId}: identity or landscape assertion must not masquerade as feature support`);
@@ -338,7 +451,24 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
   }
 
   for (const seed of registry.seedResolutions) {
-    for (const assertionId of seed.assertionIds) if (!assertionById.has(assertionId)) errors.push(`${seed.seedId}: unknown Evidence assertion ${assertionId}`);
+    const seedText = [seed.selectedIdentity, seed.rationale, ...seed.ambiguities].filter(Boolean).join(" ").toLocaleLowerCase("en");
+    for (const assertionId of seed.assertionIds) {
+      const assertion = assertionById.get(assertionId);
+      if (!assertion) errors.push(`${seed.seedId}: unknown Evidence assertion ${assertionId}`);
+      else {
+        const identity = canonicalSubjectIdentity(assertion);
+        const canonicalName = canonicalSubjectNames.get(identity)?.toLocaleLowerCase("en");
+        const displaySubject = evidenceById.get(assertion.evidenceId)?.subject?.toLocaleLowerCase("en");
+        if ((!canonicalName || !seedText.includes(canonicalName)) && (!displaySubject || !seedText.includes(displaySubject))) errors.push(`${seed.seedId}: Evidence assertion ${assertionId} is outside resolved seed subject scope`);
+        exactAssertion(errors, assertionById, evidenceById, assertionId, seed.seedId, {
+          productId: assertion.productId,
+          methodologyId: assertion.methodologyId,
+          excludedIdentityId: assertion.excludedIdentityId,
+          capabilityId: null,
+          assertionTypes: ["identity"],
+        }, "identity");
+      }
+    }
     if (seed.ambiguities.length > 0 && seed.resolutionState.startsWith("resolved-") && (!seed.selectedIdentity || !/ambig|select|separate|distinct/i.test(seed.rationale))) errors.push(`${seed.seedId}: ambiguous identity was silently resolved`);
     if (seed.resolutionState === "methodology-framework" && registry.products.some(product => product.canonicalName === seed.selectedIdentity)) errors.push(`${seed.seedId}: methodology classified as Product`);
   }
@@ -416,6 +546,10 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
     if (assertion.sequence !== index + 1) errors.push(`${assertion.repositoryAssertionId}: repository assertion sequence is noncanonical`);
     if (assertion.status === "active" && !capabilityIds.has(assertion.capabilityId)) errors.push(`${assertion.repositoryAssertionId}: unknown current capability ${assertion.capabilityId}`);
     if (assertion.status === "active" && assertion.supersededBy.length > 0) errors.push(`${assertion.repositoryAssertionId}: active repository assertion is superseded`);
+    const proofOrder = assertion.repositoryEvidence.map(proof => `${proof.path}\0${proof.role}`);
+    if (!same(proofOrder, sorted(proofOrder))) errors.push(`${assertion.repositoryAssertionId}: repository Evidence entries must use canonical path and role ordering`);
+    if (duplicateValues(proofOrder).length > 0) errors.push(`${assertion.repositoryAssertionId}: duplicate repository Evidence entries`);
+    errors.push(...repositoryAssertionErrors(assertion, { repositoryRoot, reachableFrom }));
     for (const successor of assertion.supersededBy) {
       const target = repositoryAssertionById.get(successor);
       if (!target?.supersedes.includes(assertion.repositoryAssertionId)) errors.push(`${assertion.repositoryAssertionId}: missing reciprocal repository supersession from ${successor}`);
@@ -445,26 +579,51 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
   const strong = /(better than|superior to|enterprise-ready|production-ready|\bsecure\b|\bcompliant\b|\bcertified\b|guarantees? quality|\bROI\b|time savings?|cost savings?|adoption rate)/i;
   for (const claim of registry.claims) {
     if (claim.asOfDate !== registry.researchAsOf) errors.push(`${claim.claimId}: stale claim snapshot binding`);
+    for (const [field, values] of [["productIds", claim.productIds], ["capabilityIds", claim.capabilityIds], ["supportAssertionIds", claim.supportAssertionIds], ["repositoryAssertionIds", claim.repositoryAssertionIds]]) {
+      const duplicates = duplicateValues(values);
+      if (duplicates.length > 0) errors.push(`${claim.claimId}: duplicate ${field} bindings: ${duplicates.join(", ")}`);
+    }
     for (const productId of claim.productIds) if (!productIds.has(productId)) errors.push(`${claim.claimId}: unknown Product ${productId}`);
     for (const capabilityId of claim.capabilityIds) if (!capabilityIds.has(capabilityId)) errors.push(`${claim.claimId}: unknown capability ${capabilityId}`);
     for (const assertionId of claim.supportAssertionIds) if (!assertionById.has(assertionId)) errors.push(`${claim.claimId}: unknown Evidence assertion ${assertionId}`);
     for (const assertionId of claim.repositoryAssertionIds) if (!repositoryAssertionById.has(assertionId)) errors.push(`${claim.claimId}: unknown repository assertion ${assertionId}`);
     if (["substantiated-bounded-fact", "evidence-bounded-comparison"].includes(claim.claimClass) && claim.supportAssertionIds.length === 0 && claim.repositoryAssertionIds.length === 0) errors.push(`${claim.claimId}: factual/comparative claim has no exact support assertion`);
-    if (claim.claimClass === "evidence-bounded-comparison") {
-      for (const productId of claim.productIds) {
-        const candidates = claim.supportAssertionIds.map(id => assertionById.get(id)).filter(Boolean).filter(assertion => assertion.productId === productId && assertion.status === "active");
-        if (candidates.length === 0) errors.push(`${claim.claimId}: multi-Product comparison missing Product-specific support for ${productId}`);
-        for (const capabilityId of claim.capabilityIds) if (!candidates.some(assertion => assertion.capabilityId === capabilityId)) errors.push(`${claim.claimId}: comparison missing exact ${productId}/${capabilityId} support`);
-      }
-    }
+    const claimAssertions = claim.supportAssertionIds.map(id => assertionById.get(id)).filter(Boolean);
     for (const assertionId of claim.supportAssertionIds) {
       const assertion = assertionById.get(assertionId);
       if (assertion && !assertionEvidenceUsable(assertion, evidenceById.get(assertion.evidenceId), assertion.supportStrength === "verified" ? "verified" : "partial")) errors.push(`${claim.claimId}: unrelated or unusable Evidence assertion ${assertionId}`);
+      if (assertion && (assertion.subjectType !== "product" || !assertion.productId || !claim.productIds.includes(assertion.productId))) errors.push(`${claim.claimId}: Evidence assertion ${assertionId} is outside claim Product scope`);
+      if (assertion && claim.capabilityIds.length > 0 && !claim.capabilityIds.includes(assertion.capabilityId)) errors.push(`${claim.claimId}: Evidence assertion ${assertionId} is outside claim capability scope`);
     }
+    if (["substantiated-bounded-fact", "evidence-bounded-comparison"].includes(claim.claimClass) && claim.productIds.length > 0) {
+      const requiredAssertionType = claim.capabilityIds.length > 0 ? "capability-support" : claim.claimClass === "evidence-bounded-comparison" ? "landscape-classification" : "identity";
+      for (const productId of claim.productIds) {
+        if (claim.capabilityIds.length > 0) {
+          for (const capabilityId of claim.capabilityIds) {
+            const matches = claimAssertions.filter(assertion => assertion.status === "active" && assertion.productId === productId && assertion.capabilityId === capabilityId && assertion.assertionType === requiredAssertionType);
+            if (matches.length === 0) errors.push(`${claim.claimId}: claim missing exact active ${requiredAssertionType} support for ${productId}/${capabilityId}`);
+          }
+        } else {
+          const matches = claimAssertions.filter(assertion => assertion.status === "active" && assertion.productId === productId && assertion.capabilityId === null && assertion.assertionType === requiredAssertionType);
+          if (matches.length === 0) errors.push(`${claim.claimId}: claim missing exact active ${requiredAssertionType} support for ${productId}`);
+        }
+      }
+    }
+    if (claim.productIds.length === 0 && claim.supportAssertionIds.length > 0) errors.push(`${claim.claimId}: Product Evidence assertions require an exact claim Product scope`);
     for (const assertionId of claim.repositoryAssertionIds) {
       const assertion = repositoryAssertionById.get(assertionId);
       if (assertion && assertion.status !== "active") errors.push(`${claim.claimId}: inactive repository assertion ${assertionId}`);
       if (assertion && claim.capabilityIds.length > 0 && !claim.capabilityIds.includes(assertion.capabilityId)) errors.push(`${claim.claimId}: repository assertion ${assertionId} is outside claim capability scope`);
+      if (assertion?.status === "active" && assertion.maturityState === "planned-deferred-coming-soon" && !/\b(plan(?:s|ned)?|future|roadmap|deferred|coming soon)\b/i.test(claim.wording)) errors.push(`${claim.claimId}: planned repository capability is presented as a current fact`);
+    }
+    if (claim.repositoryAssertionIds.length > 0) {
+      for (const capabilityId of claim.capabilityIds) {
+        if (!claim.repositoryAssertionIds.some(assertionId => {
+          const assertion = repositoryAssertionById.get(assertionId);
+          return assertion?.status === "active" && assertion.capabilityId === capabilityId;
+        })) errors.push(`${claim.claimId}: repository-backed claim missing exact active support for ${capabilityId}`);
+      }
+      if (claim.capabilityIds.length === 0) errors.push(`${claim.claimId}: repository-backed claim requires exact capability scope`);
     }
     if (strong.test(claim.wording) && claim.disposition !== "prohibited") errors.push(`${claim.claimId}: unsupported strong claim is not prohibited`);
     if (hasLongExactQuotation(claim.wording)) errors.push(`${claim.claimId}: exact quotation exceeds the machine-enforced 25-word boundary`);
@@ -502,6 +661,7 @@ export function semanticErrors(registry, { methodologyCatalog = readJson(METHODO
   for (const product of registry.products) if (methodologyNames.has(product.canonicalName.toLowerCase())) errors.push(`${product.productId}: Product duplicates GAEP-REG-011 methodology truth`);
   if (registry.approval.state !== "not-approved" || registry.approval.publicationState !== "not-published") errors.push("registry has unauthorized Approved/Published state");
   if (registry.projection.registryVersion !== registry.version) errors.push("projection registryVersion differs from canonical registry version");
+  if (registry.projection.documentVersion !== "0.4.1") errors.push("projection documentVersion differs from the corrected projection contract");
   if (registry.projection.capabilityCount !== registry.capabilities.length) errors.push("old or stale capability projection presented as current");
   if (rawText && rawText !== canonicalJson(registry)) errors.push("registry serialization is noncanonical");
   if (rawText && /"(?:totalScore|winner|rank)"\s*:/.test(rawText)) errors.push("invented total score or ranking field is prohibited");

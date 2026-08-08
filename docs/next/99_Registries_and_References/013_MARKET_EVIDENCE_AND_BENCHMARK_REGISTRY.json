@@ -1,8 +1,8 @@
 {
-  "schemaId": "https://gaep.example/schemas/market-evidence-benchmark-registry-2.0.0.schema.json",
-  "schemaVersion": "2.0.0",
+  "schemaId": "https://gaep.example/schemas/market-evidence-benchmark-registry-2.1.0.schema.json",
+  "schemaVersion": "2.1.0",
   "registryId": "GAEP-REG-013",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "status": "proposed",
   "ownerRole": "GAEP Product Research Owner",
   "researchAsOf": "2026-08-08",
@@ -517,7 +517,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "methodology",
+      "productId": null,
+      "methodologyId": "GAEP-MTH-001",
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-002",
@@ -544,7 +548,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "excluded-identity",
+      "productId": null,
+      "methodologyId": null,
+      "excludedIdentityId": "GAEP-EXC-001"
     },
     {
       "evidenceId": "GAEP-EVD-003",
@@ -571,7 +579,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-001",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-004",
@@ -598,7 +610,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-002",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-005",
@@ -625,7 +641,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-003",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-006",
@@ -652,7 +672,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-004",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-007",
@@ -679,7 +703,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-005",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-008",
@@ -706,7 +734,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-006",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-009",
@@ -733,7 +765,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-007",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-010",
@@ -760,7 +796,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-008",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-011",
@@ -787,7 +827,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-009",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-012",
@@ -814,7 +858,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-010",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-013",
@@ -841,7 +889,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-011",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-014",
@@ -868,7 +920,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-012",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-015",
@@ -895,7 +951,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-013",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-016",
@@ -922,7 +982,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-014",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-017",
@@ -949,7 +1013,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "excluded-identity",
+      "productId": null,
+      "methodologyId": null,
+      "excludedIdentityId": "GAEP-EXC-002"
     },
     {
       "evidenceId": "GAEP-EVD-018",
@@ -977,7 +1045,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-001",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-019",
@@ -1005,7 +1077,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-001",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-020",
@@ -1033,7 +1109,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-001",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-021",
@@ -1061,7 +1141,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-002",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-022",
@@ -1089,7 +1173,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-002",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-023",
@@ -1117,7 +1205,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-003",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-024",
@@ -1145,7 +1237,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-003",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-025",
@@ -1173,7 +1269,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-004",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-026",
@@ -1201,7 +1301,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-004",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-027",
@@ -1229,7 +1333,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-005",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-028",
@@ -1257,7 +1365,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-005",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-029",
@@ -1285,7 +1397,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-005",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-030",
@@ -1313,7 +1429,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-006",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-031",
@@ -1341,7 +1461,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-006",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-032",
@@ -1369,7 +1493,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-007",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-033",
@@ -1397,7 +1525,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-007",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-034",
@@ -1425,7 +1557,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-008",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-035",
@@ -1453,7 +1589,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-008",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-036",
@@ -1481,7 +1621,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-008",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-037",
@@ -1509,7 +1653,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-009",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-038",
@@ -1537,7 +1685,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-009",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-039",
@@ -1565,7 +1717,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-010",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-040",
@@ -1593,7 +1749,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-010",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-041",
@@ -1621,7 +1781,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-011",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-042",
@@ -1649,7 +1813,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-011",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-043",
@@ -1677,7 +1845,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-011",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-044",
@@ -1705,7 +1877,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-012",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-045",
@@ -1733,7 +1909,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-013",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-047",
@@ -1761,7 +1941,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-014",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-048",
@@ -1789,7 +1973,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-014",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-049",
@@ -1817,7 +2005,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-016",
+      "methodologyId": null,
+      "excludedIdentityId": null
     },
     {
       "evidenceId": "GAEP-EVD-050",
@@ -1845,7 +2037,11 @@
       ],
       "supersedes": [],
       "supersededBy": [],
-      "sourceDigest": null
+      "sourceDigest": null,
+      "subjectType": "product",
+      "productId": "GAEP-PRD-016",
+      "methodologyId": null,
+      "excludedIdentityId": null
     }
   ],
   "evidenceAssertions": [
@@ -3252,10 +3448,10 @@
     {
       "assertionId": "GAEP-AST-057",
       "evidenceId": "GAEP-EVD-017",
-      "subjectType": "product",
-      "productId": "GAEP-PRD-015",
+      "subjectType": "excluded-identity",
+      "productId": null,
       "methodologyId": null,
-      "excludedIdentityId": null,
+      "excludedIdentityId": "GAEP-EXC-002",
       "capabilityId": null,
       "assertionType": "identity",
       "proposition": "SAP S/4HANA Cloud Public Edition is the official Product/project identity represented by the reviewed vendor or steward page.",
@@ -3274,15 +3470,15 @@
       "supersededBy": [
         "GAEP-AST-061"
       ],
-      "migrationNote": "SAP ERP was removed from the evaluated Product matrix and retained only as an excluded enterprise-application boundary identity."
+      "migrationNote": "Historical SAP identity assertion aligned to the canonical excluded-identity subject in registry v0.2.1."
     },
     {
       "assertionId": "GAEP-AST-058",
       "evidenceId": "GAEP-EVD-017",
-      "subjectType": "product",
-      "productId": "GAEP-PRD-015",
+      "subjectType": "excluded-identity",
+      "productId": null,
       "methodologyId": null,
-      "excludedIdentityId": null,
+      "excludedIdentityId": "GAEP-EXC-002",
       "capabilityId": null,
       "assertionType": "landscape-classification",
       "proposition": "The reviewed official scope supports the bounded P02 relationship classification recorded for SAP S/4HANA Cloud Public Edition.",
@@ -7358,10 +7554,6 @@
     {
       "repositoryAssertionId": "GAEP-REP-001",
       "capabilityId": "GAEP-CAP-001",
-      "repositoryPaths": [
-        "apps/vscode/src/existing-product-adoption-review.ts",
-        "packages/contracts/src/product.ts"
-      ],
       "proposition": "Product definition/adoption and discovery records are implemented and tested.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7376,15 +7568,25 @@
         "GAEP-REP-018",
         "GAEP-REP-019"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/existing-product-adoption-review.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "7b1d75e7685b456aa8c2f91c7d01357636cd43be",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/product.ts",
+          "role": "contract",
+          "gitBlobObjectId": "67c4d2f096c485106f2e25a1cd82688b384c7ba2",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-002",
       "capabilityId": "GAEP-CAP-002",
-      "repositoryPaths": [
-        "packages/contracts/src/source-governance.ts",
-        "packages/engine/src/source-governance.ts"
-      ],
       "proposition": "Exact candidate Source, Baseline, and Provenance records are implemented and tested.",
       "strength": "automated-tested",
       "maturityState": "implemented-and-automated-tested",
@@ -7400,15 +7602,25 @@
         "GAEP-REP-021",
         "GAEP-REP-022"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/source-governance.ts",
+          "role": "contract",
+          "gitBlobObjectId": "08d32835ffa37b3dea8df12d56db80238d77679c",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/source-governance.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "ee7225b3a4e996c85eab596eea6ed3eb9ed0f08e",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-003",
       "capabilityId": "GAEP-CAP-003",
-      "repositoryPaths": [
-        "apps/vscode/src/phase1-canonical-authoring.ts",
-        "apps/vscode/src/product-chat-participant.ts"
-      ],
       "proposition": "Proposal, review, accept, and commit separation is implemented across canonical records.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7422,15 +7634,25 @@
       "supersededBy": [
         "GAEP-REP-023"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/phase1-canonical-authoring.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "a3de4c7cabe42db9e2de9d1da02cd27c8189a9be",
+          "locator": null
+        },
+        {
+          "path": "apps/vscode/src/product-chat-participant.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "b83070235a047f057e43374e0133b14e3d823492",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-004",
       "capabilityId": "GAEP-CAP-004",
-      "repositoryPaths": [
-        "apps/vscode/src/interactive-initiative-applicability-chat.ts",
-        "packages/engine/src/initiative-entry-workflow.ts"
-      ],
       "proposition": "Initiative definition, classification, and exact 49-subject applicability are implemented and tested.",
       "strength": "automated-tested",
       "maturityState": "implemented-and-automated-tested",
@@ -7446,15 +7668,25 @@
         "GAEP-REP-025",
         "GAEP-REP-026"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/interactive-initiative-applicability-chat.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "0eef6a2d871d45196b01d727797400d79894ac80",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/initiative-entry.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "5e44aa2f9caebd60cf93282851a4c96058fac73a",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-005",
       "capabilityId": "GAEP-CAP-005",
-      "repositoryPaths": [
-        "apps/vscode/src/phase1-canonical-presentation.ts",
-        "packages/contracts/src/business-understanding.ts"
-      ],
       "proposition": "Five business-architecture record paths are implemented and tested.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7468,15 +7700,25 @@
       "supersededBy": [
         "GAEP-REP-027"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/phase1-canonical-presentation.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "6744ed1a509c83e5998d95d19a4c0f232b796d94",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/business-understanding.ts",
+          "role": "contract",
+          "gitBlobObjectId": "556908de1de27d9240cd22beb29df15af2ba005d",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-006",
       "capabilityId": "GAEP-CAP-006",
-      "repositoryPaths": [
-        "apps/vscode/src/phase1-canonical-authoring.ts",
-        "packages/contracts/src/business-understanding.ts"
-      ],
       "proposition": "Business understanding and domain-oriented authoring/presentation paths are implemented.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7491,15 +7733,25 @@
         "GAEP-REP-028",
         "GAEP-REP-029"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/phase1-canonical-authoring.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "a3de4c7cabe42db9e2de9d1da02cd27c8189a9be",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/business-understanding.ts",
+          "role": "contract",
+          "gitBlobObjectId": "556908de1de27d9240cd22beb29df15af2ba005d",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-007",
       "capabilityId": "GAEP-CAP-007",
-      "repositoryPaths": [
-        "packages/contracts/src/bounded-context-model.ts",
-        "packages/contracts/src/system-solution-architecture.ts"
-      ],
       "proposition": "Solution, bounded-context, security/privacy, and decision record paths are implemented and tested.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7514,15 +7766,25 @@
         "GAEP-REP-030",
         "GAEP-REP-039"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/bounded-context-model.ts",
+          "role": "contract",
+          "gitBlobObjectId": "ace26a8403137b7f040940e5d40801ea59a6cccc",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/system-solution-architecture.ts",
+          "role": "contract",
+          "gitBlobObjectId": "f612bf1cdf86c14c86e4ce2877a853d3978eb7c8",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-008",
       "capabilityId": "GAEP-CAP-008",
-      "repositoryPaths": [
-        "apps/vscode/src/current-engine-studio-data-source.ts",
-        "packages/engine/src/engine.ts"
-      ],
       "proposition": "Journey ordering and candidate checkpoints can put architecture context before downstream work.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -7537,15 +7799,25 @@
         "GAEP-REP-031",
         "GAEP-REP-032"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/current-engine-studio-data-source.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "d38d3e8a397987cd1b98b22690adcbcf78f1b603",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/engine.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "891d3dee49d1d06a38bd10adf521a76ebf3f2c23",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-009",
       "capabilityId": "GAEP-CAP-009",
-      "repositoryPaths": [
-        "packages/contracts/src/p5-handoff-package.ts",
-        "packages/design-import/src/index.ts"
-      ],
       "proposition": "Design import and handoff contracts exist with a replaceable adapter boundary.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -7559,15 +7831,25 @@
       "supersededBy": [
         "GAEP-REP-033"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/p5-handoff-package.ts",
+          "role": "contract",
+          "gitBlobObjectId": "cd4a9b7e44cc477337c50c2d227675f16168a86d",
+          "locator": null
+        },
+        {
+          "path": "packages/design-import/src/index.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "6bdd9fe7cff3b806bed361488d40480476c0f363",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-010",
       "capabilityId": "GAEP-CAP-010",
-      "repositoryPaths": [
-        "apps/vscode/src/product-journey-markdown-export.ts",
-        "packages/contracts/src/product-journey.ts"
-      ],
       "proposition": "Journey records and exports can trace implementation-oriented work to upstream context.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -7583,16 +7865,25 @@
         "GAEP-REP-034",
         "GAEP-REP-035"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/product-journey-markdown-export.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "4d64eb69785c5d9bb4d7015158be17a1ac6283ef",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/user-journey-model.ts",
+          "role": "contract",
+          "gitBlobObjectId": "05e1746a5ac0e015693798ce1495bca11692e2c7",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-011",
       "capabilityId": "GAEP-CAP-011",
-      "repositoryPaths": [
-        "packages/adapters/claude/src/index.ts",
-        "packages/adapters/codex/src/index.ts",
-        "packages/agent-sdk/src/index.ts"
-      ],
       "proposition": "Replaceable managed agents execute bounded engineering tasks with deterministic tests.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7606,14 +7897,31 @@
       "supersededBy": [
         "GAEP-REP-042"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/adapters/claude/src/index.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "eb3f43a54a8951464778820648033f1ade08ffbb",
+          "locator": null
+        },
+        {
+          "path": "packages/adapters/codex/src/index.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "fc59a0fd0da4f59812f11c9ebaa137d35c52ef55",
+          "locator": null
+        },
+        {
+          "path": "packages/agent-sdk/src/index.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "0997912ed7f19156fa28eb1a36c92ed517e0815f",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-012",
       "capabilityId": "GAEP-CAP-012",
-      "repositoryPaths": [
-        "docs/next/99_Registries_and_References/004_DEFERRED_CAPABILITY_REGISTER.md"
-      ],
       "proposition": "Repository federation is recorded as future Product work.",
       "strength": "planned-document-only",
       "maturityState": "planned-deferred-coming-soon",
@@ -7628,15 +7936,19 @@
         "GAEP-REP-040",
         "GAEP-REP-041"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "docs/next/99_Registries_and_References/004_DEFERRED_CAPABILITY_REGISTER.md",
+          "role": "documentation",
+          "gitBlobObjectId": "2ca7e223ffe48bf37bbb608afa559ccbc149f3e0",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-013",
       "capabilityId": "GAEP-CAP-013",
-      "repositoryPaths": [
-        "packages/contracts/src/evidence.ts",
-        "packages/engine/src/repository.ts"
-      ],
       "proposition": "Tests, assurance/evidence records, trace records, and fail-closed local audit verification are broadly implemented.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7654,15 +7966,25 @@
         "GAEP-REP-039",
         "GAEP-REP-045"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/evidence-registry.ts",
+          "role": "contract",
+          "gitBlobObjectId": "7813f8209718ef25ffc088556cd0d43a6b9f39e1",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/repository.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "117ec8dfd3861f22f1bd92141d7f8a01d1b3cfec",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-014",
       "capabilityId": "GAEP-CAP-014",
-      "repositoryPaths": [
-        "packages/contracts/src/managed-execution.ts",
-        "scripts/phase0_acceptance_report.mjs"
-      ],
       "proposition": "Managed runs and evidence workflows exist and deterministic examples cover release-adjacent behavior.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -7677,15 +7999,25 @@
         "GAEP-REP-043",
         "GAEP-REP-044"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/managed-execution.ts",
+          "role": "contract",
+          "gitBlobObjectId": "02e19daf659a9136761342400fce164db36714ef",
+          "locator": null
+        },
+        {
+          "path": "scripts/phase0_acceptance_report.mjs",
+          "role": "workflow",
+          "gitBlobObjectId": "9ae2bc5b91389331728628c0572b12800cc1c36c",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-015",
       "capabilityId": "GAEP-CAP-015",
-      "repositoryPaths": [
-        "apps/vscode/src/extension.ts",
-        "packages/agent-sdk/src/provider-selection.ts"
-      ],
       "proposition": "Local provider selection, sandboxed execution boundaries, and host controls are implemented in bounded form.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -7700,15 +8032,25 @@
         "GAEP-REP-038",
         "GAEP-REP-047"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/extension.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "a83705110a34ea361b3aed75e7bea7ff45bb29ef",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/provider-switch-implementation.ts",
+          "role": "contract",
+          "gitBlobObjectId": "f28a306187e50b4f0729a283dc2f0bdc99a9ce19",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-016",
       "capabilityId": "GAEP-CAP-016",
-      "repositoryPaths": [
-        "apps/vscode/src/product-journey-markdown-export.ts",
-        "packages/engine/src/repository.ts"
-      ],
       "proposition": "Hash-chain verification, immutable history, and derived portable exports are implemented.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7724,16 +8066,25 @@
         "GAEP-REP-045",
         "GAEP-REP-047"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/product-journey-markdown-export.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "4d64eb69785c5d9bb4d7015158be17a1ac6283ef",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/repository.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "117ec8dfd3861f22f1bd92141d7f8a01d1b3cfec",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-017",
       "capabilityId": "GAEP-CAP-017",
-      "repositoryPaths": [
-        "packages/adapters/claude/src/index.ts",
-        "packages/adapters/codex/src/index.ts",
-        "packages/agent-sdk/src/provider-selection.ts"
-      ],
       "proposition": "Provider adapters and host boundaries are replaceable and tested.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7747,15 +8098,31 @@
       "supersededBy": [
         "GAEP-REP-046"
       ],
-      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized."
+      "migrationNote": "Superseded by one or more exact 30-capability repository assertions; no automatic maturity fan-out is authorized.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/adapters/claude/src/index.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "eb3f43a54a8951464778820648033f1ade08ffbb",
+          "locator": null
+        },
+        {
+          "path": "packages/adapters/codex/src/index.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "fc59a0fd0da4f59812f11c9ebaa137d35c52ef55",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/provider-switch-implementation.ts",
+          "role": "contract",
+          "gitBlobObjectId": "f28a306187e50b4f0729a283dc2f0bdc99a9ce19",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-018",
       "capabilityId": "GAEP-CAP-101",
-      "repositoryPaths": [
-        "apps/vscode/src/existing-product-adoption-review.ts",
-        "packages/contracts/src/product.ts"
-      ],
       "proposition": "Adoption review and Product definition workflows implement bounded Product intent capture.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7769,15 +8136,25 @@
         "GAEP-REP-001"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/existing-product-adoption-review.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "7b1d75e7685b456aa8c2f91c7d01357636cd43be",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/product.ts",
+          "role": "contract",
+          "gitBlobObjectId": "67c4d2f096c485106f2e25a1cd82688b384c7ba2",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-019",
       "capabilityId": "GAEP-CAP-102",
-      "repositoryPaths": [
-        "apps/vscode/src/existing-product-adoption-review.ts",
-        "packages/contracts/src/product.ts"
-      ],
       "proposition": "Product Studio and adoption flows provide guided next actions, but onboarding coverage is incomplete.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -7791,15 +8168,25 @@
         "GAEP-REP-001"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/existing-product-adoption-review.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "7b1d75e7685b456aa8c2f91c7d01357636cd43be",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/product.ts",
+          "role": "contract",
+          "gitBlobObjectId": "67c4d2f096c485106f2e25a1cd82688b384c7ba2",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-020",
       "capabilityId": "GAEP-CAP-103",
-      "repositoryPaths": [
-        "packages/contracts/src/source-governance.ts",
-        "packages/engine/src/source-governance.ts"
-      ],
       "proposition": "Source governance contracts and engine tests implement exact candidate Source intake.",
       "strength": "automated-tested",
       "maturityState": "implemented-and-automated-tested",
@@ -7813,15 +8200,37 @@
         "GAEP-REP-002"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/source-governance.test.ts",
+          "role": "test",
+          "gitBlobObjectId": "c3574d21f21dec6e68a8dd274afeab4d68dc5657",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/source-governance.ts",
+          "role": "contract",
+          "gitBlobObjectId": "08d32835ffa37b3dea8df12d56db80238d77679c",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/source-governance.test.ts",
+          "role": "test",
+          "gitBlobObjectId": "63591f5916ea1ecb5a1f2a874f11e0682fae9610",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/source-governance.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "ee7225b3a4e996c85eab596eea6ed3eb9ed0f08e",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-021",
       "capabilityId": "GAEP-CAP-104",
-      "repositoryPaths": [
-        "packages/contracts/src/source-governance.ts",
-        "packages/engine/src/source-governance.ts"
-      ],
       "proposition": "Source governance contracts and engine tests implement exact Baseline membership and revisions.",
       "strength": "automated-tested",
       "maturityState": "implemented-and-automated-tested",
@@ -7835,17 +8244,37 @@
         "GAEP-REP-002"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/source-governance.test.ts",
+          "role": "test",
+          "gitBlobObjectId": "c3574d21f21dec6e68a8dd274afeab4d68dc5657",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/source-governance.ts",
+          "role": "contract",
+          "gitBlobObjectId": "08d32835ffa37b3dea8df12d56db80238d77679c",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/source-governance.test.ts",
+          "role": "test",
+          "gitBlobObjectId": "63591f5916ea1ecb5a1f2a874f11e0682fae9610",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/source-governance.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "ee7225b3a4e996c85eab596eea6ed3eb9ed0f08e",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-022",
       "capabilityId": "GAEP-CAP-105",
-      "repositoryPaths": [
-        "apps/vscode/src/product-journey-markdown-export.ts",
-        "packages/contracts/src/source-governance.ts",
-        "packages/engine/src/repository.ts",
-        "packages/engine/src/source-governance.ts"
-      ],
       "proposition": "Source provenance, revisions, and exported evidence implement exact lineage.",
       "strength": "automated-tested",
       "maturityState": "implemented-and-automated-tested",
@@ -7860,15 +8289,49 @@
         "GAEP-REP-016"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/product-journey-markdown-export.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "4d64eb69785c5d9bb4d7015158be17a1ac6283ef",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/source-governance.test.ts",
+          "role": "test",
+          "gitBlobObjectId": "c3574d21f21dec6e68a8dd274afeab4d68dc5657",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/source-governance.ts",
+          "role": "contract",
+          "gitBlobObjectId": "08d32835ffa37b3dea8df12d56db80238d77679c",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/repository.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "117ec8dfd3861f22f1bd92141d7f8a01d1b3cfec",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/source-governance.test.ts",
+          "role": "test",
+          "gitBlobObjectId": "63591f5916ea1ecb5a1f2a874f11e0682fae9610",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/source-governance.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "ee7225b3a4e996c85eab596eea6ed3eb9ed0f08e",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-023",
       "capabilityId": "GAEP-CAP-106",
-      "repositoryPaths": [
-        "apps/vscode/src/phase1-canonical-authoring.ts",
-        "apps/vscode/src/product-chat-participant.ts"
-      ],
       "proposition": "Canonical authoring separates proposal, review, acceptance, commit, and authority states.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7882,15 +8345,25 @@
         "GAEP-REP-003"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/phase1-canonical-authoring.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "a3de4c7cabe42db9e2de9d1da02cd27c8189a9be",
+          "locator": null
+        },
+        {
+          "path": "apps/vscode/src/product-chat-participant.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "b83070235a047f057e43374e0133b14e3d823492",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-024",
       "capabilityId": "GAEP-CAP-107",
-      "repositoryPaths": [
-        "apps/vscode/src/interactive-initiative-applicability-chat.ts",
-        "packages/engine/src/initiative-entry-workflow.ts"
-      ],
       "proposition": "Initiative conversational workflows implement bounded Initiative definition and revision.",
       "strength": "automated-tested",
       "maturityState": "implemented-and-automated-tested",
@@ -7904,15 +8377,37 @@
         "GAEP-REP-004"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/interactive-initiative-applicability-chat.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "0eef6a2d871d45196b01d727797400d79894ac80",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/initiative-entry-workflow.test.ts",
+          "role": "test",
+          "gitBlobObjectId": "5990b2aff9be8780c270fd51d52173ef63d9a1d7",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/initiative-entry.test.ts",
+          "role": "test",
+          "gitBlobObjectId": "591f3b82198c06a094eef1d3db96d8bc00f250f4",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/initiative-entry.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "5e44aa2f9caebd60cf93282851a4c96058fac73a",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-025",
       "capabilityId": "GAEP-CAP-108",
-      "repositoryPaths": [
-        "apps/vscode/src/interactive-initiative-applicability-chat.ts",
-        "packages/engine/src/initiative-entry-workflow.ts"
-      ],
       "proposition": "Initiative classification contracts and tests implement classification, risk, and exposure records.",
       "strength": "automated-tested",
       "maturityState": "implemented-and-automated-tested",
@@ -7926,15 +8421,37 @@
         "GAEP-REP-004"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/interactive-initiative-applicability-chat.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "0eef6a2d871d45196b01d727797400d79894ac80",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/initiative-entry-workflow.test.ts",
+          "role": "test",
+          "gitBlobObjectId": "5990b2aff9be8780c270fd51d52173ef63d9a1d7",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/initiative-entry.test.ts",
+          "role": "test",
+          "gitBlobObjectId": "591f3b82198c06a094eef1d3db96d8bc00f250f4",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/initiative-entry.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "5e44aa2f9caebd60cf93282851a4c96058fac73a",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-026",
       "capabilityId": "GAEP-CAP-109",
-      "repositoryPaths": [
-        "apps/vscode/src/interactive-initiative-applicability-chat.ts",
-        "packages/engine/src/initiative-entry-workflow.ts"
-      ],
       "proposition": "Applicability matrix workflows and tests implement lifecycle tailoring without absence-as-N/A.",
       "strength": "automated-tested",
       "maturityState": "implemented-and-automated-tested",
@@ -7948,15 +8465,37 @@
         "GAEP-REP-004"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/interactive-initiative-applicability-chat.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "0eef6a2d871d45196b01d727797400d79894ac80",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/initiative-entry-workflow.test.ts",
+          "role": "test",
+          "gitBlobObjectId": "5990b2aff9be8780c270fd51d52173ef63d9a1d7",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/initiative-entry.test.ts",
+          "role": "test",
+          "gitBlobObjectId": "591f3b82198c06a094eef1d3db96d8bc00f250f4",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/initiative-entry.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "5e44aa2f9caebd60cf93282851a4c96058fac73a",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-027",
       "capabilityId": "GAEP-CAP-110",
-      "repositoryPaths": [
-        "apps/vscode/src/phase1-canonical-presentation.ts",
-        "packages/contracts/src/business-understanding.ts"
-      ],
       "proposition": "Canonical Product Journey presentation and contracts represent business architecture records.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7970,15 +8509,25 @@
         "GAEP-REP-005"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/phase1-canonical-presentation.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "6744ed1a509c83e5998d95d19a4c0f232b796d94",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/business-understanding.ts",
+          "role": "contract",
+          "gitBlobObjectId": "556908de1de27d9240cd22beb29df15af2ba005d",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-028",
       "capabilityId": "GAEP-CAP-111",
-      "repositoryPaths": [
-        "apps/vscode/src/phase1-canonical-authoring.ts",
-        "packages/contracts/src/business-understanding.ts"
-      ],
       "proposition": "Canonical authoring and Product Journey contracts represent domain discovery and EventStorming outputs.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -7992,15 +8541,25 @@
         "GAEP-REP-006"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/phase1-canonical-authoring.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "a3de4c7cabe42db9e2de9d1da02cd27c8189a9be",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/business-understanding.ts",
+          "role": "contract",
+          "gitBlobObjectId": "556908de1de27d9240cd22beb29df15af2ba005d",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-029",
       "capabilityId": "GAEP-CAP-112",
-      "repositoryPaths": [
-        "apps/vscode/src/phase1-canonical-authoring.ts",
-        "packages/contracts/src/business-understanding.ts"
-      ],
       "proposition": "Bounded-context and Product Journey contracts represent DDD strategic design candidates.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -8014,15 +8573,25 @@
         "GAEP-REP-006"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/phase1-canonical-authoring.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "a3de4c7cabe42db9e2de9d1da02cd27c8189a9be",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/business-understanding.ts",
+          "role": "contract",
+          "gitBlobObjectId": "556908de1de27d9240cd22beb29df15af2ba005d",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-030",
       "capabilityId": "GAEP-CAP-113",
-      "repositoryPaths": [
-        "packages/contracts/src/bounded-context-model.ts",
-        "packages/contracts/src/system-solution-architecture.ts"
-      ],
       "proposition": "Architecture contracts represent bounded contexts, decisions, and views; quality-attribute depth remains bounded.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -8036,15 +8605,25 @@
         "GAEP-REP-007"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/bounded-context-model.ts",
+          "role": "contract",
+          "gitBlobObjectId": "ace26a8403137b7f040940e5d40801ea59a6cccc",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/system-solution-architecture.ts",
+          "role": "contract",
+          "gitBlobObjectId": "f612bf1cdf86c14c86e4ce2877a853d3978eb7c8",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-031",
       "capabilityId": "GAEP-CAP-114",
-      "repositoryPaths": [
-        "apps/vscode/src/current-engine-studio-data-source.ts",
-        "packages/engine/src/engine.ts"
-      ],
       "proposition": "Journey ordering enforces architecture before implementation authorization only partially.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -8058,17 +8637,25 @@
         "GAEP-REP-008"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/current-engine-studio-data-source.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "d38d3e8a397987cd1b98b22690adcbcf78f1b603",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/engine.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "891d3dee49d1d06a38bd10adf521a76ebf3f2c23",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-032",
       "capabilityId": "GAEP-CAP-115",
-      "repositoryPaths": [
-        "apps/vscode/src/current-engine-studio-data-source.ts",
-        "apps/vscode/src/product-journey-markdown-export.ts",
-        "packages/contracts/src/product-journey.ts",
-        "packages/engine/src/engine.ts"
-      ],
       "proposition": "Journey and export artifacts represent phased work, while full wave/slice planning remains partial.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -8083,15 +8670,37 @@
         "GAEP-REP-010"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/current-engine-studio-data-source.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "d38d3e8a397987cd1b98b22690adcbcf78f1b603",
+          "locator": null
+        },
+        {
+          "path": "apps/vscode/src/product-journey-markdown-export.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "4d64eb69785c5d9bb4d7015158be17a1ac6283ef",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/user-journey-model.ts",
+          "role": "contract",
+          "gitBlobObjectId": "05e1746a5ac0e015693798ce1495bca11692e2c7",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/engine.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "891d3dee49d1d06a38bd10adf521a76ebf3f2c23",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-033",
       "capabilityId": "GAEP-CAP-116",
-      "repositoryPaths": [
-        "packages/contracts/src/p5-handoff-package.ts",
-        "packages/design-import/src/index.ts"
-      ],
       "proposition": "Design-import and handoff contracts support tool-neutral preparation, but adapter breadth is incomplete.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -8105,15 +8714,25 @@
         "GAEP-REP-009"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/p5-handoff-package.ts",
+          "role": "contract",
+          "gitBlobObjectId": "cd4a9b7e44cc477337c50c2d227675f16168a86d",
+          "locator": null
+        },
+        {
+          "path": "packages/design-import/src/index.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "6bdd9fe7cff3b806bed361488d40480476c0f363",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-034",
       "capabilityId": "GAEP-CAP-117",
-      "repositoryPaths": [
-        "apps/vscode/src/product-journey-markdown-export.ts",
-        "packages/contracts/src/product-journey.ts"
-      ],
       "proposition": "Product Journey export derives work structure, while full architecture-bound backlog generation remains partial.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -8127,17 +8746,25 @@
         "GAEP-REP-010"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/product-journey-markdown-export.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "4d64eb69785c5d9bb4d7015158be17a1ac6283ef",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/user-journey-model.ts",
+          "role": "contract",
+          "gitBlobObjectId": "05e1746a5ac0e015693798ce1495bca11692e2c7",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-035",
       "capabilityId": "GAEP-CAP-118",
-      "repositoryPaths": [
-        "apps/vscode/src/product-journey-markdown-export.ts",
-        "packages/contracts/src/evidence.ts",
-        "packages/contracts/src/product-journey.ts",
-        "packages/engine/src/repository.ts"
-      ],
       "proposition": "Journey and evidence contracts carry acceptance/readiness concepts, while complete DoR/DoD enforcement is partial.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -8152,15 +8779,37 @@
         "GAEP-REP-013"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/product-journey-markdown-export.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "4d64eb69785c5d9bb4d7015158be17a1ac6283ef",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/evidence-registry.ts",
+          "role": "contract",
+          "gitBlobObjectId": "7813f8209718ef25ffc088556cd0d43a6b9f39e1",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/user-journey-model.ts",
+          "role": "contract",
+          "gitBlobObjectId": "05e1746a5ac0e015693798ce1495bca11692e2c7",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/repository.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "117ec8dfd3861f22f1bd92141d7f8a01d1b3cfec",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-036",
       "capabilityId": "GAEP-CAP-119",
-      "repositoryPaths": [
-        "packages/contracts/src/evidence.ts",
-        "packages/engine/src/repository.ts"
-      ],
       "proposition": "Evidence and report contracts represent tests and assurance records.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -8174,15 +8823,25 @@
         "GAEP-REP-013"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/evidence-registry.ts",
+          "role": "contract",
+          "gitBlobObjectId": "7813f8209718ef25ffc088556cd0d43a6b9f39e1",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/repository.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "117ec8dfd3861f22f1bd92141d7f8a01d1b3cfec",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-037",
       "capabilityId": "GAEP-CAP-120",
-      "repositoryPaths": [
-        "packages/contracts/src/evidence.ts",
-        "packages/engine/src/repository.ts"
-      ],
       "proposition": "Evidence and report contracts implement cross-artifact traceability records.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -8196,15 +8855,25 @@
         "GAEP-REP-013"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/evidence-registry.ts",
+          "role": "contract",
+          "gitBlobObjectId": "7813f8209718ef25ffc088556cd0d43a6b9f39e1",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/repository.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "117ec8dfd3861f22f1bd92141d7f8a01d1b3cfec",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-038",
       "capabilityId": "GAEP-CAP-121",
-      "repositoryPaths": [
-        "apps/vscode/src/extension.ts",
-        "packages/agent-sdk/src/provider-selection.ts"
-      ],
       "proposition": "Provider selection and extension controls implement bounded policy surfaces; compliance authority is absent.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -8218,17 +8887,25 @@
         "GAEP-REP-015"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/extension.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "a83705110a34ea361b3aed75e7bea7ff45bb29ef",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/provider-switch-implementation.ts",
+          "role": "contract",
+          "gitBlobObjectId": "f28a306187e50b4f0729a283dc2f0bdc99a9ce19",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-039",
       "capabilityId": "GAEP-CAP-122",
-      "repositoryPaths": [
-        "packages/contracts/src/bounded-context-model.ts",
-        "packages/contracts/src/evidence.ts",
-        "packages/contracts/src/system-solution-architecture.ts",
-        "packages/engine/src/repository.ts"
-      ],
       "proposition": "Contracts model bounded contexts and evidence links, while complete data/API/event contract governance is partial.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -8243,14 +8920,37 @@
         "GAEP-REP-013"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/bounded-context-model.ts",
+          "role": "contract",
+          "gitBlobObjectId": "ace26a8403137b7f040940e5d40801ea59a6cccc",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/evidence-registry.ts",
+          "role": "contract",
+          "gitBlobObjectId": "7813f8209718ef25ffc088556cd0d43a6b9f39e1",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/system-solution-architecture.ts",
+          "role": "contract",
+          "gitBlobObjectId": "f612bf1cdf86c14c86e4ce2877a853d3978eb7c8",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/repository.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "117ec8dfd3861f22f1bd92141d7f8a01d1b3cfec",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-040",
       "capabilityId": "GAEP-CAP-123",
-      "repositoryPaths": [
-        "docs/next/99_Registries_and_References/004_DEFERRED_CAPABILITY_REGISTER.md"
-      ],
       "proposition": "Current engine state links workspace and repository context, while complete implementation topology is partial.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -8264,14 +8964,25 @@
         "GAEP-REP-012"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "docs/next/99_Registries_and_References/004_DEFERRED_CAPABILITY_REGISTER.md",
+          "role": "documentation",
+          "gitBlobObjectId": "2ca7e223ffe48bf37bbb608afa559ccbc149f3e0",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/repository.ts",
+          "role": "contract",
+          "gitBlobObjectId": "92ef27bf78680152b0297812037de24ba9ed1ccd",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-041",
       "capabilityId": "GAEP-CAP-124",
-      "repositoryPaths": [
-        "docs/next/99_Registries_and_References/004_DEFERRED_CAPABILITY_REGISTER.md"
-      ],
       "proposition": "Cross-repository slice distribution and drift detection remains explicitly deferred.",
       "strength": "planned-document-only",
       "maturityState": "planned-deferred-coming-soon",
@@ -8285,16 +8996,19 @@
         "GAEP-REP-012"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "docs/next/99_Registries_and_References/004_DEFERRED_CAPABILITY_REGISTER.md",
+          "role": "documentation",
+          "gitBlobObjectId": "2ca7e223ffe48bf37bbb608afa559ccbc149f3e0",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-042",
       "capabilityId": "GAEP-CAP-125",
-      "repositoryPaths": [
-        "packages/adapters/claude/src/index.ts",
-        "packages/adapters/codex/src/index.ts",
-        "packages/agent-sdk/src/index.ts"
-      ],
       "proposition": "Provider adapters execute governed agent authoring and implementation interactions.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -8308,15 +9022,31 @@
         "GAEP-REP-011"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/adapters/claude/src/index.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "eb3f43a54a8951464778820648033f1ade08ffbb",
+          "locator": null
+        },
+        {
+          "path": "packages/adapters/codex/src/index.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "fc59a0fd0da4f59812f11c9ebaa137d35c52ef55",
+          "locator": null
+        },
+        {
+          "path": "packages/agent-sdk/src/index.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "0997912ed7f19156fa28eb1a36c92ed517e0815f",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-043",
       "capabilityId": "GAEP-CAP-126",
-      "repositoryPaths": [
-        "packages/contracts/src/managed-execution.ts",
-        "scripts/phase0_acceptance_report.mjs"
-      ],
       "proposition": "Managed execution contracts cover run evidence, while complete CI/CD release governance is partial.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -8330,15 +9060,25 @@
         "GAEP-REP-014"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/contracts/src/managed-execution.ts",
+          "role": "contract",
+          "gitBlobObjectId": "02e19daf659a9136761342400fce164db36714ef",
+          "locator": null
+        },
+        {
+          "path": "scripts/phase0_acceptance_report.mjs",
+          "role": "workflow",
+          "gitBlobObjectId": "9ae2bc5b91389331728628c0572b12800cc1c36c",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-044",
       "capabilityId": "GAEP-CAP-127",
-      "repositoryPaths": [
-        "packages/contracts/src/managed-execution.ts",
-        "scripts/phase0_acceptance_report.mjs"
-      ],
       "proposition": "Runtime operations feedback, observability, recovery, and reliability integration remains deferred.",
       "strength": "planned-document-only",
       "maturityState": "planned-deferred-coming-soon",
@@ -8352,16 +9092,31 @@
         "GAEP-REP-014"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "docs/next/99_Registries_and_References/004_DEFERRED_CAPABILITY_REGISTER.md",
+          "role": "documentation",
+          "gitBlobObjectId": "2ca7e223ffe48bf37bbb608afa559ccbc149f3e0",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/managed-execution.ts",
+          "role": "contract",
+          "gitBlobObjectId": "02e19daf659a9136761342400fce164db36714ef",
+          "locator": null
+        },
+        {
+          "path": "scripts/phase0_acceptance_report.mjs",
+          "role": "workflow",
+          "gitBlobObjectId": "9ae2bc5b91389331728628c0572b12800cc1c36c",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-045",
       "capabilityId": "GAEP-CAP-128",
-      "repositoryPaths": [
-        "apps/vscode/src/product-journey-markdown-export.ts",
-        "packages/contracts/src/evidence.ts",
-        "packages/engine/src/repository.ts"
-      ],
       "proposition": "Evidence records, audit events, revisions, and exports preserve decision history.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -8376,16 +9131,31 @@
         "GAEP-REP-016"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/product-journey-markdown-export.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "4d64eb69785c5d9bb4d7015158be17a1ac6283ef",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/evidence-registry.ts",
+          "role": "contract",
+          "gitBlobObjectId": "7813f8209718ef25ffc088556cd0d43a6b9f39e1",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/repository.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "117ec8dfd3861f22f1bd92141d7f8a01d1b3cfec",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-046",
       "capabilityId": "GAEP-CAP-129",
-      "repositoryPaths": [
-        "packages/adapters/claude/src/index.ts",
-        "packages/adapters/codex/src/index.ts",
-        "packages/agent-sdk/src/provider-selection.ts"
-      ],
       "proposition": "Claude, Codex, and provider adapters implement replaceable provider interfaces.",
       "strength": "observed-implementation",
       "maturityState": "implemented-awaiting-product-owner-acceptance",
@@ -8399,17 +9169,31 @@
         "GAEP-REP-017"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "packages/adapters/claude/src/index.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "eb3f43a54a8951464778820648033f1ade08ffbb",
+          "locator": null
+        },
+        {
+          "path": "packages/adapters/codex/src/index.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "fc59a0fd0da4f59812f11c9ebaa137d35c52ef55",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/provider-switch-implementation.ts",
+          "role": "contract",
+          "gitBlobObjectId": "f28a306187e50b4f0729a283dc2f0bdc99a9ce19",
+          "locator": null
+        }
+      ]
     },
     {
       "repositoryAssertionId": "GAEP-REP-047",
       "capabilityId": "GAEP-CAP-130",
-      "repositoryPaths": [
-        "apps/vscode/src/extension.ts",
-        "apps/vscode/src/product-journey-markdown-export.ts",
-        "packages/agent-sdk/src/provider-selection.ts",
-        "packages/engine/src/repository.ts"
-      ],
       "proposition": "Local provider and export surfaces provide bounded administration and portability; residency controls are incomplete.",
       "strength": "partial-implementation",
       "maturityState": "partial",
@@ -8424,7 +9208,33 @@
         "GAEP-REP-016"
       ],
       "supersededBy": [],
-      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history."
+      "migrationNote": "New exact 30-capability repository assertion; legacy combined assertions are preserved as superseded history.",
+      "repositoryEvidence": [
+        {
+          "path": "apps/vscode/src/extension.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "a83705110a34ea361b3aed75e7bea7ff45bb29ef",
+          "locator": null
+        },
+        {
+          "path": "apps/vscode/src/product-journey-markdown-export.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "4d64eb69785c5d9bb4d7015158be17a1ac6283ef",
+          "locator": null
+        },
+        {
+          "path": "packages/contracts/src/provider-switch-implementation.ts",
+          "role": "contract",
+          "gitBlobObjectId": "f28a306187e50b4f0729a283dc2f0bdc99a9ce19",
+          "locator": null
+        },
+        {
+          "path": "packages/engine/src/repository.ts",
+          "role": "implementation",
+          "gitBlobObjectId": "117ec8dfd3861f22f1bd92141d7f8a01d1b3cfec",
+          "locator": null
+        }
+      ]
     }
   ],
   "methodologyBindings": [
@@ -14735,7 +15545,7 @@
         "Product and Engineering leaders"
       ],
       "useContext": "Internal P02 decision support",
-      "wording": "GAEP currently implements and automatically tests exact candidate Source, Baseline, Provenance, revision-history, and local audit-chain behaviors.",
+      "wording": "GAEP currently implements exact candidate Source, Baseline, Provenance, traceability, revision-history, and local audit-chain behaviors; repository tests cover the Source, Baseline, and Provenance records.",
       "claimClass": "substantiated-bounded-fact",
       "supportAssertionIds": [],
       "productIds": [],
@@ -15568,6 +16378,7 @@
   ],
   "projection": {
     "documentId": "GAEP-STR-004",
+    "documentVersion": "0.4.1",
     "path": "docs/next/00_GAEP_Product_Strategy/004_POSITIONING_AND_ALTERNATIVES.md",
     "generatedSections": [
       "Claim registry summary",
@@ -15579,7 +16390,7 @@
       "Market/category definition",
       "P03 projection contract"
     ],
-    "registryVersion": "0.2.0",
+    "registryVersion": "0.2.1",
     "capabilityCount": 30
   }
 }

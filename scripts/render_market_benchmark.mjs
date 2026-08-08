@@ -95,7 +95,7 @@ id: GAEP-STR-004
 title: Evidence-Governed Market Category, Benchmark, and Positioning
 document_type: product-strategy
 schema_version: 1.0
-version: 0.4.0
+version: ${registry.projection.documentVersion}
 status: proposed
 owner_role: GAEP Product Owner
 scope: P02 market category, competitive benchmark, executive claims, and adoption decision support
@@ -209,7 +209,7 @@ These observations derive from exact repository assertions at the recorded commi
 
 ${table(["Capability", "GAEP maturity", "Repository observation", "Limitation"], registry.gaepMaturity.map(item => {
   const assertions = item.repositoryAssertionIds.map(id => repositoryAssertionById.get(id));
-  return [`${item.capabilityId} — ${capabilityById.get(item.capabilityId).name}`, item.maturityState, assertions.map(entry => `${entry.repositoryAssertionId}: ${entry.proposition} [${entry.repositoryPaths.join(", ")}]`).join("; "), item.limitation];
+  return [`${item.capabilityId} — ${capabilityById.get(item.capabilityId).name}`, item.maturityState, assertions.map(entry => `${entry.repositoryAssertionId}: ${entry.proposition} [${entry.repositoryEvidence.map(proof => `${proof.role}:${proof.path}@${proof.gitBlobObjectId.slice(0, 12)}`).join(", ")}]`).join("; "), item.limitation];
 }))}
 
 GAEP's candidate distinction is the combination of governed sources, explicit human proposal/review/accept/commit authority, Initiative tailoring, cross-lifecycle traceability, and provider/tool portability. Each element must be stated at its exact maturity. Planned work is not comparable to another Product's shipped feature as equivalent delivery.
@@ -253,7 +253,7 @@ P03 must consume registry version and digest, preserve Unknown and current-vs-fu
 ## Canonical source and migration
 
 - **Canonical market and benchmark truth:** GAEP-REG-013 v${registry.version}.
-- **Contract:** GAEP-REG-012 v0.2.0.
+- **Contract:** GAEP-REG-012 v0.2.1.
 - **Methodology and standards truth:** GAEP-REG-011 remains owned by P01.
 - **This document:** deterministic human projection only.
 - **Legacy 17-capability taxonomy:** preserved only through the registry migration map; legacy IDs are not repurposed and one-to-many conclusions require human review.
