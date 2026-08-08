@@ -6,6 +6,8 @@
 **Status:** Draft  
 **Authority:** External-project evaluation and integration registry
 
+> **Historical authority notice (P02):** This Draft is preserved as historical research input. It is no longer a current market-category, competitor, benchmark, or executive-claim authority. Current Proposed market evidence and relationship classifications are owned by `GAEP-REG-013` and projected through `GAEP-STR-004`; methodology and standards truth remains in `GAEP-REG-011`. Nothing in that migration approves an external project, claim, integration, purchase, or publication.
+
 ## Purpose
 
 This document defines how GAEP evaluates external projects and records the intended relationship to significant candidates mentioned in the founding context.

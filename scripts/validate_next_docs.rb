@@ -29,6 +29,8 @@ ASSURANCE_CASE = NEXT_DOCS.join("06_GAEP_On_GAEP", "005_ASSURANCE_CASE.md")
 METHODOLOGY_CONSTITUTION = NEXT_DOCS.join("01_Constitution", "004_METHODOLOGY_CONSTITUTION.md")
 METHODOLOGY_REFERENCE_CATALOG = NEXT_DOCS.join("99_Registries_and_References", "011_METHODOLOGY_REFERENCE_CATALOG.json")
 METHODOLOGY_REFERENCE_SCHEMA = NEXT_DOCS.join("99_Registries_and_References", "011_METHODOLOGY_REFERENCE_CATALOG.schema.json")
+MARKET_BENCHMARK_REGISTRY = NEXT_DOCS.join("99_Registries_and_References", "013_MARKET_EVIDENCE_AND_BENCHMARK_REGISTRY.json")
+MARKET_BENCHMARK_SCHEMA = NEXT_DOCS.join("99_Registries_and_References", "013_MARKET_EVIDENCE_AND_BENCHMARK_REGISTRY.schema.json")
 METHODOLOGY_CROSSWALK = NEXT_DOCS.join("99_Registries_and_References", "002_EXTERNAL_STANDARDS_CROSSWALK.md")
 METHODOLOGY_REFERENCE_CONTRACT = NEXT_DOCS.join("99_Registries_and_References", "003_REFERENCE_ENTRY_CONTRACT.md")
 POSITIONING_AND_NAMING = NEXT_DOCS.join("00_GAEP_Product_Strategy", "004_POSITIONING_AND_ALTERNATIVES.md")
@@ -388,6 +390,50 @@ elsif !METHODOLOGY_CROSSWALK.file?
   errors << "missing Methodology Crosswalk #{METHODOLOGY_CROSSWALK.relative_path_from(ROOT)}"
 end
 
+market_benchmark_registry = nil
+market_benchmark_digest = nil
+market_product_count = 0
+market_evidence_count = 0
+market_benchmark_cell_count = 0
+market_claim_count = 0
+if !MARKET_BENCHMARK_REGISTRY.file?
+  errors << "missing Market Evidence and Benchmark Registry #{MARKET_BENCHMARK_REGISTRY.relative_path_from(ROOT)}"
+else
+  raw_market_registry = MARKET_BENCHMARK_REGISTRY.read
+  begin
+    market_benchmark_registry = JSON.parse(raw_market_registry)
+  rescue JSON::ParserError => e
+    errors << "#{MARKET_BENCHMARK_REGISTRY.relative_path_from(ROOT)}: invalid JSON: #{e.message}"
+  end
+  if market_benchmark_registry
+    market_benchmark_digest = Digest::SHA256.hexdigest(raw_market_registry)
+    market_product_count = Array(market_benchmark_registry["products"]).length
+    market_evidence_count = Array(market_benchmark_registry["evidence"]).length
+    market_benchmark_cell_count = Array(market_benchmark_registry["benchmarkRows"]).sum { |row| Array(row["cells"]).length }
+    market_claim_count = Array(market_benchmark_registry["claims"]).length
+    registry_id = market_benchmark_registry["registryId"]
+    registry_relative = MARKET_BENCHMARK_REGISTRY.relative_path_from(ROOT).to_s
+    if documents.key?(registry_id)
+      errors << "duplicate document or catalog id #{registry_id}: #{documents[registry_id]} and #{registry_relative}"
+    else
+      documents[registry_id] = registry_relative
+    end
+  end
+end
+
+if !MARKET_BENCHMARK_SCHEMA.file?
+  errors << "missing Market Evidence and Benchmark Registry schema #{MARKET_BENCHMARK_SCHEMA.relative_path_from(ROOT)}"
+else
+  begin
+    market_schema = JSON.parse(MARKET_BENCHMARK_SCHEMA.read)
+    if market_benchmark_registry && market_benchmark_registry["schemaId"] != market_schema["$id"]
+      errors << "#{MARKET_BENCHMARK_SCHEMA.relative_path_from(ROOT)}: registry schema binding is stale"
+    end
+  rescue JSON::ParserError => e
+    errors << "#{MARKET_BENCHMARK_SCHEMA.relative_path_from(ROOT)}: invalid JSON: #{e.message}"
+  end
+end
+
 if methodology_catalog && METHODOLOGY_CONSTITUTION.file?
   constitution_text = METHODOLOGY_CONSTITUTION.read
   Array(methodology_catalog["concerns"]).each do |concern|
@@ -423,6 +469,15 @@ if POSITIONING_AND_NAMING.file?
     "drift inventory" => "## Naming drift inventory"
   }.each do |label, value|
     errors << "#{POSITIONING_AND_NAMING.relative_path_from(ROOT)}: missing naming #{label}" unless naming_text.include?(value)
+  end
+  if market_benchmark_registry
+    errors << "#{POSITIONING_AND_NAMING.relative_path_from(ROOT)}: market registry digest projection is stale" unless naming_text.include?("registry SHA-256 `#{market_benchmark_digest}`")
+    errors << "#{POSITIONING_AND_NAMING.relative_path_from(ROOT)}: market registry identity projection is stale" unless naming_text.include?(market_benchmark_registry["registryId"])
+    errors << "#{POSITIONING_AND_NAMING.relative_path_from(ROOT)}: market registry version projection is stale" unless naming_text.include?("v#{market_benchmark_registry['version']}")
+    errors << "#{POSITIONING_AND_NAMING.relative_path_from(ROOT)}: market research date projection is stale" unless naming_text.include?(market_benchmark_registry["researchAsOf"])
+    Array(market_benchmark_registry["products"]).each do |product|
+      errors << "#{POSITIONING_AND_NAMING.relative_path_from(ROOT)}: missing evaluated Product #{product['productId']} #{product['canonicalName']}" unless naming_text.include?(product["canonicalName"])
+    end
   end
 end
 
@@ -1098,6 +1153,11 @@ puts "methodology concerns: #{methodology_concern_count}"
 puts "methodology mappings: #{methodology_mapping_count}"
 puts "methodology deferred candidates: #{methodology_deferred_count}"
 puts "methodology catalog digest: #{methodology_catalog_digest ? "sha256:#{methodology_catalog_digest}" : 'unavailable'}"
+puts "market Products/projects: #{market_product_count}"
+puts "market evidence records: #{market_evidence_count}"
+puts "market benchmark cells: #{market_benchmark_cell_count}"
+puts "market claims: #{market_claim_count}"
+puts "market benchmark registry digest: #{market_benchmark_digest ? "sha256:#{market_benchmark_digest}" : 'unavailable'}"
 puts "GAEP-on-GAEP rehearsal steps: #{manual_rehearsal_step_count}"
 puts "semantic rehearsal input files: #{semantic_input_paths.length}"
 puts "semantic rehearsal input digest: sha256:#{semantic_input_digest}"

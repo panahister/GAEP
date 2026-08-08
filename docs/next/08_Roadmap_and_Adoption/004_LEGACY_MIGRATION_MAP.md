@@ -84,7 +84,7 @@ No legacy file is superseded by this map. The selected intent is to prepare a ve
 | `99_References/990_REFERENCES.md` | Preserve as historical input; P01 projects its verified subset into canonical machine catalog `GAEP-REG-011`, schema and validator, human crosswalk `GAEP-REG-002`, and entry/claim contract `GAEP-REG-003` without upgrading the legacy file or unassessed bibliography entries |
 | `99_References/991_GLOSSARY.md` | Preserve unchanged for historical interpretation; map its Product-as-Initiative definition to versioned candidate terminology without silent replacement |
 | `99_References/992_TERMINOLOGY.md` | Preserve unchanged for historical interpretation; version Product/Initiative aliases, deprecations, and replacement guidance without reusing one identity for both meanings |
-| `99_References/993_EXTERNAL_PROJECTS.md` | Split into external mapping registry and alternatives assessment |
+| `99_References/993_EXTERNAL_PROJECTS.md` | Preserve as historical input; P02 moves current Product/market evidence and relationship classification into `GAEP-REG-013`, retains methodology truth in `GAEP-REG-011`, and generates `GAEP-STR-004` as the only current human benchmark projection |
 
 ## Selected decision and revision boundary
 

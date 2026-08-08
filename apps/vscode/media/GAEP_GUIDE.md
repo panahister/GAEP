@@ -133,49 +133,19 @@ Where key records are produced: **Bounded Context** in *Solution & security arch
 
 ---
 
-## 7. GAEP vs spec‑driven build tools — a referenced comparison
+## 7. Market comparison authority
 
-**Read this first.** AWS AI‑DLC, AWS Kiro, GitHub Spec Kit, Spec‑Flow and Tessl are all
-excellent **spec‑driven / AI‑native _build_ approaches**: they make *"intent/spec the source
-of truth,"* then plan and generate code faster and more reliably. They optimize **getting to
-working software**. GAEP optimizes a **different job**: the **governance and provenance of
-consequential decisions** made with AI across fragmented sources — trusted context, exact
-provenance, impact, decision boundaries, and an immutable, reconstructable audit — and it is
-deliberately **vendor‑, provider‑, and IDE‑neutral and local‑first**. They are largely
-**complementary**: use a build tool to move fast, and keep the accountable decision thread in GAEP.
+This bundled guide intentionally contains no independently maintained competitor table or
+positioning copy. Current Proposed market identities, evidence-bound comparison cells, GAEP
+maturity states, claims, limitations, and research dates are owned by `GAEP-REG-013` and
+projected for human review in `GAEP-STR-004`. Methodology and standards truth remains in
+`GAEP-REG-011`.
 
-> **About the "metrics."** There is no neutral public head‑to‑head benchmark across these
-> products. The table below is therefore a **capability scorecard** on governance dimensions
-> that GAEP treats as first‑class, each verifiable against the referenced sources. Ratings:
-> ● first‑class · ◐ partial / possible · ○ not a modeled concern / varies. Positioning
-> reflects each product's public description as of August 2026 — re‑verify against the
-> Sources before quoting.
-
-| Capability (the "metric") | GAEP | AWS AI‑DLC | AWS Kiro | GitHub Spec Kit | Spec‑Flow | Tessl |
-|---|:--:|:--:|:--:|:--:|:--:|:--:|
-| Primary job | **Govern decisions** | Build lifecycle | Build (agentic IDE) | Build (spec toolkit) | Build (Claude Code flow) | Build (spec + registry) |
-| Vendor / provider neutral | ● | ● | ○ (AWS Bedrock) | ● (multi‑agent) | ◐ (Claude Code) | ◐ |
-| Local‑first source of truth you own | ● | ◐ | ◐ | ◐ | ◐ | ◐ |
-| AI output is *candidate*, not truth, until committed | ● | ◐ (validate) | ○ (spec is truth) | ○ (spec is truth) | ◐ (quality gates) | ○ (spec is truth) |
-| Explicit two‑step **accept → commit**, fail‑closed | ● | ○ | ○ | ○ | ◐ | ○ |
-| Immutable governed revision history + audit chain | ● | ○ (git) | ○ (git) | ○ (git) | ◐ (auditable artifacts) | ◐ |
-| Claim bound to **exact source revision + digest** | ● | ○ | ○ | ○ | ○ | ◐ (dependency specs) |
-| Record grants **no** approval / readiness / release authority | ● | ○ | ○ | ○ | ○ | ○ |
-| Scope | Intent → pre‑Figma decision governance | Inception → Construction → Operations | Prompt → production code | Spec → plan → tasks → code | Idea → production launch | Spec → tested code |
-
-**One‑line pitch to a team that already knows these tools:** *the spec‑driven tools make the
-AI build the right thing faster; GAEP makes the consequential decisions along the way
-**trusted, portable, and reconstructable** — vendor‑neutral and local‑first — which is the
-part a regulated or high‑stakes enterprise product (e.g. ERP) is actually accountable for.*
-
-### Sources (verify the positioning yourself)
-
-- AWS AI‑DLC — methodology and open‑sourced workflows: <https://github.com/awslabs/aidlc-workflows> · <https://aws.amazon.com/blogs/devops/>
-- AWS Kiro — spec‑driven agentic IDE (specs as the unit of work): <https://builder.aws.com/content/3DbBI7LQgNIcs6UUj7IPPvqFHOp/aws-kiro-the-agentic-ide-that-makes-specs-the-unit-of-work>
-- GitHub Spec Kit — open‑source spec‑driven toolkit: <https://github.github.com/spec-kit/> · <https://github.com/github/spec-kit>
-- Spec‑Flow — Claude Code workflow with quality gates and auditable artifacts: <https://github.com/marcusgoll/Spec-Flow>
-- Tessl — spec‑driven framework + spec registry: <https://tessl.io/blog/how-tessls-products-pioneer-spec-driven-development/>
-- Spec‑driven development background: <https://developer.microsoft.com/blog/spec-driven-development-ai-native-engineering/>
+Use the repository documents to inspect those records and their official evidence. The
+extension must preserve Unknown rather than display it as No, distinguish shipped capability
+from preview, extension, inference, and roadmap states, and keep every claim visibly
+not-approved and not-published. This guide creates no benchmark, superiority, procurement, or
+publication authority.
 
 ---
 

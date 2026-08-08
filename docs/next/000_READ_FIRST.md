@@ -124,6 +124,10 @@ Read `01_Constitution/`, including the methodology-composition boundary in `004_
 
 Read `01_Constitution/004_METHODOLOGY_CONSTITUTION.md` for GAEP's applicability-driven Product-to-Operations method boundary. The machine-readable source of current external-reference assessment is `99_Registries_and_References/011_METHODOLOGY_REFERENCE_CATALOG.json`; `002_EXTERNAL_STANDARDS_CROSSWALK.md` is its human-readable projection, and `003_REFERENCE_ENTRY_CONTRACT.md` defines the entry contract. Review `06_GAEP_On_GAEP/016_P01_FINAL_CORRECTION_EXECUTION_REPORT.md`, then the retained `015_P01_CORRECTION_EXECUTION_REPORT.md`, before relying on the original P01 execution report. External references remain informative and version-bound unless an owning GAEP requirement explicitly adopts a concept.
 
+### Market, benchmark, and executive-claim review
+
+Read `99_Registries_and_References/012_MARKET_EVIDENCE_AND_BENCHMARK_CONTRACT.md` for the P02 evidence and comparison rules. The machine-readable current P02 source is `99_Registries_and_References/013_MARKET_EVIDENCE_AND_BENCHMARK_REGISTRY.json`; `00_GAEP_Product_Strategy/004_POSITIONING_AND_ALTERNATIVES.md` is its deterministic human projection. Market evidence is separate from the P01 methodology catalog. Every P02 artifact remains Proposed, internal, not approved, and not published.
+
 ### Security, privacy, AI, and assurance review
 
 Read the identity, policy, authorization, claim/evidence, and execution Core documents, followed by the Security, Data/Privacy/Records, AI System, Assurance, and Operational profiles.

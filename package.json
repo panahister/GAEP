@@ -65,11 +65,14 @@
     "test:methodology-catalog": "npm run validate:methodology-schema && npm run test:methodology-schema && npm run test:methodology-semantics",
     "test:market-benchmark-schema": "node --test scripts/market_benchmark_schema.test.mjs",
     "test:market-benchmark-semantics": "node --test scripts/market_benchmark_semantics.test.mjs",
-    "test:market-benchmark": "npm run validate:market-benchmark && npm run test:market-benchmark-schema && npm run test:market-benchmark-semantics",
+    "test:market-benchmark-projection": "node --test scripts/market_benchmark_projection.test.mjs",
+    "test:market-benchmark": "npm run validate:market-benchmark && npm run test:market-benchmark-schema && npm run test:market-benchmark-semantics && npm run test:market-benchmark-projection && npm run check:market-benchmark-projection",
     "typecheck": "tsc -b",
     "validate:methodology-schema": "node scripts/validate_methodology_reference_schema.mjs",
     "validate:market-benchmark": "node scripts/validate_market_benchmark_registry.mjs",
     "format:market-benchmark": "node scripts/format_market_benchmark_registry.mjs",
+    "render:market-benchmark": "node scripts/render_market_benchmark.mjs --write",
+    "check:market-benchmark-projection": "node scripts/render_market_benchmark.mjs --check",
     "validate:docs": "npm run validate:methodology-schema && npm run validate:market-benchmark && ruby scripts/validate_next_docs.rb"
   },
   "devDependencies": {
