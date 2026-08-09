@@ -65,6 +65,15 @@ test("RACI and sequences are generated from the exact checkpoint substeps", () =
   }
 });
 
+test("phase, checkpoint, target, substep, and role-participation RACI views are all projected", () => {
+  assert.match(guide, /#### Executive phase-level RACI/);
+  assert.match(guide, /#### Current-checkpoint RACI overview/);
+  assert.match(guide, /#### Target-lifecycle RACI overview — planned, not executable/);
+  assert.match(guide, /Role-to-lifecycle participation — current and target/);
+  assert.equal((guide.match(/\*\*Substep RACI\*\*/g) ?? []).length, base.runtimeCheckpoints.length);
+  for (const role of base.responsibility.roleArchetypes) assert.ok(guide.includes(`\`${role.roleId}\` ·`));
+});
+
 test("a nonexistent current command cannot appear in a current sequence", () => {
   const runtimePresentation = clone(base.runtimePresentation);
   runtimePresentation.checkpoints[0].executionSubsteps[1].currentAction.value = "@gaep /teleport";

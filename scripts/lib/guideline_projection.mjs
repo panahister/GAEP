@@ -1083,7 +1083,7 @@ function renderEntryPaths() {
   return generatedBlock("ENTRY_PATHS", [flow, "", firstSession, "", "| Entry path | Required assessment evidence | Honest route |", "|---|---|---|", rows, "", "**Every mid-journey assessment covers:** available artifacts; Source quality and freshness; architectural knowledge; prior decisions; unresolved assumptions; repository state; operational evidence; and missing governance records. Missing evidence stays visible and does not force a fictitious restart or approval."].join("\n"));
 }
 
-function renderCompetencyAndAuthority(responsibility, runtimePresentation) {
+function renderCompetencyAndAuthority(responsibility, runtimePresentation, manifest, targetExecution) {
   const gateway = visual("competency-gateway", "Role- and risk-based competency gateway", "TD", [
     '  activity["Select bounded checkpoint / substep"] --> roles["Resolve required role archetypes"]',
     '  roles --> risk["Apply Initiative risk, data, AI, security, privacy, release, and operations profile"]',
@@ -1119,7 +1119,33 @@ function renderCompetencyAndAuthority(responsibility, runtimePresentation) {
     const unique = values => [...new Set(values)].join(", ") || "—";
     return `| \`${checkpoint.checkpointId}\` · ${checkpoint.label} | ${unique(steps.flatMap(step => step.responsibleRoleIds))} | ${unique(steps.flatMap(step => step.accountableRoleId ? [step.accountableRoleId] : []))} | ${unique(steps.flatMap(step => [...step.consultedRoleIds, ...step.informedRoleIds, ...step.independentAssuranceRoleIds]))} |`;
   }).join("\n");
-  return generatedBlock("COMPETENCY_AUTHORITY", [gateway, "", sequence, "", `> **Authority boundary:** ${responsibility.authorityBoundary}`, "", "#### Participation levels", "", "| Level | Required scenario evidence |", "|---|---|", levels, "", "<details>", "<summary><strong>Show all competency dimensions and scenario evidence</strong></summary>", "", "| Competency | Demonstration evidence |", "|---|---|", competencyRows, "", "</details>", "", "#### Current-checkpoint RACI overview", "", "R = Responsible · A = Accountable · C = Consulted · I = Informed. Exactly one A is required for each governed decision; this overview may show several A roles because a checkpoint contains several substeps.", "", "| Checkpoint | R | A | C / I / independent assurance |", "|---|---|---|---|", checkpointRaci, "", "#### Authority and assurance — separate from RACI", "", "| Authority | Candidate decision-role archetypes | Boundary |", "|---|---|---|", authority].join("\n"));
+  const targetPatterns = new Map(targetExecution.executionPatterns.map(entry => [entry.patternId, entry]));
+  const targetNodes = new Map(manifest.lifecycleNodes.map(entry => [entry.nodeId, entry]));
+  const participationRows = responsibility.roleArchetypes.map(role => {
+    const current = runtimePresentation.checkpoints.flatMap(checkpoint => {
+      const codes = new Set();
+      for (const step of checkpoint.executionSubsteps) {
+        if (step.responsibleRoleIds.includes(role.roleId)) codes.add("R");
+        if (step.accountableRoleId === role.roleId) codes.add("A");
+        if (step.consultedRoleIds.includes(role.roleId)) codes.add("C");
+        if (step.informedRoleIds.includes(role.roleId)) codes.add("I");
+        if (step.independentAssuranceRoleIds.includes(role.roleId)) codes.add("IA");
+      }
+      return codes.size ? [`\`${checkpoint.checkpointId}\` (${[...codes].join("/")})`] : [];
+    });
+    const target = targetExecution.nodeProfiles.flatMap(profile => {
+      const pattern = targetPatterns.get(profile.patternId);
+      const codes = [];
+      if (pattern.responsibleRoleIds.includes(role.roleId)) codes.push("R");
+      if (pattern.accountableRoleId === role.roleId) codes.push("A");
+      if (pattern.requiredRoleIds.includes(role.roleId) && !pattern.responsibleRoleIds.includes(role.roleId) && pattern.accountableRoleId !== role.roleId) codes.push("C");
+      if (pattern.assuranceRoleIds.includes(role.roleId)) codes.push("IA");
+      const node = targetNodes.get(profile.nodeId);
+      return codes.length ? [`\`${profile.nodeId}\` ${node.title} (${[...new Set(codes)].join("/")})`] : [];
+    });
+    return `| \`${role.roleId}\` · ${role.label} | ${current.join("<br/>") || "—"} | ${target.join("<br/>") || "—"} |`;
+  }).join("\n");
+  return generatedBlock("COMPETENCY_AUTHORITY", [gateway, "", sequence, "", `> **Authority boundary:** ${responsibility.authorityBoundary}`, "", "#### Participation levels", "", "| Level | Required scenario evidence |", "|---|---|", levels, "", "<details>", "<summary><strong>Show all competency dimensions and scenario evidence</strong></summary>", "", "| Competency | Demonstration evidence |", "|---|---|", competencyRows, "", "</details>", "", "#### Current-checkpoint RACI overview", "", "R = Responsible · A = Accountable · C = Consulted · I = Informed · IA = independent assurance. Exactly one A is required for each governed decision; this overview may show several A roles because a checkpoint contains several substeps.", "", "| Checkpoint | R | A | C / I / independent assurance |", "|---|---|---|---|", checkpointRaci, "", "<details>", "<summary><strong>Role-to-lifecycle participation — current and target</strong></summary>", "", "Target participation is proposed and non-executable. A role mapping does not appoint a person or grant authority.", "", "| Role archetype | Current checkpoint participation | Target lifecycle participation |", "|---|---|---|", participationRows, "", "</details>", "", "#### Authority and assurance — separate from RACI", "", "| Authority | Candidate decision-role archetypes | Boundary |", "|---|---|---|", authority].join("\n"));
 }
 
 function renderCheckpointExecution(runtimePresentation) {
@@ -1178,6 +1204,12 @@ function renderCheckpointExecution(runtimePresentation) {
 function renderTargetExecution(manifest, targetExecution) {
   const patterns = new Map(targetExecution.executionPatterns.map(entry => [entry.patternId, entry]));
   const nodes = new Map(manifest.lifecycleNodes.map(entry => [entry.nodeId, entry]));
+  const overviewRows = targetExecution.nodeProfiles.map(profile => {
+    const node = nodes.get(profile.nodeId);
+    const pattern = patterns.get(profile.patternId);
+    const consulted = pattern.requiredRoleIds.filter(id => !pattern.responsibleRoleIds.includes(id) && id !== pattern.accountableRoleId);
+    return `| \`${profile.nodeId}\` · ${node.title} | ${pattern.responsibleRoleIds.join(", ")} | ${pattern.accountableRoleId} | C: ${consulted.join(", ") || "—"}<br/>IA: ${pattern.assuranceRoleIds.join(", ") || "context-dependent"} |`;
+  }).join("\n");
   const details = targetExecution.nodeProfiles.map(profile => {
     const node = nodes.get(profile.nodeId);
     const pattern = patterns.get(profile.patternId);
@@ -1191,7 +1223,7 @@ function renderTargetExecution(manifest, targetExecution) {
     const flowLines = pattern.plannedSubsteps.flatMap((step, index) => [`  ${profile.nodeId.replaceAll("-", "_")}_${index}["${index + 1}. ${mermaidSafe(step)}<br/>Target — planned, not executable"]`, ...(index ? [`  ${profile.nodeId.replaceAll("-", "_")}_${index - 1} --> ${profile.nodeId.replaceAll("-", "_")}_${index}`] : [])]);
     return ["<details>", `<summary><strong>${node.order} · ${node.title}</strong> · Target — planned, not executable</summary>`, "", `**Purpose / why:** ${node.targetIntent}`, "", `**When/prerequisites:** Current/target transition and mapped capabilities ${node.capabilityIds.join(", ")} must be sufficient; later authorized implementation is required.`, "", `**Roles / competency:** ${pattern.requiredRoleIds.map(id => `\`${id}\``).join(", ")}; ${pattern.competencyIds.map(id => `\`${id}\``).join(", ")}.`, "", `**Inputs:** ${profile.inputs.join("; ")}. **Questions:** ${profile.questions.join(" ")}`, "", visual(`target-${profile.nodeId}-flow`, `${node.title} planned substeps`, "TD", flowLines.join("\n")), "", sequenceVisual(`target-${profile.nodeId}`, `${node.title} — Target — planned, not executable`, [...participants.map((role, index) => `participant role${index} as ${role}`), `participant accountable as ${pattern.accountableRoleId}`, "participant gaep as GAEP target projection", ...messages]), "", `**Planned substeps:** ${pattern.plannedSubsteps.map((step, index) => `${index + 1}. ${step}`).join(" ")}`, "", `**AI / human boundary:** a future GAEP implementation may prepare candidates; ${pattern.responsibleRoleIds.join(", ")} perform work, ${pattern.accountableRoleId} owns the bounded decision, and ${pattern.assuranceRoleIds.join(", ") || "no default independent role"} provides assurance when applicable. No command exists here.`, "", `**Candidate / governed outputs:** ${profile.outputs.join("; ")}; no current governed output exists.`, "", `**RACI:** R ${pattern.responsibleRoleIds.join(", ")} · A ${pattern.accountableRoleId} · C ${pattern.requiredRoleIds.filter(id => !pattern.responsibleRoleIds.includes(id) && id !== pattern.accountableRoleId).join(", ") || "—"} · I Initiative lead · independent assurance ${pattern.assuranceRoleIds.join(", ") || "context-dependent"}.`, "", `**Blockers / exception:** ${profile.blockers.join("; ")}. No planned node may bypass current prerequisites or organizational authority.`, "", `**Exit / next:** ${profile.exitCriteria.join(" ")} The next transition remains planned and non-executable.`, "", `**Authority / limitation:** ${targetExecution.authorityBoundary}`, "", "</details>"].join("\n");
   }).join("\n\n");
-  return generatedBlock("TARGET_EXECUTION", details);
+  return generatedBlock("TARGET_EXECUTION", ["#### Target-lifecycle RACI overview — planned, not executable", "", "| Target node | R | A | C / independent assurance |", "|---|---|---|---|", overviewRows, "", details].join("\n"));
 }
 
 function renderExceptionSequences() {
@@ -1228,7 +1260,7 @@ export function renderGuideline(context) {
   const replacements = {
     ENTERPRISE_OPENING: renderEnterpriseOpening(),
     ENTRY_PATHS: renderEntryPaths(),
-    COMPETENCY_AUTHORITY: renderCompetencyAndAuthority(responsibility, runtimePresentation),
+    COMPETENCY_AUTHORITY: renderCompetencyAndAuthority(responsibility, runtimePresentation, manifest, targetExecution),
     CHECKPOINT_EXECUTION: renderCheckpointExecution(runtimePresentation),
     TARGET_EXECUTION: renderTargetExecution(manifest, targetExecution),
     EXCEPTION_SEQUENCES: renderExceptionSequences(),
