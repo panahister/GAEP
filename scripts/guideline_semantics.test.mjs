@@ -9,7 +9,9 @@ import {
   manifestSemanticErrors,
   projectionDriftErrors,
   renderGuideline,
+  renderMarketDecisionSupport,
   renderedGuidelineErrors,
+  renderedMarketDecisionSupportErrors,
   sourceBindingErrors,
 } from "./lib/guideline_projection.mjs";
 
@@ -34,6 +36,12 @@ function assertManifestError(manifest, fragment, overrides = {}) {
 function assertRenderedError(rendered, fragment, overrides = {}) {
   const context = { ...base, ...semanticContext(overrides), manifest: overrides.manifest ?? clone(base.manifest) };
   const errors = renderedGuidelineErrors(rendered, context);
+  assert.ok(errors.some(error => error.includes(fragment)), `expected ${fragment}; got:\n${errors.join("\n")}`);
+}
+
+function assertMarketRenderedError(rendered, fragment, overrides = {}) {
+  const context = { ...base, ...semanticContext(overrides), manifest: overrides.manifest ?? clone(base.manifest) };
+  const errors = renderedMarketDecisionSupportErrors(rendered, context);
   assert.ok(errors.some(error => error.includes(fragment)), `expected ${fragment}; got:\n${errors.join("\n")}`);
 }
 
@@ -168,8 +176,8 @@ test("hostile planned lifecycle node rendered as implemented is rejected", () =>
 });
 
 test("hostile methodology inserted into Product list is rejected", () => {
-  const rendered = renderGuideline(base).replace("<!-- END GENERATED:MARKET_PRODUCTS -->", "- AWS AI-Driven Development Life Cycle\n<!-- END GENERATED:MARKET_PRODUCTS -->");
-  assertRenderedError(rendered, "presents methodology GAEP-MTH-001 as a Product");
+  const rendered = renderMarketDecisionSupport(base).replace("## Methodologies and references — outside Product scoring", "AWS AI-Driven Development Life Cycle\n\n## Methodologies and references — outside Product scoring");
+  assertMarketRenderedError(rendered, "scores methodology GAEP-MTH-001 as a Product");
 });
 
 test("hostile raw registry JSON as primary surface is rejected", () => {

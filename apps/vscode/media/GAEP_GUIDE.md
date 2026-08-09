@@ -686,77 +686,15 @@ For source-sensitive work, use `@gaep /intake` to reason over explicitly attache
 ### Market and capability decision support
 
 <!-- BEGIN GENERATED:MARKET_GUIDE -->
-Bound to **GAEP-REG-013 v0.2.1**, research snapshot **2026-08-08**. The benchmark has **15 Products/projects × 30 capabilities = 450 cells**.
+Bound to **GAEP-REG-013 v0.2.1**, research snapshot **2026-08-08**. The complete projection contains **15 Products/projects × 30 capabilities = 450 cells**, including every Unknown.
 
-#### Evaluated Products and projects
+**Executive frame:** compare Products by the job-to-be-done, category, scenario, support evidence, delivery state, limitations, and freshness. There is no universal winner. GAEP repository maturity remains a separate axis and never increases a Product's market support.
 
-<!-- BEGIN GENERATED:MARKET_PRODUCTS -->
-- **GAEP-PRD-001 · [Kiro](https://kiro.dev/docs/)** — GAEP-CAT-002, GAEP-CAT-003 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-002 · [GitHub Spec Kit](https://github.github.com/spec-kit/index.html)** — GAEP-CAT-002 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-003 · [OpenAI Codex](https://openai.com/index/introducing-the-codex-app/)** — GAEP-CAT-003 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-004 · [Claude Code](https://code.claude.com/docs/en/overview)** — GAEP-CAT-003 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-005 · [GitHub Copilot](https://docs.github.com/en/copilot/get-started/what-is-github-copilot)** — GAEP-CAT-003 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-006 · [Amazon Q Developer](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/getting-started-q-dev.html)** — GAEP-CAT-003 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-007 · [GitLab](https://docs.gitlab.com/devsecops/)** — GAEP-CAT-004 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-008 · [Azure DevOps](https://learn.microsoft.com/en-us/azure/devops/project/navigation/go-to-service-page?view=azure-devops)** — GAEP-CAT-004 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-009 · [Jira Product Discovery](https://www.atlassian.com/software/jira/product-discovery)** — GAEP-CAT-005 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-010 · [Productboard](https://support.productboard.com/hc/en-us/articles/360058147693-What-is-Productboard)** — GAEP-CAT-005 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-011 · [Ardoq](https://www.ardoq.com/platform-overview)** — GAEP-CAT-006 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-012 · [IBM Engineering Lifecycle Management](https://www.ibm.com/docs/en/engineering-lifecycle-management-suite/lifecycle-management/7.1.0?topic=overview)** — GAEP-CAT-007 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-013 · [Polarion ALM](https://www.siemens.com/en-gb/products/polarion/application-lifecycle-management-alm/)** — GAEP-CAT-007 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-014 · [Figma](https://help.figma.com/hc/en-us/articles/15023124644247-Guide-to-Dev-Mode)** — GAEP-CAT-008 · reviewed 2026-08-08 · active-current
-- **GAEP-PRD-016 · [Aha! Roadmaps](https://www.aha.io/roadmaps/overview)** — GAEP-CAT-006, GAEP-CAT-007 · reviewed 2026-08-08 · active-current
-<!-- END GENERATED:MARKET_PRODUCTS -->
+**Evidence distribution:** 5 Verified · 73 Partial · 372 Unknown. **Delivery distribution:** 78 shipped · 372 not established as shipped.
 
-#### Methodologies and references kept outside Product scoring
+**[Open the complete generated Product × capability decision guide](./GAEP_MARKET_DECISION_GUIDE.md)** — all cells, exact assertion/evidence links, review and as-of dates, limitations, category/scenario context, and separate methodology identities.
 
-<!-- BEGIN GENERATED:MARKET_METHODOLOGIES -->
-- **GAEP-MTH-001 · AWS AI-Driven Development Life Cycle** — external-research-candidate. P02 records identity and market relevance only; methodology truth is not added to GAEP-REG-011 by this correction.
-- **GAEP-MTH-002 · The TOGAF Standard, 10th Edition** — p01-catalog-reference · GAEP-XREF-021. Canonical methodology truth remains in GAEP-REG-011.
-- **GAEP-MTH-003 · The C4 model for visualising software architecture** — p01-catalog-reference · GAEP-XREF-022. Canonical methodology truth remains in GAEP-REG-011.
-- **GAEP-MTH-004 · Domain-Driven Design Reference** — p01-catalog-reference · GAEP-XREF-026. Canonical methodology truth remains in GAEP-REG-011.
-- **GAEP-MTH-005 · Introducing EventStorming** — p01-catalog-reference · GAEP-XREF-027. Canonical methodology truth remains in GAEP-REG-011.
-<!-- END GENERATED:MARKET_METHODOLOGIES -->
-
-#### Exact 30-capability view
-
-<details>
-<summary><strong>Show all capability and support/delivery summaries</strong></summary>
-
-- **GAEP-CAP-101 — Product intent and problem discovery** · GAEP [IA] Implemented; awaiting Product Owner acceptance · market evidence: 0 Verified / 3 Partial / 12 Unknown · delivery: 3 shipped / 12 not established as shipped
-- **GAEP-CAP-102 — Guided lifecycle navigation and user onboarding** · GAEP [PT] Partial · market evidence: 0 Verified / 4 Partial / 11 Unknown · delivery: 4 shipped / 11 not established as shipped
-- **GAEP-CAP-103 — Source intake and reference grounding** · GAEP [IT] Implemented and automated-tested · market evidence: 0 Verified / 0 Partial / 15 Unknown · delivery: 0 shipped / 15 not established as shipped
-- **GAEP-CAP-104 — Source baseline and version control** · GAEP [IT] Implemented and automated-tested · market evidence: 0 Verified / 0 Partial / 15 Unknown · delivery: 0 shipped / 15 not established as shipped
-- **GAEP-CAP-105 — Source provenance and lineage** · GAEP [IT] Implemented and automated-tested · market evidence: 0 Verified / 0 Partial / 15 Unknown · delivery: 0 shipped / 15 not established as shipped
-- **GAEP-CAP-106 — Human authority and propose/review/accept/commit separation** · GAEP [IA] Implemented; awaiting Product Owner acceptance · market evidence: 0 Verified / 2 Partial / 13 Unknown · delivery: 2 shipped / 13 not established as shipped
-- **GAEP-CAP-107 — Initiative definition and change boundary** · GAEP [IT] Implemented and automated-tested · market evidence: 0 Verified / 3 Partial / 12 Unknown · delivery: 3 shipped / 12 not established as shipped
-- **GAEP-CAP-108 — Initiative classification, risk and exposure** · GAEP [IT] Implemented and automated-tested · market evidence: 0 Verified / 0 Partial / 15 Unknown · delivery: 0 shipped / 15 not established as shipped
-- **GAEP-CAP-109 — Initiative applicability and lifecycle tailoring** · GAEP [IT] Implemented and automated-tested · market evidence: 0 Verified / 0 Partial / 15 Unknown · delivery: 0 shipped / 15 not established as shipped
-- **GAEP-CAP-110 — Business architecture, capabilities and value streams** · GAEP [IA] Implemented; awaiting Product Owner acceptance · market evidence: 0 Verified / 1 Partial / 14 Unknown · delivery: 1 shipped / 14 not established as shipped
-- **GAEP-CAP-111 — Domain discovery and EventStorming** · GAEP [IA] Implemented; awaiting Product Owner acceptance · market evidence: 0 Verified / 0 Partial / 15 Unknown · delivery: 0 shipped / 15 not established as shipped
-- **GAEP-CAP-112 — DDD strategic design, bounded contexts and context mapping** · GAEP [IA] Implemented; awaiting Product Owner acceptance · market evidence: 0 Verified / 0 Partial / 15 Unknown · delivery: 0 shipped / 15 not established as shipped
-- **GAEP-CAP-113 — Architecture views, quality attributes and ADRs** · GAEP [IA] Implemented; awaiting Product Owner acceptance · market evidence: 0 Verified / 3 Partial / 12 Unknown · delivery: 3 shipped / 12 not established as shipped
-- **GAEP-CAP-114 — Architecture-before-slice implementation sequencing** · GAEP [PT] Partial · market evidence: 0 Verified / 0 Partial / 15 Unknown · delivery: 0 shipped / 15 not established as shipped
-- **GAEP-CAP-115 — Phase, wave and vertical-slice planning** · GAEP [PT] Partial · market evidence: 0 Verified / 7 Partial / 8 Unknown · delivery: 7 shipped / 8 not established as shipped
-- **GAEP-CAP-116 — Tool-neutral Product Design preparation and handoff** · GAEP [PT] Partial · market evidence: 0 Verified / 1 Partial / 14 Unknown · delivery: 1 shipped / 14 not established as shipped
-- **GAEP-CAP-117 — Architecture-bound backlog generation** · GAEP [PT] Partial · market evidence: 0 Verified / 6 Partial / 9 Unknown · delivery: 6 shipped / 9 not established as shipped
-- **GAEP-CAP-118 — Acceptance criteria, Definition of Ready and Definition of Done** · GAEP [PT] Partial · market evidence: 0 Verified / 6 Partial / 9 Unknown · delivery: 6 shipped / 9 not established as shipped
-- **GAEP-CAP-119 — Test design, test cases and quality assurance** · GAEP [IA] Implemented; awaiting Product Owner acceptance · market evidence: 1 Verified / 6 Partial / 8 Unknown · delivery: 7 shipped / 8 not established as shipped
-- **GAEP-CAP-120 — Requirements-to-design-to-code-to-test traceability** · GAEP [IA] Implemented; awaiting Product Owner acceptance · market evidence: 2 Verified / 4 Partial / 9 Unknown · delivery: 6 shipped / 9 not established as shipped
-- **GAEP-CAP-121 — Security, privacy, policy and compliance governance** · GAEP [PT] Partial · market evidence: 0 Verified / 5 Partial / 10 Unknown · delivery: 5 shipped / 10 not established as shipped
-- **GAEP-CAP-122 — Data, API, event and integration contract governance** · GAEP [PT] Partial · market evidence: 0 Verified / 0 Partial / 15 Unknown · delivery: 0 shipped / 15 not established as shipped
-- **GAEP-CAP-123 — Repository linking and implementation topology** · GAEP [PT] Partial · market evidence: 0 Verified / 7 Partial / 8 Unknown · delivery: 7 shipped / 8 not established as shipped
-- **GAEP-CAP-124 — Cross-repository slice distribution, synchronization and drift detection** · GAEP [PD] Planned / deferred · market evidence: 0 Verified / 0 Partial / 15 Unknown · delivery: 0 shipped / 15 not established as shipped
-- **GAEP-CAP-125 — Implementation agents and governed code generation** · GAEP [IA] Implemented; awaiting Product Owner acceptance · market evidence: 0 Verified / 6 Partial / 9 Unknown · delivery: 6 shipped / 9 not established as shipped
-- **GAEP-CAP-126 — CI/CD, release and deployment governance** · GAEP [PT] Partial · market evidence: 1 Verified / 1 Partial / 13 Unknown · delivery: 2 shipped / 13 not established as shipped
-- **GAEP-CAP-127 — Runtime operations, observability, recovery and reliability** · GAEP [PD] Planned / deferred · market evidence: 0 Verified / 0 Partial / 15 Unknown · delivery: 0 shipped / 15 not established as shipped
-- **GAEP-CAP-128 — Audit trail, evidence records and decision history** · GAEP [IA] Implemented; awaiting Product Owner acceptance · market evidence: 0 Verified / 5 Partial / 10 Unknown · delivery: 5 shipped / 10 not established as shipped
-- **GAEP-CAP-129 — Provider/tool neutrality, adapters and extensibility** · GAEP [IA] Implemented; awaiting Product Owner acceptance · market evidence: 1 Verified / 3 Partial / 11 Unknown · delivery: 4 shipped / 11 not established as shipped
-- **GAEP-CAP-130 — Enterprise administration, deployment control, data residency and portability** · GAEP [PT] Partial · market evidence: 0 Verified / 0 Partial / 15 Unknown · delivery: 0 shipped / 15 not established as shipped
-
-</details>
-
-**Interpretation:** Verified, Partial, Unknown, and unsupported-by-reviewed-evidence are evidence conclusions. Shipped, preview/beta, announced-roadmap, community-extension, inference, and not-assessed are delivery conclusions. They are never collapsed into a Yes/No score.
+**Interpretation:** support and delivery remain separate. For an Unknown cell, reviewed support is not established; it never means No. Preview, beta, roadmap, inference, community extension, or not-assessed delivery must never be shown as shipped.
 <!-- END GENERATED:MARKET_GUIDE -->
 
 Use this landscape to narrow a job-to-be-done, not to manufacture a universal ranking. A Verified support cell is stronger than Partial; Unknown means the reviewed evidence did not establish the conclusion; delivery state is a separate fact. A GAEP maturity state describes repository evidence and never turns into market support or approval.
@@ -1139,7 +1077,7 @@ The ledger is not marketing copy. It retains dispositions, qualifiers, limitatio
 | market-registry | `GAEP-REG-013` v0.2.1 | `docs/next/99_Registries_and_References/013_MARKET_EVIDENCE_AND_BENCHMARK_REGISTRY.json` | `3dcfe5531a1bb4630dc3afdb2990389728e2d39cac2ac915986badb9fe9e5c17` |
 | terminology-index | `GAEP-REG-005` v0.3.0 | `docs/next/99_Registries_and_References/005_CANONICAL_TERMINOLOGY_INDEX.md` | `9e5765683133d3904742bd9a05be7a3323d83848b7015d06a864f5e37af6aca5` |
 | runtime-presentation-contract | `runtime-product-journey-presentation` v1.0.0 | `apps/vscode/src/product-journey-presentation.ts` | `445797601923593b842041c02b630bbebdb4d9a16d9ccbf9540800ad6d192c54` |
-| extension-package | `gaep-vscode-package` v0.1.0 | `apps/vscode/package.json` | `82d4235bea19ec54a4fd649261c37e8cb3a13f6c7823c169a88d66fc899a1e8b` |
+| extension-package | `gaep-vscode-package` v0.1.0 | `apps/vscode/package.json` | `7c9fcd2afc58b29e3b97fa22cfad94e7f053e1f878748a1582bf31647d102eac` |
 
 **Required progressive layers:**
 

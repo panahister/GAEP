@@ -19,15 +19,18 @@ if (!result.valid) {
 }
 
 const outputPath = path.join(context.root, context.manifest.generation.outputPath);
+const decisionSupportOutputPath = path.join(context.root, context.manifest.generation.decisionSupportOutputPath);
 if (mode === "--write") {
   fs.writeFileSync(outputPath, result.rendered);
-  process.stdout.write(`Wrote deterministic GAEP Guideline to ${context.manifest.generation.outputPath}.\n`);
+  fs.writeFileSync(decisionSupportOutputPath, result.renderedDecisionSupport);
+  process.stdout.write(`Wrote deterministic GAEP Guideline to ${context.manifest.generation.outputPath} and complete decision support to ${context.manifest.generation.decisionSupportOutputPath}.\n`);
   process.exit(0);
 }
 
 const actual = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, "utf8") : "";
-if (projectionDriftErrors(actual, result.rendered).length > 0) {
-  process.stderr.write(`Generated Guide drift: run npm run render:guideline and commit ${context.manifest.generation.outputPath}.\n`);
+const actualDecisionSupport = fs.existsSync(decisionSupportOutputPath) ? fs.readFileSync(decisionSupportOutputPath, "utf8") : "";
+if (projectionDriftErrors(actual, result.rendered).length > 0 || projectionDriftErrors(actualDecisionSupport, result.renderedDecisionSupport).length > 0) {
+  process.stderr.write(`Generated Guideline drift: run npm run render:guideline and commit ${context.manifest.generation.outputPath} plus ${context.manifest.generation.decisionSupportOutputPath}.\n`);
   process.exit(1);
 }
-process.stdout.write(`GAEP Guideline projection is current: ${context.manifest.generation.outputPath}.\n`);
+process.stdout.write(`GAEP Guideline projections are current: ${context.manifest.generation.outputPath}; ${context.manifest.generation.decisionSupportOutputPath}.\n`);

@@ -186,6 +186,44 @@ function repositoryMaturityErrors(market) {
   return errors;
 }
 
+function marketDecisionSupportSemanticErrors(market) {
+  const errors = [];
+  const productIds = market.products.map(entry => entry.productId);
+  const capabilityIds = market.capabilities.map(entry => entry.capabilityId);
+  const rows = new Map(market.benchmarkRows.map(entry => [entry.productId, entry]));
+  const assertions = new Map(market.evidenceAssertions.map(entry => [entry.assertionId, entry]));
+  const evidence = new Map(market.evidence.map(entry => [entry.evidenceId, entry]));
+  for (const productId of productIds) {
+    const row = rows.get(productId);
+    if (!row) {
+      errors.push(`${productId}: missing Product benchmark row`);
+      continue;
+    }
+    const rowCapabilityIds = row.cells.map(cell => cell.capabilityId);
+    if (JSON.stringify(rowCapabilityIds) !== JSON.stringify(capabilityIds)) errors.push(`${productId}: benchmark cells do not preserve canonical capability identity and order`);
+    for (const cell of row.cells) {
+      if (cell.supportLevel === "unknown" && cell.supportAssertionIds.length > 0) errors.push(`${productId}/${cell.capabilityId}: Unknown cell cannot carry a support assertion`);
+      if (cell.supportLevel !== "unknown" && cell.supportAssertionIds.length === 0) errors.push(`${productId}/${cell.capabilityId}: assessed support lacks an exact support assertion`);
+      if (cell.deliveryState === "shipped" && cell.availabilityAssertionIds.length === 0) errors.push(`${productId}/${cell.capabilityId}: shipped delivery lacks exact availability evidence`);
+      for (const [role, assertionIds] of [["support", cell.supportAssertionIds], ["availability", cell.availabilityAssertionIds]]) {
+        for (const assertionId of assertionIds) {
+          const assertion = assertions.get(assertionId);
+          if (!assertion) {
+            errors.push(`${productId}/${cell.capabilityId}: unknown ${role} assertion ${assertionId}`);
+            continue;
+          }
+          if (assertion.status !== "active" || assertion.productId !== productId || assertion.capabilityId !== cell.capabilityId) errors.push(`${productId}/${cell.capabilityId}: ${assertionId} is not an active exact cell assertion`);
+          if (role === "support" && assertion.assertionType !== "capability-support") errors.push(`${productId}/${cell.capabilityId}: ${assertionId} is not capability-support evidence`);
+          if (role === "availability" && assertion.assertionType !== "availability") errors.push(`${productId}/${cell.capabilityId}: ${assertionId} is not availability evidence`);
+          const source = evidence.get(assertion.evidenceId);
+          if (!source || source.productId !== productId || source.accessResult !== "success") errors.push(`${productId}/${cell.capabilityId}: ${assertionId} does not resolve to successful exact Product evidence`);
+        }
+      }
+    }
+  }
+  return errors;
+}
+
 function runtimePresentationErrors(runtimePresentation) {
   const errors = [];
   const checkpointIds = runtimePresentation.checkpoints.map(entry => entry.checkpointId);
@@ -313,6 +351,7 @@ export function manifestSemanticErrors(manifest, { catalog, market, extensionPac
   errors.push(...runtimePresentationErrors(runtimePresentation));
   errors.push(...commandErrors(manifest, extensionPackage));
   errors.push(...repositoryMaturityErrors(market));
+  errors.push(...marketDecisionSupportSemanticErrors(market));
   return errors;
 }
 
@@ -645,45 +684,155 @@ function renderSourceLineage(manifest) {
   ].join("\n"));
 }
 
-function capabilitySummary(market, manifest) {
-  const maturity = new Map(market.gaepMaturity.map(entry => [entry.capabilityId, entry]));
-  return market.capabilities.map(capability => {
-    const cells = market.benchmarkRows.map(row => row.cells.find(cell => cell.capabilityId === capability.capabilityId));
-    const support = countBy(cells.map(cell => cell.supportLevel));
-    const delivery = countBy(cells.map(cell => cell.deliveryState));
-    return `- **${capability.capabilityId} — ${capability.name}** · GAEP ${manifest.statePolicy.labels[maturity.get(capability.capabilityId).maturityState]} · market evidence: ${support.get("verified-supported") ?? 0} Verified / ${support.get("partially-supported") ?? 0} Partial / ${support.get("unknown") ?? 0} Unknown · delivery: ${delivery.get("shipped") ?? 0} shipped / ${cells.length - (delivery.get("shipped") ?? 0)} not established as shipped`;
-  }).join("\n");
+function renderMarketGuide(market, manifest) {
+  const cells = market.benchmarkRows.flatMap(row => row.cells);
+  const support = countBy(cells.map(cell => cell.supportLevel));
+  const delivery = countBy(cells.map(cell => cell.deliveryState));
+  return generatedBlock("MARKET_GUIDE", [
+    `Bound to **${market.registryId} v${market.version}**, research snapshot **${market.researchAsOf}**. The complete projection contains **${market.products.length} Products/projects × ${market.capabilities.length} capabilities = ${cells.length} cells**, including every Unknown.`,
+    "",
+    "**Executive frame:** compare Products by the job-to-be-done, category, scenario, support evidence, delivery state, limitations, and freshness. There is no universal winner. GAEP repository maturity remains a separate axis and never increases a Product's market support.",
+    "",
+    `**Evidence distribution:** ${support.get("verified-supported") ?? 0} Verified · ${support.get("partially-supported") ?? 0} Partial · ${support.get("unknown") ?? 0} Unknown. **Delivery distribution:** ${delivery.get("shipped") ?? 0} shipped · ${cells.length - (delivery.get("shipped") ?? 0)} not established as shipped.`,
+    "",
+    `**[Open the complete generated Product × capability decision guide](./${path.basename(manifest.generation.decisionSupportOutputPath)})** — all cells, exact assertion/evidence links, review and as-of dates, limitations, category/scenario context, and separate methodology identities.`,
+    "",
+    "**Interpretation:** support and delivery remain separate. For an Unknown cell, reviewed support is not established; it never means No. Preview, beta, roadmap, inference, community extension, or not-assessed delivery must never be shown as shipped.",
+  ].join("\n"));
 }
 
-function renderMarketGuide(market, manifest) {
-  const products = market.products.map(product => `- **${product.productId} · [${product.canonicalName}](${product.officialUri})** — ${product.categoryIds.join(", ")} · reviewed ${product.lastReviewedAt} · ${product.status}`).join("\n");
-  const methodologies = market.methodologyBindings.map(binding => `- **${binding.methodologyId} · ${binding.canonicalName}** — ${binding.identityType}${binding.p01ReferenceId ? ` · ${binding.p01ReferenceId}` : ""}. ${binding.limitation}`).join("\n");
-  return generatedBlock("MARKET_GUIDE", [
-    `Bound to **${market.registryId} v${market.version}**, research snapshot **${market.researchAsOf}**. The benchmark has **${market.products.length} Products/projects × ${market.capabilities.length} capabilities = ${market.benchmarkRows.length * market.capabilities.length} cells**.`,
+function supportDisplay(value) {
+  if (value === "verified-supported") return "Verified · verified-supported";
+  if (value === "partially-supported") return "Partial · partially-supported";
+  if (value === "unknown") return "Unknown · unknown";
+  return value;
+}
+
+function deliveryDisplay(value) {
+  const labels = {
+    shipped: "Shipped",
+    "preview-beta": "Preview / beta",
+    "announced-roadmap": "Announced roadmap",
+    "community-extension": "Community extension",
+    inference: "Inference only",
+    "not-assessed": "Not assessed",
+  };
+  return `${labels[value] ?? value} · ${value}`;
+}
+
+function assertionEvidenceLine(role, assertion, evidence) {
+  const limitations = [...new Set([...(assertion.limitations ?? []), ...(evidence.limitations ?? [])])].join(" ");
+  return [
+    `**${role}:** [${assertion.assertionId} → ${evidence.evidenceId}](${evidence.officialUri}) — ${markdownSafe(assertion.proposition)}`,
+    `Locator: ${markdownSafe(assertion.locator)} · assertion reviewed ${assertion.reviewedAt}, as-of ${assertion.asOfDate}`,
+    `Evidence: ${markdownSafe(evidence.publisher)} · ${evidence.contentReviewState} / ${evidence.reviewDepth} · accessed ${evidence.accessedAt}, as-of ${evidence.asOfDate}`,
+    `Evidence limitations: ${markdownSafe(limitations)}`,
+  ].join("<br/>");
+}
+
+function renderDecisionCellEvidence(cell, product, assertionsById, evidenceById) {
+  const lines = [];
+  for (const [role, ids] of [["Support evidence", cell.supportAssertionIds], ["Delivery evidence", cell.availabilityAssertionIds]]) {
+    if (ids.length === 0) {
+      if (role === "Support evidence") lines.push("**Support evidence:** No active cell-level support assertion.");
+      continue;
+    }
+    for (const assertionId of ids) {
+      const assertion = assertionsById.get(assertionId);
+      const evidence = assertion ? evidenceById.get(assertion.evidenceId) : undefined;
+      if (!assertion || !evidence) throw new Error(`${product.productId}/${cell.capabilityId}: unresolved ${role.toLowerCase()} ${assertionId}`);
+      lines.push(assertionEvidenceLine(role, assertion, evidence));
+    }
+  }
+  lines.push(`**Cell review:** as-of ${cell.asOfDate}. ${markdownSafe(cell.rationale)}`);
+  if (cell.applicabilityRationale) lines.push(`**Applicability:** ${markdownSafe(cell.applicabilityRationale)}`);
+  lines.push(`**Cell limitation:** ${markdownSafe(cell.limitation)}`);
+  return lines.join("<br/>");
+}
+
+export function renderMarketDecisionSupport(context) {
+  const { manifest, market } = context;
+  const productById = new Map(market.products.map(product => [product.productId, product]));
+  const rowByProduct = new Map(market.benchmarkRows.map(row => [row.productId, row]));
+  const assertionsById = new Map(market.evidenceAssertions.map(assertion => [assertion.assertionId, assertion]));
+  const evidenceById = new Map(market.evidence.map(evidence => [evidence.evidenceId, evidence]));
+  const maturity = new Map(market.gaepMaturity.map(entry => [entry.capabilityId, entry.maturityState]));
+  const categories = new Map(market.marketCategories.map(category => [category.categoryId, category]));
+  const productRows = market.products.map(product => `| ${product.productId} · [${product.canonicalName}](${product.officialUri}) | ${product.categoryIds.map(id => `${id} · ${markdownSafe(categories.get(id)?.name ?? "Unknown category")}`).join("<br/>")} | ${product.lastReviewedAt} · ${product.status} | Identity/overview link only; cell evidence appears only through assertion relationships below. |`).join("\n");
+  const methodologyRows = market.methodologyBindings.map(binding => `| ${binding.methodologyId} · ${markdownSafe(binding.canonicalName)} | ${binding.identityType}${binding.p01ReferenceId ? ` · ${binding.p01ReferenceId}` : ""} | ${markdownSafe(binding.limitation)} |`).join("\n");
+  const capabilitySections = market.capabilities.map(capability => {
+    const rows = market.products.map(product => {
+      const cell = rowByProduct.get(product.productId)?.cells.find(candidate => candidate.capabilityId === capability.capabilityId);
+      if (!cell) throw new Error(`${product.productId}/${capability.capabilityId}: missing canonical benchmark cell`);
+      return `| <!-- CELL:${capability.capabilityId}:${product.productId} -->${product.productId} · ${markdownSafe(product.canonicalName)} | ${supportDisplay(cell.supportLevel)} | ${deliveryDisplay(cell.deliveryState)} | ${renderDecisionCellEvidence(cell, product, assertionsById, evidenceById)} |`;
+    }).join("\n");
+    const cells = market.products.map(product => rowByProduct.get(product.productId).cells.find(cell => cell.capabilityId === capability.capabilityId));
+    const support = countBy(cells.map(cell => cell.supportLevel));
+    return [
+      `### ${capability.capabilityId} — ${capability.name}`,
+      "",
+      capability.definition,
+      "",
+      `**GAEP maturity (separate from market support):** ${manifest.statePolicy.labels[maturity.get(capability.capabilityId) ?? "unknown-not-assessed"]}. **Market cells:** ${support.get("verified-supported") ?? 0} Verified · ${support.get("partially-supported") ?? 0} Partial · ${support.get("unknown") ?? 0} Unknown.`,
+      "",
+      "<details>",
+      `<summary><strong>Compare all ${market.products.length} Products for ${capability.capabilityId}</strong></summary>`,
+      "",
+      "| Product | Support | Delivery | Exact evidence, dates, and limitation |",
+      "|---|---|---|---|",
+      rows,
+      "",
+      "</details>",
+    ].join("\n");
+  }).join("\n\n");
+  const capabilityContents = market.capabilities.map(capability => `- [${capability.capabilityId} — ${capability.name}](#${capability.capabilityId.toLowerCase()}--${capability.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")})`).join("\n");
+  return [
+    "<!-- GENERATED FILE: complete deterministic GAEP-REG-013 decision-support projection. Do not edit manually. -->",
     "",
-    "#### Evaluated Products and projects",
+    "# GAEP Product × Capability Decision Guide",
     "",
-    "<!-- BEGIN GENERATED:MARKET_PRODUCTS -->",
-    products,
-    "<!-- END GENERATED:MARKET_PRODUCTS -->",
+    `Use this generated guide to inspect all ${market.products.length * market.capabilities.length} evidence-bounded cells without opening raw JSON. It is bound to ${market.registryId} v${market.version}, research as-of ${market.researchAsOf}.`,
     "",
-    "#### Methodologies and references kept outside Product scoring",
+    "> **Decision boundary:** there is no universal winner or aggregate score. Product support, delivery, evidence freshness, limitations, and scenario fit remain separate. GAEP maturity describes this repository only and never changes a market cell.",
     "",
-    "<!-- BEGIN GENERATED:MARKET_METHODOLOGIES -->",
-    methodologies,
-    "<!-- END GENERATED:MARKET_METHODOLOGIES -->",
+    "> **Unknown rule:** Unknown means no active reviewed assertion established support for this Product/capability cell. It is not “No,” “unsupported,” or evidence of absence.",
     "",
-    "#### Exact 30-capability view",
+    "[Return to the main GAEP Guide](./GAEP_GUIDE.md#market-and-capability-decision-support)",
     "",
-    "<details>",
-    "<summary><strong>Show all capability and support/delivery summaries</strong></summary>",
+    "## Executive category and scenario frame",
     "",
-    capabilitySummary(market, manifest),
+    `The registry covers ${market.marketCategories.length} market categories and ${market.scenarios.length} adoption scenarios. Start with the job, required evidence, fit/non-fit boundary, stewardship capacity, and a predeclared proof-of-value measure; then inspect cell evidence below.`,
     "",
-    "</details>",
+    "<details>", "<summary><strong>Show category definitions</strong></summary>", "",
+    ...market.marketCategories.map(category => `- **${category.categoryId} · ${category.name}** — ${category.definition}`),
+    "", "</details>",
     "",
-    "**Interpretation:** Verified, Partial, Unknown, and unsupported-by-reviewed-evidence are evidence conclusions. Shipped, preview/beta, announced-roadmap, community-extension, inference, and not-assessed are delivery conclusions. They are never collapsed into a Yes/No score.",
-  ].join("\n"));
+    "<details>", "<summary><strong>Show scenario fit and non-fit boundaries</strong></summary>", "",
+    ...market.scenarios.map(scenario => `- **${scenario.scenarioId} · ${scenario.name}** — fit: ${scenario.fitConditions.join("; ")} Non-fit: ${scenario.nonFitConditions.join("; ")}`),
+    "", "</details>",
+    "",
+    "## Evaluated Product identities",
+    "",
+    "| Product identity and overview | Category | Reviewed/status | Boundary |", "|---|---|---|---|", productRows,
+    "",
+    "## Methodologies and references — outside Product scoring",
+    "",
+    "| Methodology/reference | P01 relationship | Limitation |", "|---|---|---|", methodologyRows,
+    "",
+    "## Capability index", "", capabilityContents,
+    "",
+    "## Complete Product × capability projection", "", capabilitySections,
+    "",
+    "## Maintainer projection binding",
+    "",
+    "<details>", "<summary><strong>Show exact canonical digest and deterministic ownership</strong></summary>", "",
+    `- Registry: ${market.registryId} v${market.version} · schema ${market.schemaVersion} · SHA-256 \`${manifest.canonicalSources.find(entry => entry.kind === "market-registry").sha256}\``,
+    `- Generated output: \`${manifest.generation.decisionSupportOutputPath}\``,
+    `- Renderer: \`${manifest.generation.rendererPath}\``,
+    "- Regenerate with `npm run render:guideline`; fail stale output with `npm run check:guideline-projection`.",
+    "", "</details>",
+    "",
+  ].join("\n");
 }
 
 function renderScenarioGuide(market) {
@@ -873,18 +1022,7 @@ export function renderedGuidelineErrors(rendered, context) {
   const backlogIndex = lifecycleBlock.indexOf("Architecture-bound backlog");
   if (architectureIndex < 0 || backlogIndex < 0 || architectureIndex >= backlogIndex) errors.push("rendered lifecycle puts backlog before architecture decisions");
   if (/^\s*\{\s*"(?:registryId|benchmarkRows)"/m.test(rendered) || /"benchmarkRows"\s*:/.test(rendered)) errors.push("Guide presents raw registry JSON as the human surface");
-  const productBlock = extractGenerated(rendered, "MARKET_PRODUCTS");
-  const methodologyBlock = extractGenerated(rendered, "MARKET_METHODOLOGIES");
-  for (const product of market.products) {
-    if (!productBlock.includes(product.canonicalName) || !productBlock.includes(product.officialUri)) errors.push(`Guide omits Product identity or official link ${product.productId}`);
-  }
-  for (const methodology of market.methodologyBindings) {
-    if (productBlock.includes(methodology.canonicalName)) errors.push(`Guide presents methodology ${methodology.methodologyId} as a Product`);
-    if (!methodologyBlock.includes(methodology.canonicalName)) errors.push(`Guide omits methodology binding ${methodology.methodologyId}`);
-  }
-  for (const capability of market.capabilities) {
-    if (!rendered.includes(capability.capabilityId) || !rendered.includes(capability.name)) errors.push(`Guide omits capability ${capability.capabilityId}`);
-  }
+  if (!rendered.includes(path.basename(manifest.generation.decisionSupportOutputPath))) errors.push("Guide omits the complete generated market decision-support artifact link");
   for (const scenario of market.scenarios) {
     if (!rendered.includes(scenario.scenarioId) || !rendered.includes(scenario.fitConditions[0]) || !rendered.includes(scenario.nonFitConditions[0])) errors.push(`Guide omits scenario fit/non-fit ${scenario.scenarioId}`);
   }
@@ -911,14 +1049,60 @@ export function renderedGuidelineErrors(rendered, context) {
   return errors;
 }
 
+export function renderedMarketDecisionSupportErrors(rendered, context) {
+  const { manifest, market } = context;
+  const errors = [];
+  const rowByProduct = new Map(market.benchmarkRows.map(row => [row.productId, row]));
+  const assertions = new Map(market.evidenceAssertions.map(entry => [entry.assertionId, entry]));
+  const evidence = new Map(market.evidence.map(entry => [entry.evidenceId, entry]));
+  if (!rendered.startsWith("<!-- GENERATED FILE:")) errors.push("market decision guide lacks generated-file warning");
+  if ((rendered.match(/^# /gm) ?? []).length !== 1) errors.push("market decision guide must contain exactly one H1");
+  if (!rendered.includes("[Return to the main GAEP Guide](./GAEP_GUIDE.md#market-and-capability-decision-support)")) errors.push("market decision guide lacks return navigation");
+  if (/winner score|aggregate winner/i.test(rendered) && !/no universal winner|no aggregate score/i.test(rendered)) errors.push("market decision guide creates a winner score");
+  if (/"benchmarkRows"\s*:/.test(rendered)) errors.push("market decision guide presents raw JSON as the primary experience");
+  for (const line of rendered.split("\n").filter(line => line.startsWith("|"))) if ((line.match(/\|/g) ?? []).length > 5) errors.push("market decision guide table exceeds four columns");
+  const productSection = rendered.slice(rendered.indexOf("## Evaluated Product identities"), rendered.indexOf("## Methodologies and references"));
+  const methodologySection = rendered.slice(rendered.indexOf("## Methodologies and references"), rendered.indexOf("## Capability index"));
+  for (const product of market.products) {
+    if (!productSection.includes(product.productId) || !productSection.includes(product.canonicalName) || !productSection.includes(product.officialUri)) errors.push(`market decision guide omits Product identity ${product.productId}`);
+  }
+  for (const methodology of market.methodologyBindings) {
+    if (productSection.includes(methodology.canonicalName)) errors.push(`market decision guide scores methodology ${methodology.methodologyId} as a Product`);
+    if (!methodologySection.includes(methodology.methodologyId) || !methodologySection.includes(methodology.limitation)) errors.push(`market decision guide omits methodology boundary ${methodology.methodologyId}`);
+  }
+  const markers = [...rendered.matchAll(/<!-- CELL:(GAEP-CAP-[0-9]{3}):(GAEP-PRD-[0-9]{3}) -->/g)].map(match => `${match[1]}:${match[2]}`);
+  if (markers.length !== market.products.length * market.capabilities.length || new Set(markers).size !== markers.length) errors.push("market decision guide does not expose every unique Product × capability cell");
+  for (const capability of market.capabilities) {
+    if (!rendered.includes(`### ${capability.capabilityId} — ${capability.name}`)) errors.push(`market decision guide omits capability section ${capability.capabilityId}`);
+    for (const product of market.products) {
+      const marker = `<!-- CELL:${capability.capabilityId}:${product.productId} -->`;
+      const start = rendered.indexOf(marker);
+      const end = rendered.indexOf("\n", start);
+      const row = start < 0 ? "" : rendered.slice(start, end < 0 ? rendered.length : end);
+      const cell = rowByProduct.get(product.productId)?.cells.find(entry => entry.capabilityId === capability.capabilityId);
+      if (!cell || !row.includes(product.canonicalName) || !row.includes(supportDisplay(cell.supportLevel)) || !row.includes(deliveryDisplay(cell.deliveryState)) || !row.includes(cell.asOfDate) || !row.includes(cell.limitation)) errors.push(`market decision guide has stale cell ${product.productId}/${capability.capabilityId}`);
+      const expectedEvidenceUris = [...cell.supportAssertionIds, ...cell.availabilityAssertionIds].map(id => evidence.get(assertions.get(id)?.evidenceId)?.officialUri).filter(Boolean);
+      for (const uri of expectedEvidenceUris) if (!row.includes(uri)) errors.push(`${product.productId}/${capability.capabilityId}: exact assertion evidence link is missing`);
+      const rowLinks = [...row.matchAll(/\]\((https?:\/\/[^)]+)\)/g)].map(match => match[1]);
+      if (rowLinks.some(uri => !expectedEvidenceUris.includes(uri))) errors.push(`${product.productId}/${capability.capabilityId}: Product overview or unrelated URL substituted for cell evidence`);
+      if (cell.supportLevel === "unknown" && (!row.includes("No active cell-level support assertion") || /\|\s*(?:No|Unsupported)\s*(?:·|\|)/i.test(row))) errors.push(`${product.productId}/${capability.capabilityId}: Unknown converted to No or lacks explicit evidence absence`);
+      if (cell.deliveryState !== "shipped" && /Shipped · shipped/.test(row)) errors.push(`${product.productId}/${capability.capabilityId}: non-shipped delivery displayed as shipped`);
+    }
+  }
+  return errors;
+}
+
 export function validateCanonicalProjection(context = loadProjectionContext()) {
   const errors = validateProjectionContext(context);
   let rendered = "";
+  let renderedDecisionSupport = "";
   if (errors.length === 0) {
     rendered = renderGuideline(context);
+    renderedDecisionSupport = renderMarketDecisionSupport(context);
     errors.push(...renderedGuidelineErrors(rendered, context));
+    errors.push(...renderedMarketDecisionSupportErrors(renderedDecisionSupport, context));
   }
-  return { valid: errors.length === 0, errors, rendered };
+  return { valid: errors.length === 0, errors, rendered, renderedDecisionSupport };
 }
 
 export function projectionDriftErrors(actual, expected) {
