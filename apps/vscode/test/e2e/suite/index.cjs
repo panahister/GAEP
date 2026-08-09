@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict")
+const { createHash } = require("node:crypto")
 const { access } = require("node:fs/promises")
 const path = require("node:path")
 
@@ -124,6 +125,35 @@ async function assertCommandsAndViews(extension) {
   for (const viewId of viewIds) await vscode.commands.executeCommand(`${viewId}.focus`)
 }
 
+async function assertGuideSurface(extension) {
+  const guideUri = vscode.Uri.joinPath(extension.extensionUri, "media", "GAEP_GUIDE.md")
+  const guide = new TextDecoder().decode(await vscode.workspace.fs.readFile(guideUri))
+  assert.match(guide, /^# GAEP Product-to-Operations Guideline$/m)
+  assert.match(guide, /GAEP-REG-013 v0\.2\.1/)
+  assert.match(guide, /3dcfe5531a1bb4630dc3afdb2990389728e2d39cac2ac915986badb9fe9e5c17/)
+  assert.match(guide, /^## 1\. Executive orientation$/m)
+  assert.match(guide, /^## 4\. Methodology and maintainer appendix$/m)
+  assert.match(guide, /<!-- GAEP-VISUAL:lifecycle-architecture-plan -->/)
+  assert.match(guide, /Product Design preparation and evidence/)
+  assert.match(guide, /\[PD\] Planned \/ deferred/)
+  assert.match(guide, /Unknown means not assessed or not established; it never means No\./)
+
+  const expectedHashes = JSON.parse(process.env.GAEP_E2E_EXPECTED_ASSET_HASHES || "{}")
+  for (const relativePath of ["dist/extension.cjs", "dist/studio-client.js", "media/GAEP_GUIDE.md"]) {
+    const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(extension.extensionUri, ...relativePath.split("/")))
+    const actualHash = createHash("sha256").update(bytes).digest("hex")
+    assert.equal(actualHash, expectedHashes[relativePath], `${relativePath} source/package/installed parity`)
+  }
+
+  await vscode.commands.executeCommand("gaep.openGuide")
+  const preview = await waitFor(
+    () => vscode.window.tabGroups.all.flatMap((group) => group.tabs).find((tab) => /GAEP_GUIDE|GAEP Product-to-Operations/i.test(tab.label)),
+    "GAEP visual Guideline preview did not open",
+  )
+  assert.equal(preview.isDirty, false, "generated Guide preview must not be dirty")
+  await vscode.window.tabGroups.close(preview)
+}
+
 async function openStudio() {
   if (process.env.GAEP_E2E_LOG_CSP === "1") {
     const diagnosticPanel = vscode.window.createWebviewPanel("gaep.cspDiagnostic", "GAEP CSP diagnostic", vscode.ViewColumn.Active, {})
@@ -142,16 +172,18 @@ async function runOpenPhase() {
   await assertWorkspace(1)
   const extension = await activateExtension()
   await assertCommandsAndViews(extension)
+  await assertGuideSurface(extension)
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
   await openStudio()
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
-  process.stdout.write("PASS open: activation, native @gaep registration, all contributed commands, four native views, Product Studio open, and no implicit Product mutation\n")
+  process.stdout.write("PASS open: activation, native @gaep registration, all contributed commands, four native views, visual Guide preview, Product Studio, asset parity, and no implicit Product mutation\n")
 }
 
 async function runInstalledPhase() {
   await assertWorkspace(1)
   const extension = await activateExtension()
   await assertCommandsAndViews(extension)
+  await assertGuideSurface(extension)
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
   await openStudio()
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
@@ -170,7 +202,7 @@ async function runInstalledPhase() {
     message: "The recovery pass returned and the bounded persisted inventory has no interrupted non-terminal Managed Run. This does not attest provider outcome or machine-local cleanup.",
   })
   await assertAbsent(path.join(expectedRoots()[0], ".gaep"))
-  process.stdout.write("PASS installed: exact VSIX activation, commands, views, Product Studio, bundled-engine empty recovery/evidence workflow, and no workspace mutation\n")
+  process.stdout.write("PASS installed: exact VSIX activation, commands, views, visual Guide preview, source/package/installed asset parity, Product Studio, bundled-engine empty recovery/evidence workflow, and no workspace mutation\n")
 }
 
 async function runMultiRootPhase() {

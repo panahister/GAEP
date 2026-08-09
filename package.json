@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "check": "npm run typecheck && npm run test && npm run test:ci-contract && npm run test:example && npm run test:methodology-catalog && npm run test:market-benchmark && npm run validate:docs",
+    "check": "npm run typecheck && npm run test && npm run test:ci-contract && npm run test:example && npm run test:methodology-catalog && npm run test:market-benchmark && npm run test:guideline && npm run validate:docs",
     "check:founder": "npm run check && npm run test:vscode:extension-host",
     "clean": "npm run clean --workspaces --if-present",
     "package:kiro": "npm --prefix apps/kiro run package",
@@ -68,13 +68,20 @@
     "test:market-benchmark-semantics": "node --test scripts/market_benchmark_semantics.test.mjs",
     "test:market-benchmark-projection": "node --test scripts/market_benchmark_projection.test.mjs",
     "test:market-benchmark": "npm run validate:market-benchmark && npm run test:market-benchmark-schema && npm run test:market-benchmark-semantics && npm run test:market-benchmark-projection && npm run check:market-benchmark-projection",
+    "test:guideline-schema": "node --test scripts/guideline_schema.test.mjs",
+    "test:guideline-semantics": "node --test scripts/guideline_semantics.test.mjs",
+    "test:guideline-projection": "node --test scripts/guideline_projection.test.mjs",
+    "test:guideline": "npm run validate:guideline && npm run test:guideline-schema && npm run test:guideline-semantics && npm run test:guideline-projection && npm run check:guideline-projection",
     "typecheck": "tsc -b",
     "validate:methodology-schema": "node scripts/validate_methodology_reference_schema.mjs",
     "validate:market-benchmark": "node scripts/validate_market_benchmark_registry.mjs",
+    "validate:guideline": "node scripts/validate_guideline_manifest.mjs",
     "format:market-benchmark": "node scripts/format_market_benchmark_registry.mjs",
     "render:market-benchmark": "node scripts/render_market_benchmark.mjs --write",
     "check:market-benchmark-projection": "node scripts/render_market_benchmark.mjs --check",
-    "validate:docs": "npm run validate:methodology-schema && npm run validate:market-benchmark && ruby scripts/validate_next_docs.rb"
+    "render:guideline": "node scripts/render_guideline.mjs --write",
+    "check:guideline-projection": "node scripts/render_guideline.mjs --check",
+    "validate:docs": "npm run validate:methodology-schema && npm run validate:market-benchmark && npm run validate:guideline && ruby scripts/validate_next_docs.rb"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

@@ -31,6 +31,8 @@ METHODOLOGY_REFERENCE_CATALOG = NEXT_DOCS.join("99_Registries_and_References", "
 METHODOLOGY_REFERENCE_SCHEMA = NEXT_DOCS.join("99_Registries_and_References", "011_METHODOLOGY_REFERENCE_CATALOG.schema.json")
 MARKET_BENCHMARK_REGISTRY = NEXT_DOCS.join("99_Registries_and_References", "013_MARKET_EVIDENCE_AND_BENCHMARK_REGISTRY.json")
 MARKET_BENCHMARK_SCHEMA = NEXT_DOCS.join("99_Registries_and_References", "013_MARKET_EVIDENCE_AND_BENCHMARK_REGISTRY.schema.json")
+GUIDELINE_PROJECTION_MANIFEST = NEXT_DOCS.join("99_Registries_and_References", "014_GUIDELINE_PROJECTION_MANIFEST.json")
+GUIDELINE_PROJECTION_SCHEMA = NEXT_DOCS.join("99_Registries_and_References", "014_GUIDELINE_PROJECTION_MANIFEST.schema.json")
 METHODOLOGY_CROSSWALK = NEXT_DOCS.join("99_Registries_and_References", "002_EXTERNAL_STANDARDS_CROSSWALK.md")
 METHODOLOGY_REFERENCE_CONTRACT = NEXT_DOCS.join("99_Registries_and_References", "003_REFERENCE_ENTRY_CONTRACT.md")
 POSITIONING_AND_NAMING = NEXT_DOCS.join("00_GAEP_Product_Strategy", "004_POSITIONING_AND_ALTERNATIVES.md")
@@ -431,6 +433,37 @@ else
     end
   rescue JSON::ParserError => e
     errors << "#{MARKET_BENCHMARK_SCHEMA.relative_path_from(ROOT)}: invalid JSON: #{e.message}"
+  end
+end
+
+guideline_projection_manifest = nil
+if !GUIDELINE_PROJECTION_MANIFEST.file?
+  errors << "missing Guideline Projection Manifest #{GUIDELINE_PROJECTION_MANIFEST.relative_path_from(ROOT)}"
+else
+  begin
+    guideline_projection_manifest = JSON.parse(GUIDELINE_PROJECTION_MANIFEST.read)
+    registry_id = guideline_projection_manifest["registryId"]
+    registry_relative = GUIDELINE_PROJECTION_MANIFEST.relative_path_from(ROOT).to_s
+    if documents.key?(registry_id)
+      errors << "duplicate document or catalog id #{registry_id}: #{documents[registry_id]} and #{registry_relative}"
+    else
+      documents[registry_id] = registry_relative
+    end
+  rescue JSON::ParserError => e
+    errors << "#{GUIDELINE_PROJECTION_MANIFEST.relative_path_from(ROOT)}: invalid JSON: #{e.message}"
+  end
+end
+
+if !GUIDELINE_PROJECTION_SCHEMA.file?
+  errors << "missing Guideline Projection Manifest schema #{GUIDELINE_PROJECTION_SCHEMA.relative_path_from(ROOT)}"
+else
+  begin
+    guideline_schema = JSON.parse(GUIDELINE_PROJECTION_SCHEMA.read)
+    if guideline_projection_manifest && guideline_projection_manifest["schemaId"] != guideline_schema["$id"]
+      errors << "#{GUIDELINE_PROJECTION_SCHEMA.relative_path_from(ROOT)}: manifest schema binding is stale"
+    end
+  rescue JSON::ParserError => e
+    errors << "#{GUIDELINE_PROJECTION_SCHEMA.relative_path_from(ROOT)}: invalid JSON: #{e.message}"
   end
 end
 

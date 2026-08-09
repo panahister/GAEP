@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process"
+import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -62,6 +63,10 @@ async function runPhase({
   developmentPath = extensionDevelopmentPath,
   disableExtensions = true,
 }) {
+  const assetHashes = {}
+  for (const relativePath of ["dist/extension.cjs", "dist/studio-client.js", "media/GAEP_GUIDE.md"]) {
+    assetHashes[relativePath] = createHash("sha256").update(await readFile(join(extensionDevelopmentPath, relativePath))).digest("hex")
+  }
   const options = {
     extensionDevelopmentPath: developmentPath,
     extensionTestsPath,
@@ -77,6 +82,7 @@ async function runPhase({
     extensionTestsEnv: {
       GAEP_E2E_PHASE: phase,
       GAEP_E2E_EXPECTED_ROOTS: expectedRoots.join("\n"),
+      GAEP_E2E_EXPECTED_ASSET_HASHES: JSON.stringify(assetHashes),
     },
   }
   if (installation) options.vscodeExecutablePath = installation.executable
