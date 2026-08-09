@@ -126,7 +126,11 @@ Read `01_Constitution/004_METHODOLOGY_CONSTITUTION.md` for GAEP's applicability-
 
 ### Market, benchmark, and executive-claim review
 
-Read `99_Registries_and_References/012_MARKET_EVIDENCE_AND_BENCHMARK_CONTRACT.md` for the P02 evidence and comparison rules. The machine-readable current P02 source is `99_Registries_and_References/013_MARKET_EVIDENCE_AND_BENCHMARK_REGISTRY.json`; `00_GAEP_Product_Strategy/004_POSITIONING_AND_ALTERNATIVES.md` is its deterministic human projection. Review `06_GAEP_On_GAEP/017_P02_MARKET_BENCHMARK_EXECUTION_REPORT.md` for execution limits, tests, package evidence, and research debt. Market evidence is separate from the P01 methodology catalog. Every P02 artifact remains Proposed, internal, not approved, and not published.
+Read `99_Registries_and_References/012_MARKET_EVIDENCE_AND_BENCHMARK_CONTRACT.md` for the P02 evidence and comparison rules. The machine-readable current P02 source is `99_Registries_and_References/013_MARKET_EVIDENCE_AND_BENCHMARK_REGISTRY.json`; `00_GAEP_Product_Strategy/004_POSITIONING_AND_ALTERNATIVES.md` is its deterministic human projection. Review `06_GAEP_On_GAEP/018_P02_MARKET_BENCHMARK_CORRECTION_REPORT.md`, then the retained `017_P02_MARKET_BENCHMARK_EXECUTION_REPORT.md`, for correction evidence, execution limits, tests, package evidence, and research debt. Market evidence is separate from the P01 methodology catalog. Every P02 artifact remains Proposed, internal, not approved, and not published.
+
+### Visual Guideline and projection review
+
+Open the bundled `apps/vscode/media/GAEP_GUIDE.md` for the four-layer human Product surface: executive orientation, quick start, practitioner lifecycle, and methodology appendix. Its strict projection contract is `99_Registries_and_References/014_GUIDELINE_PROJECTION_MANIFEST.json`; the manifest binds exact P01/P02 identities, versions, digests, runtime checkpoints, extension commands, required vertical visuals, and the 19-node target Product-to-Operations lifecycle. The generated Guide remains Proposed, internal, not approved, and not published; its maturity states are evidence projections, not acceptance or rollout authority.
 
 ### Security, privacy, AI, and assurance review
 

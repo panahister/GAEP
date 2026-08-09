@@ -2,7 +2,7 @@
   "schemaId": "https://gaep.example/schemas/guideline-projection-manifest-1.0.0.json",
   "schemaVersion": "1.0.0",
   "registryId": "GAEP-REG-014",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "status": "proposed",
   "ownerRole": "GAEP Product Owner",
   "approval": {
@@ -91,6 +91,7 @@
     { "sectionId": "executive-authority", "heading": "Authority and evidence boundary", "layerId": "executive-orientation", "contentMode": "hybrid" },
     { "sectionId": "quick-first-session", "heading": "Your first governed session", "layerId": "quick-start", "contentMode": "hybrid" },
     { "sectionId": "quick-navigation", "heading": "Where you are and what happens next", "layerId": "quick-start", "contentMode": "generated-canonical-facts" },
+    { "sectionId": "quick-visual-language", "heading": "Visual language for every checkpoint", "layerId": "quick-start", "contentMode": "hand-authored-narrative" },
     { "sectionId": "practitioner-lifecycle", "heading": "Target Product-to-Operations lifecycle", "layerId": "practitioner-guide", "contentMode": "generated-canonical-facts" },
     { "sectionId": "practitioner-sources", "heading": "Source grounding and provenance", "layerId": "practitioner-guide", "contentMode": "hybrid" },
     { "sectionId": "practitioner-market", "heading": "Market and capability decision support", "layerId": "practitioner-guide", "contentMode": "generated-canonical-facts" },

@@ -12,6 +12,13 @@
 
 This is the maintained, human-facing GAEP Product surface bundled with the VS Code extension. It uses four progressive layers: stop after the layer that answers your question, or continue for the evidence and methodology details.
 
+## Contents
+
+- [1. Executive orientation](#1-executive-orientation)
+- [2. Quick start](#2-quick-start)
+- [3. Practitioner guide](#3-practitioner-guide)
+- [4. Methodology and maintainer appendix](#4-methodology-and-maintainer-appendix)
+
 <!-- BEGIN HAND-AUTHORED NARRATIVE -->
 
 ## 1. Executive orientation
@@ -164,6 +171,28 @@ flowchart TD
 <!-- END GENERATED:CURRENT_RUNTIME -->
 
 The target lifecycle in Layer 3 is broader than today’s runtime checkpoint vocabulary. Treat the target as an honest map of current, partial, and planned coverage—not as a claim that every node is already automated.
+
+### Visual language for every checkpoint
+
+Use these compact callouts in GAEP conversations and future Product surfaces. They make the state actionable without pretending that an unanswered question is resolved.
+
+> **Why this matters** — explains the downstream decision, risk, or evidence consequence.
+
+> **What GAEP needs from you** — names the bounded human input or authority required now.
+
+> **Previous step** — points to the exact governed predecessor or says that none exists.
+
+> **Current step** — identifies the active checkpoint and whether its content is candidate or governed.
+
+> **Next step** — names the next valid action; it is not a delivery promise.
+
+> **Open question** — visually separates unresolved information from explanatory prose.
+
+> **Blocking decision** — identifies the accountable human decision that prevents valid progression.
+
+> **What will be persisted** — lists the exact candidate or governed fields that the action records.
+
+> **What will not be authorized** — states which approval, publication, rollout, security, compliance, or production authorities remain outside the action.
 
 ## 3. Practitioner guide
 
@@ -672,7 +701,7 @@ The ledger is not marketing copy. It retains dispositions, qualifiers, limitatio
 ### Deterministic maintenance contract
 
 <!-- BEGIN GENERATED:MAINTENANCE_CONTRACT -->
-**Projection contract:** GAEP-REG-014 v0.1.0 · schema 1.0.0 · not-approved · not-published.
+**Projection contract:** GAEP-REG-014 v0.2.0 · schema 1.0.0 · not-approved · not-published.
 
 | Source role | Exact identity | Repository path | SHA-256 |
 |---|---|---|---|

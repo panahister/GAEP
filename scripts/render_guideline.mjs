@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
-import { loadProjectionContext, validateCanonicalProjection } from "./lib/guideline_projection.mjs";
+import { loadProjectionContext, projectionDriftErrors, validateCanonicalProjection } from "./lib/guideline_projection.mjs";
 
 const mode = process.argv[2];
 if (!["--check", "--write"].includes(mode)) {
@@ -26,7 +26,7 @@ if (mode === "--write") {
 }
 
 const actual = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, "utf8") : "";
-if (actual !== result.rendered) {
+if (projectionDriftErrors(actual, result.rendered).length > 0) {
   process.stderr.write(`Generated Guide drift: run npm run render:guideline and commit ${context.manifest.generation.outputPath}.\n`);
   process.exit(1);
 }

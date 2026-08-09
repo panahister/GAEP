@@ -17,6 +17,7 @@ export const AJV_VERSION = require("ajv/package.json").version;
 export const AJV_FORMATS_VERSION = require("ajv-formats/package.json").version;
 
 export const EXPECTED_LAYERS = ["executive-orientation", "quick-start", "practitioner-guide", "methodology-appendix"];
+export const EXPECTED_SOURCE_KINDS = ["methodology-catalog", "market-registry", "terminology-index", "runtime-checkpoints", "extension-package"];
 export const EXPECTED_STATES = [
   "unknown-not-assessed",
   "planned-deferred-coming-soon",
@@ -177,6 +178,8 @@ export function manifestSemanticErrors(manifest, { catalog, market, extensionPac
   const errors = [];
   const layerIds = manifest.audienceLayers.map(entry => entry.layerId);
   if (JSON.stringify(layerIds) !== JSON.stringify(EXPECTED_LAYERS)) errors.push("audience layers must be the exact four progressive layers in canonical order");
+  const sourceKinds = manifest.canonicalSources.map(entry => entry.kind);
+  if (JSON.stringify(sourceKinds) !== JSON.stringify(EXPECTED_SOURCE_KINDS)) errors.push("canonical sources must use the exact maintained ordering");
   for (const [label, values] of [
     ["source kinds", manifest.canonicalSources.map(entry => entry.kind)],
     ["section IDs", manifest.requiredSections.map(entry => entry.sectionId)],
@@ -573,6 +576,7 @@ export function renderedGuidelineErrors(rendered, context) {
   for (const heading of ["## 1. Executive orientation", "## 2. Quick start", "## 3. Practitioner guide", "## 4. Methodology and maintainer appendix"]) {
     if (!rendered.includes(heading)) errors.push(`Guide missing progressive layer ${heading}`);
   }
+  if (!rendered.includes("## Contents") || !rendered.includes("[4. Methodology and maintainer appendix](#4-methodology-and-maintainer-appendix)")) errors.push("Guide missing progressive table of contents");
   for (const section of manifest.requiredSections) {
     if (!rendered.includes(`### ${section.heading}`)) errors.push(`Guide missing required section ${section.heading}`);
   }
@@ -618,7 +622,10 @@ export function renderedGuidelineErrors(rendered, context) {
     if (!rendered.includes(scenario.scenarioId) || !rendered.includes(scenario.fitConditions[0]) || !rendered.includes(scenario.nonFitConditions[0])) errors.push(`Guide omits scenario fit/non-fit ${scenario.scenarioId}`);
   }
   for (const claim of market.claims) {
-    if (!rendered.includes(claim.claimId) || !rendered.includes(claim.disposition) || !rendered.includes(claim.approvalState) || !rendered.includes(claim.publicationState) || !rendered.includes(claim.limitations[0]) || !rendered.includes(claim.requiredQualifiers[0])) errors.push(`Guide omits claim authority or limitation ${claim.claimId}`);
+    const start = rendered.indexOf(`#### ${claim.claimId}`);
+    const end = rendered.indexOf("\n#### ", start + 1);
+    const block = start < 0 ? "" : rendered.slice(start, end < 0 ? rendered.length : end);
+    if (!block.includes(claim.disposition) || !block.includes(claim.approvalState) || !block.includes(claim.publicationState) || !block.includes(claim.limitations[0]) || !block.includes(claim.requiredQualifiers[0])) errors.push(`Guide omits claim authority or limitation ${claim.claimId}`);
   }
   for (const reference of catalog.references) {
     if (!rendered.includes(reference.referenceId) || !rendered.includes(reference.officialUri) || !rendered.includes(reference.evidenceStatus) || !rendered.includes(reference.reviewTrigger)) errors.push(`Guide omits methodology source card facts ${reference.referenceId}`);
@@ -638,4 +645,8 @@ export function validateCanonicalProjection(context = loadProjectionContext()) {
     errors.push(...renderedGuidelineErrors(rendered, context));
   }
   return { valid: errors.length === 0, errors, rendered };
+}
+
+export function projectionDriftErrors(actual, expected) {
+  return actual === expected ? [] : ["generated Guide bytes differ from the deterministic canonical projection"];
 }
