@@ -111,7 +111,7 @@ The registry covers 9 market categories and 7 adoption scenarios. Start with the
 
 Capture Product intent, problem evidence, affected users, outcomes, and bounded success hypotheses.
 
-**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent P03 review. **Market cells:** 0 Verified · 3 Partial · 12 Unknown.
+**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent acceptance. **Market cells:** 0 Verified · 3 Partial · 12 Unknown.
 
 <details>
 <summary><strong>Compare all 15 Products for GAEP-CAP-101</strong></summary>
@@ -256,7 +256,7 @@ Trace governed facts and decisions to exact source identities, revisions, and de
 
 Keep AI proposal, human review, acceptance, durable commit, approval, and authorization distinct.
 
-**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent P03 review. **Market cells:** 0 Verified · 2 Partial · 13 Unknown.
+**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent acceptance. **Market cells:** 0 Verified · 2 Partial · 13 Unknown.
 
 <details>
 <summary><strong>Compare all 15 Products for GAEP-CAP-106</strong></summary>
@@ -372,7 +372,7 @@ Map required, optional, deferred, excluded, and unresolved lifecycle work withou
 
 Model business capabilities, value streams, operating context, roles, and business rules.
 
-**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent P03 review. **Market cells:** 0 Verified · 1 Partial · 14 Unknown.
+**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent acceptance. **Market cells:** 0 Verified · 1 Partial · 14 Unknown.
 
 <details>
 <summary><strong>Compare all 15 Products for GAEP-CAP-110</strong></summary>
@@ -401,7 +401,7 @@ Model business capabilities, value streams, operating context, roles, and busine
 
 Discover domain behavior, events, commands, policies, actors, and unresolved language collaboratively.
 
-**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent P03 review. **Market cells:** 0 Verified · 0 Partial · 15 Unknown.
+**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent acceptance. **Market cells:** 0 Verified · 0 Partial · 15 Unknown.
 
 <details>
 <summary><strong>Compare all 15 Products for GAEP-CAP-111</strong></summary>
@@ -430,7 +430,7 @@ Discover domain behavior, events, commands, policies, actors, and unresolved lan
 
 Define strategic domain boundaries, ownership, relationships, and context-map semantics.
 
-**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent P03 review. **Market cells:** 0 Verified · 0 Partial · 15 Unknown.
+**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent acceptance. **Market cells:** 0 Verified · 0 Partial · 15 Unknown.
 
 <details>
 <summary><strong>Compare all 15 Products for GAEP-CAP-112</strong></summary>
@@ -459,7 +459,7 @@ Define strategic domain boundaries, ownership, relationships, and context-map se
 
 Maintain architecture views, quality attributes, decisions, rationale, dependencies, and impact.
 
-**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent P03 review. **Market cells:** 0 Verified · 3 Partial · 12 Unknown.
+**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent acceptance. **Market cells:** 0 Verified · 3 Partial · 12 Unknown.
 
 <details>
 <summary><strong>Compare all 15 Products for GAEP-CAP-113</strong></summary>
@@ -633,7 +633,7 @@ Record testable acceptance criteria plus explicit readiness and completion bound
 
 Design tests, test cases, assurance activities, quality gates, and review evidence.
 
-**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent P03 review. **Market cells:** 1 Verified · 6 Partial · 8 Unknown.
+**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent acceptance. **Market cells:** 1 Verified · 6 Partial · 8 Unknown.
 
 <details>
 <summary><strong>Compare all 15 Products for GAEP-CAP-119</strong></summary>
@@ -662,7 +662,7 @@ Design tests, test cases, assurance activities, quality gates, and review eviden
 
 Trace requirements through design, implementation, tests, results, and change impact.
 
-**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent P03 review. **Market cells:** 2 Verified · 4 Partial · 9 Unknown.
+**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent acceptance. **Market cells:** 2 Verified · 4 Partial · 9 Unknown.
 
 <details>
 <summary><strong>Compare all 15 Products for GAEP-CAP-120</strong></summary>
@@ -807,7 +807,7 @@ Distribute slices across repositories and detect dependency, status, and contrac
 
 Use implementation agents and code generation within bounded authority and review controls.
 
-**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent P03 review. **Market cells:** 0 Verified · 6 Partial · 9 Unknown.
+**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent acceptance. **Market cells:** 0 Verified · 6 Partial · 9 Unknown.
 
 <details>
 <summary><strong>Compare all 15 Products for GAEP-CAP-125</strong></summary>
@@ -894,7 +894,7 @@ Connect runtime signals, observability, incidents, recovery, and reliability fee
 
 Preserve tamper-evident events, evidence records, revisions, decisions, and authority history.
 
-**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent P03 review. **Market cells:** 0 Verified · 5 Partial · 10 Unknown.
+**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent acceptance. **Market cells:** 0 Verified · 5 Partial · 10 Unknown.
 
 <details>
 <summary><strong>Compare all 15 Products for GAEP-CAP-128</strong></summary>
@@ -923,7 +923,7 @@ Preserve tamper-evident events, evidence records, revisions, decisions, and auth
 
 Support replaceable providers, tool adapters, portable contracts, and governed extension points.
 
-**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent P03 review. **Market cells:** 1 Verified · 3 Partial · 11 Unknown.
+**GAEP maturity (separate from market support):** [IA] Implemented; awaiting independent acceptance. **Market cells:** 1 Verified · 3 Partial · 11 Unknown.
 
 <details>
 <summary><strong>Compare all 15 Products for GAEP-CAP-129</strong></summary>

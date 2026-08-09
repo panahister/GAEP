@@ -456,33 +456,33 @@ Target participation is proposed and non-executable. A role mapping does not app
 |---|---|---|
 | `governing-body` · Governing body | — | — |
 | `executive-sponsor` · Executive sponsor | — | — |
-| `product-leadership` · Product leadership | `product-definition` (I)<br/>`business-architecture` (A) | `lifecycle-11` Phase, wave, Product, and vertical-slice planning (A)<br/>`lifecycle-12` Product Design preparation and iterative evidence (A)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (A) |
-| `product-manager` · Product Manager | `product-definition` (R)<br/>`initiative-definition` (C/R/I)<br/>`source-intake` (C)<br/>`product-discovery` (R)<br/>`business-architecture` (C)<br/>`p0-p4-readiness` (C) | `lifecycle-01` Product intent and problem discovery (R)<br/>`lifecycle-03` Product and Initiative definition (R)<br/>`lifecycle-05` Product discovery (R)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (R)<br/>`lifecycle-12` Product Design preparation and iterative evidence (R)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (R)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (C) |
-| `product-owner` · Product Owner | `product-discovery` (R)<br/>`detailed-design-assurance` (C)<br/>`p0-p4-readiness` (R) | — |
-| `initiative-lead` · Initiative lead | `initiative-definition` (R)<br/>`initiative-classification` (R)<br/>`initiative-applicability` (R)<br/>`source-intake` (R)<br/>`source-baseline` (R)<br/>`source-provenance` (R)<br/>`p0-p4-readiness` (R) | `lifecycle-02` Source-first workspace initialization and change governance (R)<br/>`lifecycle-04` Initiative classification and applicability (R) |
-| `business-owner` · Business owner | `product-definition` (C/A)<br/>`initiative-definition` (C/A)<br/>`initiative-classification` (C/A)<br/>`initiative-applicability` (C/A)<br/>`source-intake` (A)<br/>`source-baseline` (A)<br/>`source-provenance` (A)<br/>`product-discovery` (A) | `lifecycle-01` Product intent and problem discovery (A)<br/>`lifecycle-02` Source-first workspace initialization and change governance (A)<br/>`lifecycle-03` Product and Initiative definition (A)<br/>`lifecycle-04` Initiative classification and applicability (A)<br/>`lifecycle-05` Product discovery (A) |
-| `domain-expert` · Domain expert | `initiative-definition` (C)<br/>`initiative-applicability` (C)<br/>`source-intake` (R)<br/>`source-baseline` (C/R/I)<br/>`source-provenance` (R/C)<br/>`product-discovery` (C)<br/>`business-architecture` (R) | `lifecycle-01` Product intent and problem discovery (R)<br/>`lifecycle-03` Product and Initiative definition (R)<br/>`lifecycle-05` Product discovery (R) |
-| `business-architect` · Business architect | `business-architecture` (R) | `lifecycle-06` Business architecture and value streams (R)<br/>`lifecycle-07` Domain discovery and Event Storming (R)<br/>`lifecycle-08` DDD strategic design and context mapping (R)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (R)<br/>`lifecycle-10` Architecture decisions and quality scenarios (R) |
-| `enterprise-architect` · Enterprise architect | `business-architecture` (C)<br/>`solution-security-architecture` (A) | `lifecycle-06` Business architecture and value streams (A)<br/>`lifecycle-07` Domain discovery and Event Storming (A)<br/>`lifecycle-08` DDD strategic design and context mapping (A)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (A)<br/>`lifecycle-10` Architecture decisions and quality scenarios (A) |
-| `solution-architect` · Solution architect | `solution-security-architecture` (R)<br/>`detailed-design-assurance` (R) | `lifecycle-06` Business architecture and value streams (R)<br/>`lifecycle-07` Domain discovery and Event Storming (R)<br/>`lifecycle-08` DDD strategic design and context mapping (R)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (R)<br/>`lifecycle-10` Architecture decisions and quality scenarios (R)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (C)<br/>`lifecycle-12` Product Design preparation and iterative evidence (C)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (C) |
-| `data-ai-architect` · Data/AI architect | `solution-security-architecture` (C)<br/>`detailed-design-assurance` (C) | `lifecycle-06` Business architecture and value streams (C)<br/>`lifecycle-07` Domain discovery and Event Storming (C)<br/>`lifecycle-08` DDD strategic design and context mapping (C)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (C)<br/>`lifecycle-10` Architecture decisions and quality scenarios (C) |
-| `security-architect` · Security architect | `initiative-classification` (C)<br/>`initiative-applicability` (C)<br/>`solution-security-architecture` (R)<br/>`detailed-design-assurance` (C) | `lifecycle-02` Source-first workspace initialization and change governance (C)<br/>`lifecycle-04` Initiative classification and applicability (C)<br/>`lifecycle-06` Business architecture and value streams (C/IA)<br/>`lifecycle-07` Domain discovery and Event Storming (C/IA)<br/>`lifecycle-08` DDD strategic design and context mapping (C/IA)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (C/IA)<br/>`lifecycle-10` Architecture decisions and quality scenarios (C/IA) |
-| `privacy-specialist` · Privacy specialist | `initiative-classification` (C)<br/>`initiative-applicability` (C)<br/>`solution-security-architecture` (C) | `lifecycle-02` Source-first workspace initialization and change governance (C)<br/>`lifecycle-04` Initiative classification and applicability (C)<br/>`lifecycle-06` Business architecture and value streams (C)<br/>`lifecycle-07` Domain discovery and Event Storming (C)<br/>`lifecycle-08` DDD strategic design and context mapping (C)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (C)<br/>`lifecycle-10` Architecture decisions and quality scenarios (C) |
-| `legal-regulatory-specialist` · Legal/regulatory specialist | `initiative-classification` (C)<br/>`initiative-applicability` (C) | — |
-| `risk-compliance-specialist` · Risk/compliance specialist | `initiative-classification` (R)<br/>`initiative-applicability` (R)<br/>`source-intake` (C)<br/>`source-baseline` (C)<br/>`solution-security-architecture` (C) | `lifecycle-02` Source-first workspace initialization and change governance (R)<br/>`lifecycle-04` Initiative classification and applicability (R)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (C) |
-| `product-design-research` · User research and Product Design | `product-discovery` (R) | `lifecycle-01` Product intent and problem discovery (C)<br/>`lifecycle-03` Product and Initiative definition (C)<br/>`lifecycle-05` Product discovery (C)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (R)<br/>`lifecycle-12` Product Design preparation and iterative evidence (R)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (R) |
-| `engineering-leadership` · Engineering leadership | `detailed-design-assurance` (A)<br/>`p0-p4-readiness` (A) | `lifecycle-11` Phase, wave, Product, and vertical-slice planning (C/IA)<br/>`lifecycle-12` Product Design preparation and iterative evidence (C/IA)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (C/IA)<br/>`lifecycle-14` Repository and implementation-target topology (A)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (A)<br/>`lifecycle-16` Governed implementation agents and code generation (A)<br/>`lifecycle-17` Product QA and independent P03 review (A)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (A) |
-| `software-engineering` · Software engineering | — | `lifecycle-14` Repository and implementation-target topology (R)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (R)<br/>`lifecycle-16` Governed implementation agents and code generation (R)<br/>`lifecycle-17` Product QA and independent P03 review (R)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (R) |
-| `data-ai-engineering` · Data/AI engineering | — | `lifecycle-14` Repository and implementation-target topology (C)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (C)<br/>`lifecycle-16` Governed implementation agents and code generation (C)<br/>`lifecycle-17` Product QA and independent P03 review (C)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (C) |
-| `platform-devops` · Platform/DevOps | `solution-security-architecture` (C)<br/>`detailed-design-assurance` (C) | `lifecycle-14` Repository and implementation-target topology (R)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (R)<br/>`lifecycle-16` Governed implementation agents and code generation (R)<br/>`lifecycle-17` Product QA and independent P03 review (R)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (R) |
-| `quality-engineering` · Quality engineering | `detailed-design-assurance` (R)<br/>`p0-p4-readiness` (R) | `lifecycle-11` Phase, wave, Product, and vertical-slice planning (R)<br/>`lifecycle-12` Product Design preparation and iterative evidence (R)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (R)<br/>`lifecycle-14` Repository and implementation-target topology (R)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (R)<br/>`lifecycle-16` Governed implementation agents and code generation (R)<br/>`lifecycle-17` Product QA and independent P03 review (R)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (R) |
-| `ai-evaluation-tevv` · AI evaluation / TEVV | `detailed-design-assurance` (IA) | `lifecycle-14` Repository and implementation-target topology (IA)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (IA)<br/>`lifecycle-16` Governed implementation agents and code generation (IA)<br/>`lifecycle-17` Product QA and independent P03 review (IA)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (IA) |
-| `release-change-management` · Release/change management | `p0-p4-readiness` (C) | `lifecycle-14` Repository and implementation-target topology (C)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (C)<br/>`lifecycle-16` Governed implementation agents and code generation (C)<br/>`lifecycle-17` Product QA and independent P03 review (C)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (C) |
-| `service-management` · Service management | — | `lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (R) |
-| `sre-operations` · SRE/operations | — | `lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (R) |
-| `incident-recovery-leadership` · Incident/recovery leadership | — | `lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (A) |
-| `internal-audit-independent-assurance` · Internal audit or independent assurance | `initiative-classification` (IA)<br/>`initiative-applicability` (IA)<br/>`source-provenance` (C/IA)<br/>`solution-security-architecture` (IA)<br/>`detailed-design-assurance` (IA)<br/>`p0-p4-readiness` (IA) | `lifecycle-02` Source-first workspace initialization and change governance (IA)<br/>`lifecycle-04` Initiative classification and applicability (IA)<br/>`lifecycle-06` Business architecture and value streams (IA)<br/>`lifecycle-07` Domain discovery and Event Storming (IA)<br/>`lifecycle-08` DDD strategic design and context mapping (IA)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (IA)<br/>`lifecycle-10` Architecture decisions and quality scenarios (IA)<br/>`lifecycle-14` Repository and implementation-target topology (IA)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (IA)<br/>`lifecycle-16` Governed implementation agents and code generation (IA)<br/>`lifecycle-17` Product QA and independent P03 review (IA)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (IA)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (IA) |
-| `affected-user-stakeholder` · Affected-user/stakeholder representative | `product-definition` (C)<br/>`product-discovery` (C)<br/>`business-architecture` (C) | `lifecycle-01` Product intent and problem discovery (C)<br/>`lifecycle-03` Product and Initiative definition (C)<br/>`lifecycle-05` Product discovery (C) |
+| `product-leadership` · Product leadership | `product-definition` (I)<br/>`business-architecture` (A) | `lifecycle-01` Product intent and problem discovery (I)<br/>`lifecycle-03` Product and Initiative definition (I)<br/>`lifecycle-05` Product discovery (I)<br/>`lifecycle-06` Business architecture and value streams (A)<br/>`lifecycle-07` Domain discovery and Event Storming (A)<br/>`lifecycle-10` Architecture decisions and quality scenarios (I)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (A)<br/>`lifecycle-12` Product Design preparation and iterative evidence (A)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (I)<br/>`lifecycle-17` Product QA, UAT, and product acceptance (I)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (I) |
+| `product-manager` · Product Manager | `product-definition` (R)<br/>`initiative-definition` (C/R/I)<br/>`source-intake` (C)<br/>`product-discovery` (R)<br/>`business-architecture` (C)<br/>`p0-p4-readiness` (C) | `lifecycle-01` Product intent and problem discovery (R)<br/>`lifecycle-02` Source-first workspace initialization and change governance (I)<br/>`lifecycle-03` Product and Initiative definition (R)<br/>`lifecycle-04` Initiative classification and applicability (I)<br/>`lifecycle-05` Product discovery (R)<br/>`lifecycle-06` Business architecture and value streams (C)<br/>`lifecycle-07` Domain discovery and Event Storming (C)<br/>`lifecycle-08` DDD strategic design and context mapping (C)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (I)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (R)<br/>`lifecycle-12` Product Design preparation and iterative evidence (C)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (R)<br/>`lifecycle-17` Product QA, UAT, and product acceptance (C)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (C) |
+| `product-owner` · Product Owner | `product-discovery` (R)<br/>`detailed-design-assurance` (C)<br/>`p0-p4-readiness` (R) | `lifecycle-01` Product intent and problem discovery (C)<br/>`lifecycle-03` Product and Initiative definition (C)<br/>`lifecycle-05` Product discovery (R)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (R)<br/>`lifecycle-12` Product Design preparation and iterative evidence (C)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (R/A)<br/>`lifecycle-14` Repository and implementation-target topology (I)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (C)<br/>`lifecycle-16` Governed implementation agents and code generation (C)<br/>`lifecycle-17` Product QA, UAT, and product acceptance (R/A)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (I)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (I) |
+| `initiative-lead` · Initiative lead | `initiative-definition` (R)<br/>`initiative-classification` (R)<br/>`initiative-applicability` (R)<br/>`source-intake` (R)<br/>`source-baseline` (R)<br/>`source-provenance` (R)<br/>`p0-p4-readiness` (R) | `lifecycle-02` Source-first workspace initialization and change governance (R)<br/>`lifecycle-03` Product and Initiative definition (R)<br/>`lifecycle-04` Initiative classification and applicability (R)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (R) |
+| `business-owner` · Business owner | `product-definition` (C/A)<br/>`initiative-definition` (C/A)<br/>`initiative-classification` (C/A)<br/>`initiative-applicability` (C/A)<br/>`source-intake` (A)<br/>`source-baseline` (A)<br/>`source-provenance` (A)<br/>`product-discovery` (A) | `lifecycle-01` Product intent and problem discovery (A)<br/>`lifecycle-02` Source-first workspace initialization and change governance (A)<br/>`lifecycle-03` Product and Initiative definition (A)<br/>`lifecycle-04` Initiative classification and applicability (A)<br/>`lifecycle-05` Product discovery (A)<br/>`lifecycle-06` Business architecture and value streams (I)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (I)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (I) |
+| `domain-expert` · Domain expert | `initiative-definition` (C)<br/>`initiative-applicability` (C)<br/>`source-intake` (R)<br/>`source-baseline` (C/R/I)<br/>`source-provenance` (R/C)<br/>`product-discovery` (C)<br/>`business-architecture` (R) | `lifecycle-01` Product intent and problem discovery (C)<br/>`lifecycle-02` Source-first workspace initialization and change governance (R)<br/>`lifecycle-03` Product and Initiative definition (C)<br/>`lifecycle-05` Product discovery (C)<br/>`lifecycle-06` Business architecture and value streams (R)<br/>`lifecycle-07` Domain discovery and Event Storming (R)<br/>`lifecycle-08` DDD strategic design and context mapping (R) |
+| `business-architect` · Business architect | `business-architecture` (R) | `lifecycle-06` Business architecture and value streams (R)<br/>`lifecycle-07` Domain discovery and Event Storming (R)<br/>`lifecycle-08` DDD strategic design and context mapping (R) |
+| `enterprise-architect` · Enterprise architect | `business-architecture` (C)<br/>`solution-security-architecture` (A) | `lifecycle-06` Business architecture and value streams (C)<br/>`lifecycle-07` Domain discovery and Event Storming (I)<br/>`lifecycle-08` DDD strategic design and context mapping (A)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (A)<br/>`lifecycle-10` Architecture decisions and quality scenarios (A) |
+| `solution-architect` · Solution architect | `solution-security-architecture` (R)<br/>`detailed-design-assurance` (R) | `lifecycle-07` Domain discovery and Event Storming (C)<br/>`lifecycle-08` DDD strategic design and context mapping (R)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (R)<br/>`lifecycle-10` Architecture decisions and quality scenarios (R)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (C)<br/>`lifecycle-12` Product Design preparation and iterative evidence (C)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (C)<br/>`lifecycle-14` Repository and implementation-target topology (R)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (R) |
+| `data-ai-architect` · Data/AI architect | `solution-security-architecture` (C)<br/>`detailed-design-assurance` (C) | `lifecycle-08` DDD strategic design and context mapping (C)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (R)<br/>`lifecycle-10` Architecture decisions and quality scenarios (C) |
+| `security-architect` · Security architect | `initiative-classification` (C)<br/>`initiative-applicability` (C)<br/>`solution-security-architecture` (R)<br/>`detailed-design-assurance` (C) | `lifecycle-04` Initiative classification and applicability (C)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (R/A)<br/>`lifecycle-10` Architecture decisions and quality scenarios (R)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (C)<br/>`lifecycle-14` Repository and implementation-target topology (C)<br/>`lifecycle-16` Governed implementation agents and code generation (C)<br/>`lifecycle-17` Product QA, UAT, and product acceptance (C)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (C) |
+| `privacy-specialist` · Privacy specialist | `initiative-classification` (C)<br/>`initiative-applicability` (C)<br/>`solution-security-architecture` (C) | `lifecycle-04` Initiative classification and applicability (C)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (A/C)<br/>`lifecycle-10` Architecture decisions and quality scenarios (C) |
+| `legal-regulatory-specialist` · Legal/regulatory specialist | `initiative-classification` (C)<br/>`initiative-applicability` (C) | `lifecycle-02` Source-first workspace initialization and change governance (C)<br/>`lifecycle-04` Initiative classification and applicability (C) |
+| `risk-compliance-specialist` · Risk/compliance specialist | `initiative-classification` (R)<br/>`initiative-applicability` (R)<br/>`source-intake` (C)<br/>`source-baseline` (C)<br/>`solution-security-architecture` (C) | `lifecycle-02` Source-first workspace initialization and change governance (C)<br/>`lifecycle-04` Initiative classification and applicability (R/A)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (C)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (C) |
+| `product-design-research` · User research and Product Design | `product-discovery` (R) | `lifecycle-05` Product discovery (R)<br/>`lifecycle-12` Product Design preparation and iterative evidence (R) |
+| `engineering-leadership` · Engineering leadership | `detailed-design-assurance` (A)<br/>`p0-p4-readiness` (A) | `lifecycle-08` DDD strategic design and context mapping (I)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (I)<br/>`lifecycle-10` Architecture decisions and quality scenarios (C)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (C)<br/>`lifecycle-12` Product Design preparation and iterative evidence (I)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (C)<br/>`lifecycle-14` Repository and implementation-target topology (R/A)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (A)<br/>`lifecycle-16` Governed implementation agents and code generation (A)<br/>`lifecycle-17` Product QA, UAT, and product acceptance (C)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (C)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (I) |
+| `software-engineering` · Software engineering | — | `lifecycle-14` Repository and implementation-target topology (C)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (R)<br/>`lifecycle-16` Governed implementation agents and code generation (R) |
+| `data-ai-engineering` · Data/AI engineering | — | `lifecycle-14` Repository and implementation-target topology (C)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (C)<br/>`lifecycle-16` Governed implementation agents and code generation (R) |
+| `platform-devops` · Platform/DevOps | `solution-security-architecture` (C)<br/>`detailed-design-assurance` (C) | `lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (C)<br/>`lifecycle-14` Repository and implementation-target topology (R)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (R)<br/>`lifecycle-16` Governed implementation agents and code generation (R)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (R) |
+| `quality-engineering` · Quality engineering | `detailed-design-assurance` (R)<br/>`p0-p4-readiness` (R) | `lifecycle-10` Architecture decisions and quality scenarios (R)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (C)<br/>`lifecycle-12` Product Design preparation and iterative evidence (C)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (R)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (C)<br/>`lifecycle-16` Governed implementation agents and code generation (C)<br/>`lifecycle-17` Product QA, UAT, and product acceptance (R) |
+| `ai-evaluation-tevv` · AI evaluation / TEVV | `detailed-design-assurance` (IA) | `lifecycle-10` Architecture decisions and quality scenarios (IA)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (IA)<br/>`lifecycle-16` Governed implementation agents and code generation (IA)<br/>`lifecycle-17` Product QA, UAT, and product acceptance (IA) |
+| `release-change-management` · Release/change management | `p0-p4-readiness` (C) | `lifecycle-14` Repository and implementation-target topology (I)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (I)<br/>`lifecycle-16` Governed implementation agents and code generation (I)<br/>`lifecycle-17` Product QA, UAT, and product acceptance (I)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (R/A)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (C) |
+| `service-management` · Service management | — | `lifecycle-18` CI/CD, release, deployment, and environment governance (C)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (R) |
+| `sre-operations` · SRE/operations | — | `lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (C)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (C)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (R/A) |
+| `incident-recovery-leadership` · Incident/recovery leadership | — | `lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (R/A) |
+| `internal-audit-independent-assurance` · Internal audit or independent assurance | `initiative-classification` (IA)<br/>`initiative-applicability` (IA)<br/>`source-provenance` (C/IA)<br/>`solution-security-architecture` (IA)<br/>`detailed-design-assurance` (IA)<br/>`p0-p4-readiness` (IA) | `lifecycle-02` Source-first workspace initialization and change governance (IA)<br/>`lifecycle-04` Initiative classification and applicability (IA)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (IA)<br/>`lifecycle-10` Architecture decisions and quality scenarios (IA)<br/>`lifecycle-16` Governed implementation agents and code generation (IA)<br/>`lifecycle-17` Product QA, UAT, and product acceptance (IA)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (IA)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (IA) |
+| `affected-user-stakeholder` · Affected-user/stakeholder representative | `product-definition` (C)<br/>`product-discovery` (C)<br/>`business-architecture` (C) | `lifecycle-01` Product intent and problem discovery (C)<br/>`lifecycle-05` Product discovery (C)<br/>`lifecycle-06` Business architecture and value streams (C)<br/>`lifecycle-07` Domain discovery and Event Storming (C)<br/>`lifecycle-17` Product QA, UAT, and product acceptance (R) |
 
 </details>
 
@@ -720,18 +720,18 @@ flowchart TD
 
 | Stable checkpoint ID | Order and current label | Current prerequisites | Implemented CTA, maturity, and limitation |
 |---|---|---|---|
-| `product-definition` | 10 · Product definition | None | @gaep /initialize; @gaep /adopt; Edit Product definition<br/>[IA] Implemented; awaiting independent P03 review<br/>Records a Product boundary; it does not establish market need, funding, or investment approval. |
-| `initiative-definition` | 20 · Initiative definition | product-definition | @gaep /continue; Edit Initiative definition<br/>[IA] Implemented; awaiting independent P03 review<br/>Bounds a change; it does not authorize execution or funding. |
-| `initiative-classification` | 30 · Initiative classification | initiative-definition | @gaep /classification; Resolve open questions<br/>[IA] Implemented; awaiting independent P03 review<br/>Classification is scoped evidence, not an approval, risk acceptance, or waiver. |
-| `initiative-applicability` | 40 · Initiative applicability | initiative-classification | @gaep /applicability; Resolve pending decisions<br/>[IA] Implemented; awaiting independent P03 review<br/>Applicability records scoped decisions; it does not grant approval, readiness, or execution authority. |
-| `source-intake` | 50 · Source intake | initiative-definition | @gaep /intake; @gaep /record; Bind reviewed Sources to Initiative<br/>[IA] Implemented; awaiting independent P03 review<br/>Attachment and extraction do not establish Source correctness, authority, rights, or Baseline membership. |
-| `source-baseline` | 60 · Source baseline | source-intake | @gaep /baseline; Review details<br/>[IA] Implemented; awaiting independent P03 review<br/>A Baseline freezes membership; it does not approve content, establish precedence, or make evidence complete. |
-| `source-provenance` | 70 · Source provenance | source-intake | @gaep /provenance; Revise Source provenance<br/>[IA] Implemented; awaiting independent P03 review<br/>Provenance records lineage; it does not establish correctness, authenticity, authority, or approval. |
-| `product-discovery` | 80 · Product discovery | initiative-applicability, source-intake | @gaep /author; Review details; Edit Product discovery<br/>[IA] Implemented; awaiting independent P03 review<br/>Discovery records remain evidence-bounded; they do not prove demand, viability, desirability, or investment approval. |
-| `business-architecture` | 90 · Business architecture | product-discovery | @gaep /author; Review details; Edit Business architecture<br/>[IA] Implemented; awaiting independent P03 review<br/>Recorded models do not certify organizational design or force microservices; DDD is a reasoning policy, not a deployment prescription. |
-| `solution-security-architecture` | 100 · Solution and security architecture | business-architecture | @gaep /author; Review details; Edit solution and security architecture<br/>[IA] Implemented; awaiting independent P03 review<br/>Architecture records do not create security, privacy, compliance, risk-acceptance, deployment, or implementation authority. |
-| `detailed-design-assurance` | 110 · Detailed design and assurance | solution-security-architecture | @gaep /author; Review details; Edit detailed design and assurance<br/>[IA] Implemented; awaiting independent P03 review<br/>Models and assurance evidence do not establish release, production, security, privacy, compliance, or operational readiness. |
-| `p0-p4-readiness` | 120 · P0–P4 readiness and handoff | detailed-design-assurance | @gaep /author; Review details; Edit handoff inputs<br/>[IA] Implemented; awaiting independent P03 review<br/>This is the final current-runtime checkpoint. Product Design, backlog, implementation, CI/CD, release, deployment, and operations execution remain target-only. |
+| `product-definition` | 10 · Product definition | None | @gaep /initialize; @gaep /adopt; Edit Product definition<br/>[IA] Implemented; awaiting independent acceptance<br/>Records a Product boundary; it does not establish market need, funding, or investment approval. |
+| `initiative-definition` | 20 · Initiative definition | product-definition | @gaep /continue; Edit Initiative definition<br/>[IA] Implemented; awaiting independent acceptance<br/>Bounds a change; it does not authorize execution or funding. |
+| `initiative-classification` | 30 · Initiative classification | initiative-definition | @gaep /classification; Resolve open questions<br/>[IA] Implemented; awaiting independent acceptance<br/>Classification is scoped evidence, not an approval, risk acceptance, or waiver. |
+| `initiative-applicability` | 40 · Initiative applicability | initiative-classification | @gaep /applicability; Resolve pending decisions<br/>[IA] Implemented; awaiting independent acceptance<br/>Applicability records scoped decisions; it does not grant approval, readiness, or execution authority. |
+| `source-intake` | 50 · Source intake | initiative-definition | @gaep /intake; @gaep /record; Bind reviewed Sources to Initiative<br/>[IA] Implemented; awaiting independent acceptance<br/>Attachment and extraction do not establish Source correctness, authority, rights, or Baseline membership. |
+| `source-baseline` | 60 · Source baseline | source-intake | @gaep /baseline; Review details<br/>[IA] Implemented; awaiting independent acceptance<br/>A Baseline freezes membership; it does not approve content, establish precedence, or make evidence complete. |
+| `source-provenance` | 70 · Source provenance | source-intake | @gaep /provenance; Revise Source provenance<br/>[IA] Implemented; awaiting independent acceptance<br/>Provenance records lineage; it does not establish correctness, authenticity, authority, or approval. |
+| `product-discovery` | 80 · Product discovery | initiative-applicability, source-intake | @gaep /author; Review details; Edit Product discovery<br/>[IA] Implemented; awaiting independent acceptance<br/>Discovery records remain evidence-bounded; they do not prove demand, viability, desirability, or investment approval. |
+| `business-architecture` | 90 · Business architecture | product-discovery | @gaep /author; Review details; Edit Business architecture<br/>[IA] Implemented; awaiting independent acceptance<br/>Recorded models do not certify organizational design or force microservices; DDD is a reasoning policy, not a deployment prescription. |
+| `solution-security-architecture` | 100 · Solution and security architecture | business-architecture | @gaep /author; Review details; Edit solution and security architecture<br/>[IA] Implemented; awaiting independent acceptance<br/>Architecture records do not create security, privacy, compliance, risk-acceptance, deployment, or implementation authority. |
+| `detailed-design-assurance` | 110 · Detailed design and assurance | solution-security-architecture | @gaep /author; Review details; Edit detailed design and assurance<br/>[IA] Implemented; awaiting independent acceptance<br/>Models and assurance evidence do not establish release, production, security, privacy, compliance, or operational readiness. |
+| `p0-p4-readiness` | 120 · P0–P4 readiness and handoff | detailed-design-assurance | @gaep /author; Review details; Edit handoff inputs<br/>[IA] Implemented; awaiting independent acceptance<br/>This is the final current-runtime checkpoint. Product Design, backlog, implementation, CI/CD, release, deployment, and operations execution remain target-only. |
 
 > **Compatibility — `p0-p4-readiness`:** The adoption alias remains accepted for historical plans; all current-runtime surfaces display one canonical P0–P4 readiness and handoff label.
 <!-- END GENERATED:CURRENT_RUNTIME -->
@@ -752,7 +752,7 @@ flowchart TD
 #### Every current checkpoint — canonical substeps, RACI, sequence, and authority
 
 <details>
-<summary><strong>10 · Product definition</strong> · [IA] Implemented; awaiting independent P03 review</summary>
+<summary><strong>10 · Product definition</strong> · [IA] Implemented; awaiting independent acceptance</summary>
 
 **Purpose:** Establish the bounded Product, problem, affected users, outcomes, success signals, and exclusions.
 
@@ -882,7 +882,7 @@ gaep-->>role0: product-definition-recorded; authority remains bounded
 </details>
 
 <details>
-<summary><strong>20 · Initiative definition</strong> · [IA] Implemented; awaiting independent P03 review</summary>
+<summary><strong>20 · Initiative definition</strong> · [IA] Implemented; awaiting independent acceptance</summary>
 
 **Purpose:** Bound the proposed change, outcome, scope, constraints, and relationship to the governed Product.
 
@@ -1013,7 +1013,7 @@ gaep-->>role0: initiative-definition-recorded; authority remains bounded
 </details>
 
 <details>
-<summary><strong>30 · Initiative classification</strong> · [IA] Implemented; awaiting independent P03 review</summary>
+<summary><strong>30 · Initiative classification</strong> · [IA] Implemented; awaiting independent acceptance</summary>
 
 **Purpose:** Classify change, risk, data/AI, regulatory, delivery, and assurance characteristics without silently resolving them.
 
@@ -1145,7 +1145,7 @@ gaep-->>role0: initiative-classification-recorded; authority remains bounded
 </details>
 
 <details>
-<summary><strong>40 · Initiative applicability</strong> · [IA] Implemented; awaiting independent P03 review</summary>
+<summary><strong>40 · Initiative applicability</strong> · [IA] Implemented; awaiting independent acceptance</summary>
 
 **Purpose:** Decide which governed concerns, methods, controls, and assurance obligations apply to the Initiative.
 
@@ -1277,7 +1277,7 @@ gaep-->>role0: initiative-applicability-recorded; authority remains bounded
 </details>
 
 <details>
-<summary><strong>50 · Source intake</strong> · [IA] Implemented; awaiting independent P03 review</summary>
+<summary><strong>50 · Source intake</strong> · [IA] Implemented; awaiting independent acceptance</summary>
 
 **Purpose:** Review exact candidate material and record bounded Source identities without treating attachments as truth.
 
@@ -1396,7 +1396,7 @@ gaep-->>role0: source-intake-recorded; authority remains bounded
 </details>
 
 <details>
-<summary><strong>60 · Source baseline</strong> · [IA] Implemented; awaiting independent P03 review</summary>
+<summary><strong>60 · Source baseline</strong> · [IA] Implemented; awaiting independent acceptance</summary>
 
 **Purpose:** Freeze exact Source identities and revisions for a bounded Initiative context.
 
@@ -1527,7 +1527,7 @@ gaep-->>role0: source-baseline-recorded; authority remains bounded
 </details>
 
 <details>
-<summary><strong>70 · Source provenance</strong> · [IA] Implemented; awaiting independent P03 review</summary>
+<summary><strong>70 · Source provenance</strong> · [IA] Implemented; awaiting independent acceptance</summary>
 
 **Purpose:** Record exact lineage, locators, transformations, derivations, uncertainty, and limitations.
 
@@ -1659,7 +1659,7 @@ gaep-->>role0: source-provenance-recorded; authority remains bounded
 </details>
 
 <details>
-<summary><strong>80 · Product discovery</strong> · [IA] Implemented; awaiting independent P03 review</summary>
+<summary><strong>80 · Product discovery</strong> · [IA] Implemented; awaiting independent acceptance</summary>
 
 **Purpose:** Challenge and record business understanding, stakeholders, outcomes, needs, assumptions, and success measures.
 
@@ -1791,7 +1791,7 @@ gaep-->>role0: canonical-record-recorded-or-next-record-required; authority rema
 </details>
 
 <details>
-<summary><strong>90 · Business architecture</strong> · [IA] Implemented; awaiting independent P03 review</summary>
+<summary><strong>90 · Business architecture</strong> · [IA] Implemented; awaiting independent acceptance</summary>
 
 **Purpose:** Model capabilities, value streams, operating model, business rules, events, domains, and candidate boundaries.
 
@@ -1922,7 +1922,7 @@ gaep-->>role0: canonical-record-recorded-or-next-record-required; authority rema
 </details>
 
 <details>
-<summary><strong>100 · Solution and security architecture</strong> · [IA] Implemented; awaiting independent P03 review</summary>
+<summary><strong>100 · Solution and security architecture</strong> · [IA] Implemented; awaiting independent acceptance</summary>
 
 **Purpose:** Select and challenge solution, data, AI, integration, security, privacy, and deployment architecture for the affected slice.
 
@@ -2054,7 +2054,7 @@ gaep-->>role0: canonical-record-recorded-or-next-record-required; authority rema
 </details>
 
 <details>
-<summary><strong>110 · Detailed design and assurance</strong> · [IA] Implemented; awaiting independent P03 review</summary>
+<summary><strong>110 · Detailed design and assurance</strong> · [IA] Implemented; awaiting independent acceptance</summary>
 
 **Purpose:** Complete process, data, authorization, integration, recovery, decisions, risks, evidence, and traceability for the affected slice.
 
@@ -2187,7 +2187,7 @@ gaep-->>role0: canonical-record-recorded-or-next-record-required; authority rema
 </details>
 
 <details>
-<summary><strong>120 · P0–P4 readiness and handoff</strong> · [IA] Implemented; awaiting independent P03 review</summary>
+<summary><strong>120 · P0–P4 readiness and handoff</strong> · [IA] Implemented; awaiting independent acceptance</summary>
 
 **Purpose:** Evaluate the exact current records and prepare a bounded handoff without claiming Product Design, implementation, release, or operational execution.
 
@@ -2450,7 +2450,7 @@ The lifecycle is split into three linked vertical views so it remains readable i
 - [PD] Planned / deferred · `planned-deferred-coming-soon`
 - [CP] Candidate / proposed · `candidate-proposed`
 - [PT] Partial · `partial`
-- [IA] Implemented; awaiting independent P03 review · `implemented-awaiting-product-owner-acceptance`
+- [IA] Implemented; awaiting independent acceptance · `implemented-awaiting-product-owner-acceptance`
 - [IT] Implemented and automated-tested · `implemented-and-automated-tested`
 
 <!-- GAEP-VISUAL:lifecycle-discover-define -->
@@ -2529,7 +2529,7 @@ flowchart TD
   lifecycle_14["140. [PT] Repository and implementation-target topology<br/>GAEP-CAP-123"]
   lifecycle_15["150. [PD] Cross-repository slice distribution, synchronization, and drift<br/>GAEP-CAP-120, GAEP-CAP-124"]
   lifecycle_16["160. [IA] Governed implementation agents and code generation<br/>GAEP-CAP-125"]
-  lifecycle_17["170. [IA] Product QA and independent P03 review<br/>GAEP-CAP-119"]
+  lifecycle_17["170. [IA] Product QA, UAT, and product acceptance<br/>GAEP-CAP-119"]
   lifecycle_18["180. [PT] CI/CD, release, deployment, and environment governance<br/>GAEP-CAP-126"]
   lifecycle_19["190. [PD] Operations, observability, incident/recovery evidence, and feedback<br/>GAEP-CAP-127, GAEP-CAP-128"]
   lifecycle_14 --> lifecycle_15 --> lifecycle_16 --> lifecycle_17 --> lifecycle_18 --> lifecycle_19
@@ -2541,7 +2541,7 @@ flowchart TD
   lifecycle_14["140. [PT] Repository and implementation-target topology<br/>GAEP-CAP-123"]
   lifecycle_15["150. [PD] Cross-repository slice distribution, synchronization, and drift<br/>GAEP-CAP-120, GAEP-CAP-124"]
   lifecycle_16["160. [IA] Governed implementation agents and code generation<br/>GAEP-CAP-125"]
-  lifecycle_17["170. [IA] Product QA and independent P03 review<br/>GAEP-CAP-119"]
+  lifecycle_17["170. [IA] Product QA, UAT, and product acceptance<br/>GAEP-CAP-119"]
   lifecycle_18["180. [PT] CI/CD, release, deployment, and environment governance<br/>GAEP-CAP-126"]
   lifecycle_19["190. [PD] Operations, observability, incident/recovery evidence, and feedback<br/>GAEP-CAP-127, GAEP-CAP-128"]
   lifecycle_14 --> lifecycle_15 --> lifecycle_16 --> lifecycle_17 --> lifecycle_18 --> lifecycle_19
@@ -2556,12 +2556,12 @@ flowchart TD
 |---:|---|---|---|
 | 10 | Product intent and problem discovery | [PT] Partial | GAEP-CAP-101 implemented-awaiting-product-owner-acceptance; GAEP-CAP-102 partial |
 | 20 | Source-first workspace initialization and change governance | [IT] Implemented and automated-tested | GAEP-CAP-103 implemented-and-automated-tested; GAEP-CAP-104 implemented-and-automated-tested; GAEP-CAP-105 implemented-and-automated-tested |
-| 30 | Product and Initiative definition | [IA] Implemented; awaiting independent P03 review | GAEP-CAP-106 implemented-awaiting-product-owner-acceptance; GAEP-CAP-107 implemented-and-automated-tested |
+| 30 | Product and Initiative definition | [IA] Implemented; awaiting independent acceptance | GAEP-CAP-106 implemented-awaiting-product-owner-acceptance; GAEP-CAP-107 implemented-and-automated-tested |
 | 40 | Initiative classification and applicability | [IT] Implemented and automated-tested | GAEP-CAP-108 implemented-and-automated-tested; GAEP-CAP-109 implemented-and-automated-tested |
-| 50 | Product discovery | [IA] Implemented; awaiting independent P03 review | GAEP-CAP-101 implemented-awaiting-product-owner-acceptance |
-| 60 | Business architecture and value streams | [IA] Implemented; awaiting independent P03 review | GAEP-CAP-110 implemented-awaiting-product-owner-acceptance |
-| 70 | Domain discovery and Event Storming | [IA] Implemented; awaiting independent P03 review | GAEP-CAP-111 implemented-awaiting-product-owner-acceptance |
-| 80 | DDD strategic design and context mapping | [IA] Implemented; awaiting independent P03 review | GAEP-CAP-112 implemented-awaiting-product-owner-acceptance |
+| 50 | Product discovery | [IA] Implemented; awaiting independent acceptance | GAEP-CAP-101 implemented-awaiting-product-owner-acceptance |
+| 60 | Business architecture and value streams | [IA] Implemented; awaiting independent acceptance | GAEP-CAP-110 implemented-awaiting-product-owner-acceptance |
+| 70 | Domain discovery and Event Storming | [IA] Implemented; awaiting independent acceptance | GAEP-CAP-111 implemented-awaiting-product-owner-acceptance |
+| 80 | DDD strategic design and context mapping | [IA] Implemented; awaiting independent acceptance | GAEP-CAP-112 implemented-awaiting-product-owner-acceptance |
 | 90 | Solution, data, integration, security, privacy, and deployment architecture | [PT] Partial | GAEP-CAP-113 implemented-awaiting-product-owner-acceptance; GAEP-CAP-121 partial; GAEP-CAP-122 partial; GAEP-CAP-129 implemented-awaiting-product-owner-acceptance; GAEP-CAP-130 partial |
 | 100 | Architecture decisions and quality scenarios | [PT] Partial | GAEP-CAP-113 implemented-awaiting-product-owner-acceptance; GAEP-CAP-114 partial |
 | 110 | Phase, wave, Product, and vertical-slice planning | [PT] Partial | GAEP-CAP-115 partial |
@@ -2569,8 +2569,8 @@ flowchart TD
 | 130 | Architecture-bound backlog, readiness, done, and test design | [PT] Partial | GAEP-CAP-117 partial; GAEP-CAP-118 partial; GAEP-CAP-119 implemented-awaiting-product-owner-acceptance |
 | 140 | Repository and implementation-target topology | [PT] Partial | GAEP-CAP-123 partial |
 | 150 | Cross-repository slice distribution, synchronization, and drift | [PD] Planned / deferred | GAEP-CAP-120 implemented-awaiting-product-owner-acceptance; GAEP-CAP-124 planned-deferred-coming-soon |
-| 160 | Governed implementation agents and code generation | [IA] Implemented; awaiting independent P03 review | GAEP-CAP-125 implemented-awaiting-product-owner-acceptance |
-| 170 | Product QA and independent P03 review | [IA] Implemented; awaiting independent P03 review | GAEP-CAP-119 implemented-awaiting-product-owner-acceptance |
+| 160 | Governed implementation agents and code generation | [IA] Implemented; awaiting independent acceptance | GAEP-CAP-125 implemented-awaiting-product-owner-acceptance |
+| 170 | Product QA, UAT, and product acceptance | [IA] Implemented; awaiting independent acceptance | GAEP-CAP-119 implemented-awaiting-product-owner-acceptance |
 | 180 | CI/CD, release, deployment, and environment governance | [PT] Partial | GAEP-CAP-126 partial |
 | 190 | Operations, observability, incident/recovery evidence, and feedback | [PD] Planned / deferred | GAEP-CAP-127 planned-deferred-coming-soon; GAEP-CAP-128 implemented-awaiting-product-owner-acceptance |
 
@@ -2584,36 +2584,36 @@ flowchart TD
 
 | Target node | R | A | C / independent assurance |
 |---|---|---|---|
-| `lifecycle-01` · Product intent and problem discovery | product-manager, domain-expert | business-owner | C: product-design-research, affected-user-stakeholder<br/>IA: context-dependent |
-| `lifecycle-02` · Source-first workspace initialization and change governance | initiative-lead, risk-compliance-specialist | business-owner | C: security-architect, privacy-specialist<br/>IA: internal-audit-independent-assurance |
-| `lifecycle-03` · Product and Initiative definition | product-manager, domain-expert | business-owner | C: product-design-research, affected-user-stakeholder<br/>IA: context-dependent |
-| `lifecycle-04` · Initiative classification and applicability | initiative-lead, risk-compliance-specialist | business-owner | C: security-architect, privacy-specialist<br/>IA: internal-audit-independent-assurance |
-| `lifecycle-05` · Product discovery | product-manager, domain-expert | business-owner | C: product-design-research, affected-user-stakeholder<br/>IA: context-dependent |
-| `lifecycle-06` · Business architecture and value streams | solution-architect, business-architect | enterprise-architect | C: data-ai-architect, security-architect, privacy-specialist<br/>IA: security-architect, internal-audit-independent-assurance |
-| `lifecycle-07` · Domain discovery and Event Storming | solution-architect, business-architect | enterprise-architect | C: data-ai-architect, security-architect, privacy-specialist<br/>IA: security-architect, internal-audit-independent-assurance |
-| `lifecycle-08` · DDD strategic design and context mapping | solution-architect, business-architect | enterprise-architect | C: data-ai-architect, security-architect, privacy-specialist<br/>IA: security-architect, internal-audit-independent-assurance |
-| `lifecycle-09` · Solution, data, integration, security, privacy, and deployment architecture | solution-architect, business-architect | enterprise-architect | C: data-ai-architect, security-architect, privacy-specialist<br/>IA: security-architect, internal-audit-independent-assurance |
-| `lifecycle-10` · Architecture decisions and quality scenarios | solution-architect, business-architect | enterprise-architect | C: data-ai-architect, security-architect, privacy-specialist<br/>IA: security-architect, internal-audit-independent-assurance |
-| `lifecycle-11` · Phase, wave, Product, and vertical-slice planning | product-design-research, product-manager, quality-engineering | product-leadership | C: solution-architect, engineering-leadership<br/>IA: engineering-leadership |
-| `lifecycle-12` · Product Design preparation and iterative evidence | product-design-research, product-manager, quality-engineering | product-leadership | C: solution-architect, engineering-leadership<br/>IA: engineering-leadership |
-| `lifecycle-13` · Architecture-bound backlog, readiness, done, and test design | product-design-research, product-manager, quality-engineering | product-leadership | C: solution-architect, engineering-leadership<br/>IA: engineering-leadership |
-| `lifecycle-14` · Repository and implementation-target topology | software-engineering, platform-devops, quality-engineering | engineering-leadership | C: data-ai-engineering, release-change-management<br/>IA: ai-evaluation-tevv, internal-audit-independent-assurance |
-| `lifecycle-15` · Cross-repository slice distribution, synchronization, and drift | software-engineering, platform-devops, quality-engineering | engineering-leadership | C: data-ai-engineering, release-change-management<br/>IA: ai-evaluation-tevv, internal-audit-independent-assurance |
-| `lifecycle-16` · Governed implementation agents and code generation | software-engineering, platform-devops, quality-engineering | engineering-leadership | C: data-ai-engineering, release-change-management<br/>IA: ai-evaluation-tevv, internal-audit-independent-assurance |
-| `lifecycle-17` · Product QA and independent P03 review | software-engineering, platform-devops, quality-engineering | engineering-leadership | C: data-ai-engineering, release-change-management<br/>IA: ai-evaluation-tevv, internal-audit-independent-assurance |
-| `lifecycle-18` · CI/CD, release, deployment, and environment governance | software-engineering, platform-devops, quality-engineering | engineering-leadership | C: data-ai-engineering, release-change-management<br/>IA: ai-evaluation-tevv, internal-audit-independent-assurance |
-| `lifecycle-19` · Operations, observability, incident/recovery evidence, and feedback | sre-operations, service-management | incident-recovery-leadership | C: product-manager, risk-compliance-specialist<br/>IA: internal-audit-independent-assurance |
+| `lifecycle-01` · Product intent and problem discovery | product-manager | business-owner | C: product-owner, domain-expert, affected-user-stakeholder<br/>I: product-leadership<br/>IA: context-dependent |
+| `lifecycle-02` · Source-first workspace initialization and change governance | initiative-lead, domain-expert | business-owner | C: risk-compliance-specialist, legal-regulatory-specialist<br/>I: product-manager<br/>IA: internal-audit-independent-assurance |
+| `lifecycle-03` · Product and Initiative definition | product-manager, initiative-lead | business-owner | C: product-owner, domain-expert<br/>I: product-leadership<br/>IA: context-dependent |
+| `lifecycle-04` · Initiative classification and applicability | initiative-lead, risk-compliance-specialist | business-owner | C: security-architect, privacy-specialist, legal-regulatory-specialist<br/>I: product-manager<br/>IA: internal-audit-independent-assurance |
+| `lifecycle-05` · Product discovery | product-manager, product-design-research, product-owner | business-owner | C: domain-expert, affected-user-stakeholder<br/>I: product-leadership<br/>IA: context-dependent |
+| `lifecycle-06` · Business architecture and value streams | business-architect, domain-expert | product-leadership | C: enterprise-architect, product-manager, affected-user-stakeholder<br/>I: business-owner<br/>IA: context-dependent |
+| `lifecycle-07` · Domain discovery and Event Storming | business-architect, domain-expert | product-leadership | C: product-manager, affected-user-stakeholder, solution-architect<br/>I: enterprise-architect<br/>IA: context-dependent |
+| `lifecycle-08` · DDD strategic design and context mapping | business-architect, solution-architect, domain-expert | enterprise-architect | C: product-manager, data-ai-architect<br/>I: engineering-leadership<br/>IA: context-dependent |
+| `lifecycle-09` · Solution, data, integration, security, privacy, and deployment architecture | solution-architect, data-ai-architect, security-architect | enterprise-architect | C: privacy-specialist, platform-devops, sre-operations, risk-compliance-specialist<br/>I: engineering-leadership, product-manager<br/>IA: internal-audit-independent-assurance |
+| `lifecycle-10` · Architecture decisions and quality scenarios | solution-architect, security-architect, quality-engineering | enterprise-architect | C: data-ai-architect, privacy-specialist, engineering-leadership<br/>I: product-leadership<br/>IA: internal-audit-independent-assurance, ai-evaluation-tevv |
+| `lifecycle-11` · Phase, wave, Product, and vertical-slice planning | product-manager, product-owner, initiative-lead | product-leadership | C: solution-architect, engineering-leadership, quality-engineering<br/>I: business-owner<br/>IA: context-dependent |
+| `lifecycle-12` · Product Design preparation and iterative evidence | product-design-research | product-leadership | C: product-owner, product-manager, solution-architect, quality-engineering<br/>I: engineering-leadership<br/>IA: context-dependent |
+| `lifecycle-13` · Architecture-bound backlog, readiness, done, and test design | product-owner, quality-engineering, product-manager | product-owner | C: solution-architect, engineering-leadership, security-architect<br/>I: product-leadership<br/>IA: ai-evaluation-tevv |
+| `lifecycle-14` · Repository and implementation-target topology | platform-devops, solution-architect, engineering-leadership | engineering-leadership | C: software-engineering, data-ai-engineering, security-architect<br/>I: product-owner, release-change-management<br/>IA: context-dependent |
+| `lifecycle-15` · Cross-repository slice distribution, synchronization, and drift | platform-devops, software-engineering, solution-architect | engineering-leadership | C: product-owner, quality-engineering, data-ai-engineering<br/>I: release-change-management<br/>IA: context-dependent |
+| `lifecycle-16` · Governed implementation agents and code generation | software-engineering, data-ai-engineering, platform-devops | engineering-leadership | C: security-architect, quality-engineering, product-owner<br/>I: release-change-management<br/>IA: ai-evaluation-tevv, internal-audit-independent-assurance |
+| `lifecycle-17` · Product QA, UAT, and product acceptance | quality-engineering, product-owner, affected-user-stakeholder | product-owner | C: product-manager, engineering-leadership, security-architect<br/>I: product-leadership, release-change-management<br/>IA: ai-evaluation-tevv, internal-audit-independent-assurance |
+| `lifecycle-18` · CI/CD, release, deployment, and environment governance | platform-devops, release-change-management | release-change-management | C: engineering-leadership, security-architect, service-management, sre-operations<br/>I: product-owner, product-leadership<br/>IA: internal-audit-independent-assurance |
+| `lifecycle-19` · Operations, observability, incident/recovery evidence, and feedback | sre-operations, service-management, incident-recovery-leadership | sre-operations | C: product-manager, risk-compliance-specialist, release-change-management<br/>I: product-owner, engineering-leadership, business-owner<br/>IA: internal-audit-independent-assurance |
 
 <details>
 <summary><strong>10 · Product intent and problem discovery</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Bound Product intent, problem evidence, affected users, outcomes, and success hypotheses.
+**Purpose:** Bound Product intent, the problem, affected people, outcomes, exclusions, and discovery hypotheses before solution work.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-101, GAEP-CAP-102 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** An accountable business context and Product opportunity exist Prerequisites: none.
 
-**Roles / competency:** `product-manager`, `domain-expert`, `product-design-research`, `affected-user-stakeholder`; `product-initiative-reasoning`, `domain-business-analysis`, `evidence-provenance`.
+**Roles / competency:** `product-manager`, `business-owner`, `product-owner`, `domain-expert`, `affected-user-stakeholder`; `product-initiative-reasoning`, `domain-business-analysis`, `evidence-provenance`.
 
-**Inputs:** Product intent; problem/user evidence. **Questions:** What problem and outcome are evidenced? What remains assumption?
+**Inputs:** Stakeholder evidence; strategy and operating context. **Questions:** What problem and outcome are evidenced? Which beliefs remain hypotheses?
 
 <!-- GAEP-VISUAL:target-lifecycle-01-flow -->
 
@@ -2622,20 +2622,20 @@ flowchart TD
 ```mermaid
 %% Product intent and problem discovery planned substeps
 flowchart TD
-  lifecycle_01_0["1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.<br/>Target — planned, not executable"]
-  lifecycle_01_1["2. Facilitate challenge and prepare a traceable candidate model or decision.<br/>Target — planned, not executable"]
+  lifecycle_01_0["1. Elicit outcome, user, problem, constraint, and exclusion evidence from named participants.<br/>Target — planned, not executable"]
+  lifecycle_01_1["2. Challenge assumptions and create a traceable Product-intent candidate with Unknowns.<br/>Target — planned, not executable"]
   lifecycle_01_0 --> lifecycle_01_1
-  lifecycle_01_2["3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.<br/>Target — planned, not executable"]
+  lifecycle_01_2["3. Have the business owner decide whether the exact intent is sufficient for bounded discovery.<br/>Target — planned, not executable"]
   lifecycle_01_1 --> lifecycle_01_2
 ```
 
 <details><summary>Text alternative for Product intent and problem discovery planned substeps</summary>
 
 ```text
-  lifecycle_01_0["1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.<br/>Target — planned, not executable"]
-  lifecycle_01_1["2. Facilitate challenge and prepare a traceable candidate model or decision.<br/>Target — planned, not executable"]
+  lifecycle_01_0["1. Elicit outcome, user, problem, constraint, and exclusion evidence from named participants.<br/>Target — planned, not executable"]
+  lifecycle_01_1["2. Challenge assumptions and create a traceable Product-intent candidate with Unknowns.<br/>Target — planned, not executable"]
   lifecycle_01_0 --> lifecycle_01_1
-  lifecycle_01_2["3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.<br/>Target — planned, not executable"]
+  lifecycle_01_2["3. Have the business owner decide whether the exact intent is sufficient for bounded discovery.<br/>Target — planned, not executable"]
   lifecycle_01_1 --> lifecycle_01_2
 ```
 
@@ -2649,55 +2649,61 @@ flowchart TD
 %% Product intent and problem discovery — Target — planned, not executable
 sequenceDiagram
 participant role0 as product-manager
-participant role1 as domain-expert
-participant role2 as business-owner
+participant role1 as business-owner
+participant role2 as product-owner
+participant role3 as domain-expert
+participant role4 as affected-user-stakeholder
 participant accountable as business-owner
 participant gaep as GAEP target projection
-role0->>gaep: Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.
+role0->>gaep: Elicit outcome, user, problem, constraint, and exclusion evidence from named participants.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Facilitate challenge and prepare a traceable candidate model or decision.
-gaep-->>role1: Planned candidate/evidence projection only
-role0->>accountable: Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
+role0->>gaep: Challenge assumptions and create a traceable Product-intent candidate with Unknowns.
+gaep-->>role0: Planned candidate/evidence projection only
+role0->>accountable: Have the business owner decide whether the exact intent is sufficient for bounded discovery.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Product intent and problem discovery — Target — planned, not executable</summary>
 
-1. role0 → gaep: Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.
+1. role0 → gaep: Elicit outcome, user, problem, constraint, and exclusion evidence from named participants.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Facilitate challenge and prepare a traceable candidate model or decision.
-4. gaep → role1: Planned candidate/evidence projection only
-5. role0 → accountable: Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
+3. role0 → gaep: Challenge assumptions and create a traceable Product-intent candidate with Unknowns.
+4. gaep → role0: Planned candidate/evidence projection only
+5. role0 → accountable: Have the business owner decide whether the exact intent is sufficient for bounded discovery.
 6. accountable → role0: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown. 2. Facilitate challenge and prepare a traceable candidate model or decision. 3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
+**Planned substeps:** 1. Elicit outcome, user, problem, constraint, and exclusion evidence from named participants. 2. Challenge assumptions and create a traceable Product-intent candidate with Unknowns. 3. Have the business owner decide whether the exact intent is sufficient for bounded discovery.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; product-manager, domain-expert perform work, business-owner owns the bounded decision, and no default independent role provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Named stakeholder observations and strategy artifacts → Intent-to-evidence links and unresolved hypotheses.
 
-**Candidate / governed outputs:** Product intent candidate; discovery hypothesis register; no current governed output exists.
+**Candidate / future governed effects:** Product-intent candidate; hypothesis and exclusion register. A future commit would establish the bounded Product intent and trigger discovery work; no current governed output exists.
 
-**RACI:** R product-manager, domain-expert · A business-owner · C product-design-research, affected-user-stakeholder · I Initiative lead · independent assurance context-dependent.
+**RACI:** R product-manager · A business-owner · C product-owner, domain-expert, affected-user-stakeholder · I product-leadership · independent assurance context-dependent. **Decision authorities:** Product intent and outcome sufficiency: business-owner.
 
-**Blockers / exception:** No bounded Product/problem; No accountable business owner. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Intent, outcomes, exclusions, assumptions, and evidence are explicit.
 
-**Exit / next:** Intent, outcomes, exclusions, assumptions, and evidence are reviewable The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** No bounded problem; No accountable business owner. Keep the opportunity exploratory and record missing ownership; do not infer approval. Escalate unresolved strategic scope to product leadership and the business owner.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Preserve evidence and hypotheses without creating Product truth. Gather missing stakeholder evidence and repeat bounded intent review. unbounded-opportunity -> intent-candidate; intent-candidate -> intent-reviewed-or-revise.
+
+**Audit intent:** Retain source identities, hypotheses, reviewers, decisions, limitations, and candidate digest.
+
+**Authority / limitation:** Product intent does not authorize investment, architecture, implementation, or release. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>20 · Source-first workspace initialization and change governance</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Support optional source setup, Intake, Baseline, Provenance, explicit change review, and visible missing evidence.
+**Purpose:** Initialize source-first context and govern Source Intake, Baseline, Provenance, and explicit source-change events.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-103, GAEP-CAP-104, GAEP-CAP-105 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** A workspace and optional candidate material are available Prerequisites: none.
 
-**Roles / competency:** `initiative-lead`, `business-owner`, `risk-compliance-specialist`, `security-architect`, `privacy-specialist`; `risk-compliance`, `security`, `privacy`, `challenge-escalation`.
+**Roles / competency:** `initiative-lead`, `domain-expert`, `business-owner`, `risk-compliance-specialist`, `legal-regulatory-specialist`, `internal-audit-independent-assurance`; `source-governance`, `evidence-provenance`, `auditability`.
 
-**Inputs:** Exact candidate Sources; Source-change event. **Questions:** What exact content and revision was reviewed? What Baseline/Provenance/revalidation changes are required?
+**Inputs:** Candidate material and attachment metadata; source-change event. **Questions:** Which exact bytes were reviewed? What changed and which downstream records require review?
 
 <!-- GAEP-VISUAL:target-lifecycle-02-flow -->
 
@@ -2706,20 +2712,20 @@ accountable-->>role0: Planned decision or return for revision; no executable act
 ```mermaid
 %% Source-first workspace initialization and change governance planned substeps
 flowchart TD
-  lifecycle_02_0["1. Assess classification, applicability, policy, jurisdiction, and risk evidence.<br/>Target — planned, not executable"]
-  lifecycle_02_1["2. Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners.<br/>Target — planned, not executable"]
+  lifecycle_02_0["1. Select and review exact files, folders, link metadata, or an explicit no-source path.<br/>Target — planned, not executable"]
+  lifecycle_02_1["2. Create distinct Source, Baseline, and Provenance candidates with limitations and freshness.<br/>Target — planned, not executable"]
   lifecycle_02_0 --> lifecycle_02_1
-  lifecycle_02_2["3. Block the governed decision until one accountable role and required independent assurance review the exact scope.<br/>Target — planned, not executable"]
+  lifecycle_02_2["3. Route additions, changes, exclusions, supersession, and unavailability to explicit human decisions and revalidation.<br/>Target — planned, not executable"]
   lifecycle_02_1 --> lifecycle_02_2
 ```
 
 <details><summary>Text alternative for Source-first workspace initialization and change governance planned substeps</summary>
 
 ```text
-  lifecycle_02_0["1. Assess classification, applicability, policy, jurisdiction, and risk evidence.<br/>Target — planned, not executable"]
-  lifecycle_02_1["2. Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners.<br/>Target — planned, not executable"]
+  lifecycle_02_0["1. Select and review exact files, folders, link metadata, or an explicit no-source path.<br/>Target — planned, not executable"]
+  lifecycle_02_1["2. Create distinct Source, Baseline, and Provenance candidates with limitations and freshness.<br/>Target — planned, not executable"]
   lifecycle_02_0 --> lifecycle_02_1
-  lifecycle_02_2["3. Block the governed decision until one accountable role and required independent assurance review the exact scope.<br/>Target — planned, not executable"]
+  lifecycle_02_2["3. Route additions, changes, exclusions, supersession, and unavailability to explicit human decisions and revalidation.<br/>Target — planned, not executable"]
   lifecycle_02_1 --> lifecycle_02_2
 ```
 
@@ -2733,56 +2739,62 @@ flowchart TD
 %% Source-first workspace initialization and change governance — Target — planned, not executable
 sequenceDiagram
 participant role0 as initiative-lead
-participant role1 as risk-compliance-specialist
+participant role1 as domain-expert
 participant role2 as business-owner
-participant role3 as internal-audit-independent-assurance
+participant role3 as risk-compliance-specialist
+participant role4 as legal-regulatory-specialist
+participant role5 as internal-audit-independent-assurance
 participant accountable as business-owner
 participant gaep as GAEP target projection
-role0->>gaep: Assess classification, applicability, policy, jurisdiction, and risk evidence.
+role0->>gaep: Select and review exact files, folders, link metadata, or an explicit no-source path.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners.
+role1->>gaep: Create distinct Source, Baseline, and Provenance candidates with limitations and freshness.
 gaep-->>role1: Planned candidate/evidence projection only
-role0->>accountable: Block the governed decision until one accountable role and required independent assurance review the exact scope.
+role0->>accountable: Route additions, changes, exclusions, supersession, and unavailability to explicit human decisions and revalidation.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Source-first workspace initialization and change governance — Target — planned, not executable</summary>
 
-1. role0 → gaep: Assess classification, applicability, policy, jurisdiction, and risk evidence.
+1. role0 → gaep: Select and review exact files, folders, link metadata, or an explicit no-source path.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners.
+3. role1 → gaep: Create distinct Source, Baseline, and Provenance candidates with limitations and freshness.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role0 → accountable: Block the governed decision until one accountable role and required independent assurance review the exact scope.
+5. role0 → accountable: Route additions, changes, exclusions, supersession, and unavailability to explicit human decisions and revalidation.
 6. accountable → role0: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Assess classification, applicability, policy, jurisdiction, and risk evidence. 2. Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners. 3. Block the governed decision until one accountable role and required independent assurance review the exact scope.
+**Planned substeps:** 1. Select and review exact files, folders, link metadata, or an explicit no-source path. 2. Create distinct Source, Baseline, and Provenance candidates with limitations and freshness. 3. Route additions, changes, exclusions, supersession, and unavailability to explicit human decisions and revalidation.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; initiative-lead, risk-compliance-specialist perform work, business-owner owns the bounded decision, and internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Exact content digests, locators, revision and access evidence → Lineage, limitations, membership, change decision, and revalidation evidence.
 
-**Candidate / governed outputs:** Source/and change-governance candidates; no current governed output exists.
+**Candidate / future governed effects:** Source/Intake candidate; Baseline membership candidate; Provenance and revalidation candidate. Future Source revisions and dependency-specific revalidation records; no current governed output exists.
 
-**RACI:** R initiative-lead, risk-compliance-specialist · A business-owner · C security-architect, privacy-specialist · I Initiative lead · independent assurance internal-audit-independent-assurance.
+**RACI:** R initiative-lead, domain-expert · A business-owner · C risk-compliance-specialist, legal-regulatory-specialist · I product-manager · independent assurance internal-audit-independent-assurance. **Decision authorities:** Scoped Source membership/change disposition: business-owner.
 
-**Blockers / exception:** Unreadable content; Inferred supersession. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Source identity, Baseline membership, Provenance, limitations, and revalidation are separate.
 
-**Exit / next:** Source, Baseline, Provenance, and change effects remain distinct and explicit The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Unreadable material; Inferred supersession; Missing change owner. Retain both revisions or mark the Source unavailable; never infer replacement. Escalate rights, authority, or material-evidence conflicts to legal/risk and the business owner.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Preserve prior Source revisions and prevent downstream claims from advancing. Restore access or submit exact revised material and repeat lineage review. material-selected -> source-candidate; source-change-detected -> revalidation-required.
+
+**Audit intent:** Retain exact identities, digests, locators, membership, derivations, decisions, and affected records.
+
+**Authority / limitation:** Source governance records evidence; it does not establish truth, precedence, rights, or approval. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>30 · Product and Initiative definition</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Define the durable Product boundary and a bounded Initiative/context.
+**Purpose:** Define durable Product identity and a bounded Initiative with outcome, scope, constraints, and exclusions.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-106, GAEP-CAP-107 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** Product intent or an existing Product context is reviewable Prerequisites: lifecycle-01.
 
-**Roles / competency:** `product-manager`, `domain-expert`, `product-design-research`, `affected-user-stakeholder`; `product-initiative-reasoning`, `domain-business-analysis`, `evidence-provenance`.
+**Roles / competency:** `product-manager`, `initiative-lead`, `business-owner`, `product-owner`, `domain-expert`; `product-initiative-reasoning`, `candidate-accept-commit`.
 
-**Inputs:** Product evidence; Initiative request. **Questions:** What durable Product and bounded change are in scope?
+**Inputs:** Product intent; change request and Source context. **Questions:** What is the Product and what is the bounded change? What is explicitly excluded?
 
 <!-- GAEP-VISUAL:target-lifecycle-03-flow -->
 
@@ -2791,20 +2803,20 @@ accountable-->>role0: Planned decision or return for revision; no executable act
 ```mermaid
 %% Product and Initiative definition planned substeps
 flowchart TD
-  lifecycle_03_0["1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.<br/>Target — planned, not executable"]
-  lifecycle_03_1["2. Facilitate challenge and prepare a traceable candidate model or decision.<br/>Target — planned, not executable"]
+  lifecycle_03_0["1. Distinguish durable Product context from the proposed change.<br/>Target — planned, not executable"]
+  lifecycle_03_1["2. Collect Initiative outcome, scope, exclusions, constraints, dependencies, and lifecycle state.<br/>Target — planned, not executable"]
   lifecycle_03_0 --> lifecycle_03_1
-  lifecycle_03_2["3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.<br/>Target — planned, not executable"]
+  lifecycle_03_2["3. Review exact Product and Initiative candidates separately before future commits.<br/>Target — planned, not executable"]
   lifecycle_03_1 --> lifecycle_03_2
 ```
 
 <details><summary>Text alternative for Product and Initiative definition planned substeps</summary>
 
 ```text
-  lifecycle_03_0["1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.<br/>Target — planned, not executable"]
-  lifecycle_03_1["2. Facilitate challenge and prepare a traceable candidate model or decision.<br/>Target — planned, not executable"]
+  lifecycle_03_0["1. Distinguish durable Product context from the proposed change.<br/>Target — planned, not executable"]
+  lifecycle_03_1["2. Collect Initiative outcome, scope, exclusions, constraints, dependencies, and lifecycle state.<br/>Target — planned, not executable"]
   lifecycle_03_0 --> lifecycle_03_1
-  lifecycle_03_2["3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.<br/>Target — planned, not executable"]
+  lifecycle_03_2["3. Review exact Product and Initiative candidates separately before future commits.<br/>Target — planned, not executable"]
   lifecycle_03_1 --> lifecycle_03_2
 ```
 
@@ -2818,55 +2830,61 @@ flowchart TD
 %% Product and Initiative definition — Target — planned, not executable
 sequenceDiagram
 participant role0 as product-manager
-participant role1 as domain-expert
+participant role1 as initiative-lead
 participant role2 as business-owner
+participant role3 as product-owner
+participant role4 as domain-expert
 participant accountable as business-owner
 participant gaep as GAEP target projection
-role0->>gaep: Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.
+role0->>gaep: Distinguish durable Product context from the proposed change.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Facilitate challenge and prepare a traceable candidate model or decision.
+role1->>gaep: Collect Initiative outcome, scope, exclusions, constraints, dependencies, and lifecycle state.
 gaep-->>role1: Planned candidate/evidence projection only
-role0->>accountable: Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
+role0->>accountable: Review exact Product and Initiative candidates separately before future commits.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Product and Initiative definition — Target — planned, not executable</summary>
 
-1. role0 → gaep: Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.
+1. role0 → gaep: Distinguish durable Product context from the proposed change.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Facilitate challenge and prepare a traceable candidate model or decision.
+3. role1 → gaep: Collect Initiative outcome, scope, exclusions, constraints, dependencies, and lifecycle state.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role0 → accountable: Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
+5. role0 → accountable: Review exact Product and Initiative candidates separately before future commits.
 6. accountable → role0: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown. 2. Facilitate challenge and prepare a traceable candidate model or decision. 3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
+**Planned substeps:** 1. Distinguish durable Product context from the proposed change. 2. Collect Initiative outcome, scope, exclusions, constraints, dependencies, and lifecycle state. 3. Review exact Product and Initiative candidates separately before future commits.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; product-manager, domain-expert perform work, business-owner owns the bounded decision, and no default independent role provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Intent evidence and change context → Scope, dependency, exclusion, and identity bindings.
 
-**Candidate / governed outputs:** Product/Initiative candidates; no current governed output exists.
+**Candidate / future governed effects:** Product-definition candidate; Initiative-definition candidate. Stable Product and Initiative identities with independent revisions; no current governed output exists.
 
-**RACI:** R product-manager, domain-expert · A business-owner · C product-design-research, affected-user-stakeholder · I Initiative lead · independent assurance context-dependent.
+**RACI:** R product-manager, initiative-lead · A business-owner · C product-owner, domain-expert · I product-leadership · independent assurance context-dependent. **Decision authorities:** Bounded Product/Initiative scope: business-owner.
 
-**Blockers / exception:** Ambiguous boundary. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Identities, outcomes, scope, exclusions, and dependencies are unambiguous.
 
-**Exit / next:** Stable identities, scope, outcomes, constraints, and exclusions are reviewable The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Product and Initiative are conflated; Outcome owner absent. Keep the request uncommitted and record boundary questions. Escalate portfolio/product conflicts to product leadership and business ownership.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Do not create partial identity or scope records. Revise only the contested boundary and re-review the full candidate. intent-reviewed -> product-initiative-candidate; candidate-reviewed -> future-commit-eligible.
+
+**Audit intent:** Retain identities, revisions, evidence bindings, decisions, and rejected scope alternatives.
+
+**Authority / limitation:** Definition does not authorize funding or execution. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>40 · Initiative classification and applicability</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Record classification, applicability, accountable decisions, and unresolved subjects.
+**Purpose:** Classify the Initiative and decide applicable governance, control, competency, and assurance obligations.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-108, GAEP-CAP-109 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** A bounded Initiative exists Prerequisites: lifecycle-03.
 
-**Roles / competency:** `initiative-lead`, `business-owner`, `risk-compliance-specialist`, `security-architect`, `privacy-specialist`; `risk-compliance`, `security`, `privacy`, `challenge-escalation`.
+**Roles / competency:** `initiative-lead`, `risk-compliance-specialist`, `business-owner`, `security-architect`, `privacy-specialist`, `legal-regulatory-specialist`, `internal-audit-independent-assurance`; `risk-compliance`, `security`, `privacy`, `challenge-escalation`.
 
-**Inputs:** Initiative definition; risk/policy context. **Questions:** Which classifications and controls apply? Who can decide exclusions and accept risk?
+**Inputs:** Initiative definition; policy, jurisdiction, and risk evidence. **Questions:** What applies and why? Who may decide exclusions and residual risk?
 
 <!-- GAEP-VISUAL:target-lifecycle-04-flow -->
 
@@ -2875,20 +2893,20 @@ accountable-->>role0: Planned decision or return for revision; no executable act
 ```mermaid
 %% Initiative classification and applicability planned substeps
 flowchart TD
-  lifecycle_04_0["1. Assess classification, applicability, policy, jurisdiction, and risk evidence.<br/>Target — planned, not executable"]
-  lifecycle_04_1["2. Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners.<br/>Target — planned, not executable"]
+  lifecycle_04_0["1. Assess change, data, AI, risk, jurisdiction, regulatory, and delivery characteristics.<br/>Target — planned, not executable"]
+  lifecycle_04_1["2. Resolve each applicability subject as applicable, excluded, or unresolved with evidence.<br/>Target — planned, not executable"]
   lifecycle_04_0 --> lifecycle_04_1
-  lifecycle_04_2["3. Block the governed decision until one accountable role and required independent assurance review the exact scope.<br/>Target — planned, not executable"]
+  lifecycle_04_2["3. Route exceptions, risk decisions, competencies, and independent-assurance triggers to the proper authority.<br/>Target — planned, not executable"]
   lifecycle_04_1 --> lifecycle_04_2
 ```
 
 <details><summary>Text alternative for Initiative classification and applicability planned substeps</summary>
 
 ```text
-  lifecycle_04_0["1. Assess classification, applicability, policy, jurisdiction, and risk evidence.<br/>Target — planned, not executable"]
-  lifecycle_04_1["2. Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners.<br/>Target — planned, not executable"]
+  lifecycle_04_0["1. Assess change, data, AI, risk, jurisdiction, regulatory, and delivery characteristics.<br/>Target — planned, not executable"]
+  lifecycle_04_1["2. Resolve each applicability subject as applicable, excluded, or unresolved with evidence.<br/>Target — planned, not executable"]
   lifecycle_04_0 --> lifecycle_04_1
-  lifecycle_04_2["3. Block the governed decision until one accountable role and required independent assurance review the exact scope.<br/>Target — planned, not executable"]
+  lifecycle_04_2["3. Route exceptions, risk decisions, competencies, and independent-assurance triggers to the proper authority.<br/>Target — planned, not executable"]
   lifecycle_04_1 --> lifecycle_04_2
 ```
 
@@ -2904,54 +2922,61 @@ sequenceDiagram
 participant role0 as initiative-lead
 participant role1 as risk-compliance-specialist
 participant role2 as business-owner
-participant role3 as internal-audit-independent-assurance
+participant role3 as security-architect
+participant role4 as privacy-specialist
+participant role5 as legal-regulatory-specialist
+participant role6 as internal-audit-independent-assurance
 participant accountable as business-owner
 participant gaep as GAEP target projection
-role0->>gaep: Assess classification, applicability, policy, jurisdiction, and risk evidence.
+role0->>gaep: Assess change, data, AI, risk, jurisdiction, regulatory, and delivery characteristics.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners.
+role1->>gaep: Resolve each applicability subject as applicable, excluded, or unresolved with evidence.
 gaep-->>role1: Planned candidate/evidence projection only
-role0->>accountable: Block the governed decision until one accountable role and required independent assurance review the exact scope.
+role0->>accountable: Route exceptions, risk decisions, competencies, and independent-assurance triggers to the proper authority.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Initiative classification and applicability — Target — planned, not executable</summary>
 
-1. role0 → gaep: Assess classification, applicability, policy, jurisdiction, and risk evidence.
+1. role0 → gaep: Assess change, data, AI, risk, jurisdiction, regulatory, and delivery characteristics.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners.
+3. role1 → gaep: Resolve each applicability subject as applicable, excluded, or unresolved with evidence.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role0 → accountable: Block the governed decision until one accountable role and required independent assurance review the exact scope.
+5. role0 → accountable: Route exceptions, risk decisions, competencies, and independent-assurance triggers to the proper authority.
 6. accountable → role0: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Assess classification, applicability, policy, jurisdiction, and risk evidence. 2. Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners. 3. Block the governed decision until one accountable role and required independent assurance review the exact scope.
+**Planned substeps:** 1. Assess change, data, AI, risk, jurisdiction, regulatory, and delivery characteristics. 2. Resolve each applicability subject as applicable, excluded, or unresolved with evidence. 3. Route exceptions, risk decisions, competencies, and independent-assurance triggers to the proper authority.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; initiative-lead, risk-compliance-specialist perform work, business-owner owns the bounded decision, and internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Policy and Initiative evidence → Decision rationale, open questions, assurance triggers, and residual risk.
 
-**Candidate / governed outputs:** Classification/applicability decisions; no current governed output exists.
+**Candidate / future governed effects:** Classification candidate; applicability and assurance candidate. Scoped obligations, exceptions, and reassessment triggers; no current governed output exists.
 
-**RACI:** R initiative-lead, risk-compliance-specialist · A business-owner · C security-architect, privacy-specialist · I Initiative lead · independent assurance internal-audit-independent-assurance.
+**RACI:** R initiative-lead, risk-compliance-specialist · A business-owner · C security-architect, privacy-specialist, legal-regulatory-specialist · I product-manager · independent assurance internal-audit-independent-assurance. **Decision authorities:** Business applicability disposition: business-owner; Security/privacy/legal determination: risk-compliance-specialist.
 
-**Blockers / exception:** Missing accountable role; Material Unknown risk. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Every material subject has evidence, an owner, and a disposition or visible Unknown.
 
-**Exit / next:** Applicability, exceptions, assurance triggers, and open questions have accountable dispositions The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Missing decision authority; Material risk remains unowned. Record a bounded exception request without implying waiver. Escalate to the relevant legal, privacy, security, risk, or business authority.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Block affected progression and preserve the last governed disposition. Supply missing evidence or authority and reassess only affected subjects. initiative-defined -> classification-candidate; applicability-reviewed -> obligations-current-or-blocked.
+
+**Audit intent:** Retain subject decisions, evidence, owners, exceptions, limitations, and reassessment triggers.
+
+**Authority / limitation:** Applicability does not itself grant a waiver, approval, or risk acceptance. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>50 · Product discovery</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Develop evidence-bound business understanding, stakeholder, outcome, and discovery records.
+**Purpose:** Discover user, business, viability, value, and outcome evidence for the bounded Initiative.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-101 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** Initiative applicability and Source foundation are sufficient for bounded discovery Prerequisites: lifecycle-02, lifecycle-04.
 
-**Roles / competency:** `product-manager`, `domain-expert`, `product-design-research`, `affected-user-stakeholder`; `product-initiative-reasoning`, `domain-business-analysis`, `evidence-provenance`.
+**Roles / competency:** `product-manager`, `product-design-research`, `product-owner`, `business-owner`, `domain-expert`, `affected-user-stakeholder`; `domain-business-analysis`, `product-design`, `evidence-provenance`.
 
-**Inputs:** Governed Initiative; user/business evidence. **Questions:** What user/business outcomes and assumptions require discovery?
+**Inputs:** Governed Initiative context; user and business evidence. **Questions:** Which need and outcome are evidenced? What evidence could disconfirm the candidate?
 
 <!-- GAEP-VISUAL:target-lifecycle-05-flow -->
 
@@ -2960,20 +2985,20 @@ accountable-->>role0: Planned decision or return for revision; no executable act
 ```mermaid
 %% Product discovery planned substeps
 flowchart TD
-  lifecycle_05_0["1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.<br/>Target — planned, not executable"]
-  lifecycle_05_1["2. Facilitate challenge and prepare a traceable candidate model or decision.<br/>Target — planned, not executable"]
+  lifecycle_05_0["1. Plan discovery questions and representative participation.<br/>Target — planned, not executable"]
+  lifecycle_05_1["2. Collect and synthesize observations, needs, outcomes, assumptions, and counter-evidence.<br/>Target — planned, not executable"]
   lifecycle_05_0 --> lifecycle_05_1
-  lifecycle_05_2["3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.<br/>Target — planned, not executable"]
+  lifecycle_05_2["3. Challenge discovery conclusions and decide which hypotheses require experiments or remain Unknown.<br/>Target — planned, not executable"]
   lifecycle_05_1 --> lifecycle_05_2
 ```
 
 <details><summary>Text alternative for Product discovery planned substeps</summary>
 
 ```text
-  lifecycle_05_0["1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.<br/>Target — planned, not executable"]
-  lifecycle_05_1["2. Facilitate challenge and prepare a traceable candidate model or decision.<br/>Target — planned, not executable"]
+  lifecycle_05_0["1. Plan discovery questions and representative participation.<br/>Target — planned, not executable"]
+  lifecycle_05_1["2. Collect and synthesize observations, needs, outcomes, assumptions, and counter-evidence.<br/>Target — planned, not executable"]
   lifecycle_05_0 --> lifecycle_05_1
-  lifecycle_05_2["3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.<br/>Target — planned, not executable"]
+  lifecycle_05_2["3. Challenge discovery conclusions and decide which hypotheses require experiments or remain Unknown.<br/>Target — planned, not executable"]
   lifecycle_05_1 --> lifecycle_05_2
 ```
 
@@ -2987,55 +3012,62 @@ flowchart TD
 %% Product discovery — Target — planned, not executable
 sequenceDiagram
 participant role0 as product-manager
-participant role1 as domain-expert
-participant role2 as business-owner
+participant role1 as product-design-research
+participant role2 as product-owner
+participant role3 as business-owner
+participant role4 as domain-expert
+participant role5 as affected-user-stakeholder
 participant accountable as business-owner
 participant gaep as GAEP target projection
-role0->>gaep: Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.
+role0->>gaep: Plan discovery questions and representative participation.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Facilitate challenge and prepare a traceable candidate model or decision.
+role1->>gaep: Collect and synthesize observations, needs, outcomes, assumptions, and counter-evidence.
 gaep-->>role1: Planned candidate/evidence projection only
-role0->>accountable: Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
-accountable-->>role0: Planned decision or return for revision; no executable action
+role2->>accountable: Challenge discovery conclusions and decide which hypotheses require experiments or remain Unknown.
+accountable-->>role2: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Product discovery — Target — planned, not executable</summary>
 
-1. role0 → gaep: Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.
+1. role0 → gaep: Plan discovery questions and representative participation.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Facilitate challenge and prepare a traceable candidate model or decision.
+3. role1 → gaep: Collect and synthesize observations, needs, outcomes, assumptions, and counter-evidence.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role0 → accountable: Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
-6. accountable → role0: Planned decision or return for revision; no executable action
+5. role2 → accountable: Challenge discovery conclusions and decide which hypotheses require experiments or remain Unknown.
+6. accountable → role2: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown. 2. Facilitate challenge and prepare a traceable candidate model or decision. 3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
+**Planned substeps:** 1. Plan discovery questions and representative participation. 2. Collect and synthesize observations, needs, outcomes, assumptions, and counter-evidence. 3. Challenge discovery conclusions and decide which hypotheses require experiments or remain Unknown.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; product-manager, domain-expert perform work, business-owner owns the bounded decision, and no default independent role provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Research observations and Source provenance → Needs, outcomes, assumptions, experiments, limitations, and dissent.
 
-**Candidate / governed outputs:** Discovery model and outcome measures; no current governed output exists.
+**Candidate / future governed effects:** Discovery and outcome model; experiment backlog. Evidence-bounded discovery revision and hypothesis decisions; no current governed output exists.
 
-**RACI:** R product-manager, domain-expert · A business-owner · C product-design-research, affected-user-stakeholder · I Initiative lead · independent assurance context-dependent.
+**RACI:** R product-manager, product-design-research, product-owner · A business-owner · C domain-expert, affected-user-stakeholder · I product-leadership · independent assurance context-dependent. **Decision authorities:** Discovery sufficiency for business architecture: business-owner.
 
-**Blockers / exception:** Untraceable need statement. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Claims trace to observations and material assumptions remain explicit.
 
-**Exit / next:** Discovery claims trace to evidence and unresolved assumptions remain visible The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Unrepresentative evidence; Untraceable need statement. Narrow the claim and record missing research rather than generalizing. Escalate unresolved outcome or stakeholder conflict to business ownership.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Retain raw observations and invalidate only unsupported synthesis. Run the named research/experiment and revise the affected model. discovery-planned -> evidence-collected; candidate-challenged -> discovery-current-or-experiment-required.
+
+**Audit intent:** Retain participant scope, observations, synthesis, decisions, freshness, and limitations.
+
+**Authority / limitation:** Discovery does not prove demand, desirability, viability, or investment approval. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>60 · Business architecture and value streams</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Model capabilities, value streams, operating context, and business rules without assuming an ERP Product.
+**Purpose:** Model capabilities, value streams, operating model, business rules, ownership, and enterprise impacts.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-110 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** Discovery evidence is reviewable Prerequisites: lifecycle-05.
 
-**Roles / competency:** `business-architect`, `enterprise-architect`, `solution-architect`, `data-ai-architect`, `security-architect`, `privacy-specialist`; `architecture-ddd`, `security`, `privacy`, `testing-assurance`, `evidence-provenance`.
+**Roles / competency:** `business-architect`, `domain-expert`, `product-leadership`, `enterprise-architect`, `product-manager`, `affected-user-stakeholder`; `domain-business-analysis`, `architecture-ddd`, `evidence-provenance`.
 
-**Inputs:** Discovery evidence; enterprise operating context. **Questions:** Which capabilities/value streams/rules change?
+**Inputs:** Discovery models; enterprise operating context. **Questions:** How does the enterprise create value here? Which ownership and rule changes are required?
 
 <!-- GAEP-VISUAL:target-lifecycle-06-flow -->
 
@@ -3044,20 +3076,20 @@ accountable-->>role0: Planned decision or return for revision; no executable act
 ```mermaid
 %% Business architecture and value streams planned substeps
 flowchart TD
-  lifecycle_06_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
-  lifecycle_06_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_06_0["1. Map affected capabilities, value streams, actors, information, and outcomes.<br/>Target — planned, not executable"]
+  lifecycle_06_1["2. Model operating responsibilities, business rules, constraints, and change impacts.<br/>Target — planned, not executable"]
   lifecycle_06_0 --> lifecycle_06_1
-  lifecycle_06_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_06_2["3. Review the business-architecture baseline against evidence and conflicting stakeholder views.<br/>Target — planned, not executable"]
   lifecycle_06_1 --> lifecycle_06_2
 ```
 
 <details><summary>Text alternative for Business architecture and value streams planned substeps</summary>
 
 ```text
-  lifecycle_06_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
-  lifecycle_06_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_06_0["1. Map affected capabilities, value streams, actors, information, and outcomes.<br/>Target — planned, not executable"]
+  lifecycle_06_1["2. Model operating responsibilities, business rules, constraints, and change impacts.<br/>Target — planned, not executable"]
   lifecycle_06_0 --> lifecycle_06_1
-  lifecycle_06_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_06_2["3. Review the business-architecture baseline against evidence and conflicting stakeholder views.<br/>Target — planned, not executable"]
   lifecycle_06_1 --> lifecycle_06_2
 ```
 
@@ -3070,58 +3102,63 @@ flowchart TD
 ```mermaid
 %% Business architecture and value streams — Target — planned, not executable
 sequenceDiagram
-participant role0 as solution-architect
-participant role1 as business-architect
-participant role2 as enterprise-architect
-participant role3 as security-architect
-participant role4 as internal-audit-independent-assurance
-participant accountable as enterprise-architect
+participant role0 as business-architect
+participant role1 as domain-expert
+participant role2 as product-leadership
+participant role3 as enterprise-architect
+participant role4 as product-manager
+participant role5 as affected-user-stakeholder
+participant accountable as product-leadership
 participant gaep as GAEP target projection
-role0->>gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+role0->>gaep: Map affected capabilities, value streams, actors, information, and outcomes.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+role1->>gaep: Model operating responsibilities, business rules, constraints, and change impacts.
 gaep-->>role1: Planned candidate/evidence projection only
-role0->>accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+role0->>accountable: Review the business-architecture baseline against evidence and conflicting stakeholder views.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Business architecture and value streams — Target — planned, not executable</summary>
 
-1. role0 → gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+1. role0 → gaep: Map affected capabilities, value streams, actors, information, and outcomes.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+3. role1 → gaep: Model operating responsibilities, business rules, constraints, and change impacts.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role0 → accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+5. role0 → accountable: Review the business-architecture baseline against evidence and conflicting stakeholder views.
 6. accountable → role0: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice. 2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements. 3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+**Planned substeps:** 1. Map affected capabilities, value streams, actors, information, and outcomes. 2. Model operating responsibilities, business rules, constraints, and change impacts. 3. Review the business-architecture baseline against evidence and conflicting stakeholder views.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; solution-architect, business-architect perform work, enterprise-architect owns the bounded decision, and security-architect, internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Discovery, process, policy, and operating evidence → Capability/value-stream traceability and business decisions.
 
-**Candidate / governed outputs:** Business architecture candidate; no current governed output exists.
+**Candidate / future governed effects:** Business-architecture candidate; business-rule and ownership model. Business baseline constraining domain and solution decisions; no current governed output exists.
 
-**RACI:** R solution-architect, business-architect · A enterprise-architect · C data-ai-architect, security-architect, privacy-specialist · I Initiative lead · independent assurance security-architect, internal-audit-independent-assurance.
+**RACI:** R business-architect, domain-expert · A product-leadership · C enterprise-architect, product-manager, affected-user-stakeholder · I business-owner · independent assurance context-dependent. **Decision authorities:** Business-architecture baseline: product-leadership.
 
-**Blockers / exception:** Missing business ownership. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Capabilities, value streams, rules, outcomes, and owners are mutually consistent.
 
-**Exit / next:** Business model and decisions support domain/solution work The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Missing business ownership; Conflicting rules unresolved. Retain alternative operating models and scope the unresolved area. Escalate operating-model decisions to product leadership and the business owner.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Keep the prior baseline and block dependent domain conclusions. Resolve named business-rule or ownership evidence and rebuild impacted views. discovery-current -> business-model-candidate; baseline-reviewed -> business-architecture-current.
+
+**Audit intent:** Retain model revisions, stakeholder positions, decisions, and evidence links.
+
+**Authority / limitation:** Business architecture does not redesign the organization or authorize solution implementation. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>70 · Domain discovery and Event Storming</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Capture domain events and collaborative domain discovery evidence.
+**Purpose:** Use EventStorming and behavioral discovery to expose events, commands, policies, actors, timelines, and hotspots.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-111 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** Business architecture defines affected value and participants Prerequisites: lifecycle-06.
 
-**Roles / competency:** `business-architect`, `enterprise-architect`, `solution-architect`, `data-ai-architect`, `security-architect`, `privacy-specialist`; `architecture-ddd`, `security`, `privacy`, `testing-assurance`, `evidence-provenance`.
+**Roles / competency:** `business-architect`, `domain-expert`, `product-leadership`, `product-manager`, `affected-user-stakeholder`, `solution-architect`; `domain-business-analysis`, `architecture-ddd`, `challenge-escalation`.
 
-**Inputs:** Business evidence; domain participants. **Questions:** Which domain events, commands, policies, actors, and hotspots matter?
+**Inputs:** Business models; domain participant knowledge. **Questions:** What happens and why? Where do policies, delays, failures, and disagreements occur?
 
 <!-- GAEP-VISUAL:target-lifecycle-07-flow -->
 
@@ -3130,20 +3167,20 @@ accountable-->>role0: Planned decision or return for revision; no executable act
 ```mermaid
 %% Domain discovery and Event Storming planned substeps
 flowchart TD
-  lifecycle_07_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
-  lifecycle_07_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_07_0["1. Invite the necessary domain voices and establish the bounded process scope.<br/>Target — planned, not executable"]
+  lifecycle_07_1["2. Capture events, commands, actors, policies, read models, external systems, and temporal constraints.<br/>Target — planned, not executable"]
   lifecycle_07_0 --> lifecycle_07_1
-  lifecycle_07_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_07_2["3. Reconcile hotspots and preserve contested interpretations as explicit decisions or Unknowns.<br/>Target — planned, not executable"]
   lifecycle_07_1 --> lifecycle_07_2
 ```
 
 <details><summary>Text alternative for Domain discovery and Event Storming planned substeps</summary>
 
 ```text
-  lifecycle_07_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
-  lifecycle_07_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_07_0["1. Invite the necessary domain voices and establish the bounded process scope.<br/>Target — planned, not executable"]
+  lifecycle_07_1["2. Capture events, commands, actors, policies, read models, external systems, and temporal constraints.<br/>Target — planned, not executable"]
   lifecycle_07_0 --> lifecycle_07_1
-  lifecycle_07_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_07_2["3. Reconcile hotspots and preserve contested interpretations as explicit decisions or Unknowns.<br/>Target — planned, not executable"]
   lifecycle_07_1 --> lifecycle_07_2
 ```
 
@@ -3156,58 +3193,63 @@ flowchart TD
 ```mermaid
 %% Domain discovery and Event Storming — Target — planned, not executable
 sequenceDiagram
-participant role0 as solution-architect
-participant role1 as business-architect
-participant role2 as enterprise-architect
-participant role3 as security-architect
-participant role4 as internal-audit-independent-assurance
-participant accountable as enterprise-architect
+participant role0 as business-architect
+participant role1 as domain-expert
+participant role2 as product-leadership
+participant role3 as product-manager
+participant role4 as affected-user-stakeholder
+participant role5 as solution-architect
+participant accountable as product-leadership
 participant gaep as GAEP target projection
-role0->>gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+role0->>gaep: Invite the necessary domain voices and establish the bounded process scope.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+role1->>gaep: Capture events, commands, actors, policies, read models, external systems, and temporal constraints.
 gaep-->>role1: Planned candidate/evidence projection only
-role0->>accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+role0->>accountable: Reconcile hotspots and preserve contested interpretations as explicit decisions or Unknowns.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Domain discovery and Event Storming — Target — planned, not executable</summary>
 
-1. role0 → gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+1. role0 → gaep: Invite the necessary domain voices and establish the bounded process scope.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+3. role1 → gaep: Capture events, commands, actors, policies, read models, external systems, and temporal constraints.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role0 → accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+5. role0 → accountable: Reconcile hotspots and preserve contested interpretations as explicit decisions or Unknowns.
 6. accountable → role0: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice. 2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements. 3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+**Planned substeps:** 1. Invite the necessary domain voices and establish the bounded process scope. 2. Capture events, commands, actors, policies, read models, external systems, and temporal constraints. 3. Reconcile hotspots and preserve contested interpretations as explicit decisions or Unknowns.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; solution-architect, business-architect perform work, enterprise-architect owns the bounded decision, and security-architect, internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Domain observations, rules, and process evidence → Event chronology, policies, hotspots, and dissent.
 
-**Candidate / governed outputs:** Event Storming evidence; no current governed output exists.
+**Candidate / future governed effects:** EventStorming model; hotspot and language register. Behavioral evidence constraining DDD boundaries; no current governed output exists.
 
-**RACI:** R solution-architect, business-architect · A enterprise-architect · C data-ai-architect, security-architect, privacy-specialist · I Initiative lead · independent assurance security-architect, internal-audit-independent-assurance.
+**RACI:** R business-architect, domain-expert · A product-leadership · C product-manager, affected-user-stakeholder, solution-architect · I enterprise-architect · independent assurance context-dependent. **Decision authorities:** Behavioral discovery sufficiency: product-leadership.
 
-**Blockers / exception:** Key domain voices absent. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Events and hotspots trace to participants/evidence; disagreement is visible.
 
-**Exit / next:** Events/hotspots are traceable and contested interpretations explicit The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Key domain voices absent; Workshop output treated as unquestioned truth. Mark the model partial and prohibit boundary finalization for missing voices. Escalate unresolved domain ownership to business/product leadership.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Preserve session evidence but reject unsupported consolidation. Add missing participants or evidence and rerun affected timeline segments. business-model-current -> event-model-candidate; hotspots-reviewed -> behavioral-evidence-current.
+
+**Audit intent:** Retain participants, session scope, model changes, hotspots, and dispositions.
+
+**Authority / limitation:** A workshop model is evidence, not architecture approval or deployment design. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>80 · DDD strategic design and context mapping</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Define bounded contexts, relationships, ownership, and context maps.
+**Purpose:** Apply DDD strategic design to define bounded contexts, ownership, ubiquitous language, and context relationships.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-112 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** Business and behavioral evidence is sufficient Prerequisites: lifecycle-06, lifecycle-07.
 
-**Roles / competency:** `business-architect`, `enterprise-architect`, `solution-architect`, `data-ai-architect`, `security-architect`, `privacy-specialist`; `architecture-ddd`, `security`, `privacy`, `testing-assurance`, `evidence-provenance`.
+**Roles / competency:** `business-architect`, `solution-architect`, `domain-expert`, `enterprise-architect`, `product-manager`, `data-ai-architect`; `architecture-ddd`, `domain-business-analysis`, `evidence-provenance`.
 
-**Inputs:** Domain events; business rules. **Questions:** Which bounded contexts, ownership, and relationships fit the evidence?
+**Inputs:** Business architecture; EventStorming evidence. **Questions:** Which boundary owns which decisions and language? What coupling and alternatives remain?
 
 <!-- GAEP-VISUAL:target-lifecycle-08-flow -->
 
@@ -3216,20 +3258,20 @@ accountable-->>role0: Planned decision or return for revision; no executable act
 ```mermaid
 %% DDD strategic design and context mapping planned substeps
 flowchart TD
-  lifecycle_08_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
-  lifecycle_08_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_08_0["1. Identify cohesion, invariants, ownership, language, and change-coupling signals.<br/>Target — planned, not executable"]
+  lifecycle_08_1["2. Compare candidate boundaries and context-map relationships against business evidence.<br/>Target — planned, not executable"]
   lifecycle_08_0 --> lifecycle_08_1
-  lifecycle_08_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_08_2["3. Decide boundaries and preserve rejected alternatives without prescribing microservices.<br/>Target — planned, not executable"]
   lifecycle_08_1 --> lifecycle_08_2
 ```
 
 <details><summary>Text alternative for DDD strategic design and context mapping planned substeps</summary>
 
 ```text
-  lifecycle_08_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
-  lifecycle_08_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_08_0["1. Identify cohesion, invariants, ownership, language, and change-coupling signals.<br/>Target — planned, not executable"]
+  lifecycle_08_1["2. Compare candidate boundaries and context-map relationships against business evidence.<br/>Target — planned, not executable"]
   lifecycle_08_0 --> lifecycle_08_1
-  lifecycle_08_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_08_2["3. Decide boundaries and preserve rejected alternatives without prescribing microservices.<br/>Target — planned, not executable"]
   lifecycle_08_1 --> lifecycle_08_2
 ```
 
@@ -3242,58 +3284,63 @@ flowchart TD
 ```mermaid
 %% DDD strategic design and context mapping — Target — planned, not executable
 sequenceDiagram
-participant role0 as solution-architect
-participant role1 as business-architect
-participant role2 as enterprise-architect
-participant role3 as security-architect
-participant role4 as internal-audit-independent-assurance
+participant role0 as business-architect
+participant role1 as solution-architect
+participant role2 as domain-expert
+participant role3 as enterprise-architect
+participant role4 as product-manager
+participant role5 as data-ai-architect
 participant accountable as enterprise-architect
 participant gaep as GAEP target projection
-role0->>gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+role0->>gaep: Identify cohesion, invariants, ownership, language, and change-coupling signals.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+role1->>gaep: Compare candidate boundaries and context-map relationships against business evidence.
 gaep-->>role1: Planned candidate/evidence projection only
-role0->>accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
-accountable-->>role0: Planned decision or return for revision; no executable action
+role2->>accountable: Decide boundaries and preserve rejected alternatives without prescribing microservices.
+accountable-->>role2: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for DDD strategic design and context mapping — Target — planned, not executable</summary>
 
-1. role0 → gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+1. role0 → gaep: Identify cohesion, invariants, ownership, language, and change-coupling signals.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+3. role1 → gaep: Compare candidate boundaries and context-map relationships against business evidence.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role0 → accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
-6. accountable → role0: Planned decision or return for revision; no executable action
+5. role2 → accountable: Decide boundaries and preserve rejected alternatives without prescribing microservices.
+6. accountable → role2: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice. 2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements. 3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+**Planned substeps:** 1. Identify cohesion, invariants, ownership, language, and change-coupling signals. 2. Compare candidate boundaries and context-map relationships against business evidence. 3. Decide boundaries and preserve rejected alternatives without prescribing microservices.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; solution-architect, business-architect perform work, enterprise-architect owns the bounded decision, and security-architect, internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Events, rules, capabilities, ownership, and change evidence → Boundary rationale, relationships, alternatives, and risks.
 
-**Candidate / governed outputs:** Context map and boundary decisions; no current governed output exists.
+**Candidate / future governed effects:** Bounded-context model; context map and decision rationale. Stable domain boundaries constraining solution architecture; no current governed output exists.
 
-**RACI:** R solution-architect, business-architect · A enterprise-architect · C data-ai-architect, security-architect, privacy-specialist · I Initiative lead · independent assurance security-architect, internal-audit-independent-assurance.
+**RACI:** R business-architect, solution-architect, domain-expert · A enterprise-architect · C product-manager, data-ai-architect · I engineering-leadership · independent assurance context-dependent. **Decision authorities:** Strategic domain boundary and context map: enterprise-architect.
 
-**Blockers / exception:** DDD treated as automatic microservices prescription. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Boundaries fit evidence, ownership, language, and expected change.
 
-**Exit / next:** Boundaries and alternatives are explicit without deployment-style inflation The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** DDD treated as automatic microservices; Unowned context. Keep candidate boundaries provisional and isolate the disputed integration. Escalate cross-domain ownership to enterprise architecture and product leadership.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Reject the boundary candidate while retaining evidence and alternatives. Resolve ownership or language conflict and re-evaluate impacted contexts. behavioral-evidence-current -> boundary-candidates; boundaries-reviewed -> context-map-current.
+
+**Audit intent:** Retain boundary criteria, alternatives, decision owners, evidence, and review triggers.
+
+**Authority / limitation:** DDD boundaries do not dictate service count, repository topology, or deployment. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>90 · Solution, data, integration, security, privacy, and deployment architecture</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Bind solution, data, API/event/integration, security, privacy, quality, and deployment concerns.
+**Purpose:** Develop solution, data, AI, integration, security, privacy, deployment, and operational architecture for the affected slice.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-113, GAEP-CAP-121, GAEP-CAP-122, GAEP-CAP-129, GAEP-CAP-130 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** Domain boundaries and applicable controls are current Prerequisites: lifecycle-04, lifecycle-08.
 
-**Roles / competency:** `business-architect`, `enterprise-architect`, `solution-architect`, `data-ai-architect`, `security-architect`, `privacy-specialist`; `architecture-ddd`, `security`, `privacy`, `testing-assurance`, `evidence-provenance`.
+**Roles / competency:** `solution-architect`, `data-ai-architect`, `security-architect`, `enterprise-architect`, `privacy-specialist`, `platform-devops`, `sre-operations`, `risk-compliance-specialist`, `internal-audit-independent-assurance`; `architecture-ddd`, `security`, `privacy`, `risk-compliance`.
 
-**Inputs:** Context map; quality/security/privacy/data/integration constraints. **Questions:** Which architecture style and deployment model fit?
+**Inputs:** Context map; quality/control constraints. **Questions:** Which architecture best fits the evidence and constraints? How will risks and operational qualities be verified?
 
 <!-- GAEP-VISUAL:target-lifecycle-09-flow -->
 
@@ -3302,20 +3349,20 @@ accountable-->>role0: Planned decision or return for revision; no executable act
 ```mermaid
 %% Solution, data, integration, security, privacy, and deployment architecture planned substeps
 flowchart TD
-  lifecycle_09_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
-  lifecycle_09_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_09_0["1. Derive quality, threat, privacy, data, AI, integration, deployment, and operational constraints.<br/>Target — planned, not executable"]
+  lifecycle_09_1["2. Compare architecture styles and deployment alternatives for the bounded slice.<br/>Target — planned, not executable"]
   lifecycle_09_0 --> lifecycle_09_1
-  lifecycle_09_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_09_2["3. Create coherent models with explicit risks, controls, assumptions, and verification needs.<br/>Target — planned, not executable"]
   lifecycle_09_1 --> lifecycle_09_2
 ```
 
 <details><summary>Text alternative for Solution, data, integration, security, privacy, and deployment architecture planned substeps</summary>
 
 ```text
-  lifecycle_09_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
-  lifecycle_09_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_09_0["1. Derive quality, threat, privacy, data, AI, integration, deployment, and operational constraints.<br/>Target — planned, not executable"]
+  lifecycle_09_1["2. Compare architecture styles and deployment alternatives for the bounded slice.<br/>Target — planned, not executable"]
   lifecycle_09_0 --> lifecycle_09_1
-  lifecycle_09_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_09_2["3. Create coherent models with explicit risks, controls, assumptions, and verification needs.<br/>Target — planned, not executable"]
   lifecycle_09_1 --> lifecycle_09_2
 ```
 
@@ -3329,57 +3376,65 @@ flowchart TD
 %% Solution, data, integration, security, privacy, and deployment architecture — Target — planned, not executable
 sequenceDiagram
 participant role0 as solution-architect
-participant role1 as business-architect
-participant role2 as enterprise-architect
-participant role3 as security-architect
-participant role4 as internal-audit-independent-assurance
+participant role1 as data-ai-architect
+participant role2 as security-architect
+participant role3 as enterprise-architect
+participant role4 as privacy-specialist
+participant role5 as platform-devops
+participant role6 as sre-operations
+participant role7 as risk-compliance-specialist
+participant role8 as internal-audit-independent-assurance
 participant accountable as enterprise-architect
 participant gaep as GAEP target projection
-role0->>gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+role0->>gaep: Derive quality, threat, privacy, data, AI, integration, deployment, and operational constraints.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+role1->>gaep: Compare architecture styles and deployment alternatives for the bounded slice.
 gaep-->>role1: Planned candidate/evidence projection only
-role0->>accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
-accountable-->>role0: Planned decision or return for revision; no executable action
+role2->>accountable: Create coherent models with explicit risks, controls, assumptions, and verification needs.
+accountable-->>role2: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Solution, data, integration, security, privacy, and deployment architecture — Target — planned, not executable</summary>
 
-1. role0 → gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+1. role0 → gaep: Derive quality, threat, privacy, data, AI, integration, deployment, and operational constraints.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+3. role1 → gaep: Compare architecture styles and deployment alternatives for the bounded slice.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role0 → accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
-6. accountable → role0: Planned decision or return for revision; no executable action
+5. role2 → accountable: Create coherent models with explicit risks, controls, assumptions, and verification needs.
+6. accountable → role2: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice. 2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements. 3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+**Planned substeps:** 1. Derive quality, threat, privacy, data, AI, integration, deployment, and operational constraints. 2. Compare architecture styles and deployment alternatives for the bounded slice. 3. Create coherent models with explicit risks, controls, assumptions, and verification needs.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; solution-architect, business-architect perform work, enterprise-architect owns the bounded decision, and security-architect, internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Domain, risk, policy, platform, data, and operational evidence → Architecture alternatives, models, threats, controls, and quality scenarios.
 
-**Candidate / governed outputs:** Solution/data/security/privacy/integration/deployment models; no current governed output exists.
+**Candidate / future governed effects:** Solution and deployment architecture candidate; security/privacy/data/integration models. Architecture constraints binding design, backlog, topology, and assurance; no current governed output exists.
 
-**RACI:** R solution-architect, business-architect · A enterprise-architect · C data-ai-architect, security-architect, privacy-specialist · I Initiative lead · independent assurance security-architect, internal-audit-independent-assurance.
+**RACI:** R solution-architect, data-ai-architect, security-architect · A enterprise-architect · C privacy-specialist, platform-devops, sre-operations, risk-compliance-specialist · I engineering-leadership, product-manager · independent assurance internal-audit-independent-assurance. **Decision authorities:** Solution and deployment architecture: enterprise-architect; Security architecture determination: security-architect; Privacy determination: privacy-specialist.
 
-**Blockers / exception:** Material constraint or threat unresolved. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Alternatives address quality, threat, privacy, data, integration, deployment, and operational evidence.
 
-**Exit / next:** Affected-slice architecture is sufficient before backlog finalization The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Material threat or constraint unresolved; Architecture contradicts domain ownership. Scope a time-bounded architecture exception with residual risk and verification. Escalate to the relevant architecture/security/privacy/risk authority.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Keep prior architecture current and block backlog finalization. Resolve the named constraint and reassess affected alternatives. context-map-current -> architecture-candidates; models-coherent -> architecture-review-required.
+
+**Audit intent:** Retain alternatives, tradeoffs, threats, controls, evidence, decisions, and triggers.
+
+**Authority / limitation:** Architecture records do not grant implementation, security acceptance, release, or deployment authority. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>100 · Architecture decisions and quality scenarios</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Record decisions, alternatives, constraints, quality scenarios, assurance needs, and review triggers.
+**Purpose:** Govern architecture decisions, quality scenarios, residual risk, and independent assurance before backlog finalization.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-113, GAEP-CAP-114 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** Affected-slice architecture candidates and verification criteria exist Prerequisites: lifecycle-09.
 
-**Roles / competency:** `business-architect`, `enterprise-architect`, `solution-architect`, `data-ai-architect`, `security-architect`, `privacy-specialist`; `architecture-ddd`, `security`, `privacy`, `testing-assurance`, `evidence-provenance`.
+**Roles / competency:** `solution-architect`, `security-architect`, `quality-engineering`, `enterprise-architect`, `data-ai-architect`, `privacy-specialist`, `engineering-leadership`, `internal-audit-independent-assurance`, `ai-evaluation-tevv`; `architecture-ddd`, `testing-assurance`, `auditability`, `challenge-escalation`.
 
-**Inputs:** Architecture alternatives; quality scenarios. **Questions:** What decision, alternative, tradeoff, assurance, and review trigger are required?
+**Inputs:** Architecture candidates; assurance and quality evidence. **Questions:** What decision is being made and by whom? Which evidence could invalidate it?
 
 <!-- GAEP-VISUAL:target-lifecycle-10-flow -->
 
@@ -3388,20 +3443,20 @@ accountable-->>role0: Planned decision or return for revision; no executable act
 ```mermaid
 %% Architecture decisions and quality scenarios planned substeps
 flowchart TD
-  lifecycle_10_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
-  lifecycle_10_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_10_0["1. Challenge architecture against quality scenarios, threats, controls, and rejected alternatives.<br/>Target — planned, not executable"]
+  lifecycle_10_1["2. Record decision rationale, residual risk, assurance findings, and review triggers.<br/>Target — planned, not executable"]
   lifecycle_10_0 --> lifecycle_10_1
-  lifecycle_10_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_10_2["3. Obtain the appropriate architecture decision and independent disposition without combining the roles.<br/>Target — planned, not executable"]
   lifecycle_10_1 --> lifecycle_10_2
 ```
 
 <details><summary>Text alternative for Architecture decisions and quality scenarios planned substeps</summary>
 
 ```text
-  lifecycle_10_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
-  lifecycle_10_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_10_0["1. Challenge architecture against quality scenarios, threats, controls, and rejected alternatives.<br/>Target — planned, not executable"]
+  lifecycle_10_1["2. Record decision rationale, residual risk, assurance findings, and review triggers.<br/>Target — planned, not executable"]
   lifecycle_10_0 --> lifecycle_10_1
-  lifecycle_10_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_10_2["3. Obtain the appropriate architecture decision and independent disposition without combining the roles.<br/>Target — planned, not executable"]
   lifecycle_10_1 --> lifecycle_10_2
 ```
 
@@ -3415,57 +3470,65 @@ flowchart TD
 %% Architecture decisions and quality scenarios — Target — planned, not executable
 sequenceDiagram
 participant role0 as solution-architect
-participant role1 as business-architect
-participant role2 as enterprise-architect
-participant role3 as security-architect
-participant role4 as internal-audit-independent-assurance
+participant role1 as security-architect
+participant role2 as quality-engineering
+participant role3 as enterprise-architect
+participant role4 as data-ai-architect
+participant role5 as privacy-specialist
+participant role6 as engineering-leadership
+participant role7 as internal-audit-independent-assurance
+participant role8 as ai-evaluation-tevv
 participant accountable as enterprise-architect
 participant gaep as GAEP target projection
-role0->>gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+role0->>gaep: Challenge architecture against quality scenarios, threats, controls, and rejected alternatives.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+role1->>gaep: Record decision rationale, residual risk, assurance findings, and review triggers.
 gaep-->>role1: Planned candidate/evidence projection only
-role0->>accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
-accountable-->>role0: Planned decision or return for revision; no executable action
+role2->>accountable: Obtain the appropriate architecture decision and independent disposition without combining the roles.
+accountable-->>role2: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Architecture decisions and quality scenarios — Target — planned, not executable</summary>
 
-1. role0 → gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+1. role0 → gaep: Challenge architecture against quality scenarios, threats, controls, and rejected alternatives.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+3. role1 → gaep: Record decision rationale, residual risk, assurance findings, and review triggers.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role0 → accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
-6. accountable → role0: Planned decision or return for revision; no executable action
+5. role2 → accountable: Obtain the appropriate architecture decision and independent disposition without combining the roles.
+6. accountable → role2: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice. 2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements. 3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+**Planned substeps:** 1. Challenge architecture against quality scenarios, threats, controls, and rejected alternatives. 2. Record decision rationale, residual risk, assurance findings, and review triggers. 3. Obtain the appropriate architecture decision and independent disposition without combining the roles.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; solution-architect, business-architect perform work, enterprise-architect owns the bounded decision, and security-architect, internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Architecture models, quality scenarios, tests, risks, and challenge findings → Decision, alternatives, residual risk, assurance disposition, and triggers.
 
-**Candidate / governed outputs:** Architecture decisions and assurance plan; no current governed output exists.
+**Candidate / future governed effects:** Architecture decision candidate; assurance and verification plan. Governed architecture decisions and assurance findings; no current governed output exists.
 
-**RACI:** R solution-architect, business-architect · A enterprise-architect · C data-ai-architect, security-architect, privacy-specialist · I Initiative lead · independent assurance security-architect, internal-audit-independent-assurance.
+**RACI:** R solution-architect, security-architect, quality-engineering · A enterprise-architect · C data-ai-architect, privacy-specialist, engineering-leadership · I product-leadership · independent assurance internal-audit-independent-assurance, ai-evaluation-tevv. **Decision authorities:** Architecture decision: enterprise-architect.
 
-**Blockers / exception:** No accountable architecture decision. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Decision, alternatives, quality evidence, residual risk, and independent findings are explicit.
 
-**Exit / next:** Decision rationale, alternatives, residual risks, and verification criteria are governed The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Decision author self-assures; Verification criteria absent. Record a bounded unresolved decision and prohibit dependent backlog commitment. Escalate material risk to enterprise architecture and the appropriate risk authority.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Reject decision status while preserving models and findings. Revise architecture or evidence, then repeat independent challenge. architecture-review-required -> decision-candidate; assurance-complete -> architecture-decision-current.
+
+**Audit intent:** Retain reviewers, independence, evidence, findings, decisions, residual risk, and triggers.
+
+**Authority / limitation:** Independent assurance does not make the architecture decision or authorize implementation. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>110 · Phase, wave, Product, and vertical-slice planning</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Plan phases, waves, Products, dependencies, and demonstrable vertical slices.
+**Purpose:** Plan phases, waves, Products, dependencies, and vertical slices that can demonstrate bounded value and evidence.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-115 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** Governed architecture decisions constrain the affected scope Prerequisites: lifecycle-10.
 
-**Roles / competency:** `product-manager`, `product-design-research`, `solution-architect`, `quality-engineering`, `engineering-leadership`; `product-design`, `backlog-requirements-quality`, `testing-assurance`, `architecture-ddd`.
+**Roles / competency:** `product-manager`, `product-owner`, `initiative-lead`, `product-leadership`, `solution-architect`, `engineering-leadership`, `quality-engineering`; `product-initiative-reasoning`, `backlog-requirements-quality`, `architecture-ddd`.
 
-**Inputs:** Governed architecture; outcomes/dependencies. **Questions:** Which phases, waves, Products, and vertical slices deliver evidence safely?
+**Inputs:** Architecture decisions; Product outcomes and dependencies. **Questions:** What smallest slice proves useful value safely? Which dependencies or waves govern sequence?
 
 <!-- GAEP-VISUAL:target-lifecycle-11-flow -->
 
@@ -3474,20 +3537,20 @@ accountable-->>role0: Planned decision or return for revision; no executable act
 ```mermaid
 %% Phase, wave, Product, and vertical-slice planning planned substeps
 flowchart TD
-  lifecycle_11_0["1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.<br/>Target — planned, not executable"]
-  lifecycle_11_1["2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.<br/>Target — planned, not executable"]
+  lifecycle_11_0["1. Identify value increments, dependencies, risks, and evidence checkpoints.<br/>Target — planned, not executable"]
+  lifecycle_11_1["2. Form phase, wave, Product, and vertical-slice candidates with sequence alternatives.<br/>Target — planned, not executable"]
   lifecycle_11_0 --> lifecycle_11_1
-  lifecycle_11_2["3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.<br/>Target — planned, not executable"]
+  lifecycle_11_2["3. Review delivery sequence against outcomes, architecture, capacity, and risk.<br/>Target — planned, not executable"]
   lifecycle_11_1 --> lifecycle_11_2
 ```
 
 <details><summary>Text alternative for Phase, wave, Product, and vertical-slice planning planned substeps</summary>
 
 ```text
-  lifecycle_11_0["1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.<br/>Target — planned, not executable"]
-  lifecycle_11_1["2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.<br/>Target — planned, not executable"]
+  lifecycle_11_0["1. Identify value increments, dependencies, risks, and evidence checkpoints.<br/>Target — planned, not executable"]
+  lifecycle_11_1["2. Form phase, wave, Product, and vertical-slice candidates with sequence alternatives.<br/>Target — planned, not executable"]
   lifecycle_11_0 --> lifecycle_11_1
-  lifecycle_11_2["3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.<br/>Target — planned, not executable"]
+  lifecycle_11_2["3. Review delivery sequence against outcomes, architecture, capacity, and risk.<br/>Target — planned, not executable"]
   lifecycle_11_1 --> lifecycle_11_2
 ```
 
@@ -3500,58 +3563,64 @@ flowchart TD
 ```mermaid
 %% Phase, wave, Product, and vertical-slice planning — Target — planned, not executable
 sequenceDiagram
-participant role0 as product-design-research
-participant role1 as product-manager
-participant role2 as quality-engineering
+participant role0 as product-manager
+participant role1 as product-owner
+participant role2 as initiative-lead
 participant role3 as product-leadership
-participant role4 as engineering-leadership
+participant role4 as solution-architect
+participant role5 as engineering-leadership
+participant role6 as quality-engineering
 participant accountable as product-leadership
 participant gaep as GAEP target projection
-role0->>gaep: Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.
+role0->>gaep: Identify value increments, dependencies, risks, and evidence checkpoints.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.
+role1->>gaep: Form phase, wave, Product, and vertical-slice candidates with sequence alternatives.
 gaep-->>role1: Planned candidate/evidence projection only
-role2->>accountable: Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
+role2->>accountable: Review delivery sequence against outcomes, architecture, capacity, and risk.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Phase, wave, Product, and vertical-slice planning — Target — planned, not executable</summary>
 
-1. role0 → gaep: Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.
+1. role0 → gaep: Identify value increments, dependencies, risks, and evidence checkpoints.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.
+3. role1 → gaep: Form phase, wave, Product, and vertical-slice candidates with sequence alternatives.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role2 → accountable: Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
+5. role2 → accountable: Review delivery sequence against outcomes, architecture, capacity, and risk.
 6. accountable → role2: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria. 2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability. 3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
+**Planned substeps:** 1. Identify value increments, dependencies, risks, and evidence checkpoints. 2. Form phase, wave, Product, and vertical-slice candidates with sequence alternatives. 3. Review delivery sequence against outcomes, architecture, capacity, and risk.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; product-design-research, product-manager, quality-engineering perform work, product-leadership owns the bounded decision, and engineering-leadership provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Outcome, dependency, architecture, capacity, and risk evidence → Slice rationale, sequencing, dependencies, and validation goals.
 
-**Candidate / governed outputs:** Phase/wave/vertical-slice plan; no current governed output exists.
+**Candidate / future governed effects:** Phase/wave plan; vertical-slice candidates. Delivery sequence binding design and backlog preparation; no current governed output exists.
 
-**RACI:** R product-design-research, product-manager, quality-engineering · A product-leadership · C solution-architect, engineering-leadership · I Initiative lead · independent assurance engineering-leadership.
+**RACI:** R product-manager, product-owner, initiative-lead · A product-leadership · C solution-architect, engineering-leadership, quality-engineering · I business-owner · independent assurance context-dependent. **Decision authorities:** Product/wave prioritization and sequence: product-leadership.
 
-**Blockers / exception:** Slice cannot demonstrate bounded value/evidence. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Slices trace to outcomes and architecture and expose dependencies and validation.
 
-**Exit / next:** Sequence and dependencies are traceable to outcomes and architecture The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Slice has no bounded outcome; Critical dependency unowned. Keep the slice provisional and isolate unowned dependency work. Escalate priority/capacity conflict to product and engineering leadership.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Preserve alternatives and prevent design/backlog promotion. Re-slice or resolve the dependency, then repeat sequencing review. architecture-current -> slice-candidates; sequence-reviewed -> delivery-plan-current.
+
+**Audit intent:** Retain alternatives, priorities, dependencies, owners, evidence, and decisions.
+
+**Authority / limitation:** Planning does not authorize implementation or resource commitment. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>120 · Product Design preparation and iterative evidence</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Prepare tool-neutral Product Design work, ingest iterative evidence, and support replaceable adapters such as optional Figma.
+**Purpose:** Prepare, ingest, reconcile, and govern incremental tool-neutral Product Design evidence.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-116 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** A bounded slice and architecture/design constraints exist Prerequisites: lifecycle-10, lifecycle-11.
 
-**Roles / competency:** `product-manager`, `product-design-research`, `solution-architect`, `quality-engineering`, `engineering-leadership`; `product-design`, `backlog-requirements-quality`, `testing-assurance`, `architecture-ddd`.
+**Roles / competency:** `product-design-research`, `product-leadership`, `product-owner`, `product-manager`, `solution-architect`, `quality-engineering`; `product-design`, `evidence-provenance`, `backlog-requirements-quality`.
 
-**Inputs:** Architecture and discovery evidence; design constraints. **Questions:** What Product Design evidence is needed and how will adapters reconcile?
+**Inputs:** Slice plan; architecture and design constraints. **Questions:** Which Product Design evidence is required? How are adapter snapshots and conflicts reconciled?
 
 <!-- GAEP-VISUAL:target-lifecycle-12-flow -->
 
@@ -3560,20 +3629,20 @@ accountable-->>role2: Planned decision or return for revision; no executable act
 ```mermaid
 %% Product Design preparation and iterative evidence planned substeps
 flowchart TD
-  lifecycle_12_0["1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.<br/>Target — planned, not executable"]
-  lifecycle_12_1["2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.<br/>Target — planned, not executable"]
+  lifecycle_12_0["1. Define experience surfaces, states, accessibility, responsive targets, and design evidence needs.<br/>Target — planned, not executable"]
+  lifecycle_12_1["2. Exchange design context through replaceable adapters and ingest exact snapshots/deltas.<br/>Target — planned, not executable"]
   lifecycle_12_0 --> lifecycle_12_1
-  lifecycle_12_2["3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.<br/>Target — planned, not executable"]
+  lifecycle_12_2["3. Reconcile design changes with requirements and architecture; retain conflicts and human design decisions.<br/>Target — planned, not executable"]
   lifecycle_12_1 --> lifecycle_12_2
 ```
 
 <details><summary>Text alternative for Product Design preparation and iterative evidence planned substeps</summary>
 
 ```text
-  lifecycle_12_0["1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.<br/>Target — planned, not executable"]
-  lifecycle_12_1["2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.<br/>Target — planned, not executable"]
+  lifecycle_12_0["1. Define experience surfaces, states, accessibility, responsive targets, and design evidence needs.<br/>Target — planned, not executable"]
+  lifecycle_12_1["2. Exchange design context through replaceable adapters and ingest exact snapshots/deltas.<br/>Target — planned, not executable"]
   lifecycle_12_0 --> lifecycle_12_1
-  lifecycle_12_2["3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.<br/>Target — planned, not executable"]
+  lifecycle_12_2["3. Reconcile design changes with requirements and architecture; retain conflicts and human design decisions.<br/>Target — planned, not executable"]
   lifecycle_12_1 --> lifecycle_12_2
 ```
 
@@ -3587,57 +3656,62 @@ flowchart TD
 %% Product Design preparation and iterative evidence — Target — planned, not executable
 sequenceDiagram
 participant role0 as product-design-research
-participant role1 as product-manager
-participant role2 as quality-engineering
-participant role3 as product-leadership
-participant role4 as engineering-leadership
+participant role1 as product-leadership
+participant role2 as product-owner
+participant role3 as product-manager
+participant role4 as solution-architect
+participant role5 as quality-engineering
 participant accountable as product-leadership
 participant gaep as GAEP target projection
-role0->>gaep: Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.
+role0->>gaep: Define experience surfaces, states, accessibility, responsive targets, and design evidence needs.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.
-gaep-->>role1: Planned candidate/evidence projection only
-role2->>accountable: Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
-accountable-->>role2: Planned decision or return for revision; no executable action
+role0->>gaep: Exchange design context through replaceable adapters and ingest exact snapshots/deltas.
+gaep-->>role0: Planned candidate/evidence projection only
+role0->>accountable: Reconcile design changes with requirements and architecture; retain conflicts and human design decisions.
+accountable-->>role0: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Product Design preparation and iterative evidence — Target — planned, not executable</summary>
 
-1. role0 → gaep: Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.
+1. role0 → gaep: Define experience surfaces, states, accessibility, responsive targets, and design evidence needs.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.
-4. gaep → role1: Planned candidate/evidence projection only
-5. role2 → accountable: Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
-6. accountable → role2: Planned decision or return for revision; no executable action
+3. role0 → gaep: Exchange design context through replaceable adapters and ingest exact snapshots/deltas.
+4. gaep → role0: Planned candidate/evidence projection only
+5. role0 → accountable: Reconcile design changes with requirements and architecture; retain conflicts and human design decisions.
+6. accountable → role0: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria. 2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability. 3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
+**Planned substeps:** 1. Define experience surfaces, states, accessibility, responsive targets, and design evidence needs. 2. Exchange design context through replaceable adapters and ingest exact snapshots/deltas. 3. Reconcile design changes with requirements and architecture; retain conflicts and human design decisions.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; product-design-research, product-manager, quality-engineering perform work, product-leadership owns the bounded decision, and engineering-leadership provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** User, architecture, accessibility, platform, and adapter-snapshot evidence → Surface inventory, design decisions, snapshots, deltas, conflicts, and trace links.
 
-**Candidate / governed outputs:** Tool-neutral Product Design candidate and reconciliation evidence; no current governed output exists.
+**Candidate / future governed effects:** Product Design candidate; design delta/conflict and traceability records. Design baseline and drift-reconciliation evidence; no current governed output exists.
 
-**RACI:** R product-design-research, product-manager, quality-engineering · A product-leadership · C solution-architect, engineering-leadership · I Initiative lead · independent assurance engineering-leadership.
+**RACI:** R product-design-research · A product-leadership · C product-owner, product-manager, solution-architect, quality-engineering · I engineering-leadership · independent assurance context-dependent. **Decision authorities:** Product Design baseline: product-leadership.
 
-**Blockers / exception:** Figma treated as lifecycle stage or authority. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Design is incremental, accessible, traceable, reconciled, and tool-neutral.
 
-**Exit / next:** Design evidence is tool-neutral, reviewed, traceable, and iterative The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Adapter treated as lifecycle authority; Unresolved architecture/design conflict. Keep the design delta unresolved and preserve both snapshots. Escalate Product/architecture conflict to product leadership and architecture authority.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Do not overwrite the prior baseline or silently accept adapter output. Correct the design or mapping and rerun deterministic reconciliation. slice-current -> design-candidate; delta-reviewed -> design-baseline-current-or-conflicted.
+
+**Audit intent:** Retain adapter identity, snapshots, deltas, decisions, evidence, conflicts, and baseline digest.
+
+**Authority / limitation:** Figma is an optional adapter; Product Design evidence does not authorize implementation. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>130 · Architecture-bound backlog, readiness, done, and test design</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Generate Epics, Features, User Stories, acceptance criteria, dependencies, Definition of Ready, Definition of Done, test cases, assurance, and traceability.
+**Purpose:** Create architecture-bound Epics, Features, Stories, acceptance criteria, dependencies, DoR/DoD, and test design.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-117, GAEP-CAP-118, GAEP-CAP-119 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** Architecture and required Product Design evidence are current for the slice Prerequisites: lifecycle-10, lifecycle-12.
 
-**Roles / competency:** `product-manager`, `product-design-research`, `solution-architect`, `quality-engineering`, `engineering-leadership`; `product-design`, `backlog-requirements-quality`, `testing-assurance`, `architecture-ddd`.
+**Roles / competency:** `product-owner`, `quality-engineering`, `product-manager`, `solution-architect`, `engineering-leadership`, `security-architect`, `ai-evaluation-tevv`; `backlog-requirements-quality`, `testing-assurance`, `architecture-ddd`.
 
-**Inputs:** Architecture decisions; Product Design evidence. **Questions:** Which Epics/Features/Stories/tests/dependencies/DoR/DoD form an architecture-bound slice?
+**Inputs:** Slice architecture; Product Design and assurance evidence. **Questions:** Can every item trace to an outcome and architecture slice? Are acceptance and done criteria testable?
 
 <!-- GAEP-VISUAL:target-lifecycle-13-flow -->
 
@@ -3646,20 +3720,20 @@ accountable-->>role2: Planned decision or return for revision; no executable act
 ```mermaid
 %% Architecture-bound backlog, readiness, done, and test design planned substeps
 flowchart TD
-  lifecycle_13_0["1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.<br/>Target — planned, not executable"]
-  lifecycle_13_1["2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.<br/>Target — planned, not executable"]
+  lifecycle_13_0["1. Derive backlog hierarchy and dependencies from outcomes, architecture, design, and risks.<br/>Target — planned, not executable"]
+  lifecycle_13_1["2. Specify testable acceptance criteria, Definition of Ready, Definition of Done, and assurance cases.<br/>Target — planned, not executable"]
   lifecycle_13_0 --> lifecycle_13_1
-  lifecycle_13_2["3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.<br/>Target — planned, not executable"]
+  lifecycle_13_2["3. Have the Product Owner refine and decide bounded backlog readiness with architecture/quality challenge.<br/>Target — planned, not executable"]
   lifecycle_13_1 --> lifecycle_13_2
 ```
 
 <details><summary>Text alternative for Architecture-bound backlog, readiness, done, and test design planned substeps</summary>
 
 ```text
-  lifecycle_13_0["1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.<br/>Target — planned, not executable"]
-  lifecycle_13_1["2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.<br/>Target — planned, not executable"]
+  lifecycle_13_0["1. Derive backlog hierarchy and dependencies from outcomes, architecture, design, and risks.<br/>Target — planned, not executable"]
+  lifecycle_13_1["2. Specify testable acceptance criteria, Definition of Ready, Definition of Done, and assurance cases.<br/>Target — planned, not executable"]
   lifecycle_13_0 --> lifecycle_13_1
-  lifecycle_13_2["3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.<br/>Target — planned, not executable"]
+  lifecycle_13_2["3. Have the Product Owner refine and decide bounded backlog readiness with architecture/quality challenge.<br/>Target — planned, not executable"]
   lifecycle_13_1 --> lifecycle_13_2
 ```
 
@@ -3672,58 +3746,64 @@ flowchart TD
 ```mermaid
 %% Architecture-bound backlog, readiness, done, and test design — Target — planned, not executable
 sequenceDiagram
-participant role0 as product-design-research
-participant role1 as product-manager
-participant role2 as quality-engineering
-participant role3 as product-leadership
+participant role0 as product-owner
+participant role1 as quality-engineering
+participant role2 as product-manager
+participant role3 as solution-architect
 participant role4 as engineering-leadership
-participant accountable as product-leadership
+participant role5 as security-architect
+participant role6 as ai-evaluation-tevv
+participant accountable as product-owner
 participant gaep as GAEP target projection
-role0->>gaep: Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.
+role0->>gaep: Derive backlog hierarchy and dependencies from outcomes, architecture, design, and risks.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.
+role1->>gaep: Specify testable acceptance criteria, Definition of Ready, Definition of Done, and assurance cases.
 gaep-->>role1: Planned candidate/evidence projection only
-role2->>accountable: Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
+role2->>accountable: Have the Product Owner refine and decide bounded backlog readiness with architecture/quality challenge.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Architecture-bound backlog, readiness, done, and test design — Target — planned, not executable</summary>
 
-1. role0 → gaep: Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.
+1. role0 → gaep: Derive backlog hierarchy and dependencies from outcomes, architecture, design, and risks.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.
+3. role1 → gaep: Specify testable acceptance criteria, Definition of Ready, Definition of Done, and assurance cases.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role2 → accountable: Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
+5. role2 → accountable: Have the Product Owner refine and decide bounded backlog readiness with architecture/quality challenge.
 6. accountable → role2: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria. 2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability. 3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
+**Planned substeps:** 1. Derive backlog hierarchy and dependencies from outcomes, architecture, design, and risks. 2. Specify testable acceptance criteria, Definition of Ready, Definition of Done, and assurance cases. 3. Have the Product Owner refine and decide bounded backlog readiness with architecture/quality challenge.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; product-design-research, product-manager, quality-engineering perform work, product-leadership owns the bounded decision, and engineering-leadership provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Outcome, architecture, design, risk, control, and dependency evidence → Backlog-to-slice traceability, criteria, test cases, dependencies, and readiness findings.
 
-**Candidate / governed outputs:** Architecture-bound backlog and test design; no current governed output exists.
+**Candidate / future governed effects:** Architecture-bound backlog; acceptance/DoR/DoD and test-design candidates. Backlog revision bound to implementation slice and repository topology; no current governed output exists.
 
-**RACI:** R product-design-research, product-manager, quality-engineering · A product-leadership · C solution-architect, engineering-leadership · I Initiative lead · independent assurance engineering-leadership.
+**RACI:** R product-owner, quality-engineering, product-manager · A product-owner · C solution-architect, engineering-leadership, security-architect · I product-leadership · independent assurance ai-evaluation-tevv. **Decision authorities:** Bounded backlog refinement and acceptance-criteria stewardship: product-owner.
 
-**Blockers / exception:** Backlog precedes sufficient architecture; Acceptance criteria untestable. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Items are traceable, testable, dependency-aware, ready, and bound to architecture.
 
-**Exit / next:** Backlog, tests, traceability, repository target, and readiness criteria align The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Architecture insufficient; Untestable criteria; Implementation slice absent. Return affected items to refinement and retain the prior governed backlog. Escalate Product/architecture/quality conflict to the corresponding decision authorities.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Reject readiness without converting missing evidence to acceptance. Revise criteria, dependencies, or slice binding and reassess. design-current -> backlog-candidate; criteria-reviewed -> backlog-ready-or-revise.
+
+**Audit intent:** Retain item hierarchy, criteria, dependencies, evidence, reviewers, findings, and slice bindings.
+
+**Authority / limitation:** Backlog readiness is not implementation, repository, release, or production authority. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>140 · Repository and implementation-target topology</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Define monorepo or polyrepo topology and backend, frontend, web, mobile, PWA, dashboard, admin, API, event, worker, and integration targets.
+**Purpose:** Define monorepo/polyrepo topology and physical implementation targets for every delivery slice.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-123 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** Architecture-bound slices exist Prerequisites: lifecycle-13.
 
-**Roles / competency:** `engineering-leadership`, `software-engineering`, `data-ai-engineering`, `platform-devops`, `quality-engineering`, `release-change-management`; `repository-governance`, `delivery-release`, `testing-assurance`, `security`.
+**Roles / competency:** `platform-devops`, `solution-architect`, `engineering-leadership`, `software-engineering`, `data-ai-engineering`, `security-architect`; `repository-governance`, `architecture-ddd`, `delivery-release`.
 
-**Inputs:** Architecture-bound slice; enterprise repository constraints. **Questions:** Which mono/polyrepo and implementation targets own each change?
+**Inputs:** Architecture-bound backlog; enterprise repository constraints. **Questions:** Which physical target owns each change? Who holds repository authority?
 
 <!-- GAEP-VISUAL:target-lifecycle-14-flow -->
 
@@ -3732,20 +3812,20 @@ accountable-->>role2: Planned decision or return for revision; no executable act
 ```mermaid
 %% Repository and implementation-target topology planned substeps
 flowchart TD
-  lifecycle_14_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
-  lifecycle_14_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_14_0["1. Inventory repositories, projects, services, clients, APIs, events, workers, integrations, and ownership.<br/>Target — planned, not executable"]
+  lifecycle_14_1["2. Map logical implementation units and backlog slices to physical targets and authority boundaries.<br/>Target — planned, not executable"]
   lifecycle_14_0 --> lifecycle_14_1
-  lifecycle_14_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_14_2["3. Validate topology completeness, portability, environment constraints, and unresolved target-form gaps.<br/>Target — planned, not executable"]
   lifecycle_14_1 --> lifecycle_14_2
 ```
 
 <details><summary>Text alternative for Repository and implementation-target topology planned substeps</summary>
 
 ```text
-  lifecycle_14_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
-  lifecycle_14_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_14_0["1. Inventory repositories, projects, services, clients, APIs, events, workers, integrations, and ownership.<br/>Target — planned, not executable"]
+  lifecycle_14_1["2. Map logical implementation units and backlog slices to physical targets and authority boundaries.<br/>Target — planned, not executable"]
   lifecycle_14_0 --> lifecycle_14_1
-  lifecycle_14_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_14_2["3. Validate topology completeness, portability, environment constraints, and unresolved target-form gaps.<br/>Target — planned, not executable"]
   lifecycle_14_1 --> lifecycle_14_2
 ```
 
@@ -3758,59 +3838,63 @@ flowchart TD
 ```mermaid
 %% Repository and implementation-target topology — Target — planned, not executable
 sequenceDiagram
-participant role0 as software-engineering
-participant role1 as platform-devops
-participant role2 as quality-engineering
-participant role3 as engineering-leadership
-participant role4 as ai-evaluation-tevv
-participant role5 as internal-audit-independent-assurance
+participant role0 as platform-devops
+participant role1 as solution-architect
+participant role2 as engineering-leadership
+participant role3 as software-engineering
+participant role4 as data-ai-engineering
+participant role5 as security-architect
 participant accountable as engineering-leadership
 participant gaep as GAEP target projection
-role0->>gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+role0->>gaep: Inventory repositories, projects, services, clients, APIs, events, workers, integrations, and ownership.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+role1->>gaep: Map logical implementation units and backlog slices to physical targets and authority boundaries.
 gaep-->>role1: Planned candidate/evidence projection only
-role2->>accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+role2->>accountable: Validate topology completeness, portability, environment constraints, and unresolved target-form gaps.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Repository and implementation-target topology — Target — planned, not executable</summary>
 
-1. role0 → gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+1. role0 → gaep: Inventory repositories, projects, services, clients, APIs, events, workers, integrations, and ownership.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+3. role1 → gaep: Map logical implementation units and backlog slices to physical targets and authority boundaries.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role2 → accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+5. role2 → accountable: Validate topology completeness, portability, environment constraints, and unresolved target-form gaps.
 6. accountable → role2: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries. 2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence. 3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+**Planned substeps:** 1. Inventory repositories, projects, services, clients, APIs, events, workers, integrations, and ownership. 2. Map logical implementation units and backlog slices to physical targets and authority boundaries. 3. Validate topology completeness, portability, environment constraints, and unresolved target-form gaps.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; software-engineering, platform-devops, quality-engineering perform work, engineering-leadership owns the bounded decision, and ai-evaluation-tevv, internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Repository inventories, ownership, architecture, deployment, and platform evidence → Logical-to-physical mapping, owners, constraints, and topology gaps.
 
-**Candidate / governed outputs:** Repository and implementation-target topology; no current governed output exists.
+**Candidate / future governed effects:** Repository registry; implementation-target and ownership map. Topology revision constraining allocation and context packs; no current governed output exists.
 
-**RACI:** R software-engineering, platform-devops, quality-engineering · A engineering-leadership · C data-ai-engineering, release-change-management · I Initiative lead · independent assurance ai-evaluation-tevv, internal-audit-independent-assurance.
+**RACI:** R platform-devops, solution-architect, engineering-leadership · A engineering-leadership · C software-engineering, data-ai-engineering, security-architect · I product-owner, release-change-management · independent assurance context-dependent. **Decision authorities:** Implementation-target topology: engineering-leadership.
 
-**Blockers / exception:** GAEP-P03-GAP-001 unresolved for required target type. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Every slice and dependency maps to owned physical targets without granting mutation rights.
 
-**Exit / next:** Each slice maps to explicit projects/repositories/owners without granting mutation authority The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Target taxonomy gap; Repository owner absent. Record a proposed target type and block activation until canonical taxonomy is accepted. Escalate topology/ownership conflict to engineering leadership and repository authorities.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Keep the topology candidate non-executable and preserve prior mappings. Correct inventory/ownership or resolve the canonical gap, then revalidate mappings. backlog-ready -> topology-candidate; topology-validated -> allocation-eligible.
+
+**Audit intent:** Retain target identities, owners, slice links, constraints, decisions, and gaps.
+
+**Authority / limitation:** Topology records do not confer repository or implementation authority. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>150 · Cross-repository slice distribution, synchronization, and drift</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Map each backlog slice to implementation targets and repositories, synchronize governed references, and detect drift.
+**Purpose:** Distribute slices across repositories and maintain cross-repository synchronization, context packs, traceability, and drift detection.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-120, GAEP-CAP-124 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** Repository topology and architecture-bound backlog are current Prerequisites: lifecycle-13, lifecycle-14.
 
-**Roles / competency:** `engineering-leadership`, `software-engineering`, `data-ai-engineering`, `platform-devops`, `quality-engineering`, `release-change-management`; `repository-governance`, `delivery-release`, `testing-assurance`, `security`.
+**Roles / competency:** `platform-devops`, `software-engineering`, `solution-architect`, `engineering-leadership`, `product-owner`, `quality-engineering`, `data-ai-engineering`; `repository-governance`, `auditability`, `backlog-requirements-quality`.
 
-**Inputs:** Backlog slice; repository topology. **Questions:** How will cross-repository distribution, synchronization, traceability, and drift work?
+**Inputs:** Topology registry; slice/dependency/evidence graph. **Questions:** What must remain synchronized across boundaries? How is drift detected and reconciled?
 
 <!-- GAEP-VISUAL:target-lifecycle-15-flow -->
 
@@ -3819,20 +3903,20 @@ accountable-->>role2: Planned decision or return for revision; no executable act
 ```mermaid
 %% Cross-repository slice distribution, synchronization, and drift planned substeps
 flowchart TD
-  lifecycle_15_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
-  lifecycle_15_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_15_0["1. Allocate requirements, architecture, tests, and dependencies to owned repositories/targets.<br/>Target — planned, not executable"]
+  lifecycle_15_1["2. Materialize bounded context packs and synchronization contracts for each target.<br/>Target — planned, not executable"]
   lifecycle_15_0 --> lifecycle_15_1
-  lifecycle_15_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_15_2["3. Detect and reconcile cross-repository contract, evidence, dependency, and architecture drift.<br/>Target — planned, not executable"]
   lifecycle_15_1 --> lifecycle_15_2
 ```
 
 <details><summary>Text alternative for Cross-repository slice distribution, synchronization, and drift planned substeps</summary>
 
 ```text
-  lifecycle_15_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
-  lifecycle_15_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_15_0["1. Allocate requirements, architecture, tests, and dependencies to owned repositories/targets.<br/>Target — planned, not executable"]
+  lifecycle_15_1["2. Materialize bounded context packs and synchronization contracts for each target.<br/>Target — planned, not executable"]
   lifecycle_15_0 --> lifecycle_15_1
-  lifecycle_15_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_15_2["3. Detect and reconcile cross-repository contract, evidence, dependency, and architecture drift.<br/>Target — planned, not executable"]
   lifecycle_15_1 --> lifecycle_15_2
 ```
 
@@ -3845,59 +3929,64 @@ flowchart TD
 ```mermaid
 %% Cross-repository slice distribution, synchronization, and drift — Target — planned, not executable
 sequenceDiagram
-participant role0 as software-engineering
-participant role1 as platform-devops
-participant role2 as quality-engineering
+participant role0 as platform-devops
+participant role1 as software-engineering
+participant role2 as solution-architect
 participant role3 as engineering-leadership
-participant role4 as ai-evaluation-tevv
-participant role5 as internal-audit-independent-assurance
+participant role4 as product-owner
+participant role5 as quality-engineering
+participant role6 as data-ai-engineering
 participant accountable as engineering-leadership
 participant gaep as GAEP target projection
-role0->>gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+role0->>gaep: Allocate requirements, architecture, tests, and dependencies to owned repositories/targets.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+role1->>gaep: Materialize bounded context packs and synchronization contracts for each target.
 gaep-->>role1: Planned candidate/evidence projection only
-role2->>accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+role2->>accountable: Detect and reconcile cross-repository contract, evidence, dependency, and architecture drift.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Cross-repository slice distribution, synchronization, and drift — Target — planned, not executable</summary>
 
-1. role0 → gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+1. role0 → gaep: Allocate requirements, architecture, tests, and dependencies to owned repositories/targets.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+3. role1 → gaep: Materialize bounded context packs and synchronization contracts for each target.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role2 → accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+5. role2 → accountable: Detect and reconcile cross-repository contract, evidence, dependency, and architecture drift.
 6. accountable → role2: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries. 2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence. 3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+**Planned substeps:** 1. Allocate requirements, architecture, tests, and dependencies to owned repositories/targets. 2. Materialize bounded context packs and synchronization contracts for each target. 3. Detect and reconcile cross-repository contract, evidence, dependency, and architecture drift.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; software-engineering, platform-devops, quality-engineering perform work, engineering-leadership owns the bounded decision, and ai-evaluation-tevv, internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Backlog, topology, dependency, contract, and repository evidence → Allocation manifests, context digests, drift findings, and reconciliation decisions.
 
-**Candidate / governed outputs:** Cross-repository allocation and drift contract; no current governed output exists.
+**Candidate / future governed effects:** Cross-repository allocation; context packs and drift contract. Synchronized allocation revision and explicit reconciliation decisions; no current governed output exists.
 
-**RACI:** R software-engineering, platform-devops, quality-engineering · A engineering-leadership · C data-ai-engineering, release-change-management · I Initiative lead · independent assurance ai-evaluation-tevv, internal-audit-independent-assurance.
+**RACI:** R platform-devops, software-engineering, solution-architect · A engineering-leadership · C product-owner, quality-engineering, data-ai-engineering · I release-change-management · independent assurance context-dependent. **Decision authorities:** Cross-repository allocation and reconciliation: engineering-leadership.
 
-**Blockers / exception:** Unowned dependency or unsynchronized contract. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Allocation preserves ownership, traceability, dependency, and drift semantics.
 
-**Exit / next:** Slice/dependency/evidence mappings survive repository boundaries The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Unowned dependency; Unsynchronized contract; Context pack leaks protected data. Freeze affected allocation and record a bounded synchronization exception. Escalate cross-repository authority conflicts to engineering leadership and repository owners.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Prevent stale context packs from authorizing downstream work. Resolve drift or dependency ownership and regenerate exact context packs. topology-current -> allocation-candidate; drift-detected -> reconciliation-required.
+
+**Audit intent:** Retain manifests, digests, scans, drift, reconciliation, owners, and decisions.
+
+**Authority / limitation:** Allocation and context packs do not grant repository mutation authority. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>160 · Governed implementation agents and code generation</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Run bounded implementation agents, code generation, source scanning, and evidence capture under explicit authority.
+**Purpose:** Authorize bounded implementation agents and collect code, scan, test, traceability, and change evidence without self-approval.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-125 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** An implementation-ready slice, topology, context packs, and explicit repository authority exist Prerequisites: lifecycle-15.
 
-**Roles / competency:** `engineering-leadership`, `software-engineering`, `data-ai-engineering`, `platform-devops`, `quality-engineering`, `release-change-management`; `repository-governance`, `delivery-release`, `testing-assurance`, `security`.
+**Roles / competency:** `software-engineering`, `data-ai-engineering`, `platform-devops`, `engineering-leadership`, `security-architect`, `quality-engineering`, `product-owner`, `ai-evaluation-tevv`, `internal-audit-independent-assurance`; `repository-governance`, `testing-assurance`, `security`, `ai-literacy-limitations`.
 
-**Inputs:** Authorized slice; repository/tool/model boundaries. **Questions:** Which agents may change what, under whose repository authority, with which evidence?
+**Inputs:** Authorized slice and context pack; repository/tool/model policy. **Questions:** Which agent may change what and under whose authority? What evidence is required before apply?
 
 <!-- GAEP-VISUAL:target-lifecycle-16-flow -->
 
@@ -3906,20 +3995,20 @@ accountable-->>role2: Planned decision or return for revision; no executable act
 ```mermaid
 %% Governed implementation agents and code generation planned substeps
 flowchart TD
-  lifecycle_16_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
-  lifecycle_16_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_16_0["1. Bind agent/model/tool privileges, repository scope, stop conditions, and approved context.<br/>Target — planned, not executable"]
+  lifecycle_16_1["2. Generate changes in controlled staging and scan source, dependencies, architecture, security, and tests.<br/>Target — planned, not executable"]
   lifecycle_16_0 --> lifecycle_16_1
-  lifecycle_16_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_16_2["3. Present exact diffs and evidence for human apply/discard and independent challenge where required.<br/>Target — planned, not executable"]
   lifecycle_16_1 --> lifecycle_16_2
 ```
 
 <details><summary>Text alternative for Governed implementation agents and code generation planned substeps</summary>
 
 ```text
-  lifecycle_16_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
-  lifecycle_16_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_16_0["1. Bind agent/model/tool privileges, repository scope, stop conditions, and approved context.<br/>Target — planned, not executable"]
+  lifecycle_16_1["2. Generate changes in controlled staging and scan source, dependencies, architecture, security, and tests.<br/>Target — planned, not executable"]
   lifecycle_16_0 --> lifecycle_16_1
-  lifecycle_16_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_16_2["3. Present exact diffs and evidence for human apply/discard and independent challenge where required.<br/>Target — planned, not executable"]
   lifecycle_16_1 --> lifecycle_16_2
 ```
 
@@ -3933,80 +4022,87 @@ flowchart TD
 %% Governed implementation agents and code generation — Target — planned, not executable
 sequenceDiagram
 participant role0 as software-engineering
-participant role1 as platform-devops
-participant role2 as quality-engineering
+participant role1 as data-ai-engineering
+participant role2 as platform-devops
 participant role3 as engineering-leadership
-participant role4 as ai-evaluation-tevv
-participant role5 as internal-audit-independent-assurance
+participant role4 as security-architect
+participant role5 as quality-engineering
+participant role6 as product-owner
+participant role7 as ai-evaluation-tevv
+participant role8 as internal-audit-independent-assurance
 participant accountable as engineering-leadership
 participant gaep as GAEP target projection
-role0->>gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+role0->>gaep: Bind agent/model/tool privileges, repository scope, stop conditions, and approved context.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+role1->>gaep: Generate changes in controlled staging and scan source, dependencies, architecture, security, and tests.
 gaep-->>role1: Planned candidate/evidence projection only
-role2->>accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+role2->>accountable: Present exact diffs and evidence for human apply/discard and independent challenge where required.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Governed implementation agents and code generation — Target — planned, not executable</summary>
 
-1. role0 → gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+1. role0 → gaep: Bind agent/model/tool privileges, repository scope, stop conditions, and approved context.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+3. role1 → gaep: Generate changes in controlled staging and scan source, dependencies, architecture, security, and tests.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role2 → accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+5. role2 → accountable: Present exact diffs and evidence for human apply/discard and independent challenge where required.
 6. accountable → role2: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries. 2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence. 3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+**Planned substeps:** 1. Bind agent/model/tool privileges, repository scope, stop conditions, and approved context. 2. Generate changes in controlled staging and scan source, dependencies, architecture, security, and tests. 3. Present exact diffs and evidence for human apply/discard and independent challenge where required.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; software-engineering, platform-devops, quality-engineering perform work, engineering-leadership owns the bounded decision, and ai-evaluation-tevv, internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Authority grant, context digest, repository state, policies, and tests → Diffs, tool calls, scans, tests, provenance, failures, and decision receipts.
 
-**Candidate / governed outputs:** Implementation and scan evidence; no current governed output exists.
+**Candidate / future governed effects:** Staged implementation candidate; scan/test/traceability evidence. Applied implementation revision and immutable execution evidence; no current governed output exists.
 
-**RACI:** R software-engineering, platform-devops, quality-engineering · A engineering-leadership · C data-ai-engineering, release-change-management · I Initiative lead · independent assurance ai-evaluation-tevv, internal-audit-independent-assurance.
+**RACI:** R software-engineering, data-ai-engineering, platform-devops · A engineering-leadership · C security-architect, quality-engineering, product-owner · I release-change-management · independent assurance ai-evaluation-tevv, internal-audit-independent-assurance. **Decision authorities:** Implementation authorization: engineering-leadership.
 
-**Blockers / exception:** Missing implementation/repository authority; Unsafe tool/model boundary. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Changes remain within authority, trace to the slice, and pass required scans/tests.
 
-**Exit / next:** Authorized changes and evidence are traceable; no agent self-approves The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Missing repository authority; Unsafe model/tool boundary; Failed required evidence. Discard or quarantine the candidate; never let an agent self-authorize. Escalate authority/security violations to engineering and security authorities.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Stop, preserve evidence, and leave protected repositories unchanged. Correct scope/context or implementation, then rerun controlled evidence collection. slice-authorized -> staged-change; evidence-reviewed -> apply-or-discard.
+
+**Audit intent:** Retain principal, privileges, model/tool, context, commands, diffs, evidence, decisions, and recovery.
+
+**Authority / limitation:** GAEP and agents cannot appoint implementers, approve their own changes, or bypass repository protection. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
-<summary><strong>170 · Product QA and independent P03 review</strong> · Target — planned, not executable</summary>
+<summary><strong>170 · Product QA, UAT, and product acceptance</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Bind test evidence, Product QA, traceability, and a separate independent P03 review decision.
+**Purpose:** Perform Product QA, UAT, assurance, and bounded product acceptance independently from release authority.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-119 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** Implemented slice and required test/traceability evidence are available Prerequisites: lifecycle-16.
 
-**Roles / competency:** `engineering-leadership`, `software-engineering`, `data-ai-engineering`, `platform-devops`, `quality-engineering`, `release-change-management`; `repository-governance`, `delivery-release`, `testing-assurance`, `security`.
+**Roles / competency:** `quality-engineering`, `product-owner`, `affected-user-stakeholder`, `product-manager`, `engineering-leadership`, `security-architect`, `ai-evaluation-tevv`, `internal-audit-independent-assurance`; `testing-assurance`, `backlog-requirements-quality`, `challenge-escalation`.
 
-**Inputs:** Implementation/test/TEVV evidence; product acceptance criteria. **Questions:** Does the stated Product slice meet bounded acceptance criteria and who can accept it?
+**Inputs:** Implementation and scan evidence; acceptance, UAT, and assurance criteria. **Questions:** Does the slice satisfy the exact acceptance criteria? What remains untested, unacceptable, or Unknown?
 
 <!-- GAEP-VISUAL:target-lifecycle-17-flow -->
 
-**Product QA and independent P03 review planned substeps**
+**Product QA, UAT, and product acceptance planned substeps**
 
 ```mermaid
-%% Product QA and independent P03 review planned substeps
+%% Product QA, UAT, and product acceptance planned substeps
 flowchart TD
-  lifecycle_17_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
-  lifecycle_17_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_17_0["1. Execute Product QA, technical tests, assurance cases, and traceability review against exact criteria.<br/>Target — planned, not executable"]
+  lifecycle_17_1["2. Conduct UAT with representative participants and record defects, deviations, limitations, and residual risk.<br/>Target — planned, not executable"]
   lifecycle_17_0 --> lifecycle_17_1
-  lifecycle_17_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_17_2["3. Have the assigned Product Owner make the bounded product-acceptance decision after independent findings are visible.<br/>Target — planned, not executable"]
   lifecycle_17_1 --> lifecycle_17_2
 ```
 
-<details><summary>Text alternative for Product QA and independent P03 review planned substeps</summary>
+<details><summary>Text alternative for Product QA, UAT, and product acceptance planned substeps</summary>
 
 ```text
-  lifecycle_17_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
-  lifecycle_17_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_17_0["1. Execute Product QA, technical tests, assurance cases, and traceability review against exact criteria.<br/>Target — planned, not executable"]
+  lifecycle_17_1["2. Conduct UAT with representative participants and record defects, deviations, limitations, and residual risk.<br/>Target — planned, not executable"]
   lifecycle_17_0 --> lifecycle_17_1
-  lifecycle_17_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_17_2["3. Have the assigned Product Owner make the bounded product-acceptance decision after independent findings are visible.<br/>Target — planned, not executable"]
   lifecycle_17_1 --> lifecycle_17_2
 ```
 
@@ -4014,64 +4110,70 @@ flowchart TD
 
 <!-- GAEP-SEQUENCE:target-lifecycle-17 -->
 
-**Product QA and independent P03 review — Target — planned, not executable**
+**Product QA, UAT, and product acceptance — Target — planned, not executable**
 
 ```mermaid
-%% Product QA and independent P03 review — Target — planned, not executable
+%% Product QA, UAT, and product acceptance — Target — planned, not executable
 sequenceDiagram
-participant role0 as software-engineering
-participant role1 as platform-devops
-participant role2 as quality-engineering
-participant role3 as engineering-leadership
-participant role4 as ai-evaluation-tevv
-participant role5 as internal-audit-independent-assurance
-participant accountable as engineering-leadership
+participant role0 as quality-engineering
+participant role1 as product-owner
+participant role2 as affected-user-stakeholder
+participant role3 as product-manager
+participant role4 as engineering-leadership
+participant role5 as security-architect
+participant role6 as ai-evaluation-tevv
+participant role7 as internal-audit-independent-assurance
+participant accountable as product-owner
 participant gaep as GAEP target projection
-role0->>gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+role0->>gaep: Execute Product QA, technical tests, assurance cases, and traceability review against exact criteria.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+role1->>gaep: Conduct UAT with representative participants and record defects, deviations, limitations, and residual risk.
 gaep-->>role1: Planned candidate/evidence projection only
-role2->>accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+role2->>accountable: Have the assigned Product Owner make the bounded product-acceptance decision after independent findings are visible.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
 
-<details><summary>Text alternative for Product QA and independent P03 review — Target — planned, not executable</summary>
+<details><summary>Text alternative for Product QA, UAT, and product acceptance — Target — planned, not executable</summary>
 
-1. role0 → gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+1. role0 → gaep: Execute Product QA, technical tests, assurance cases, and traceability review against exact criteria.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+3. role1 → gaep: Conduct UAT with representative participants and record defects, deviations, limitations, and residual risk.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role2 → accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+5. role2 → accountable: Have the assigned Product Owner make the bounded product-acceptance decision after independent findings are visible.
 6. accountable → role2: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries. 2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence. 3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+**Planned substeps:** 1. Execute Product QA, technical tests, assurance cases, and traceability review against exact criteria. 2. Conduct UAT with representative participants and record defects, deviations, limitations, and residual risk. 3. Have the assigned Product Owner make the bounded product-acceptance decision after independent findings are visible.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; software-engineering, platform-devops, quality-engineering perform work, engineering-leadership owns the bounded decision, and ai-evaluation-tevv, internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Build, test, traceability, user, defect, risk, and implementation evidence → Test results, UAT observations, findings, defects, acceptance decision, and limitations.
 
-**Candidate / governed outputs:** QA findings and product acceptance decision; no current governed output exists.
+**Candidate / future governed effects:** QA/UAT findings; product-acceptance candidate. Bounded product-acceptance decision and retained exceptions; no current governed output exists.
 
-**RACI:** R software-engineering, platform-devops, quality-engineering · A engineering-leadership · C data-ai-engineering, release-change-management · I Initiative lead · independent assurance ai-evaluation-tevv, internal-audit-independent-assurance.
+**RACI:** R quality-engineering, product-owner, affected-user-stakeholder · A product-owner · C product-manager, engineering-leadership, security-architect · I product-leadership, release-change-management · independent assurance ai-evaluation-tevv, internal-audit-independent-assurance. **Decision authorities:** Bounded product acceptance: product-owner.
 
-**Blockers / exception:** Missing accountable product acceptance; Unresolved test/assurance failure. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Criteria, traceability, findings, UAT, residual risk, and limitations are explicit.
 
-**Exit / next:** QA and acceptance are explicit and separate from release authority The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Failed criterion; Missing representative UAT; Independent reviewer conflicts with delivery role. Reject or conditionally defer outside GAEP under actual authority; retain all findings. Escalate Product/quality/risk conflict to product leadership and corresponding authorities.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Keep the slice unaccepted and preserve implementation evidence. Correct the defect or evidence gap, rerun affected QA/UAT, and make a new decision. implementation-evidence-ready -> qa-uat-active; findings-reviewed -> product-accepted-or-rejected.
+
+**Audit intent:** Retain criteria, executions, participants, findings, defects, independence, decision, and limitations.
+
+**Authority / limitation:** Product acceptance is not release, deployment, production, security, privacy, or compliance authorization. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>180 · CI/CD, release, deployment, and environment governance</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Govern pipelines, releases, deployments, environment evidence, and explicit production authority boundaries.
+**Purpose:** Govern CI/CD evidence, change authorization, release, deployment, environments, rollback, and release records.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-126 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** A bounded slice has product acceptance and required delivery evidence Prerequisites: lifecycle-17.
 
-**Roles / competency:** `engineering-leadership`, `software-engineering`, `data-ai-engineering`, `platform-devops`, `quality-engineering`, `release-change-management`; `repository-governance`, `delivery-release`, `testing-assurance`, `security`.
+**Roles / competency:** `platform-devops`, `release-change-management`, `engineering-leadership`, `security-architect`, `service-management`, `sre-operations`, `internal-audit-independent-assurance`; `delivery-release`, `security`, `operations-resilience`, `auditability`.
 
-**Inputs:** Accepted slice; pipeline/environment/change evidence. **Questions:** Who authorizes release/deployment and what rollback/evidence is required?
+**Inputs:** Accepted slice; pipeline, artifact, environment, change, and rollback evidence. **Questions:** What exact artifact goes where and under whose authority? Can it be observed and rolled back safely?
 
 <!-- GAEP-VISUAL:target-lifecycle-18-flow -->
 
@@ -4080,20 +4182,20 @@ accountable-->>role2: Planned decision or return for revision; no executable act
 ```mermaid
 %% CI/CD, release, deployment, and environment governance planned substeps
 flowchart TD
-  lifecycle_18_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
-  lifecycle_18_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_18_0["1. Verify pipeline, artifact, environment, security, change, dependency, and rollback evidence.<br/>Target — planned, not executable"]
+  lifecycle_18_1["2. Prepare a scoped release/change/deployment candidate with window, owner, risks, and stop conditions.<br/>Target — planned, not executable"]
   lifecycle_18_0 --> lifecycle_18_1
-  lifecycle_18_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_18_2["3. Have release/change management authorize or reject the exact release independently from product acceptance.<br/>Target — planned, not executable"]
   lifecycle_18_1 --> lifecycle_18_2
 ```
 
 <details><summary>Text alternative for CI/CD, release, deployment, and environment governance planned substeps</summary>
 
 ```text
-  lifecycle_18_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
-  lifecycle_18_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_18_0["1. Verify pipeline, artifact, environment, security, change, dependency, and rollback evidence.<br/>Target — planned, not executable"]
+  lifecycle_18_1["2. Prepare a scoped release/change/deployment candidate with window, owner, risks, and stop conditions.<br/>Target — planned, not executable"]
   lifecycle_18_0 --> lifecycle_18_1
-  lifecycle_18_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_18_2["3. Have release/change management authorize or reject the exact release independently from product acceptance.<br/>Target — planned, not executable"]
   lifecycle_18_1 --> lifecycle_18_2
 ```
 
@@ -4106,59 +4208,64 @@ flowchart TD
 ```mermaid
 %% CI/CD, release, deployment, and environment governance — Target — planned, not executable
 sequenceDiagram
-participant role0 as software-engineering
-participant role1 as platform-devops
-participant role2 as quality-engineering
-participant role3 as engineering-leadership
-participant role4 as ai-evaluation-tevv
-participant role5 as internal-audit-independent-assurance
-participant accountable as engineering-leadership
+participant role0 as platform-devops
+participant role1 as release-change-management
+participant role2 as engineering-leadership
+participant role3 as security-architect
+participant role4 as service-management
+participant role5 as sre-operations
+participant role6 as internal-audit-independent-assurance
+participant accountable as release-change-management
 participant gaep as GAEP target projection
-role0->>gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+role0->>gaep: Verify pipeline, artifact, environment, security, change, dependency, and rollback evidence.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+role1->>gaep: Prepare a scoped release/change/deployment candidate with window, owner, risks, and stop conditions.
 gaep-->>role1: Planned candidate/evidence projection only
-role2->>accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
-accountable-->>role2: Planned decision or return for revision; no executable action
+role0->>accountable: Have release/change management authorize or reject the exact release independently from product acceptance.
+accountable-->>role0: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for CI/CD, release, deployment, and environment governance — Target — planned, not executable</summary>
 
-1. role0 → gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+1. role0 → gaep: Verify pipeline, artifact, environment, security, change, dependency, and rollback evidence.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+3. role1 → gaep: Prepare a scoped release/change/deployment candidate with window, owner, risks, and stop conditions.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role2 → accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
-6. accountable → role2: Planned decision or return for revision; no executable action
+5. role0 → accountable: Have release/change management authorize or reject the exact release independently from product acceptance.
+6. accountable → role0: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries. 2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence. 3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+**Planned substeps:** 1. Verify pipeline, artifact, environment, security, change, dependency, and rollback evidence. 2. Prepare a scoped release/change/deployment candidate with window, owner, risks, and stop conditions. 3. Have release/change management authorize or reject the exact release independently from product acceptance.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; software-engineering, platform-devops, quality-engineering perform work, engineering-leadership owns the bounded decision, and ai-evaluation-tevv, internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Acceptance, pipeline, artifact, security, environment, change, and rollback evidence → Authorization, artifact/environment identities, deployment result, exceptions, and rollback evidence.
 
-**Candidate / governed outputs:** Release/change/deployment decisions and evidence; no current governed output exists.
+**Candidate / future governed effects:** Release/change/deployment candidate; rollback and environment plan. Authorized release/deployment record and environment evidence; no current governed output exists.
 
-**RACI:** R software-engineering, platform-devops, quality-engineering · A engineering-leadership · C data-ai-engineering, release-change-management · I Initiative lead · independent assurance ai-evaluation-tevv, internal-audit-independent-assurance.
+**RACI:** R platform-devops, release-change-management · A release-change-management · C engineering-leadership, security-architect, service-management, sre-operations · I product-owner, product-leadership · independent assurance internal-audit-independent-assurance. **Decision authorities:** Release and change authorization: release-change-management.
 
-**Blockers / exception:** Missing release/change authority; Failed gate or rollback evidence. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Artifact, environment, gates, risks, observability, rollback, authority, and window are exact.
 
-**Exit / next:** Release and deployment decisions are scoped, auditable, and reversible The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Release authority missing; Failed gate; Rollback or observability insufficient. Defer or reject release; a scoped emergency process remains outside GAEP authority. Escalate to release/change authority, engineering leadership, and operational owners.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Stop deployment, preserve evidence, and invoke authorized rollback when required. Correct the failed gate/plan and request a new release decision. product-accepted -> release-candidate; release-authorized -> deployed-or-rolled-back.
+
+**Audit intent:** Retain artifact, pipeline, environment, approver, decision, deployment, rollback, exception, and timestamps.
+
+**Authority / limitation:** GAEP records evidence but cannot authorize release, change, deployment, or production access. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 
 <details>
 <summary><strong>190 · Operations, observability, incident/recovery evidence, and feedback</strong> · Target — planned, not executable</summary>
 
-**Purpose / why:** Capture runtime observations, incidents, recovery evidence, and feedback into Product governance.
+**Purpose:** Operate and observe services, govern incidents and recovery, measure outcomes, and feed evidence into new Product change.
 
-**When/prerequisites:** Current/target transition and mapped capabilities GAEP-CAP-127, GAEP-CAP-128 must be sufficient; later authorized implementation is required.
+**Entry / prerequisites:** A deployed service/environment and named operational ownership exist Prerequisites: lifecycle-18.
 
-**Roles / competency:** `service-management`, `sre-operations`, `incident-recovery-leadership`, `product-manager`, `risk-compliance-specialist`; `operations-resilience`, `delivery-release`, `auditability`, `challenge-escalation`.
+**Roles / competency:** `sre-operations`, `service-management`, `incident-recovery-leadership`, `product-manager`, `risk-compliance-specialist`, `release-change-management`, `internal-audit-independent-assurance`; `operations-resilience`, `delivery-release`, `auditability`, `challenge-escalation`.
 
-**Inputs:** Deployed service; observability/incident/recovery/user evidence. **Questions:** What happened, what authority governs response, and what Product change is now justified?
+**Inputs:** Deployed service and observability evidence; incident, recovery, user, risk, and outcome evidence. **Questions:** What happened and what is the user/business effect? Who controls response, recovery, and the next Product decision?
 
 <!-- GAEP-VISUAL:target-lifecycle-19-flow -->
 
@@ -4167,20 +4274,20 @@ accountable-->>role2: Planned decision or return for revision; no executable act
 ```mermaid
 %% Operations, observability, incident/recovery evidence, and feedback planned substeps
 flowchart TD
-  lifecycle_19_0["1. Observe service, environment, user, incident, recovery, risk, and outcome evidence with exact scope and freshness.<br/>Target — planned, not executable"]
-  lifecycle_19_1["2. Respond and recover under operational authority while preserving material decisions and evidence.<br/>Target — planned, not executable"]
+  lifecycle_19_0["1. Observe service levels, telemetry, user outcomes, risks, controls, cost, and drift with freshness.<br/>Target — planned, not executable"]
+  lifecycle_19_1["2. Respond to incidents and recover under explicit operational and incident authorities while retaining evidence.<br/>Target — planned, not executable"]
   lifecycle_19_0 --> lifecycle_19_1
-  lifecycle_19_2["3. Feed validated observations into a newly bounded Product/Initiative change; never rewrite prior governed intent silently.<br/>Target — planned, not executable"]
+  lifecycle_19_2["3. Review learning and create a newly bounded Initiative or Source-change trigger without rewriting prior intent.<br/>Target — planned, not executable"]
   lifecycle_19_1 --> lifecycle_19_2
 ```
 
 <details><summary>Text alternative for Operations, observability, incident/recovery evidence, and feedback planned substeps</summary>
 
 ```text
-  lifecycle_19_0["1. Observe service, environment, user, incident, recovery, risk, and outcome evidence with exact scope and freshness.<br/>Target — planned, not executable"]
-  lifecycle_19_1["2. Respond and recover under operational authority while preserving material decisions and evidence.<br/>Target — planned, not executable"]
+  lifecycle_19_0["1. Observe service levels, telemetry, user outcomes, risks, controls, cost, and drift with freshness.<br/>Target — planned, not executable"]
+  lifecycle_19_1["2. Respond to incidents and recover under explicit operational and incident authorities while retaining evidence.<br/>Target — planned, not executable"]
   lifecycle_19_0 --> lifecycle_19_1
-  lifecycle_19_2["3. Feed validated observations into a newly bounded Product/Initiative change; never rewrite prior governed intent silently.<br/>Target — planned, not executable"]
+  lifecycle_19_2["3. Review learning and create a newly bounded Initiative or Source-change trigger without rewriting prior intent.<br/>Target — planned, not executable"]
   lifecycle_19_1 --> lifecycle_19_2
 ```
 
@@ -4196,41 +4303,48 @@ sequenceDiagram
 participant role0 as sre-operations
 participant role1 as service-management
 participant role2 as incident-recovery-leadership
-participant role3 as internal-audit-independent-assurance
-participant accountable as incident-recovery-leadership
+participant role3 as product-manager
+participant role4 as risk-compliance-specialist
+participant role5 as release-change-management
+participant role6 as internal-audit-independent-assurance
+participant accountable as sre-operations
 participant gaep as GAEP target projection
-role0->>gaep: Observe service, environment, user, incident, recovery, risk, and outcome evidence with exact scope and freshness.
+role0->>gaep: Observe service levels, telemetry, user outcomes, risks, controls, cost, and drift with freshness.
 gaep-->>role0: Planned candidate/evidence projection only
-role1->>gaep: Respond and recover under operational authority while preserving material decisions and evidence.
+role1->>gaep: Respond to incidents and recover under explicit operational and incident authorities while retaining evidence.
 gaep-->>role1: Planned candidate/evidence projection only
-role0->>accountable: Feed validated observations into a newly bounded Product/Initiative change; never rewrite prior governed intent silently.
-accountable-->>role0: Planned decision or return for revision; no executable action
+role2->>accountable: Review learning and create a newly bounded Initiative or Source-change trigger without rewriting prior intent.
+accountable-->>role2: Planned decision or return for revision; no executable action
 ```
 
 <details><summary>Text alternative for Operations, observability, incident/recovery evidence, and feedback — Target — planned, not executable</summary>
 
-1. role0 → gaep: Observe service, environment, user, incident, recovery, risk, and outcome evidence with exact scope and freshness.
+1. role0 → gaep: Observe service levels, telemetry, user outcomes, risks, controls, cost, and drift with freshness.
 2. gaep → role0: Planned candidate/evidence projection only
-3. role1 → gaep: Respond and recover under operational authority while preserving material decisions and evidence.
+3. role1 → gaep: Respond to incidents and recover under explicit operational and incident authorities while retaining evidence.
 4. gaep → role1: Planned candidate/evidence projection only
-5. role0 → accountable: Feed validated observations into a newly bounded Product/Initiative change; never rewrite prior governed intent silently.
-6. accountable → role0: Planned decision or return for revision; no executable action
+5. role2 → accountable: Review learning and create a newly bounded Initiative or Source-change trigger without rewriting prior intent.
+6. accountable → role2: Planned decision or return for revision; no executable action
 
 </details>
 
-**Planned substeps:** 1. Observe service, environment, user, incident, recovery, risk, and outcome evidence with exact scope and freshness. 2. Respond and recover under operational authority while preserving material decisions and evidence. 3. Feed validated observations into a newly bounded Product/Initiative change; never rewrite prior governed intent silently.
+**Planned substeps:** 1. Observe service levels, telemetry, user outcomes, risks, controls, cost, and drift with freshness. 2. Respond to incidents and recover under explicit operational and incident authorities while retaining evidence. 3. Review learning and create a newly bounded Initiative or Source-change trigger without rewriting prior intent.
 
-**AI / human boundary:** a future GAEP implementation may prepare candidates; sre-operations, service-management perform work, incident-recovery-leadership owns the bounded decision, and internal-audit-independent-assurance provides assurance when applicable. No command exists here.
+**Evidence consumed / produced:** Telemetry, SLOs, events, changes, user feedback, risks, and prior release evidence → Operational decisions, incident timeline, recovery results, learning, and change trigger.
 
-**Candidate / governed outputs:** Operational evidence and bounded feedback Initiative; no current governed output exists.
+**Candidate / future governed effects:** Operational/incident evidence; recovery review and feedback-Initiative candidate. Operational decisions, recovery evidence, and explicit feedback into Product governance; no current governed output exists.
 
-**RACI:** R sre-operations, service-management · A incident-recovery-leadership · C product-manager, risk-compliance-specialist · I Initiative lead · independent assurance internal-audit-independent-assurance.
+**RACI:** R sre-operations, service-management, incident-recovery-leadership · A sre-operations · C product-manager, risk-compliance-specialist, release-change-management · I product-owner, engineering-leadership, business-owner · independent assurance internal-audit-independent-assurance. **Decision authorities:** Routine operational decision: sre-operations; Incident response and recovery decision: incident-recovery-leadership.
 
-**Blockers / exception:** Missing operational authority or evidence retention. No planned node may bypass current prerequisites or organizational authority.
+**Decision criteria:** Operational scope, authority, evidence, user impact, recovery, residual risk, and learning are explicit.
 
-**Exit / next:** Response/recovery is documented and learning re-enters Product governance explicitly The next transition remains planned and non-executable.
+**Blockers / exception / escalation:** Operational authority absent; Telemetry or retention insufficient; Recovery risk unowned. Use the organization’s authorized emergency process and later reconcile exact evidence. Escalate service decisions to SRE/service ownership and incidents to incident/recovery leadership.
 
-**Authority / limitation:** Every profile is Target — planned, not executable. It defines intended decision structure but creates no command, implementation, approval, release, operational, security, privacy, compliance, audit, or certification authority.
+**Failure / retry / target states:** Prioritize authorized safety/recovery action, preserve evidence, and keep Product conclusions provisional. Restore evidence/controls, validate recovery, and re-open the bounded change decision. deployed -> operating-observed; incident-detected -> response-recovery; learning-reviewed -> new-initiative-candidate.
+
+**Audit intent:** Retain telemetry scope, incidents, decisions, authorities, actions, recovery, outcomes, risks, and feedback links.
+
+**Authority / limitation:** GAEP cannot operate services, declare incidents, authorize recovery, or silently change Product truth. Every node is Target — planned, not executable. The contracts describe intended evidence and decisions but create no command, appointment, approval, repository mutation, release, deployment, operational, security, privacy, compliance, audit, or certification authority.
 
 </details>
 <!-- END GENERATED:TARGET_EXECUTION -->
@@ -4264,18 +4378,18 @@ flowchart TD
 
 | Current stable ID | Transition and target | Current evidence | Target intent, dependency, and status |
 |---|---|---|---|
-| `product-definition` | expanded<br/>`lifecycle-01`, `lifecycle-03` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Expand Product definition into evidence-bound intent, discovery, and durable Product context.<br/>Dependency: independent P03 review and future runtime authorization<br/>Migration: planned; independent acceptance decision: unresolved |
-| `initiative-definition` | retained<br/>`lifecycle-03` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Retain stable Initiative identity while expanding context and migration metadata.<br/>Dependency: independent P03 review<br/>Migration: planned; independent acceptance decision: unresolved |
-| `initiative-classification` | retained<br/>`lifecycle-04` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Retain classification and integrate it with target applicability governance.<br/>Dependency: independent P03 review<br/>Migration: planned; independent acceptance decision: unresolved |
-| `initiative-applicability` | expanded<br/>`lifecycle-04` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Expand applicability into the complete target operating-model crosswalk.<br/>Dependency: Canonical coverage and accountable stakeholder decisions<br/>Migration: planned; independent acceptance decision: unresolved |
-| `source-intake` | expanded<br/>`lifecycle-02` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Add explicit source-change lifecycle and downstream revalidation without inferring truth or supersession.<br/>Dependency: Source change/removal contract gap<br/>Migration: planned; independent acceptance decision: unresolved |
-| `source-baseline` | merged<br/>`lifecycle-02` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Remain a distinct governed record inside a unified target source-governance node.<br/>Dependency: Source lifecycle UX<br/>Migration: planned; independent acceptance decision: unresolved |
-| `source-provenance` | merged<br/>`lifecycle-02` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Remain a distinct governed record inside a unified target source-governance node.<br/>Dependency: Source lifecycle UX<br/>Migration: planned; independent acceptance decision: unresolved |
-| `product-discovery` | expanded<br/>`lifecycle-05` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Expand governed discovery records and iterative evidence review.<br/>Dependency: independent P03 review<br/>Migration: planned; independent acceptance decision: unresolved |
-| `business-architecture` | split<br/>`lifecycle-06`, `lifecycle-07`, `lifecycle-08` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Separate business architecture, Event Storming/domain discovery, and DDD strategic design.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; independent acceptance decision: unresolved |
-| `solution-security-architecture` | split<br/>`lifecycle-09`, `lifecycle-10` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Separate architecture domains from architecture decisions and quality scenarios.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; independent acceptance decision: unresolved |
-| `detailed-design-assurance` | split<br/>`lifecycle-10`, `lifecycle-11`, `lifecycle-12`, `lifecycle-13` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Split planning, Product Design, backlog, readiness, done, test, and assurance concerns.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; independent acceptance decision: unresolved |
-| `p0-p4-readiness` | replaced-by-tool-neutral-abstraction<br/>`lifecycle-12`, `lifecycle-13`, `lifecycle-14`, `lifecycle-15`, `lifecycle-16`, `lifecycle-17`, `lifecycle-18`, `lifecycle-19` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-planned | Replace legacy handoff wording with tool-neutral Product Design and explicit delivery/operations nodes.<br/>Dependency: Compatibility migration and later authorized implementation prompts<br/>Migration: planned; independent acceptance decision: unresolved |
+| `product-definition` | expanded<br/>`lifecycle-01`, `lifecycle-03` | [IA] Implemented; awaiting independent acceptance<br/>current-runtime-implemented-target-partial | Expand Product definition into evidence-bound intent, discovery, and durable Product context.<br/>Dependency: independent acceptance and future runtime authorization<br/>Migration: planned; independent acceptance decision: unresolved |
+| `initiative-definition` | retained<br/>`lifecycle-03` | [IA] Implemented; awaiting independent acceptance<br/>current-runtime-implemented-target-partial | Retain stable Initiative identity while expanding context and migration metadata.<br/>Dependency: independent acceptance<br/>Migration: planned; independent acceptance decision: unresolved |
+| `initiative-classification` | retained<br/>`lifecycle-04` | [IA] Implemented; awaiting independent acceptance<br/>current-runtime-implemented-target-partial | Retain classification and integrate it with target applicability governance.<br/>Dependency: independent acceptance<br/>Migration: planned; independent acceptance decision: unresolved |
+| `initiative-applicability` | expanded<br/>`lifecycle-04` | [IA] Implemented; awaiting independent acceptance<br/>current-runtime-implemented-target-partial | Expand applicability into the complete target operating-model crosswalk.<br/>Dependency: Canonical coverage and accountable stakeholder decisions<br/>Migration: planned; independent acceptance decision: unresolved |
+| `source-intake` | expanded<br/>`lifecycle-02` | [IA] Implemented; awaiting independent acceptance<br/>current-runtime-implemented-target-partial | Add explicit source-change lifecycle and downstream revalidation without inferring truth or supersession.<br/>Dependency: Source change/removal contract gap<br/>Migration: planned; independent acceptance decision: unresolved |
+| `source-baseline` | merged<br/>`lifecycle-02` | [IA] Implemented; awaiting independent acceptance<br/>current-runtime-implemented-target-partial | Remain a distinct governed record inside a unified target source-governance node.<br/>Dependency: Source lifecycle UX<br/>Migration: planned; independent acceptance decision: unresolved |
+| `source-provenance` | merged<br/>`lifecycle-02` | [IA] Implemented; awaiting independent acceptance<br/>current-runtime-implemented-target-partial | Remain a distinct governed record inside a unified target source-governance node.<br/>Dependency: Source lifecycle UX<br/>Migration: planned; independent acceptance decision: unresolved |
+| `product-discovery` | expanded<br/>`lifecycle-05` | [IA] Implemented; awaiting independent acceptance<br/>current-runtime-implemented-target-partial | Expand governed discovery records and iterative evidence review.<br/>Dependency: independent acceptance<br/>Migration: planned; independent acceptance decision: unresolved |
+| `business-architecture` | split<br/>`lifecycle-06`, `lifecycle-07`, `lifecycle-08` | [IA] Implemented; awaiting independent acceptance<br/>current-runtime-implemented-target-partial | Separate business architecture, Event Storming/domain discovery, and DDD strategic design.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; independent acceptance decision: unresolved |
+| `solution-security-architecture` | split<br/>`lifecycle-09`, `lifecycle-10` | [IA] Implemented; awaiting independent acceptance<br/>current-runtime-implemented-target-partial | Separate architecture domains from architecture decisions and quality scenarios.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; independent acceptance decision: unresolved |
+| `detailed-design-assurance` | split<br/>`lifecycle-10`, `lifecycle-11`, `lifecycle-12`, `lifecycle-13` | [IA] Implemented; awaiting independent acceptance<br/>current-runtime-implemented-target-partial | Split planning, Product Design, backlog, readiness, done, test, and assurance concerns.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; independent acceptance decision: unresolved |
+| `p0-p4-readiness` | replaced-by-tool-neutral-abstraction<br/>`lifecycle-12`, `lifecycle-13`, `lifecycle-14`, `lifecycle-15`, `lifecycle-16`, `lifecycle-17`, `lifecycle-18`, `lifecycle-19` | [IA] Implemented; awaiting independent acceptance<br/>current-runtime-implemented-target-planned | Replace legacy handoff wording with tool-neutral Product Design and explicit delivery/operations nodes.<br/>Dependency: Compatibility migration and later authorized implementation prompts<br/>Migration: planned; independent acceptance decision: unresolved |
 <!-- END GENERATED:TRANSITION_ROADMAP -->
 
 The roadmap is not implementation evidence. “Planned” means later authorized work is required; it does not rename or replace current runtime terminology.
@@ -4290,35 +4404,35 @@ Every current canonical capability maps to at least one target node. Proposed st
 
 | Capability | Target node(s) | Current checkpoint(s), if any | Current maturity and source |
 |---|---|---|---|
-| GAEP-CAP-101<br/>Product intent and problem discovery | `lifecycle-01`, `lifecycle-05` | `product-definition`, `product-discovery` | [IA] Implemented; awaiting independent P03 review<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-101<br/>Product intent and problem discovery | `lifecycle-01`, `lifecycle-05` | `product-definition`, `product-discovery` | [IA] Implemented; awaiting independent acceptance<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-102<br/>Guided lifecycle navigation and user onboarding | `lifecycle-01` | `product-definition` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-103<br/>Source intake and reference grounding | `lifecycle-02` | `source-intake`, `source-baseline`, `source-provenance` | [IT] Implemented and automated-tested<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-104<br/>Source baseline and version control | `lifecycle-02` | `source-intake`, `source-baseline`, `source-provenance` | [IT] Implemented and automated-tested<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-105<br/>Source provenance and lineage | `lifecycle-02` | `source-intake`, `source-baseline`, `source-provenance` | [IT] Implemented and automated-tested<br/>Canonical source: GAEP-REG-013 |
-| GAEP-CAP-106<br/>Human authority and propose/review/accept/commit separation | `lifecycle-03` | `product-definition`, `initiative-definition` | [IA] Implemented; awaiting independent P03 review<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-106<br/>Human authority and propose/review/accept/commit separation | `lifecycle-03` | `product-definition`, `initiative-definition` | [IA] Implemented; awaiting independent acceptance<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-107<br/>Initiative definition and change boundary | `lifecycle-03` | `product-definition`, `initiative-definition` | [IT] Implemented and automated-tested<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-108<br/>Initiative classification, risk and exposure | `lifecycle-04` | `initiative-classification`, `initiative-applicability` | [IT] Implemented and automated-tested<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-109<br/>Initiative applicability and lifecycle tailoring | `lifecycle-04` | `initiative-classification`, `initiative-applicability` | [IT] Implemented and automated-tested<br/>Canonical source: GAEP-REG-013 |
-| GAEP-CAP-110<br/>Business architecture, capabilities and value streams | `lifecycle-06` | `business-architecture` | [IA] Implemented; awaiting independent P03 review<br/>Canonical source: GAEP-REG-013 |
-| GAEP-CAP-111<br/>Domain discovery and EventStorming | `lifecycle-07` | `business-architecture` | [IA] Implemented; awaiting independent P03 review<br/>Canonical source: GAEP-REG-013 |
-| GAEP-CAP-112<br/>DDD strategic design, bounded contexts and context mapping | `lifecycle-08` | `business-architecture` | [IA] Implemented; awaiting independent P03 review<br/>Canonical source: GAEP-REG-013 |
-| GAEP-CAP-113<br/>Architecture views, quality attributes and ADRs | `lifecycle-09`, `lifecycle-10` | `solution-security-architecture`, `detailed-design-assurance` | [IA] Implemented; awaiting independent P03 review<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-110<br/>Business architecture, capabilities and value streams | `lifecycle-06` | `business-architecture` | [IA] Implemented; awaiting independent acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-111<br/>Domain discovery and EventStorming | `lifecycle-07` | `business-architecture` | [IA] Implemented; awaiting independent acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-112<br/>DDD strategic design, bounded contexts and context mapping | `lifecycle-08` | `business-architecture` | [IA] Implemented; awaiting independent acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-113<br/>Architecture views, quality attributes and ADRs | `lifecycle-09`, `lifecycle-10` | `solution-security-architecture`, `detailed-design-assurance` | [IA] Implemented; awaiting independent acceptance<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-114<br/>Architecture-before-slice implementation sequencing | `lifecycle-10` | `solution-security-architecture`, `detailed-design-assurance` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-115<br/>Phase, wave and vertical-slice planning | `lifecycle-11` | `detailed-design-assurance` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-116<br/>Tool-neutral Product Design preparation and handoff | `lifecycle-12` | `detailed-design-assurance`, `p0-p4-readiness` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-117<br/>Architecture-bound backlog generation | `lifecycle-13` | `detailed-design-assurance`, `p0-p4-readiness` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-118<br/>Acceptance criteria, Definition of Ready and Definition of Done | `lifecycle-13` | `detailed-design-assurance`, `p0-p4-readiness` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
-| GAEP-CAP-119<br/>Test design, test cases and quality assurance | `lifecycle-13`, `lifecycle-17` | `detailed-design-assurance`, `p0-p4-readiness` | [IA] Implemented; awaiting independent P03 review<br/>Canonical source: GAEP-REG-013 |
-| GAEP-CAP-120<br/>Requirements-to-design-to-code-to-test traceability | `lifecycle-15` | `p0-p4-readiness` | [IA] Implemented; awaiting independent P03 review<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-119<br/>Test design, test cases and quality assurance | `lifecycle-13`, `lifecycle-17` | `detailed-design-assurance`, `p0-p4-readiness` | [IA] Implemented; awaiting independent acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-120<br/>Requirements-to-design-to-code-to-test traceability | `lifecycle-15` | `p0-p4-readiness` | [IA] Implemented; awaiting independent acceptance<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-121<br/>Security, privacy, policy and compliance governance | `lifecycle-09` | `solution-security-architecture` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-122<br/>Data, API, event and integration contract governance | `lifecycle-09` | `solution-security-architecture` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-123<br/>Repository linking and implementation topology | `lifecycle-14` | `p0-p4-readiness` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-124<br/>Cross-repository slice distribution, synchronization and drift detection | `lifecycle-15` | `p0-p4-readiness` | [PD] Planned / deferred<br/>Canonical source: GAEP-REG-013 |
-| GAEP-CAP-125<br/>Implementation agents and governed code generation | `lifecycle-16` | `p0-p4-readiness` | [IA] Implemented; awaiting independent P03 review<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-125<br/>Implementation agents and governed code generation | `lifecycle-16` | `p0-p4-readiness` | [IA] Implemented; awaiting independent acceptance<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-126<br/>CI/CD, release and deployment governance | `lifecycle-18` | `p0-p4-readiness` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-127<br/>Runtime operations, observability, recovery and reliability | `lifecycle-19` | `p0-p4-readiness` | [PD] Planned / deferred<br/>Canonical source: GAEP-REG-013 |
-| GAEP-CAP-128<br/>Audit trail, evidence records and decision history | `lifecycle-19` | `p0-p4-readiness` | [IA] Implemented; awaiting independent P03 review<br/>Canonical source: GAEP-REG-013 |
-| GAEP-CAP-129<br/>Provider/tool neutrality, adapters and extensibility | `lifecycle-09` | `solution-security-architecture` | [IA] Implemented; awaiting independent P03 review<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-128<br/>Audit trail, evidence records and decision history | `lifecycle-19` | `p0-p4-readiness` | [IA] Implemented; awaiting independent acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-129<br/>Provider/tool neutrality, adapters and extensibility | `lifecycle-09` | `solution-security-architecture` | [IA] Implemented; awaiting independent acceptance<br/>Canonical source: GAEP-REG-013 |
 | GAEP-CAP-130<br/>Enterprise administration, deployment control, data residency and portability | `lifecycle-09` | `solution-security-architecture` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
 
 </details>
@@ -4338,7 +4452,7 @@ Every current canonical capability maps to at least one target node. Proposed st
 | GAEP-P03-REQ-008<br/>CI/CD, release, deployment, environments, and operations feedback | `lifecycle-18`, `lifecycle-19` | None | [PD] Planned / deferred<br/>newly-planned<br/>No current runtime checkpoint implements the complete target behavior. |
 | GAEP-P03-REQ-009<br/>ERP is illustrative, never a universal Product assumption | `lifecycle-06`, `lifecycle-14` | None | [PD] Planned / deferred<br/>retained-boundary<br/>All generated target wording must remain Product-neutral. |
 | GAEP-P03-REQ-010<br/>Figma remains an optional Product Design adapter | `lifecycle-12` | `p0-p4-readiness` | [PT] Partial<br/>replaced-by-tool-neutral-abstraction<br/>Runtime compatibility wording remains; canonical target wording is Product Design. |
-| GAEP-P03-REQ-011<br/>Initiative classification, applicability, and unresolved decision governance | `lifecycle-04` | `initiative-classification`, `initiative-applicability` | [IA] Implemented; awaiting independent P03 review<br/>expanded<br/>Current runtime behavior remains awaiting independent P03 review. |
+| GAEP-P03-REQ-011<br/>Initiative classification, applicability, and unresolved decision governance | `lifecycle-04` | `initiative-classification`, `initiative-applicability` | [IA] Implemented; awaiting independent acceptance<br/>expanded<br/>Current runtime behavior remains awaiting independent acceptance. |
 
 </details>
 
@@ -4419,13 +4533,13 @@ flowchart TD
 
 | Event | Current runtime classification | Required user action | Record/revision consequence |
 |---|---|---|---|
-| Source added | [IA] Implemented; awaiting independent P03 review<br/>compatibility machine state: `implemented-awaiting-product-owner-acceptance` | Choose File or Choose Folder during the valid Adopt/Intake route, review exact content with /adopt or /intake, then explicitly use /record or the reviewed Adopt binding action. | A new non-authoritative Source revision-one record is created, or an exact existing content digest is reused; prior Source records remain preserved. |
+| Source added | [IA] Implemented; awaiting independent acceptance<br/>compatibility machine state: `implemented-awaiting-product-owner-acceptance` | Choose File or Choose Folder during the valid Adopt/Intake route, review exact content with /adopt or /intake, then explicitly use /record or the reviewed Adopt binding action. | A new non-authoritative Source revision-one record is created, or an exact existing content digest is reused; prior Source records remain preserved. |
 | Source content changed | [PT] Partial<br/>compatibility machine state: `partial` | Reattach and review the changed bytes. Record them as a new candidate, keep the prior Source visible, and make the identity/revision relationship an explicit unresolved human decision. | The current Chat path creates a distinct Source candidate when the content digest is new; it does not silently revise or replace the prior Source identity. |
 | Source removed or intentionally excluded | unsupported unavailable<br/>compatibility machine state: `unsupported-unavailable` | Keep the governed Source and history intact, record the intended exclusion and reason as an unresolved scoped decision, and pause affected progression until an authorized workflow exists. | No governed Source deletion or exclusion record is created by the installed Guide/Chat workflow; prior Source and Baseline revisions remain preserved. |
 | Source superseded | unsupported unavailable<br/>compatibility machine state: `unsupported-unavailable` | Review and record the proposed replacement as a separate candidate, retain both Sources, and record supersession as an unresolved scoped human decision. | The proposed replacement may be recorded as a separate Source candidate; the prior Source is preserved and no supersession fact is created. |
 | Source temporarily unavailable or inaccessible | [PT] Partial<br/>compatibility machine state: `partial` | Keep the last reviewed revision, record the access problem as an open question/limitation, identify an owner and retry trigger, and avoid claims about unread content. | Unreadable candidate material is not recorded by Intake. Existing governed Source history remains unchanged unless a separately supported Source revision is committed. |
 
-<details><summary><strong>Source added</strong> · [IA] Implemented; awaiting independent P03 review · compatibility machine state: <code>implemented-awaiting-product-owner-acceptance</code></summary>
+<details><summary><strong>Source added</strong> · [IA] Implemented; awaiting independent acceptance · compatibility machine state: <code>implemented-awaiting-product-owner-acceptance</code></summary>
 
 - **What you see:** An attachment review manifest, exact content digest and extraction limitations, followed by recorded/reused Source counts after explicit recording.
 - **What GAEP needs from you:** Choose File or Choose Folder during the valid Adopt/Intake route, review exact content with /adopt or /intake, then explicitly use /record or the reviewed Adopt binding action.
@@ -4993,7 +5107,7 @@ The ledger is not marketing copy. It retains dispositions, qualifiers, limitatio
 | runtime-contract-schema | `current-runtime-journey-contract-schema` v1.1.0 | `docs/next/99_Registries_and_References/015_CURRENT_RUNTIME_JOURNEY_CONTRACT.schema.json` | `18759b168abd1998d3a72e7abc7b98000c92c34353c2860dbce3038ea61751b2` |
 | responsibility-competency-registry | `GAEP-REG-016` v1.0.0 | `docs/next/99_Registries_and_References/016_ENTERPRISE_RESPONSIBILITY_COMPETENCY_REGISTRY.json` | `9cf4e1d0e5243d53f467edb7c84f79463bd69f5b22d64bf76f492b203e05e82c` |
 | enterprise-assurance-registry | `GAEP-REG-017` v1.0.0 | `docs/next/99_Registries_and_References/017_ENTERPRISE_ASSURANCE_DECISION_REGISTRY.json` | `c6fbb89dacbbf6ea030b113fd040f19396a2e99ee9246a01dfea3dbe9b7f11e0` |
-| target-execution-registry | `GAEP-REG-018` v1.0.0 | `docs/next/99_Registries_and_References/018_TARGET_LIFECYCLE_EXECUTION_REGISTRY.json` | `d7c8f2c048d894bbab690b032cb0f0ef1d41e4b28f974a92839445f56cf84cf4` |
+| target-execution-registry | `GAEP-REG-018` v2.0.0 | `docs/next/99_Registries_and_References/018_TARGET_LIFECYCLE_EXECUTION_REGISTRY.json` | `04464d62f98cfe794eb8df8d1b95117da6e2f59980e643e67d5331ab697aefaa` |
 | extension-package | `gaep-vscode-package` v0.1.0 | `apps/vscode/package.json` | `7c9fcd2afc58b29e3b97fa22cfad94e7f053e1f878748a1582bf31647d102eac` |
 
 **Required progressive layers:**

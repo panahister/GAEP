@@ -44,10 +44,10 @@ test("every governed decision has exactly one accountable role and Product Owner
 });
 
 test("user-facing journey maturity uses independent-review language, not the legacy Product Owner state slug", () => {
-  assert.match(guide, /Implemented; awaiting independent P03 review/);
+  assert.match(guide, /Implemented; awaiting independent acceptance/);
   assert.doesNotMatch(guide, /<summary><strong>\d+ · [^<]+<\/strong> · implemented-awaiting-product-owner-acceptance/);
   assert.doesNotMatch(guide, /<summary><strong>Source added<\/strong> · implemented-awaiting-product-owner-acceptance/);
-  assert.match(guide, /Implemented; awaiting independent P03 review · `implemented-awaiting-product-owner-acceptance`/);
+  assert.match(guide, /Implemented; awaiting independent acceptance · `implemented-awaiting-product-owner-acceptance`/);
 });
 
 test("missing accountability and incompatible independent assurance block validation", () => {

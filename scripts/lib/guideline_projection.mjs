@@ -332,13 +332,24 @@ function enterpriseContractErrors(runtimePresentation, responsibility, assurance
   }
   const targetNodeIds = manifest.lifecycleNodes.map(entry => entry.nodeId);
   if (JSON.stringify(targetExecution.nodeProfiles.map(entry => entry.nodeId)) !== JSON.stringify(targetNodeIds)) errors.push("target execution profiles must cover every target node in canonical order");
-  const patterns = new Map(targetExecution.executionPatterns.map(entry => [entry.patternId, entry]));
   for (const profile of targetExecution.nodeProfiles) {
-    const pattern = patterns.get(profile.patternId);
-    if (!pattern) { errors.push(`${profile.nodeId}: unknown target execution pattern ${profile.patternId}`); continue; }
-    for (const roleId of [...pattern.requiredRoleIds, ...pattern.responsibleRoleIds, pattern.accountableRoleId, ...pattern.assuranceRoleIds]) if (!roleIds.has(roleId)) errors.push(`${profile.nodeId}: unknown target role ${roleId}`);
-    for (const competencyId of pattern.competencyIds) if (!competencyIds.has(competencyId)) errors.push(`${profile.nodeId}: unknown target competency ${competencyId}`);
+    const targetRoles = [...profile.raci.responsibleRoleIds, profile.raci.accountableRoleId, ...profile.raci.consultedRoleIds, ...profile.raci.informedRoleIds, ...profile.raci.independentAssuranceRoleIds, ...profile.decisionAuthorities.map(entry => entry.accountableRoleId)];
+    for (const roleId of targetRoles) if (!roleIds.has(roleId)) errors.push(`${profile.nodeId}: unknown target role ${roleId}`);
+    for (const competencyId of profile.competencyIds) if (!competencyIds.has(competencyId)) errors.push(`${profile.nodeId}: unknown target competency ${competencyId}`);
+    if (profile.executable !== false || profile.maturity !== "target-planned-non-executable") errors.push(`${profile.nodeId}: target behavior must remain planned and non-executable`);
+    if (duplicateValues(profile.substeps).length > 0) errors.push(`${profile.nodeId}: target substeps must be node-specific`);
+    for (const assuranceRole of profile.raci.independentAssuranceRoleIds) {
+      if (profile.raci.responsibleRoleIds.includes(assuranceRole) || profile.decisionAuthorities.some(entry => entry.accountableRoleId === assuranceRole)) errors.push(`${profile.nodeId}: independent assurance conflicts with responsible/accountable work`);
+    }
   }
+  const targetSignatures = targetExecution.nodeProfiles.map(profile => profile.substeps.join("|"));
+  if (duplicateValues(targetSignatures).length > 0) errors.push("target nodes share a generic substantive execution sequence");
+  const release = targetExecution.nodeProfiles.find(entry => entry.nodeId === "lifecycle-18");
+  if (!release?.decisionAuthorities.some(entry => entry.accountableRoleId === "release-change-management")) errors.push("target release/change decision lacks release-change-management accountability");
+  const operations = targetExecution.nodeProfiles.find(entry => entry.nodeId === "lifecycle-19");
+  if (!operations?.decisionAuthorities.some(entry => entry.accountableRoleId === "sre-operations") || !operations?.decisionAuthorities.some(entry => entry.accountableRoleId === "incident-recovery-leadership")) errors.push("target operations/incident decisions lack their respective accountability");
+  const productOwnerParticipation = targetExecution.nodeProfiles.filter(profile => [...profile.raci.responsibleRoleIds, profile.raci.accountableRoleId, ...profile.raci.consultedRoleIds].includes("product-owner"));
+  if (productOwnerParticipation.length < 3 || productOwnerParticipation.length === targetExecution.nodeProfiles.length) errors.push("Product Owner participation must be legitimate and bounded rather than absent or universal");
   return errors;
 }
 
@@ -1136,7 +1147,6 @@ function renderCompetencyAndAuthority(responsibility, runtimePresentation, manif
     const unique = values => [...new Set(values)].join(", ") || "—";
     return `| \`${checkpoint.checkpointId}\` · ${checkpoint.label} | ${unique(steps.flatMap(step => step.responsibleRoleIds))} | ${unique(steps.flatMap(step => step.accountableRoleId ? [step.accountableRoleId] : []))} | ${unique(steps.flatMap(step => [...step.consultedRoleIds, ...step.informedRoleIds, ...step.independentAssuranceRoleIds]))} |`;
   }).join("\n");
-  const targetPatterns = new Map(targetExecution.executionPatterns.map(entry => [entry.patternId, entry]));
   const targetNodes = new Map(manifest.lifecycleNodes.map(entry => [entry.nodeId, entry]));
   const participationRows = responsibility.roleArchetypes.map(role => {
     const current = runtimePresentation.checkpoints.flatMap(checkpoint => {
@@ -1151,12 +1161,12 @@ function renderCompetencyAndAuthority(responsibility, runtimePresentation, manif
       return codes.size ? [`\`${checkpoint.checkpointId}\` (${[...codes].join("/")})`] : [];
     });
     const target = targetExecution.nodeProfiles.flatMap(profile => {
-      const pattern = targetPatterns.get(profile.patternId);
       const codes = [];
-      if (pattern.responsibleRoleIds.includes(role.roleId)) codes.push("R");
-      if (pattern.accountableRoleId === role.roleId) codes.push("A");
-      if (pattern.requiredRoleIds.includes(role.roleId) && !pattern.responsibleRoleIds.includes(role.roleId) && pattern.accountableRoleId !== role.roleId) codes.push("C");
-      if (pattern.assuranceRoleIds.includes(role.roleId)) codes.push("IA");
+      if (profile.raci.responsibleRoleIds.includes(role.roleId)) codes.push("R");
+      if (profile.raci.accountableRoleId === role.roleId || profile.decisionAuthorities.some(entry => entry.accountableRoleId === role.roleId)) codes.push("A");
+      if (profile.raci.consultedRoleIds.includes(role.roleId)) codes.push("C");
+      if (profile.raci.informedRoleIds.includes(role.roleId)) codes.push("I");
+      if (profile.raci.independentAssuranceRoleIds.includes(role.roleId)) codes.push("IA");
       const node = targetNodes.get(profile.nodeId);
       return codes.length ? [`\`${profile.nodeId}\` ${node.title} (${[...new Set(codes)].join("/")})`] : [];
     });
@@ -1221,26 +1231,22 @@ function renderCheckpointExecution(runtimePresentation, manifest) {
 }
 
 function renderTargetExecution(manifest, targetExecution) {
-  const patterns = new Map(targetExecution.executionPatterns.map(entry => [entry.patternId, entry]));
   const nodes = new Map(manifest.lifecycleNodes.map(entry => [entry.nodeId, entry]));
   const overviewRows = targetExecution.nodeProfiles.map(profile => {
     const node = nodes.get(profile.nodeId);
-    const pattern = patterns.get(profile.patternId);
-    const consulted = pattern.requiredRoleIds.filter(id => !pattern.responsibleRoleIds.includes(id) && id !== pattern.accountableRoleId);
-    return `| \`${profile.nodeId}\` · ${node.title} | ${pattern.responsibleRoleIds.join(", ")} | ${pattern.accountableRoleId} | C: ${consulted.join(", ") || "—"}<br/>IA: ${pattern.assuranceRoleIds.join(", ") || "context-dependent"} |`;
+    return `| \`${profile.nodeId}\` · ${node.title} | ${profile.raci.responsibleRoleIds.join(", ")} | ${profile.raci.accountableRoleId} | C: ${profile.raci.consultedRoleIds.join(", ") || "—"}<br/>I: ${profile.raci.informedRoleIds.join(", ") || "—"}<br/>IA: ${profile.raci.independentAssuranceRoleIds.join(", ") || "context-dependent"} |`;
   }).join("\n");
   const details = targetExecution.nodeProfiles.map(profile => {
     const node = nodes.get(profile.nodeId);
-    const pattern = patterns.get(profile.patternId);
-    const participants = [...new Set([...pattern.responsibleRoleIds, pattern.accountableRoleId, ...pattern.assuranceRoleIds])];
-    const messages = pattern.plannedSubsteps.flatMap((step, index) => {
-      const from = `role${index % Math.max(pattern.responsibleRoleIds.length, 1)}`;
-      return index === pattern.plannedSubsteps.length - 1
+    const participants = [...new Set([...profile.raci.responsibleRoleIds, profile.raci.accountableRoleId, ...profile.raci.consultedRoleIds, ...profile.raci.independentAssuranceRoleIds])];
+    const messages = profile.substeps.flatMap((step, index) => {
+      const from = `role${index % Math.max(profile.raci.responsibleRoleIds.length, 1)}`;
+      return index === profile.substeps.length - 1
         ? [`${from}->>accountable: ${mermaidSafe(step)}`, `accountable-->>${from}: Planned decision or return for revision; no executable action`]
         : [`${from}->>gaep: ${mermaidSafe(step)}`, `gaep-->>${from}: Planned candidate/evidence projection only`];
     });
-    const flowLines = pattern.plannedSubsteps.flatMap((step, index) => [`  ${profile.nodeId.replaceAll("-", "_")}_${index}["${index + 1}. ${mermaidSafe(step)}<br/>Target — planned, not executable"]`, ...(index ? [`  ${profile.nodeId.replaceAll("-", "_")}_${index - 1} --> ${profile.nodeId.replaceAll("-", "_")}_${index}`] : [])]);
-    return ["<details>", `<summary><strong>${node.order} · ${node.title}</strong> · Target — planned, not executable</summary>`, "", `**Purpose / why:** ${node.targetIntent}`, "", `**When/prerequisites:** Current/target transition and mapped capabilities ${node.capabilityIds.join(", ")} must be sufficient; later authorized implementation is required.`, "", `**Roles / competency:** ${pattern.requiredRoleIds.map(id => `\`${id}\``).join(", ")}; ${pattern.competencyIds.map(id => `\`${id}\``).join(", ")}.`, "", `**Inputs:** ${profile.inputs.join("; ")}. **Questions:** ${profile.questions.join(" ")}`, "", visual(`target-${profile.nodeId}-flow`, `${node.title} planned substeps`, "TD", flowLines.join("\n")), "", sequenceVisual(`target-${profile.nodeId}`, `${node.title} — Target — planned, not executable`, [...participants.map((role, index) => `participant role${index} as ${role}`), `participant accountable as ${pattern.accountableRoleId}`, "participant gaep as GAEP target projection", ...messages]), "", `**Planned substeps:** ${pattern.plannedSubsteps.map((step, index) => `${index + 1}. ${step}`).join(" ")}`, "", `**AI / human boundary:** a future GAEP implementation may prepare candidates; ${pattern.responsibleRoleIds.join(", ")} perform work, ${pattern.accountableRoleId} owns the bounded decision, and ${pattern.assuranceRoleIds.join(", ") || "no default independent role"} provides assurance when applicable. No command exists here.`, "", `**Candidate / governed outputs:** ${profile.outputs.join("; ")}; no current governed output exists.`, "", `**RACI:** R ${pattern.responsibleRoleIds.join(", ")} · A ${pattern.accountableRoleId} · C ${pattern.requiredRoleIds.filter(id => !pattern.responsibleRoleIds.includes(id) && id !== pattern.accountableRoleId).join(", ") || "—"} · I Initiative lead · independent assurance ${pattern.assuranceRoleIds.join(", ") || "context-dependent"}.`, "", `**Blockers / exception:** ${profile.blockers.join("; ")}. No planned node may bypass current prerequisites or organizational authority.`, "", `**Exit / next:** ${profile.exitCriteria.join(" ")} The next transition remains planned and non-executable.`, "", `**Authority / limitation:** ${targetExecution.authorityBoundary}`, "", "</details>"].join("\n");
+    const flowLines = profile.substeps.flatMap((step, index) => [`  ${profile.nodeId.replaceAll("-", "_")}_${index}["${index + 1}. ${mermaidSafe(step)}<br/>Target — planned, not executable"]`, ...(index ? [`  ${profile.nodeId.replaceAll("-", "_")}_${index - 1} --> ${profile.nodeId.replaceAll("-", "_")}_${index}`] : [])]);
+    return ["<details>", `<summary><strong>${node.order} · ${node.title}</strong> · Target — planned, not executable</summary>`, "", `**Purpose:** ${profile.purpose}`, "", `**Entry / prerequisites:** ${profile.entryConditions.join(" ")} Prerequisites: ${profile.prerequisites.join(", ") || "none"}.`, "", `**Roles / competency:** ${participants.map(id => `\`${id}\``).join(", ")}; ${profile.competencyIds.map(id => `\`${id}\``).join(", ")}.`, "", `**Inputs:** ${profile.inputs.join("; ")}. **Questions:** ${profile.questions.join(" ")}`, "", visual(`target-${profile.nodeId}-flow`, `${node.title} planned substeps`, "TD", flowLines.join("\n")), "", sequenceVisual(`target-${profile.nodeId}`, `${node.title} — Target — planned, not executable`, [...participants.map((role, index) => `participant role${index} as ${role}`), `participant accountable as ${profile.raci.accountableRoleId}`, "participant gaep as GAEP target projection", ...messages]), "", `**Planned substeps:** ${profile.substeps.map((step, index) => `${index + 1}. ${step}`).join(" ")}`, "", `**Evidence consumed / produced:** ${profile.evidenceConsumed.join("; ")} → ${profile.evidenceProduced.join("; ")}.`, "", `**Candidate / future governed effects:** ${profile.candidateOutputs.join("; ")}. ${profile.futureGovernedEffects.join("; ")}; no current governed output exists.`, "", `**RACI:** R ${profile.raci.responsibleRoleIds.join(", ")} · A ${profile.raci.accountableRoleId} · C ${profile.raci.consultedRoleIds.join(", ") || "—"} · I ${profile.raci.informedRoleIds.join(", ") || "—"} · independent assurance ${profile.raci.independentAssuranceRoleIds.join(", ") || "context-dependent"}. **Decision authorities:** ${profile.decisionAuthorities.map(entry => `${entry.decision}: ${entry.accountableRoleId}`).join("; ")}.`, "", `**Decision criteria:** ${profile.decisionCriteria.join("; ")}.`, "", `**Blockers / exception / escalation:** ${profile.blockers.join("; ")}. ${profile.exceptionPath} ${profile.escalationPath}`, "", `**Failure / retry / target states:** ${profile.failureBehavior} ${profile.retryBehavior} ${profile.targetStateTransitions.join("; ")}.`, "", `**Audit intent:** ${profile.auditIntent}`, "", `**Authority / limitation:** ${profile.authorityBoundary} ${targetExecution.authorityBoundary}`, "", "</details>"].join("\n");
   }).join("\n\n");
   return generatedBlock("TARGET_EXECUTION", ["#### Target-lifecycle RACI overview — planned, not executable", "", "| Target node | R | A | C / independent assurance |", "|---|---|---|---|", overviewRows, "", details].join("\n"));
 }

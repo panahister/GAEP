@@ -1,14 +1,74 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://gaep.example/schemas/target-lifecycle-execution/1.0.0", "type": "object", "additionalProperties": false,
-  "required": ["$schema", "registryId", "version", "schemaVersion", "status", "authorityBoundary", "executionPatterns", "nodeProfiles"],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gaep.example/schemas/target-lifecycle-execution/2.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "registryId", "version", "schemaVersion", "status", "authorityBoundary", "nodeProfiles"],
   "properties": {
-    "$schema": { "type": "string" }, "registryId": { "const": "GAEP-REG-018" }, "version": { "type": "string" }, "schemaVersion": { "type": "string" }, "status": { "const": "target-proposed-unaccepted" }, "authorityBoundary": { "type": "string" },
-    "executionPatterns": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/pattern" } },
+    "$schema": { "type": "string" },
+    "registryId": { "const": "GAEP-REG-018" },
+    "version": { "type": "string" },
+    "schemaVersion": { "const": "2.0.0" },
+    "status": { "const": "target-proposed-unaccepted" },
+    "authorityBoundary": { "$ref": "#/$defs/nonEmpty" },
     "nodeProfiles": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/profile" } }
   },
   "$defs": {
-    "strings": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
-    "pattern": { "type": "object", "additionalProperties": false, "required": ["patternId", "requiredRoleIds", "competencyIds", "plannedSubsteps", "responsibleRoleIds", "accountableRoleId", "assuranceRoleIds"], "properties": { "patternId": { "type": "string" }, "requiredRoleIds": { "$ref": "#/$defs/strings" }, "competencyIds": { "$ref": "#/$defs/strings" }, "plannedSubsteps": { "type": "array", "minItems": 2, "items": { "type": "string" } }, "responsibleRoleIds": { "$ref": "#/$defs/strings" }, "accountableRoleId": { "type": "string" }, "assuranceRoleIds": { "type": "array", "items": { "type": "string" } } } },
-    "profile": { "type": "object", "additionalProperties": false, "required": ["nodeId", "patternId", "inputs", "questions", "outputs", "blockers", "exitCriteria"], "properties": { "nodeId": { "pattern": "^lifecycle-[a-z0-9-]+$", "type": "string" }, "patternId": { "type": "string" }, "inputs": { "$ref": "#/$defs/strings" }, "questions": { "$ref": "#/$defs/strings" }, "outputs": { "$ref": "#/$defs/strings" }, "blockers": { "$ref": "#/$defs/strings" }, "exitCriteria": { "$ref": "#/$defs/strings" } } }
+    "nonEmpty": { "type": "string", "minLength": 1 },
+    "strings": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+    "optionalStrings": { "type": "array", "items": { "$ref": "#/$defs/nonEmpty" } },
+    "raci": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["responsibleRoleIds", "accountableRoleId", "consultedRoleIds", "informedRoleIds", "independentAssuranceRoleIds"],
+      "properties": {
+        "responsibleRoleIds": { "$ref": "#/$defs/strings" },
+        "accountableRoleId": { "$ref": "#/$defs/nonEmpty" },
+        "consultedRoleIds": { "$ref": "#/$defs/optionalStrings" },
+        "informedRoleIds": { "$ref": "#/$defs/optionalStrings" },
+        "independentAssuranceRoleIds": { "$ref": "#/$defs/optionalStrings" }
+      }
+    },
+    "decisionAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "accountableRoleId"],
+      "properties": {
+        "decision": { "$ref": "#/$defs/nonEmpty" },
+        "accountableRoleId": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeId", "purpose", "entryConditions", "prerequisites", "substeps", "questions", "inputs", "candidateOutputs", "futureGovernedEffects", "evidenceConsumed", "evidenceProduced", "raci", "decisionAuthorities", "competencyIds", "decisionCriteria", "blockers", "exceptionPath", "escalationPath", "failureBehavior", "retryBehavior", "targetStateTransitions", "auditIntent", "authorityBoundary", "maturity", "executable"],
+      "properties": {
+        "nodeId": { "pattern": "^lifecycle-[a-z0-9-]+$", "type": "string" },
+        "purpose": { "$ref": "#/$defs/nonEmpty" },
+        "entryConditions": { "$ref": "#/$defs/strings" },
+        "prerequisites": { "$ref": "#/$defs/optionalStrings" },
+        "substeps": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "questions": { "$ref": "#/$defs/strings" },
+        "inputs": { "$ref": "#/$defs/strings" },
+        "candidateOutputs": { "$ref": "#/$defs/strings" },
+        "futureGovernedEffects": { "$ref": "#/$defs/strings" },
+        "evidenceConsumed": { "$ref": "#/$defs/strings" },
+        "evidenceProduced": { "$ref": "#/$defs/strings" },
+        "raci": { "$ref": "#/$defs/raci" },
+        "decisionAuthorities": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/decisionAuthority" } },
+        "competencyIds": { "$ref": "#/$defs/strings" },
+        "decisionCriteria": { "$ref": "#/$defs/strings" },
+        "blockers": { "$ref": "#/$defs/strings" },
+        "exceptionPath": { "$ref": "#/$defs/nonEmpty" },
+        "escalationPath": { "$ref": "#/$defs/nonEmpty" },
+        "failureBehavior": { "$ref": "#/$defs/nonEmpty" },
+        "retryBehavior": { "$ref": "#/$defs/nonEmpty" },
+        "targetStateTransitions": { "$ref": "#/$defs/strings" },
+        "auditIntent": { "$ref": "#/$defs/nonEmpty" },
+        "authorityBoundary": { "$ref": "#/$defs/nonEmpty" },
+        "maturity": { "const": "target-planned-non-executable" },
+        "executable": { "const": false }
+      }
+    }
   }
 }

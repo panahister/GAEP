@@ -68,7 +68,7 @@
             "planned-deferred-coming-soon": { "const": "[PD] Planned / deferred" },
             "candidate-proposed": { "const": "[CP] Candidate / proposed" },
             "partial": { "const": "[PT] Partial" },
-            "implemented-awaiting-product-owner-acceptance": { "const": "[IA] Implemented; awaiting independent P03 review" },
+            "implemented-awaiting-product-owner-acceptance": { "const": "[IA] Implemented; awaiting independent acceptance" },
             "implemented-and-automated-tested": { "const": "[IT] Implemented and automated-tested" }
           }
         },
