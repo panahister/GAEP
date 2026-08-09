@@ -64,7 +64,12 @@ async function runPhase({
   disableExtensions = true,
 }) {
   const assetHashes = {}
-  for (const relativePath of ["dist/extension.cjs", "dist/studio-client.js", "media/GAEP_GUIDE.md"]) {
+  for (const relativePath of [
+    "dist/extension.cjs",
+    "dist/studio-client.js",
+    "media/GAEP_GUIDE.md",
+    "media/GAEP_MARKET_DECISION_GUIDE.md",
+  ]) {
     assetHashes[relativePath] = createHash("sha256").update(await readFile(join(extensionDevelopmentPath, relativePath))).digest("hex")
   }
   const options = {

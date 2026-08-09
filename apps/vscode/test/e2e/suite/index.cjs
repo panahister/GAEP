@@ -134,12 +134,24 @@ async function assertGuideSurface(extension) {
   assert.match(guide, /^## 1\. Executive orientation$/m)
   assert.match(guide, /^## 4\. Methodology and maintainer appendix$/m)
   assert.match(guide, /<!-- GAEP-VISUAL:lifecycle-architecture-plan -->/)
-  assert.match(guide, /Product Design preparation and evidence/)
+  assert.match(guide, /Product Design preparation and iterative evidence/)
   assert.match(guide, /\[PD\] Planned \/ deferred/)
   assert.match(guide, /Unknown means not assessed or not established; it never means No\./)
 
+  const marketGuideUri = vscode.Uri.joinPath(extension.extensionUri, "media", "GAEP_MARKET_DECISION_GUIDE.md")
+  const marketGuide = new TextDecoder().decode(await vscode.workspace.fs.readFile(marketGuideUri))
+  assert.match(marketGuide, /^# GAEP Product × Capability Decision Guide$/m)
+  assert.match(marketGuide, /all 450 evidence-bounded cells/)
+  assert.match(marketGuide, /<!-- CELL:GAEP-CAP-101:GAEP-PRD-001 -->/)
+  assert.match(marketGuide, /<!-- CELL:GAEP-CAP-130:GAEP-PRD-016 -->/)
+
   const expectedHashes = JSON.parse(process.env.GAEP_E2E_EXPECTED_ASSET_HASHES || "{}")
-  for (const relativePath of ["dist/extension.cjs", "dist/studio-client.js", "media/GAEP_GUIDE.md"]) {
+  for (const relativePath of [
+    "dist/extension.cjs",
+    "dist/studio-client.js",
+    "media/GAEP_GUIDE.md",
+    "media/GAEP_MARKET_DECISION_GUIDE.md",
+  ]) {
     const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(extension.extensionUri, ...relativePath.split("/")))
     const actualHash = createHash("sha256").update(bytes).digest("hex")
     assert.equal(actualHash, expectedHashes[relativePath], `${relativePath} source/package/installed parity`)
