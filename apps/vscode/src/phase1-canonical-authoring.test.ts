@@ -182,8 +182,8 @@ describe("Phase 1 canonical authoring", () => {
     expect(review.markdown).toContain("### Business Understanding")
     expect(review.markdown).not.toContain("```json")
     // Per-checkpoint accountable/responsible role guidance (candidate, no authority).
-    expect(review.markdown).toContain("**Responsible:** Product Manager · **Accountable:** Product Owner")
-    expect(review.markdown).toContain("grants no authority")
+    expect(review.markdown).toContain("**Responsible:** product-manager · **Accountable:** business-owner")
+    expect(review.markdown).toContain("Competence and organizational authority are assessed separately")
 
     const referenceLinks = [
       { id: "l1", label: "IMO SOLAS", url: "https://example.org/solas", note: "Safety convention", addedAt: "2026-08-05T00:00:00.000Z" },
