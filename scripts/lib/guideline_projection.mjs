@@ -258,6 +258,17 @@ export function manifestSemanticErrors(manifest, { catalog, market, extensionPac
       if (!maturityByCapability.has(capabilityId)) errors.push(`${node.nodeId}: capability ${capabilityId} lacks GAEP maturity`);
     }
   }
+  const sourceConceptIds = manifest.sourceLifecycle.concepts.map(entry => entry.conceptId);
+  if (JSON.stringify(sourceConceptIds) !== JSON.stringify(["source-intake", "source-baseline", "source-provenance"])) errors.push("Source Intake, Baseline, and Provenance concepts must remain distinct and ordered");
+  const sourceEventIds = manifest.sourceLifecycle.events.map(entry => entry.eventId);
+  const expectedSourceEventIds = ["source-added", "source-changed", "source-removed-excluded", "source-superseded", "source-unavailable"];
+  if (JSON.stringify(sourceEventIds) !== JSON.stringify(expectedSourceEventIds)) errors.push("source lifecycle must cover Added, Changed, Removed/Excluded, Superseded, and Unavailable in canonical order");
+  if (!/explicit, scoped human decision/i.test(manifest.sourceLifecycle.supersessionRule) || !/never infer/i.test(manifest.sourceLifecycle.supersessionRule)) errors.push("source supersession must be an explicit scoped human decision and never inferred");
+  const sourceClassification = new Map(manifest.sourceLifecycle.events.map(entry => [entry.eventId, entry.runtimeClassification]));
+  if (sourceClassification.get("source-added") !== "implemented-awaiting-product-owner-acceptance") errors.push("Source added must retain its verified current acceptance boundary");
+  for (const eventId of ["source-removed-excluded", "source-superseded"]) {
+    if (sourceClassification.get(eventId) !== "unsupported-unavailable") errors.push(`${eventId}: unsupported runtime behavior cannot be presented as implemented`);
+  }
   for (const capabilityId of knownCapabilities) {
     if (!projectedCapabilities.has(capabilityId)) errors.push(`lifecycle omits current capability ${capabilityId}`);
   }
@@ -383,20 +394,53 @@ function renderAuthorityLoop() {
   ].join("\n")));
 }
 
-function renderQuickStart(manifest) {
+function renderQuickStart(manifest, extensionPackage) {
   const commands = new Set(manifest.commandSurface.chatCommands);
-  const required = ["status", "adopt", "continue", "author", "accept", "commit"];
+  const required = ["initialize", "status", "adopt", "continue", "intake", "record", "author", "inspect", "accept", "commit"];
   if (required.some(command => !commands.has(command))) throw new Error("quick-start commands are absent from the manifest command surface");
-  return generatedBlock("QUICK_START_FLOW", visual("quick-start-flow", "First-session path", "TD", [
-    '  open["Open a trusted Product workspace"] --> status["@gaep /status"]',
-    '  status --> adopt{"Existing Product?"}',
-    '  adopt -- "Yes" --> existing["@gaep /adopt"]',
-    '  adopt -- "No" --> initialize["@gaep /initialize"]',
-    '  existing --> next["@gaep /continue"]',
-    '  initialize --> next',
-    '  next --> author["@gaep /author"] --> review["Inspect and challenge exact candidate"]',
-    '  review --> accept["@gaep /accept"] --> commit["@gaep /commit CONFIRM"]',
-  ].join("\n")));
+  const commandTitles = new Map((extensionPackage.contributes?.commands ?? []).map(entry => [entry.command, entry.title]));
+  const chooseFile = commandTitles.get("gaep.chooseFile");
+  const chooseFolder = commandTitles.get("gaep.chooseFolder");
+  const addLink = commandTitles.get("gaep.addReferenceLink");
+  if (!chooseFile || !chooseFolder || !addLink) throw new Error("source-first extension actions are absent from the contributed command surface");
+  return generatedBlock("QUICK_START_FLOW", [
+    visual("quick-start-flow", "First-session source-first path", "TD", [
+      '  open["1 · Open a trusted Product workspace"] --> sources{"2 · Plan optional reference input"}',
+      `  sources --> files["File · ${mermaidSafe(chooseFile)}<br/>select during Adopt or after Intake prerequisites"]`,
+      `  sources --> folder["Folder · ${mermaidSafe(chooseFolder)}<br/>bounded recursive selection"]`,
+      `  sources --> link["Link · ${mermaidSafe(addLink)}<br/>metadata only; never fetched"]`,
+      '  sources --> none["No sources · allowed for Initialize<br/>missing evidence stays visible"]',
+      '  files --> route{"3 · Existing or new Product?"}',
+      '  folder --> route',
+      '  link --> route',
+      '  none --> route',
+      '  route -- "Existing · readable documents required" --> adopt["@gaep /adopt"]',
+      '  route -- "New · sources optional" --> initialize["@gaep /initialize"]',
+      '  adopt --> productReview["Inspect/challenge Product candidate<br/>@gaep /accept · @gaep /commit CONFIRM"]',
+      '  initialize --> productReview',
+      '  productReview --> status["4 · @gaep /status"] --> next["5 · @gaep /continue"]',
+      '  next --> intake["When Source Intake is current:<br/>@gaep /intake · @gaep /record"]',
+      '  intake --> author["6 · @gaep /author"] --> review["7 · @gaep /inspect<br/>challenge exact candidate"]',
+      '  review --> accept["8 · @gaep /accept"] --> commit["9 · @gaep /commit CONFIRM"]',
+    ].join("\n")),
+    "",
+    "#### What the four source paths actually do",
+    "",
+    "| Path | What it does | What it does not do |",
+    "|---|---|---|",
+    `| **File** · \`${chooseFile}\` | Stages one or more supported files for the active \`/adopt\` or \`/intake\` route; the route reads bounded content and reports extraction limits. | Selection alone does not reason over content, record a Source, approve truth, or create governed state. |`,
+    `| **Folder** · \`${chooseFolder}\` | Discovers supported files recursively within runtime limits for the active route. | It does not make every file relevant, authoritative, readable, or approved. |`,
+    `| **Useful Link** · \`${addLink}\` | Records a portable, non-governed HTTP(S) reference label, URL, note, and added-at metadata. | GAEP never fetches or reads it. Link-only input is not content evidence unless exact content is separately made available and reviewed. |`,
+    "| **No sources** | Lets a new Product proceed through `@gaep /initialize`; missing evidence remains explicit. | Current `@gaep /adopt` cannot fast-start an existing Product without readable documents, and `@gaep /intake` waits for Product, Initiative, and applicability prerequisites. |",
+    "",
+    "#### Do not conflate these boundaries",
+    "",
+    "1. **Select/attach** — chooses bytes or records link metadata; no reasoning or governance occurs.",
+    "2. **Reason over exact attached content** — `@gaep /adopt` or, when prerequisites are current, `@gaep /intake`; this creates an advisory review, not a Source.",
+    "3. **Record reviewed candidate Sources** — `@gaep /record`, or the explicit post-Adopt binding route after an Initiative exists; candidates remain non-authoritative.",
+    "4. **Accept an exact proposal** — `@gaep /accept` records the human decision for the displayed candidate; it is not yet governed commit state.",
+    "5. **Commit governed state** — `@gaep /commit CONFIRM` persists the exact accepted proposal. Approval, publication, rollout, release, production, security, and compliance authority remain separate.",
+  ].join("\n"));
 }
 
 function renderCurrentRuntime(checkpoints) {
@@ -558,16 +602,47 @@ function renderRoadmapCoverage(manifest, market) {
   ].join("\n"));
 }
 
-function renderSourceLineage() {
-  return generatedBlock("SOURCE_LINEAGE", visual("source-lifecycle", "Source Intake, Baseline, Provenance, and change review", "TD", [
-    '  material["Exact attached or ingested material"] --> source["Candidate Source record"]',
-    '  source --> baseline["Explicit Baseline membership and revision"]',
-    '  baseline --> provenance["Provenance, locator, limitations, and lineage"]',
-    '  provenance --> candidate["Bounded downstream candidate"]',
-    '  candidate --> human["Human review and explicit decision"]',
-    '  human --> governed["Governed record with trace back to exact evidence"]',
-    '  unknown["Missing or unreviewed evidence"] -. stays visible as Unknown .-> candidate',
-  ].join("\n")));
+function renderSourceLineage(manifest) {
+  const concepts = manifest.sourceLifecycle.concepts.map(concept => [
+    `<details><summary><strong>${concept.label}</strong></summary>`, "",
+    `- **What it means:** ${concept.meaning}`,
+    `- **Review boundary:** ${concept.reviewBoundary}`,
+    `- **During Adopt:** ${concept.adoptBoundary}`,
+    `- **When it changes:** ${concept.revisionRule}`,
+    `- **Does not authorize:** ${concept.doesNotAuthorize}`,
+    "", "</details>",
+  ].join("\n")).join("\n\n");
+  const summaryRows = manifest.sourceLifecycle.events.map(event => `| ${event.label} | ${event.runtimeClassification} | ${markdownSafe(event.userAction)} | ${markdownSafe(event.recordEffect)} |`).join("\n");
+  const eventDetails = manifest.sourceLifecycle.events.map(event => [
+    `<details><summary><strong>${event.label}</strong> · ${event.runtimeClassification}</summary>`, "",
+    `- **What you see:** ${event.userSees}`,
+    `- **What GAEP needs from you:** ${event.userAction}`,
+    `- **Record/revision effect:** ${event.recordEffect}`,
+    `- **Baseline review:** ${event.baselineReview}`,
+    `- **Provenance review:** ${event.provenanceReview}`,
+    `- **Possible downstream revalidation:** ${event.downstreamRevalidation}`,
+    `- **Safe current workaround:** ${event.safeWorkaround}`,
+    `- **Not authorized:** ${event.doesNotAuthorize}`,
+    "", "</details>",
+  ].join("\n")).join("\n\n");
+  return generatedBlock("SOURCE_LINEAGE", [
+    visual("source-lifecycle", "Source Intake, Baseline, Provenance, and change review", "TD", [
+      '  material["Selected bytes or link metadata<br/>not approved truth"] --> review["Review exact available content<br/>or preserve missing evidence"]',
+      '  review --> source["Explicit candidate Source record"]',
+      '  source --> baseline["Explicit Baseline membership<br/>exact identity and revision"]',
+      '  baseline --> provenance["Provenance<br/>lineage, transformations, limitations"]',
+      '  provenance --> candidate["Bounded downstream candidate"]',
+      '  candidate --> human["Human review · accept · explicit commit"]',
+      '  human --> governed["Governed record<br/>authority still bounded"]',
+      '  change["Added · Changed · Excluded · Superseded · Unavailable"] -. "review, revise, or remain unresolved" .-> source',
+    ].join("\n")),
+    "",
+    "#### Three distinct records", "", concepts,
+    "", "#### Source-change matrix", "",
+    "| Event | Current runtime classification | Required user action | Record/revision consequence |",
+    "|---|---|---|---|", summaryRows, "", eventDetails,
+    "", `> **Supersession rule:** ${manifest.sourceLifecycle.supersessionRule}`,
+  ].join("\n"));
 }
 
 function capabilitySummary(market, manifest) {
@@ -638,7 +713,9 @@ function renderMethodologyGuide(catalog, market) {
   const cards = catalog.references.map(reference => {
     const binding = bindings.get(reference.referenceId);
     return [
-      `#### ${reference.referenceId} · [${reference.canonicalName}](${reference.officialUri})`,
+      `<details><summary><strong>${reference.referenceId} · ${reference.canonicalName}</strong></summary>`,
+      "",
+      `Official source: [${reference.officialUri}](${reference.officialUri})`,
       "",
       `- **Type / authority:** ${reference.referenceType} · ${reference.issuingAuthority}`,
       `- **Exact version:** ${reference.versionOrEdition} · evidence ${reference.evidenceStatus} · reviewed ${reference.contentReview.date}`,
@@ -646,6 +723,8 @@ function renderMethodologyGuide(catalog, market) {
       `- **Use boundary:** ${reference.claimLanguage}`,
       `- **Limitations:** ${reference.limitations.join(" ")}`,
       `- **Review trigger:** ${reference.reviewTrigger}`,
+      "",
+      "</details>",
     ].join("\n");
   }).join("\n\n");
   const deferred = catalog.deferredCandidates.map(entry => `- **${entry.referenceId} · ${entry.canonicalName}** — ${entry.status}. ${entry.reviewTrigger}`).join("\n");
@@ -703,20 +782,20 @@ function renderMaintenanceContract(manifest) {
 }
 
 export function renderGuideline(context) {
-  const { manifest, template, catalog, market, runtimePresentation, runtimeCheckpoints } = context;
+  const { manifest, template, catalog, market, extensionPackage, runtimePresentation, runtimeCheckpoints } = context;
   const replacements = {
     PROJECTION_HEADER: renderProjectionHeader(manifest),
     EXECUTIVE_FACTS: renderExecutiveFacts(catalog, market, manifest),
     EXECUTIVE_OPERATING_MODEL: renderExecutiveOperatingModel(),
     AUTHORITY_LOOP: renderAuthorityLoop(),
-    QUICK_START_FLOW: renderQuickStart(manifest),
+    QUICK_START_FLOW: renderQuickStart(manifest, extensionPackage),
     CHECKPOINT_POSITION_EXAMPLE: renderCheckpointPositionExample(runtimePresentation),
     CURRENT_RUNTIME: renderCurrentRuntime(runtimeCheckpoints),
     STATE_LEGEND: renderStateLegend(manifest, runtimePresentation),
     TARGET_LIFECYCLE: renderTargetLifecycle(manifest, market),
     TRANSITION_ROADMAP: renderTransitionRoadmap(manifest),
     ROADMAP_COVERAGE: renderRoadmapCoverage(manifest, market),
-    SOURCE_LINEAGE: renderSourceLineage(),
+    SOURCE_LINEAGE: renderSourceLineage(manifest),
     MARKET_GUIDE: renderMarketGuide(market, manifest),
     SCENARIO_GUIDE: renderScenarioGuide(market),
     METHODOLOGY_GUIDE: renderMethodologyGuide(catalog, market),
@@ -735,7 +814,7 @@ function extractGenerated(text, id) {
 }
 
 export function renderedGuidelineErrors(rendered, context) {
-  const { manifest, catalog, market } = context;
+  const { manifest, catalog, market, extensionPackage, runtimePresentation } = context;
   const errors = [];
   if (!rendered.startsWith("<!-- GENERATED FILE:")) errors.push("Guide lacks generated-file warning");
   if ((rendered.match(/^# /gm) ?? []).length !== 1) errors.push("Guide must contain exactly one H1");
@@ -743,6 +822,15 @@ export function renderedGuidelineErrors(rendered, context) {
     if (!rendered.includes(heading)) errors.push(`Guide missing progressive layer ${heading}`);
   }
   if (!rendered.includes("## Contents") || !rendered.includes("[4. Methodology and maintainer appendix](#4-methodology-and-maintainer-appendix)")) errors.push("Guide missing progressive table of contents");
+  const visible = rendered.replace(/<!--[\s\S]*?-->/g, "");
+  const orientationIndex = visible.indexOf("### Why use this Guide");
+  const startIndex = visible.indexOf("approximately three-minute route");
+  const firstMaintenanceIndex = visible.indexOf("npm run");
+  if (orientationIndex < 0 || startIndex < orientationIndex) errors.push("plain-language value, audience, and Start here route must lead the Guide");
+  if (firstMaintenanceIndex >= 0 && firstMaintenanceIndex < startIndex) errors.push("maintenance commands appear before first-session orientation");
+  const firstDigestIndex = visible.search(/[a-f0-9]{64}/);
+  const maintainerIndex = visible.indexOf("### Maintainer and projection details");
+  if (firstDigestIndex >= 0 && firstDigestIndex < maintainerIndex) errors.push("complete digests appear before collapsed maintainer details");
   for (const section of manifest.requiredSections) {
     if (!rendered.includes(`### ${section.heading}`)) errors.push(`Guide missing required section ${section.heading}`);
   }
@@ -753,6 +841,19 @@ export function renderedGuidelineErrors(rendered, context) {
     else if (!rendered.slice(index, index + 500).includes(`flowchart ${entry.direction}`)) errors.push(`visual ${entry.visualId} is not ${entry.direction}`);
   }
   if (/flowchart\s+(?:LR|RL)\b/.test(rendered)) errors.push("Guide contains a long horizontal Mermaid flow");
+  if (!rendered.includes("approximately 3 minutes") || !rendered.includes("approximately three-minute first session")) errors.push("Quick Start is not visibly approximately three minutes");
+  for (const commandId of ["gaep.chooseFile", "gaep.chooseFolder", "gaep.addReferenceLink"]) {
+    const title = extensionPackage.contributes.commands.find(entry => entry.command === commandId)?.title;
+    if (!title || !rendered.includes(title)) errors.push(`Guide omits contributed source action ${commandId}`);
+  }
+  for (const [state, entry] of Object.entries(runtimePresentation.primaryStates)) {
+    if (!rendered.includes(entry.label) || !rendered.includes(entry.marker)) errors.push(`Guide omits operational primary state ${state}`);
+  }
+  for (const [indicator, entry] of Object.entries(runtimePresentation.attentionIndicators)) {
+    if (!rendered.includes(entry.label) || !rendered.includes(entry.marker)) errors.push(`Guide omits attention indicator ${indicator}`);
+  }
+  for (const position of ["Previous", "Current", "Next"]) if (!rendered.includes(position)) errors.push(`Guide omits ${position} navigation marker`);
+  if (!/Static example, not live state/i.test(rendered) || !rendered.includes("@gaep /status")) errors.push("static checkpoint example falsely implies live workspace state");
   for (const state of EXPECTED_STATES) {
     if (!rendered.includes(manifest.statePolicy.labels[state])) errors.push(`Guide missing state label ${state}`);
   }
@@ -796,6 +897,13 @@ export function renderedGuidelineErrors(rendered, context) {
   for (const reference of catalog.references) {
     if (!rendered.includes(reference.referenceId) || !rendered.includes(reference.officialUri) || !rendered.includes(reference.evidenceStatus) || !rendered.includes(reference.reviewTrigger)) errors.push(`Guide omits methodology source card facts ${reference.referenceId}`);
   }
+  for (const concept of manifest.sourceLifecycle.concepts) {
+    for (const value of [concept.label, concept.meaning, concept.reviewBoundary, concept.revisionRule, concept.doesNotAuthorize]) if (!rendered.includes(value)) errors.push(`Guide omits source concept facts ${concept.conceptId}`);
+  }
+  for (const event of manifest.sourceLifecycle.events) {
+    for (const value of [event.label, event.runtimeClassification, event.userAction, event.recordEffect, event.baselineReview, event.provenanceReview, event.downstreamRevalidation, event.safeWorkaround, event.doesNotAuthorize]) if (!rendered.includes(value)) errors.push(`Guide omits source lifecycle consequence ${event.eventId}`);
+  }
+  if (!rendered.includes(manifest.sourceLifecycle.supersessionRule)) errors.push("Guide omits explicit Source supersession rule");
   for (const command of manifest.commandSurface.chatCommands) {
     if (!["inspect", "help"].includes(command) && !rendered.includes(`/` + command)) errors.push(`Guide omits declared user command /${command}`);
   }

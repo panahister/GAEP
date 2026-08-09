@@ -7,7 +7,7 @@
   "required": [
     "schemaId", "schemaVersion", "registryId", "version", "status", "ownerRole", "approval", "generation",
     "canonicalSources", "audienceLayers", "requiredSections", "requiredVisuals", "lifecycleSegments", "lifecycleNodes",
-    "transitionRoadmap", "productOwnerRequirements", "proposedCanonicalGaps", "statePolicy", "commandSurface"
+    "transitionRoadmap", "productOwnerRequirements", "proposedCanonicalGaps", "sourceLifecycle", "statePolicy", "commandSurface"
   ],
   "properties": {
     "schemaId": { "const": "https://gaep.example/schemas/guideline-projection-manifest-1.1.0.json" },
@@ -46,6 +46,15 @@
     "transitionRoadmap": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/transition" } },
     "productOwnerRequirements": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/productOwnerRequirement" } },
     "proposedCanonicalGaps": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/proposedGap" } },
+    "sourceLifecycle": {
+      "type": "object", "additionalProperties": false,
+      "required": ["concepts", "events", "supersessionRule"],
+      "properties": {
+        "concepts": { "type": "array", "minItems": 3, "uniqueItems": true, "items": { "$ref": "#/$defs/sourceConcept" } },
+        "events": { "type": "array", "minItems": 5, "uniqueItems": true, "items": { "$ref": "#/$defs/sourceEvent" } },
+        "supersessionRule": { "type": "string", "minLength": 40 }
+      }
+    },
     "statePolicy": {
       "type": "object", "additionalProperties": false,
       "required": ["displayPriority", "labels", "unknownRule", "colorRule"],
@@ -193,6 +202,36 @@
         "status": { "const": "proposed-unaccepted" },
         "requiredCanonicalCorrection": { "type": "string", "minLength": 20 },
         "blocksAcceptance": { "type": "boolean" }
+      }
+    },
+    "sourceConcept": {
+      "type": "object", "additionalProperties": false,
+      "required": ["conceptId", "label", "meaning", "reviewBoundary", "adoptBoundary", "revisionRule", "doesNotAuthorize"],
+      "properties": {
+        "conceptId": { "enum": ["source-intake", "source-baseline", "source-provenance"] },
+        "label": { "type": "string", "minLength": 3 },
+        "meaning": { "type": "string", "minLength": 20 },
+        "reviewBoundary": { "type": "string", "minLength": 20 },
+        "adoptBoundary": { "type": "string", "minLength": 20 },
+        "revisionRule": { "type": "string", "minLength": 20 },
+        "doesNotAuthorize": { "type": "string", "minLength": 20 }
+      }
+    },
+    "sourceEvent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["eventId", "label", "runtimeClassification", "userSees", "userAction", "recordEffect", "baselineReview", "provenanceReview", "downstreamRevalidation", "safeWorkaround", "doesNotAuthorize"],
+      "properties": {
+        "eventId": { "enum": ["source-added", "source-changed", "source-removed-excluded", "source-superseded", "source-unavailable"] },
+        "label": { "type": "string", "minLength": 3 },
+        "runtimeClassification": { "enum": ["implemented-and-verified", "implemented-awaiting-product-owner-acceptance", "partial", "planned-deferred", "unsupported-unavailable", "unknown"] },
+        "userSees": { "type": "string", "minLength": 20 },
+        "userAction": { "type": "string", "minLength": 20 },
+        "recordEffect": { "type": "string", "minLength": 20 },
+        "baselineReview": { "type": "string", "minLength": 10 },
+        "provenanceReview": { "type": "string", "minLength": 10 },
+        "downstreamRevalidation": { "type": "string", "minLength": 10 },
+        "safeWorkaround": { "type": "string", "minLength": 10 },
+        "doesNotAuthorize": { "type": "string", "minLength": 20 }
       }
     }
   }

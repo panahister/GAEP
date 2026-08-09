@@ -155,6 +155,105 @@
     { "gapId": "GAEP-P03-GAP-001", "title": "Implementation-target form taxonomy", "status": "proposed-unaccepted", "requiredCanonicalCorrection": "GAEP-REG-013 capability taxonomy or a Product Owner-approved successor must explicitly model web, mobile, PWA, dashboard, admin, API, event, worker, integration, and multi-project topology breadth.", "blocksAcceptance": true },
     { "gapId": "GAEP-P03-GAP-002", "title": "Source removal, exclusion, supersession, and temporary-unavailability workflow", "status": "proposed-unaccepted", "requiredCanonicalCorrection": "A future accepted Source-governance contract and runtime prompt must define human-scoped transitions, preserved revisions, and revalidation effects.", "blocksAcceptance": true }
   ],
+  "sourceLifecycle": {
+    "concepts": [
+      {
+        "conceptId": "source-intake",
+        "label": "Source Intake",
+        "meaning": "Reviews exact candidate material and records bounded Source metadata only when the human explicitly chooses to record it.",
+        "reviewBoundary": "Attachment metadata identifies selected bytes and extraction limits; reviewed content is the material actually made available to the advisor and human. Neither is automatically approved truth.",
+        "adoptBoundary": "Adopt reviews exact attachments to prepare a Product/Journey proposal. A committed Adopt plan preserves candidate metadata; Source records are created only after an Initiative exists and the human explicitly binds or records the candidates.",
+        "revisionRule": "New content must remain a distinct reviewed candidate until an explicit identity/revision decision is supported and committed.",
+        "doesNotAuthorize": "Selection, extraction, review, or Source recording does not establish correctness, ownership, rights, authority, Baseline membership, approval, or readiness."
+      },
+      {
+        "conceptId": "source-baseline",
+        "label": "Source Baseline",
+        "meaning": "Freezes exact Source identities, revisions, record digests, and content digests for one bounded Initiative/context.",
+        "reviewBoundary": "Membership says which exact revisions are in scope; it does not approve their content, establish precedence, or make the set complete.",
+        "adoptBoundary": "Adopt evidence does not create a Baseline. The current Candidate Source set must first be recorded and then proposed through the Baseline workflow.",
+        "revisionRule": "Changed membership or a changed Source revision requires a reviewed revised Baseline before affected downstream work can rely on the new set.",
+        "doesNotAuthorize": "A Baseline does not designate semantic authority, supersede another Source, approve a claim, or authorize downstream action."
+      },
+      {
+        "conceptId": "source-provenance",
+        "label": "Source Provenance",
+        "meaning": "Records exact lineage, locators, Source revisions, roles, transformations, derivations, omissions, uncertainty, and limitations for a bounded target.",
+        "reviewBoundary": "Provenance explains where a claim or record came from; Baseline membership only says which Source revisions were in the bounded set.",
+        "adoptBoundary": "Adopt evidence and Baseline membership do not create Provenance automatically.",
+        "revisionRule": "Revise Source provenance means prepare and review a new lineage proposal when Sources, transformations, target revisions, limitations, or uncertainty change; preserve prior records.",
+        "doesNotAuthorize": "Provenance does not establish correctness, authenticity, authority, approval, precedence, or transfer of rights."
+      }
+    ],
+    "events": [
+      {
+        "eventId": "source-added",
+        "label": "Source added",
+        "runtimeClassification": "implemented-awaiting-product-owner-acceptance",
+        "userSees": "An attachment review manifest, exact content digest and extraction limitations, followed by recorded/reused Source counts after explicit recording.",
+        "userAction": "Choose File or Choose Folder during the valid Adopt/Intake route, review exact content with /adopt or /intake, then explicitly use /record or the reviewed Adopt binding action.",
+        "recordEffect": "A new non-authoritative Source revision-one record is created, or an exact existing content digest is reused; prior Source records remain preserved.",
+        "baselineReview": "Required before the added Source becomes a member of the bounded Initiative Source set.",
+        "provenanceReview": "Required for claims or records that rely on the added Source.",
+        "downstreamRevalidation": "Possible and expected wherever downstream evidence or decisions depend on the Source set.",
+        "safeWorkaround": "None required for the supported attachment path; keep missing evidence visible when a candidate cannot be read.",
+        "doesNotAuthorize": "Addition does not approve content, establish semantic authority, create a Baseline, or authorize downstream work."
+      },
+      {
+        "eventId": "source-changed",
+        "label": "Source content changed",
+        "runtimeClassification": "partial",
+        "userSees": "A changed attachment produces a different content digest and can be recorded as another candidate; the engine can preserve Source revisions and detect stale Baselines, but Chat does not expose a complete identity-preserving Source revision chooser.",
+        "userAction": "Reattach and review the changed bytes. Record them as a new candidate, keep the prior Source visible, and make the identity/revision relationship an explicit unresolved human decision.",
+        "recordEffect": "The current Chat path creates a distinct Source candidate when the content digest is new; it does not silently revise or replace the prior Source identity.",
+        "baselineReview": "Required after a human establishes the intended current Source identity/revision set; current Chat Baseline generation includes all current Initiative Sources.",
+        "provenanceReview": "Required where lineage, transformations, limitations, or relied-on content changed.",
+        "downstreamRevalidation": "Required for affected records; prior revisions remain evidence of what earlier decisions used.",
+        "safeWorkaround": "Retain both candidates, mark the relationship and downstream effect unresolved, and do not claim the new bytes supersede the old Source.",
+        "doesNotAuthorize": "A newer filename, date, digest, or document statement does not authorize replacement or supersession."
+      },
+      {
+        "eventId": "source-removed-excluded",
+        "label": "Source removed or intentionally excluded",
+        "runtimeClassification": "unsupported-unavailable",
+        "userSees": "No installed governed-Source removal/exclusion workflow. Removing a Useful Link affects candidate link metadata only and is not Source removal.",
+        "userAction": "Keep the governed Source and history intact, record the intended exclusion and reason as an unresolved scoped decision, and pause affected progression until an authorized workflow exists.",
+        "recordEffect": "No governed Source deletion or exclusion record is created by the installed Guide/Chat workflow; prior Source and Baseline revisions remain preserved.",
+        "baselineReview": "Required in the target model, but selective membership exclusion is not exposed by the current Chat Baseline workflow.",
+        "provenanceReview": "Required in the target model for affected claims; no automatic rewrite is performed.",
+        "downstreamRevalidation": "Potentially required for every dependent record and decision.",
+        "safeWorkaround": "Preserve history, keep the exclusion explicit and unresolved, and do not represent a stale Baseline as current.",
+        "doesNotAuthorize": "A file deletion, link removal, user omission, or inaccessible path does not erase governed evidence or authorize exclusion."
+      },
+      {
+        "eventId": "source-superseded",
+        "label": "Source superseded",
+        "runtimeClassification": "unsupported-unavailable",
+        "userSees": "No installed governed Source-supersession action or explicit Source supersedes relationship.",
+        "userAction": "Review and record the proposed replacement as a separate candidate, retain both Sources, and record supersession as an unresolved scoped human decision.",
+        "recordEffect": "The proposed replacement may be recorded as a separate Source candidate; the prior Source is preserved and no supersession fact is created.",
+        "baselineReview": "Required only after an explicit human supersession/membership decision is supported by a future authorized workflow.",
+        "provenanceReview": "Required for every affected derivation after that decision; prior provenance stays intact.",
+        "downstreamRevalidation": "Required for affected claims, decisions, architecture, design, backlog, and assurance evidence.",
+        "safeWorkaround": "Keep both Source candidates and the replacement intent visible; do not treat either as the current authoritative Source solely from document metadata.",
+        "doesNotAuthorize": "Supersession must never be inferred from filename, date, wording, location, newer content, or alleged replacement intent."
+      },
+      {
+        "eventId": "source-unavailable",
+        "label": "Source temporarily unavailable or inaccessible",
+        "runtimeClassification": "partial",
+        "userSees": "The Source contract and engine can represent availability and preserve revisions, while the installed Intake flow reports unreadable attachments; Chat does not expose a complete guided revision that marks an existing Source unavailable.",
+        "userAction": "Keep the last reviewed revision, record the access problem as an open question/limitation, identify an owner and retry trigger, and avoid claims about unread content.",
+        "recordEffect": "Unreadable candidate material is not recorded by Intake. Existing governed Source history remains unchanged unless a separately supported Source revision is committed.",
+        "baselineReview": "Review is required if the bounded work can no longer rely on the exact member; do not silently remove it.",
+        "provenanceReview": "Review limitations and availability wherever downstream claims depend on current access or freshness.",
+        "downstreamRevalidation": "Possible when access, freshness, or content integrity affects the decision basis.",
+        "safeWorkaround": "Use the preserved exact revision and limitations only for claims it already supports; leave current-content conclusions Unknown until reviewed content is available.",
+        "doesNotAuthorize": "Temporary inaccessibility does not prove deletion, invalidity, supersession, approval, or non-support."
+      }
+    ],
+    "supersessionRule": "Supersession is an explicit, scoped human decision. GAEP must never infer it from filename, date, document wording, locator, content similarity, or replacement intent."
+  },
   "statePolicy": {
     "displayPriority": ["unknown-not-assessed", "planned-deferred-coming-soon", "candidate-proposed", "partial", "implemented-awaiting-product-owner-acceptance", "implemented-and-automated-tested"],
     "labels": {

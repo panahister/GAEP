@@ -103,30 +103,49 @@ Open **GAEP: Open Guide** from the Command Palette at any time. In Chat, address
 <!-- BEGIN GENERATED:QUICK_START_FLOW -->
 <!-- GAEP-VISUAL:quick-start-flow -->
 
-**First-session path**
+**First-session source-first path**
 
 ```mermaid
-%% First-session path
+%% First-session source-first path
 flowchart TD
-  open["Open a trusted Product workspace"] --> status["@gaep /status"]
-  status --> adopt{"Existing Product?"}
-  adopt -- "Yes" --> existing["@gaep /adopt"]
-  adopt -- "No" --> initialize["@gaep /initialize"]
-  existing --> next["@gaep /continue"]
-  initialize --> next
-  next --> author["@gaep /author"] --> review["Inspect and challenge exact candidate"]
-  review --> accept["@gaep /accept"] --> commit["@gaep /commit CONFIRM"]
+  open["1 · Open a trusted Product workspace"] --> sources{"2 · Plan optional reference input"}
+  sources --> files["File · GAEP: Choose File<br/>select during Adopt or after Intake prerequisites"]
+  sources --> folder["Folder · GAEP: Choose Folder<br/>bounded recursive selection"]
+  sources --> link["Link · GAEP: Add Useful Link<br/>metadata only; never fetched"]
+  sources --> none["No sources · allowed for Initialize<br/>missing evidence stays visible"]
+  files --> route{"3 · Existing or new Product?"}
+  folder --> route
+  link --> route
+  none --> route
+  route -- "Existing · readable documents required" --> adopt["@gaep /adopt"]
+  route -- "New · sources optional" --> initialize["@gaep /initialize"]
+  adopt --> productReview["Inspect/challenge Product candidate<br/>@gaep /accept · @gaep /commit CONFIRM"]
+  initialize --> productReview
+  productReview --> status["4 · @gaep /status"] --> next["5 · @gaep /continue"]
+  next --> intake["When Source Intake is current:<br/>@gaep /intake · @gaep /record"]
+  intake --> author["6 · @gaep /author"] --> review["7 · @gaep /inspect<br/>challenge exact candidate"]
+  review --> accept["8 · @gaep /accept"] --> commit["9 · @gaep /commit CONFIRM"]
 ```
+
+#### What the four source paths actually do
+
+| Path | What it does | What it does not do |
+|---|---|---|
+| **File** · `GAEP: Choose File` | Stages one or more supported files for the active `/adopt` or `/intake` route; the route reads bounded content and reports extraction limits. | Selection alone does not reason over content, record a Source, approve truth, or create governed state. |
+| **Folder** · `GAEP: Choose Folder` | Discovers supported files recursively within runtime limits for the active route. | It does not make every file relevant, authoritative, readable, or approved. |
+| **Useful Link** · `GAEP: Add Useful Link` | Records a portable, non-governed HTTP(S) reference label, URL, note, and added-at metadata. | GAEP never fetches or reads it. Link-only input is not content evidence unless exact content is separately made available and reviewed. |
+| **No sources** | Lets a new Product proceed through `@gaep /initialize`; missing evidence remains explicit. | Current `@gaep /adopt` cannot fast-start an existing Product without readable documents, and `@gaep /intake` waits for Product, Initiative, and applicability prerequisites. |
+
+#### Do not conflate these boundaries
+
+1. **Select/attach** — chooses bytes or records link metadata; no reasoning or governance occurs.
+2. **Reason over exact attached content** — `@gaep /adopt` or, when prerequisites are current, `@gaep /intake`; this creates an advisory review, not a Source.
+3. **Record reviewed candidate Sources** — `@gaep /record`, or the explicit post-Adopt binding route after an Initiative exists; candidates remain non-authoritative.
+4. **Accept an exact proposal** — `@gaep /accept` records the human decision for the displayed candidate; it is not yet governed commit state.
+5. **Commit governed state** — `@gaep /commit CONFIRM` persists the exact accepted proposal. Approval, publication, rollout, release, production, security, and compliance authority remain separate.
 <!-- END GENERATED:QUICK_START_FLOW -->
 
-Practical first steps:
-
-1. Run `@gaep /status` to see governed state, current work, and the next valid action.
-2. For an existing Product, run `@gaep /adopt`; for a bounded attached document question, use `@gaep /intake`.
-3. Use `@gaep /continue` to enter the next valid workflow and `@gaep /author` when a Product Journey record is ready to propose.
-4. Inspect the candidate. Use `@gaep /accept` only after review, then `@gaep /commit CONFIRM` only when the exact candidate should become governed state.
-
-Adding a useful link records the link; it does not fetch, read, or approve the linked content. Attach or ingest exact material when its content must become evidence.
+AI-generated and document-derived candidates are not governed merely because they look complete. Review the exact displayed candidate and its limitations, challenge or revise it, accept it explicitly, and commit it explicitly. Missing evidence, blockers, and open questions remain visible.
 
 ### Previous, Current, and Next
 
@@ -540,19 +559,129 @@ Every current canonical capability maps to at least one target node. Proposed Pr
 ```mermaid
 %% Source Intake, Baseline, Provenance, and change review
 flowchart TD
-  material["Exact attached or ingested material"] --> source["Candidate Source record"]
-  source --> baseline["Explicit Baseline membership and revision"]
-  baseline --> provenance["Provenance, locator, limitations, and lineage"]
+  material["Selected bytes or link metadata<br/>not approved truth"] --> review["Review exact available content<br/>or preserve missing evidence"]
+  review --> source["Explicit candidate Source record"]
+  source --> baseline["Explicit Baseline membership<br/>exact identity and revision"]
+  baseline --> provenance["Provenance<br/>lineage, transformations, limitations"]
   provenance --> candidate["Bounded downstream candidate"]
-  candidate --> human["Human review and explicit decision"]
-  human --> governed["Governed record with trace back to exact evidence"]
-  unknown["Missing or unreviewed evidence"] -. stays visible as Unknown .-> candidate
+  candidate --> human["Human review · accept · explicit commit"]
+  human --> governed["Governed record<br/>authority still bounded"]
+  change["Added · Changed · Excluded · Superseded · Unavailable"] -. "review, revise, or remain unresolved" .-> source
 ```
+
+#### Three distinct records
+
+<details><summary><strong>Source Intake</strong></summary>
+
+- **What it means:** Reviews exact candidate material and records bounded Source metadata only when the human explicitly chooses to record it.
+- **Review boundary:** Attachment metadata identifies selected bytes and extraction limits; reviewed content is the material actually made available to the advisor and human. Neither is automatically approved truth.
+- **During Adopt:** Adopt reviews exact attachments to prepare a Product/Journey proposal. A committed Adopt plan preserves candidate metadata; Source records are created only after an Initiative exists and the human explicitly binds or records the candidates.
+- **When it changes:** New content must remain a distinct reviewed candidate until an explicit identity/revision decision is supported and committed.
+- **Does not authorize:** Selection, extraction, review, or Source recording does not establish correctness, ownership, rights, authority, Baseline membership, approval, or readiness.
+
+</details>
+
+<details><summary><strong>Source Baseline</strong></summary>
+
+- **What it means:** Freezes exact Source identities, revisions, record digests, and content digests for one bounded Initiative/context.
+- **Review boundary:** Membership says which exact revisions are in scope; it does not approve their content, establish precedence, or make the set complete.
+- **During Adopt:** Adopt evidence does not create a Baseline. The current Candidate Source set must first be recorded and then proposed through the Baseline workflow.
+- **When it changes:** Changed membership or a changed Source revision requires a reviewed revised Baseline before affected downstream work can rely on the new set.
+- **Does not authorize:** A Baseline does not designate semantic authority, supersede another Source, approve a claim, or authorize downstream action.
+
+</details>
+
+<details><summary><strong>Source Provenance</strong></summary>
+
+- **What it means:** Records exact lineage, locators, Source revisions, roles, transformations, derivations, omissions, uncertainty, and limitations for a bounded target.
+- **Review boundary:** Provenance explains where a claim or record came from; Baseline membership only says which Source revisions were in the bounded set.
+- **During Adopt:** Adopt evidence and Baseline membership do not create Provenance automatically.
+- **When it changes:** Revise Source provenance means prepare and review a new lineage proposal when Sources, transformations, target revisions, limitations, or uncertainty change; preserve prior records.
+- **Does not authorize:** Provenance does not establish correctness, authenticity, authority, approval, precedence, or transfer of rights.
+
+</details>
+
+#### Source-change matrix
+
+| Event | Current runtime classification | Required user action | Record/revision consequence |
+|---|---|---|---|
+| Source added | implemented-awaiting-product-owner-acceptance | Choose File or Choose Folder during the valid Adopt/Intake route, review exact content with /adopt or /intake, then explicitly use /record or the reviewed Adopt binding action. | A new non-authoritative Source revision-one record is created, or an exact existing content digest is reused; prior Source records remain preserved. |
+| Source content changed | partial | Reattach and review the changed bytes. Record them as a new candidate, keep the prior Source visible, and make the identity/revision relationship an explicit unresolved human decision. | The current Chat path creates a distinct Source candidate when the content digest is new; it does not silently revise or replace the prior Source identity. |
+| Source removed or intentionally excluded | unsupported-unavailable | Keep the governed Source and history intact, record the intended exclusion and reason as an unresolved scoped decision, and pause affected progression until an authorized workflow exists. | No governed Source deletion or exclusion record is created by the installed Guide/Chat workflow; prior Source and Baseline revisions remain preserved. |
+| Source superseded | unsupported-unavailable | Review and record the proposed replacement as a separate candidate, retain both Sources, and record supersession as an unresolved scoped human decision. | The proposed replacement may be recorded as a separate Source candidate; the prior Source is preserved and no supersession fact is created. |
+| Source temporarily unavailable or inaccessible | partial | Keep the last reviewed revision, record the access problem as an open question/limitation, identify an owner and retry trigger, and avoid claims about unread content. | Unreadable candidate material is not recorded by Intake. Existing governed Source history remains unchanged unless a separately supported Source revision is committed. |
+
+<details><summary><strong>Source added</strong> · implemented-awaiting-product-owner-acceptance</summary>
+
+- **What you see:** An attachment review manifest, exact content digest and extraction limitations, followed by recorded/reused Source counts after explicit recording.
+- **What GAEP needs from you:** Choose File or Choose Folder during the valid Adopt/Intake route, review exact content with /adopt or /intake, then explicitly use /record or the reviewed Adopt binding action.
+- **Record/revision effect:** A new non-authoritative Source revision-one record is created, or an exact existing content digest is reused; prior Source records remain preserved.
+- **Baseline review:** Required before the added Source becomes a member of the bounded Initiative Source set.
+- **Provenance review:** Required for claims or records that rely on the added Source.
+- **Possible downstream revalidation:** Possible and expected wherever downstream evidence or decisions depend on the Source set.
+- **Safe current workaround:** None required for the supported attachment path; keep missing evidence visible when a candidate cannot be read.
+- **Not authorized:** Addition does not approve content, establish semantic authority, create a Baseline, or authorize downstream work.
+
+</details>
+
+<details><summary><strong>Source content changed</strong> · partial</summary>
+
+- **What you see:** A changed attachment produces a different content digest and can be recorded as another candidate; the engine can preserve Source revisions and detect stale Baselines, but Chat does not expose a complete identity-preserving Source revision chooser.
+- **What GAEP needs from you:** Reattach and review the changed bytes. Record them as a new candidate, keep the prior Source visible, and make the identity/revision relationship an explicit unresolved human decision.
+- **Record/revision effect:** The current Chat path creates a distinct Source candidate when the content digest is new; it does not silently revise or replace the prior Source identity.
+- **Baseline review:** Required after a human establishes the intended current Source identity/revision set; current Chat Baseline generation includes all current Initiative Sources.
+- **Provenance review:** Required where lineage, transformations, limitations, or relied-on content changed.
+- **Possible downstream revalidation:** Required for affected records; prior revisions remain evidence of what earlier decisions used.
+- **Safe current workaround:** Retain both candidates, mark the relationship and downstream effect unresolved, and do not claim the new bytes supersede the old Source.
+- **Not authorized:** A newer filename, date, digest, or document statement does not authorize replacement or supersession.
+
+</details>
+
+<details><summary><strong>Source removed or intentionally excluded</strong> · unsupported-unavailable</summary>
+
+- **What you see:** No installed governed-Source removal/exclusion workflow. Removing a Useful Link affects candidate link metadata only and is not Source removal.
+- **What GAEP needs from you:** Keep the governed Source and history intact, record the intended exclusion and reason as an unresolved scoped decision, and pause affected progression until an authorized workflow exists.
+- **Record/revision effect:** No governed Source deletion or exclusion record is created by the installed Guide/Chat workflow; prior Source and Baseline revisions remain preserved.
+- **Baseline review:** Required in the target model, but selective membership exclusion is not exposed by the current Chat Baseline workflow.
+- **Provenance review:** Required in the target model for affected claims; no automatic rewrite is performed.
+- **Possible downstream revalidation:** Potentially required for every dependent record and decision.
+- **Safe current workaround:** Preserve history, keep the exclusion explicit and unresolved, and do not represent a stale Baseline as current.
+- **Not authorized:** A file deletion, link removal, user omission, or inaccessible path does not erase governed evidence or authorize exclusion.
+
+</details>
+
+<details><summary><strong>Source superseded</strong> · unsupported-unavailable</summary>
+
+- **What you see:** No installed governed Source-supersession action or explicit Source supersedes relationship.
+- **What GAEP needs from you:** Review and record the proposed replacement as a separate candidate, retain both Sources, and record supersession as an unresolved scoped human decision.
+- **Record/revision effect:** The proposed replacement may be recorded as a separate Source candidate; the prior Source is preserved and no supersession fact is created.
+- **Baseline review:** Required only after an explicit human supersession/membership decision is supported by a future authorized workflow.
+- **Provenance review:** Required for every affected derivation after that decision; prior provenance stays intact.
+- **Possible downstream revalidation:** Required for affected claims, decisions, architecture, design, backlog, and assurance evidence.
+- **Safe current workaround:** Keep both Source candidates and the replacement intent visible; do not treat either as the current authoritative Source solely from document metadata.
+- **Not authorized:** Supersession must never be inferred from filename, date, wording, location, newer content, or alleged replacement intent.
+
+</details>
+
+<details><summary><strong>Source temporarily unavailable or inaccessible</strong> · partial</summary>
+
+- **What you see:** The Source contract and engine can represent availability and preserve revisions, while the installed Intake flow reports unreadable attachments; Chat does not expose a complete guided revision that marks an existing Source unavailable.
+- **What GAEP needs from you:** Keep the last reviewed revision, record the access problem as an open question/limitation, identify an owner and retry trigger, and avoid claims about unread content.
+- **Record/revision effect:** Unreadable candidate material is not recorded by Intake. Existing governed Source history remains unchanged unless a separately supported Source revision is committed.
+- **Baseline review:** Review is required if the bounded work can no longer rely on the exact member; do not silently remove it.
+- **Provenance review:** Review limitations and availability wherever downstream claims depend on current access or freshness.
+- **Possible downstream revalidation:** Possible when access, freshness, or content integrity affects the decision basis.
+- **Safe current workaround:** Use the preserved exact revision and limitations only for claims it already supports; leave current-content conclusions Unknown until reviewed content is available.
+- **Not authorized:** Temporary inaccessibility does not prove deletion, invalidity, supersession, approval, or non-support.
+
+</details>
+
+> **Supersession rule:** Supersession is an explicit, scoped human decision. GAEP must never infer it from filename, date, document wording, locator, content similarity, or replacement intent.
 <!-- END GENERATED:SOURCE_LINEAGE -->
 
-A Source is a governed reference candidate, not automatic truth. A Baseline fixes exact membership and revisions for a bounded context. Provenance records lineage and limitations. A downstream record should point to the exact evidence that informed it and preserve uncertainty that was not resolved.
+A Source is a reviewed reference candidate, not automatic truth. A Baseline fixes exact membership and revisions for a bounded context. Provenance records lineage and limitations. A downstream record should point to the exact evidence that informed it and preserve uncertainty that was not resolved.
 
-For source-sensitive work, use `@gaep /intake` to reason over explicitly attached content, `@gaep /record` to preserve reviewed files as candidate Sources, `@gaep /baseline` to propose exact membership, and `@gaep /provenance` to propose conservative lineage. Each proposal still requires review and explicit commit.
+For source-sensitive work, use `@gaep /intake` to reason over explicitly attached content after its runtime prerequisites are current, `@gaep /record` to preserve reviewed files as candidate Sources, `@gaep /baseline` to propose exact membership, and `@gaep /provenance` to propose conservative lineage. Each proposal still requires review, acceptance, and explicit commit.
 
 ### Market and capability decision support
 
@@ -680,7 +809,9 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 
 > Catalog presence records evidence and candidate mappings only. It does not establish GAEP or external-reference conformance, certification, endorsement, equivalence, safety, security, readiness, approval, or authorization.
 
-#### GAEP-XREF-001 · [Artificial Intelligence Risk Management Framework (AI RMF 1.0)](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10)
+<details><summary><strong>GAEP-XREF-001 · Artificial Intelligence Risk Management Framework (AI RMF 1.0)</strong></summary>
+
+Official source: [https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10)
 
 - **Type / authority:** framework · National Institute of Standards and Technology
 - **Exact version:** NIST AI 100-1, Version 1.0 · evidence version-pending · reviewed 2026-08-07
@@ -689,7 +820,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** NIST states that AI RMF 1.0 is being revised; exact successor impact is unknown. The official publication page and abstract were reviewed, not a complete function/category mapping.
 - **Review trigger:** NIST publishes a revised AI RMF, changes the revision status, or GAEP proposes a function-level mapping.
 
-#### GAEP-XREF-002 · [Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
+</details>
+
+<details><summary><strong>GAEP-XREF-002 · Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile</strong></summary>
+
+Official source: [https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
 
 - **Type / authority:** framework · National Institute of Standards and Technology
 - **Exact version:** NIST AI 600-1 · evidence primary-source-verified · reviewed 2026-08-07
@@ -698,7 +833,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** The official publication page and abstract were reviewed, not a complete action-level mapping. The profile depends on AI RMF 1.0, which is under revision.
 - **Review trigger:** NIST revises AI RMF 1.0, publishes a successor profile, or GAEP proposes an action-level mapping.
 
-#### GAEP-XREF-004 · [NIST SP 800-218 — Secure Software Development Framework (SSDF) Version 1.1: Recommendations for Mitigating the Risk of Software Vulnerabilities](https://csrc.nist.gov/pubs/sp/800/218/final)
+</details>
+
+<details><summary><strong>GAEP-XREF-004 · NIST SP 800-218 — Secure Software Development Framework (SSDF) Version 1.1: Recommendations for Mitigating the Risk of Software Vulnerabilities</strong></summary>
+
+Official source: [https://csrc.nist.gov/pubs/sp/800/218/final](https://csrc.nist.gov/pubs/sp/800/218/final)
 
 - **Type / authority:** framework · National Institute of Standards and Technology
 - **Exact version:** SP 800-218, SSDF Version 1.1 · evidence primary-source-verified · reviewed 2026-08-07
@@ -707,7 +846,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** The official publication page and abstract were reviewed, not a complete requirement-by-requirement assessment. Use of SSDF practices does not prove that GAEP or a governed product is secure.
 - **Review trigger:** NIST publishes a successor, material update, or GAEP proposes a practice-level mapping.
 
-#### GAEP-XREF-005 · [ISO/IEC 25010:2023 — Systems and software engineering — Systems and software Quality Requirements and Evaluation (SQuaRE) — Product quality model](https://www.iso.org/standard/78176.html)
+</details>
+
+<details><summary><strong>GAEP-XREF-005 · ISO/IEC 25010:2023 — Systems and software engineering — Systems and software Quality Requirements and Evaluation (SQuaRE) — Product quality model</strong></summary>
+
+Official source: [https://www.iso.org/standard/78176.html](https://www.iso.org/standard/78176.html)
 
 - **Type / authority:** standard · ISO and IEC
 - **Exact version:** 2023, Edition 2 · evidence partially-verified · reviewed 2026-08-07
@@ -716,7 +859,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** Only the official ISO page and abstract were reviewed; the paid full standard was not reviewed. Specific characteristics, measures and acceptance mappings require licensed full-text review.
 - **Review trigger:** ISO lifecycle status or edition changes; or GAEP selects characteristics for normative reliance.
 
-#### GAEP-XREF-011 · [ISO/IEC/IEEE 42010:2022 — Software, systems and enterprise — Architecture description](https://www.iso.org/standard/74393.html)
+</details>
+
+<details><summary><strong>GAEP-XREF-011 · ISO/IEC/IEEE 42010:2022 — Software, systems and enterprise — Architecture description</strong></summary>
+
+Official source: [https://www.iso.org/standard/74393.html](https://www.iso.org/standard/74393.html)
 
 - **Type / authority:** standard · ISO, IEC and IEEE
 - **Exact version:** 2022, Edition 2 · evidence partially-verified · reviewed 2026-08-07
@@ -725,7 +872,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** Only the official ISO page and abstract were reviewed; the paid full standard was not reviewed. The official abstract explicitly excludes architecting processes, methods, notations, techniques and tools.
 - **Review trigger:** ISO lifecycle status or edition changes; or GAEP proposes a detailed conformance mapping.
 
-#### GAEP-XREF-012 · [ISO/IEC/IEEE 29148:2018 — Systems and software engineering — Life cycle processes — Requirements engineering](https://www.iso.org/standard/72089.html)
+</details>
+
+<details><summary><strong>GAEP-XREF-012 · ISO/IEC/IEEE 29148:2018 — Systems and software engineering — Life cycle processes — Requirements engineering</strong></summary>
+
+Official source: [https://www.iso.org/standard/72089.html](https://www.iso.org/standard/72089.html)
 
 - **Type / authority:** standard · ISO, IEC and IEEE
 - **Exact version:** 2018, Edition 2 · evidence version-pending · reviewed 2026-08-07
@@ -734,7 +885,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** ISO marks the current edition as confirmed in 2024 but to be revised as of 2026-02-16. Only the official ISO page and abstract were reviewed; the paid full standard was not reviewed.
 - **Review trigger:** Publication or cancellation of the successor revision; any GAEP normative requirements mapping.
 
-#### GAEP-XREF-013 · [ISO/IEC/IEEE 12207:2026 — Systems and software engineering — Software life cycle processes](https://www.iso.org/standard/90219.html)
+</details>
+
+<details><summary><strong>GAEP-XREF-013 · ISO/IEC/IEEE 12207:2026 — Systems and software engineering — Software life cycle processes</strong></summary>
+
+Official source: [https://www.iso.org/standard/90219.html](https://www.iso.org/standard/90219.html)
 
 - **Type / authority:** standard · ISO, IEC and IEEE
 - **Exact version:** 2026, Edition 2 · evidence partially-verified · reviewed 2026-08-07
@@ -743,7 +898,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** Only the official ISO page and abstract were reviewed; the paid full standard was not reviewed. This 2026 edition replaced the previously catalogued 2017 edition after the old registry was written.
 - **Review trigger:** ISO lifecycle status, edition, or official abstract changes; or GAEP proposes normative reliance.
 
-#### GAEP-XREF-015 · [Web Content Accessibility Guidelines (WCAG) 2.2](https://www.w3.org/TR/WCAG22/)
+</details>
+
+<details><summary><strong>GAEP-XREF-015 · Web Content Accessibility Guidelines (WCAG) 2.2</strong></summary>
+
+Official source: [https://www.w3.org/TR/WCAG22/](https://www.w3.org/TR/WCAG22/)
 
 - **Type / authority:** standard · World Wide Web Consortium
 - **Exact version:** W3C Recommendation, 2024-12-12 · evidence primary-source-verified · reviewed 2026-08-07
@@ -752,7 +911,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** The current official Recommendation and conformance sections were reviewed, not a criterion-by-criterion GAEP mapping. W3C says WCAG 2.2 does not supersede 2.0 or 2.1, though it advises use of 2.2 for future applicability.
 - **Review trigger:** W3C issues a new Recommendation, substantive errata, or GAEP proposes a WCAG conformance claim.
 
-#### GAEP-XREF-020 · [ISO/IEC/IEEE 15288:2023 — Systems and software engineering — System life cycle processes](https://www.iso.org/standard/81702.html)
+</details>
+
+<details><summary><strong>GAEP-XREF-020 · ISO/IEC/IEEE 15288:2023 — Systems and software engineering — System life cycle processes</strong></summary>
+
+Official source: [https://www.iso.org/standard/81702.html](https://www.iso.org/standard/81702.html)
 
 - **Type / authority:** standard · ISO, IEC and IEEE
 - **Exact version:** 2023, Edition 2 · evidence partially-verified · reviewed 2026-08-07
@@ -761,7 +924,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** Detailed normative mappings are prohibited without licensed full-text review and an approved mapping case. Only the official ISO page and abstract were reviewed; the paid full standard was not reviewed.
 - **Review trigger:** ISO lifecycle status, edition, or official abstract changes; or GAEP proposes normative reliance.
 
-#### GAEP-XREF-021 · [The TOGAF Standard, 10th Edition](https://publications.opengroup.org/standards/togaf)
+</details>
+
+<details><summary><strong>GAEP-XREF-021 · The TOGAF Standard, 10th Edition</strong></summary>
+
+Official source: [https://publications.opengroup.org/standards/togaf](https://publications.opengroup.org/standards/togaf)
 
 - **Type / authority:** framework · The Open Group Architecture Forum
 - **Exact version:** 10th Edition; Technical Corrigendum 1 listed separately · evidence partially-verified · reviewed 2026-08-07
@@ -770,7 +937,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** Only current official catalog, overview and licensing pages were reviewed; the licensed full standard was not reviewed. The modular Series Guides and Technical Corrigendum require exact item-level selection before material reliance.
 - **Review trigger:** A new edition, corrigendum, selected Series Guide, or proposed material TOGAF reliance.
 
-#### GAEP-XREF-022 · [The C4 model for visualising software architecture](https://c4model.com/)
+</details>
+
+<details><summary><strong>GAEP-XREF-022 · The C4 model for visualising software architecture</strong></summary>
+
+Official source: [https://c4model.com/](https://c4model.com/)
 
 - **Type / authority:** visualization-model · Simon Brown
 - **Exact version:** living official website; no numbered edition · evidence primary-source-verified · reviewed 2026-08-07
@@ -779,7 +950,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** C4 focuses primarily on software-system static structure and supporting views, not the full business, domain, data, workflow or governance model. The source is living and has no immutable numbered edition.
 - **Review trigger:** Material change to official abstractions, diagram guidance, license, or GAEP representation mapping.
 
-#### GAEP-XREF-023 · [Manifesto for Agile Software Development and Principles behind the Agile Manifesto](https://agilemanifesto.org/)
+</details>
+
+<details><summary><strong>GAEP-XREF-023 · Manifesto for Agile Software Development and Principles behind the Agile Manifesto</strong></summary>
+
+Official source: [https://agilemanifesto.org/](https://agilemanifesto.org/)
 
 - **Type / authority:** principle-set · The seventeen Manifesto authors
 - **Exact version:** original 2001 publication · evidence primary-source-verified · reviewed 2026-08-07
@@ -788,7 +963,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** GAEP adapts the feedback orientation while retaining repository-visible trace and authority. Values and principles do not define GAEP governance, approval, evidence or authorization semantics.
 - **Review trigger:** Official source or copyright notice changes; or a public Agile-alignment claim is proposed.
 
-#### GAEP-XREF-024 · [DORA's software delivery performance metrics](https://dora.dev/guides/dora-metrics/)
+</details>
+
+<details><summary><strong>GAEP-XREF-024 · DORA's software delivery performance metrics</strong></summary>
+
+Official source: [https://dora.dev/guides/dora-metrics/](https://dora.dev/guides/dora-metrics/)
 
 - **Type / authority:** metric-framework · DORA
 - **Exact version:** living guidance; last updated 2026-01-05 · evidence primary-source-verified · reviewed 2026-08-07
@@ -797,7 +976,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** GAEP has not measured or demonstrated DORA outcomes. The official guidance is a living source and now uses a five-metric model rather than the historic four-key presentation.
 - **Review trigger:** DORA changes the metric model, guidance date, research basis, or GAEP proposes a delivery-performance claim.
 
-#### GAEP-XREF-025 · [Team Topologies: Organizing Business and Technology Teams for Fast Flow](https://teamtopologies.com/book)
+</details>
+
+<details><summary><strong>GAEP-XREF-025 · Team Topologies: Organizing Business and Technology Teams for Fast Flow</strong></summary>
+
+Official source: [https://teamtopologies.com/book](https://teamtopologies.com/book)
 
 - **Type / authority:** model · Matthew Skelton and Manuel Pais
 - **Exact version:** Second Edition · evidence partially-verified · reviewed 2026-08-07
@@ -806,7 +989,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** Only official Second Edition summary and key-concept pages were reviewed; the full book was not reviewed. Organizational patterns require contextual evidence and accountable organizational authority.
 - **Review trigger:** A new edition, official concept change, or GAEP organization-design claim.
 
-#### GAEP-XREF-026 · [Domain-Driven Design Reference: Definitions and Pattern Summaries](https://www.domainlanguage.com/ddd/reference/)
+</details>
+
+<details><summary><strong>GAEP-XREF-026 · Domain-Driven Design Reference: Definitions and Pattern Summaries</strong></summary>
+
+Official source: [https://www.domainlanguage.com/ddd/reference/](https://www.domainlanguage.com/ddd/reference/)
 
 - **Type / authority:** methodology · Eric Evans / Domain Language, Inc.
 - **Exact version:** 2015-03 reference edition · evidence primary-source-verified · reviewed 2026-08-07
@@ -815,7 +1002,11 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Limitations:** GAEP's default applies only after Initiative applicability selects the relevant enterprise software-intensive profile. The reference is a summary complement, not a complete teaching or implementation guide.
 - **Review trigger:** Official reference or license changes; or GAEP changes DDD applicability/default language.
 
-#### GAEP-XREF-027 · [Introducing EventStorming](https://www.eventstorming.com/book/)
+</details>
+
+<details><summary><strong>GAEP-XREF-027 · Introducing EventStorming</strong></summary>
+
+Official source: [https://www.eventstorming.com/book/](https://www.eventstorming.com/book/)
 
 - **Type / authority:** method · Alberto Brandolini
 - **Exact version:** living Leanpub book; incomplete · evidence partially-verified · reviewed 2026-08-07
@@ -823,6 +1014,8 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 - **Use boundary:** EventStorming is a preferred collaborative behavioral-discovery option when applicable; it is not a universal GAEP ceremony or approval source.
 - **Limitations:** GAEP adoption is limited to an optional preferred collaborative-discovery method when applicability and facilitation conditions fit. The official source says the book remains incomplete and under active writing.
 - **Review trigger:** Book completion state, official source, or GAEP applicability language changes.
+
+</details>
 
 #### Deferred—not materially relied on
 
@@ -842,6 +1035,9 @@ Bound to **GAEP-REG-011 v0.4.0**, checked **2026-08-07**. It contains 25 GAEP co
 These sources calibrate exact GAEP concerns. Catalog presence does not mean wholesale adoption, conformance, certification, endorsement, equivalence, safety, security, readiness, approval, or authorization. Figma is a Product and optional design adapter in the market registry; it is not the canonical lifecycle name and is not a methodology.
 
 ### Claim-control ledger
+
+<details>
+<summary><strong>Show claim-control records</strong></summary>
 
 <!-- BEGIN GENERATED:CLAIM_LEDGER -->
 #### GAEP-CLM-001 · substantiated-bounded-fact
@@ -927,7 +1123,12 @@ These sources calibrate exact GAEP concerns. Catalog presence does not mean whol
 
 The ledger is not marketing copy. It retains dispositions, qualifiers, limitations, and authority states so internal fact use cannot silently become an approved or public claim.
 
+</details>
+
 ### Maintainer and projection details
+
+<details>
+<summary><strong>Show generation commands, canonical paths, full digests, drift maintenance, and projection ownership</strong></summary>
 
 <!-- BEGIN GENERATED:MAINTENANCE_CONTRACT -->
 **Projection contract:** GAEP-REG-014 v0.3.0 · schema 1.1.0 · not-approved · not-published.
@@ -960,5 +1161,7 @@ The ledger is not marketing copy. It retains dispositions, qualifiers, limitatio
 To change generated facts, update their owning canonical source first. To change explanation or reading flow, edit this narrative template. To change projection structure, lifecycle mappings, required visuals, or bindings, update `GAEP-REG-014`. Then run `npm run render:guideline` and `npm run test:guideline`.
 
 Do not edit the generated Guide directly. CI validates the strict manifest, exact source identities/versions/digests, runtime checkpoint and command projections, all required audience layers and visuals, semantic authority boundaries, and byte-for-byte output freshness.
+
+</details>
 
 <!-- END HAND-AUTHORED NARRATIVE -->

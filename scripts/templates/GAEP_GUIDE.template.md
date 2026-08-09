@@ -55,14 +55,7 @@ Open **GAEP: Open Guide** from the Command Palette at any time. In Chat, address
 
 {{QUICK_START_FLOW}}
 
-Practical first steps:
-
-1. Run `@gaep /status` to see governed state, current work, and the next valid action.
-2. For an existing Product, run `@gaep /adopt`; for a bounded attached document question, use `@gaep /intake`.
-3. Use `@gaep /continue` to enter the next valid workflow and `@gaep /author` when a Product Journey record is ready to propose.
-4. Inspect the candidate. Use `@gaep /accept` only after review, then `@gaep /commit CONFIRM` only when the exact candidate should become governed state.
-
-Adding a useful link records the link; it does not fetch, read, or approve the linked content. Attach or ingest exact material when its content must become evidence.
+AI-generated and document-derived candidates are not governed merely because they look complete. Review the exact displayed candidate and its limitations, challenge or revise it, accept it explicitly, and commit it explicitly. Missing evidence, blockers, and open questions remain visible.
 
 ### Previous, Current, and Next
 
@@ -106,9 +99,9 @@ The roadmap is not implementation evidence. “Planned” means later authorized
 
 {{SOURCE_LINEAGE}}
 
-A Source is a governed reference candidate, not automatic truth. A Baseline fixes exact membership and revisions for a bounded context. Provenance records lineage and limitations. A downstream record should point to the exact evidence that informed it and preserve uncertainty that was not resolved.
+A Source is a reviewed reference candidate, not automatic truth. A Baseline fixes exact membership and revisions for a bounded context. Provenance records lineage and limitations. A downstream record should point to the exact evidence that informed it and preserve uncertainty that was not resolved.
 
-For source-sensitive work, use `@gaep /intake` to reason over explicitly attached content, `@gaep /record` to preserve reviewed files as candidate Sources, `@gaep /baseline` to propose exact membership, and `@gaep /provenance` to propose conservative lineage. Each proposal still requires review and explicit commit.
+For source-sensitive work, use `@gaep /intake` to reason over explicitly attached content after its runtime prerequisites are current, `@gaep /record` to preserve reviewed files as candidate Sources, `@gaep /baseline` to propose exact membership, and `@gaep /provenance` to propose conservative lineage. Each proposal still requires review, acceptance, and explicit commit.
 
 ### Market and capability decision support
 
@@ -134,16 +127,26 @@ These sources calibrate exact GAEP concerns. Catalog presence does not mean whol
 
 ### Claim-control ledger
 
+<details>
+<summary><strong>Show claim-control records</strong></summary>
+
 {{CLAIM_LEDGER}}
 
 The ledger is not marketing copy. It retains dispositions, qualifiers, limitations, and authority states so internal fact use cannot silently become an approved or public claim.
 
+</details>
+
 ### Maintainer and projection details
+
+<details>
+<summary><strong>Show generation commands, canonical paths, full digests, drift maintenance, and projection ownership</strong></summary>
 
 {{MAINTENANCE_CONTRACT}}
 
 To change generated facts, update their owning canonical source first. To change explanation or reading flow, edit this narrative template. To change projection structure, lifecycle mappings, required visuals, or bindings, update `GAEP-REG-014`. Then run `npm run render:guideline` and `npm run test:guideline`.
 
 Do not edit the generated Guide directly. CI validates the strict manifest, exact source identities/versions/digests, runtime checkpoint and command projections, all required audience layers and visuals, semantic authority boundaries, and byte-for-byte output freshness.
+
+</details>
 
 <!-- END HAND-AUTHORED NARRATIVE -->
