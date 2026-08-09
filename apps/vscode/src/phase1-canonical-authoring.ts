@@ -26,6 +26,10 @@ import {
 import { canonicalDigest } from "@gaep/agent-sdk"
 import type { GaepEngine } from "@gaep/engine"
 import { toJSONSchema, type ZodType } from "zod"
+import {
+  currentProductJourneyRecordGroupByCheckpoint,
+  type ProductJourneyCheckpointId,
+} from "./product-journey-presentation.js"
 
 export const phase1CanonicalRecordKinds = [
   "business-understanding",
@@ -95,15 +99,12 @@ export const phase1CanonicalRecordCatalog = definitions.map(({ kind, label, grou
   group,
 }))
 
-export const phase1CanonicalGroupByCheckpoint = {
-  "product-discovery": "Product discovery",
-  "business-architecture": "Business architecture",
-  "solution-security-architecture": "Solution and security architecture",
-  "detailed-design-assurance": "Detailed design and assurance",
-  "p0-p4-readiness": "P0–P4 readiness and handoff",
-} as const
+export const phase1CanonicalGroupByCheckpoint = Object.fromEntries(
+  Object.entries(currentProductJourneyRecordGroupByCheckpoint)
+    .filter((entry): entry is [ProductJourneyCheckpointId, string] => typeof entry[1] === "string"),
+) as Readonly<Partial<Record<ProductJourneyCheckpointId, string>>>
 
-export type Phase1CanonicalGroupCheckpointId = keyof typeof phase1CanonicalGroupByCheckpoint
+export type Phase1CanonicalGroupCheckpointId = ProductJourneyCheckpointId
 
 export function phase1CanonicalInputJsonSchema(kind: Phase1CanonicalRecordKind): object {
   return toJSONSchema(definition(kind).schema, {

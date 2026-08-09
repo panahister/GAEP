@@ -17,7 +17,11 @@ import {
 } from "@gaep/contracts"
 
 import { canonicalStudioDigest } from "./studio-digest.js"
-import type { ProductJourneyCheckpointId, ProductJourneyRuntimeState } from "./product-journey-presentation.js"
+import {
+  currentProductJourneyCheckpointIds,
+  type ProductJourneyCheckpointId,
+  type ProductJourneyRuntimeState,
+} from "./product-journey-presentation.js"
 
 export const studioProtocolVersion = 1 as const
 
@@ -183,7 +187,7 @@ export type ProductJourneyCheckpointState = ProductJourneyRuntimeState
 export type { ProductJourneyCheckpointId } from "./product-journey-presentation.js"
 
 /**
- * The twelve Product Journey checkpoints group into a small number of ordered
+ * The canonical Product Journey checkpoints group into ordered
  * phases. Hosts use this to render a hierarchical phase → checkpoint → record
  * view instead of a flat list. It is presentation grouping only and grants no
  * approval, readiness or action authority.
@@ -667,11 +671,7 @@ const domainWorkflowSet = new Set<string>(studioDomainWorkflows)
 const domainPageKindSet = new Set<string>(studioDomainPageKinds)
 const completionStateSet = new Set<string>(["not-started", "in-progress", "complete", "blocked", "invalid"])
 const surfaceKindSet = new Set<string>(studioSurfaceKinds)
-const productJourneyCheckpointIdSet = new Set<string>([
-  "product-definition", "initiative-definition", "initiative-classification", "initiative-applicability",
-  "source-intake", "source-baseline", "source-provenance", "product-discovery",
-  "business-architecture", "solution-security-architecture", "detailed-design-assurance", "p0-p4-readiness",
-])
+const productJourneyCheckpointIdSet = new Set<string>(currentProductJourneyCheckpointIds)
 const draftStateSet = new Set<string>(studioDraftStates)
 const phaseDashboardCatalog = {
   "phase-0-1a-foundation": ["Phase 0 / 1A — Four-IDE Platform Foundation", "foundation-summary"],

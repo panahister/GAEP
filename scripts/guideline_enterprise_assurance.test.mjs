@@ -83,7 +83,9 @@ test("phase, checkpoint, target, substep, and role-participation RACI views are 
 
 test("a nonexistent current command cannot appear in a current sequence", () => {
   const runtimePresentation = clone(base.runtimePresentation);
-  runtimePresentation.checkpoints[0].executionSubsteps[1].currentAction.value = "@gaep /teleport";
+  const actionable = runtimePresentation.checkpoints[0].executionSubsteps.find(step => step.currentAction);
+  assert.ok(actionable);
+  actionable.currentAction.value = "@gaep /teleport";
   assert.ok(errors({ runtimePresentation, runtimeCheckpoints: runtimePresentation.checkpoints }).some(error => error.includes("does not resolve to a contributed command")));
 });
 

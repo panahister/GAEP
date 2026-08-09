@@ -57,7 +57,11 @@ import {
   type ExistingProductJourneyCheckpointId,
 } from "./existing-product-journey-coverage.js"
 import { productJourneyRoadmapDiagram } from "./product-journey-roadmap.js"
-import { currentProductJourneyCheckpointPresentation } from "./product-journey-presentation.js"
+import {
+  currentProductJourneyCheckpointForRecordGroup,
+  currentProductJourneyCheckpointPresentation,
+  currentProductJourneyCompatibilityCheckpointId,
+} from "./product-journey-presentation.js"
 import {
   existingProductAdoptionCheckpointMarkdown,
   existingProductAdoptionCheckpointSelectionMarkdown,
@@ -1867,12 +1871,10 @@ export function registerGaepProductChat(
       target: T,
     ): T => {
       const batch = sourceAlignmentState?.cacheKey ? sourceReviewCache.get(sourceAlignmentState.cacheKey) : undefined
-      const checkpoint = target.group === "Product discovery" ? "product-discovery"
-        : target.group === "Business architecture" ? "business-architecture"
-          : target.group === "Solution and security architecture" ? "solution-security-architecture"
-            : target.group === "Detailed design and assurance" ? "detailed-design-assurance"
-              : target.group === "P0–P4 readiness and handoff" ? "design-implementation-handoff"
-                : undefined
+      const recordGroupCheckpoint = currentProductJourneyCheckpointForRecordGroup(target.group)
+      const checkpoint = recordGroupCheckpoint
+        ? currentProductJourneyCompatibilityCheckpointId(recordGroupCheckpoint.checkpointId as Parameters<typeof currentProductJourneyCompatibilityCheckpointId>[0])
+        : undefined
       const adoptionCandidate = checkpoint
         ? persistedAdoption?.checkpoints.find((row) => row.checkpoint === checkpoint)
         : undefined
@@ -2167,6 +2169,7 @@ export function registerGaepProductChat(
         : undefined
       if (groupId) {
         const groupLabel = phase1CanonicalGroupByCheckpoint[groupId]
+        if (!groupLabel) throw new Error(`Checkpoint ${groupId} has no canonical authoring record group`)
         const groupCatalog = phase1CanonicalRecordCatalog.filter((entry) => entry.group === groupLabel)
         const targets = (await Promise.all(groupCatalog.map((entry) =>
           options.nextPhase1AuthoringTarget(current.id, entry.kind))))
@@ -2768,6 +2771,7 @@ export function registerGaepProductChat(
             ? "p0-p4-readiness"
             : canonicalCheckpoint
           const groupLabel = phase1CanonicalGroupByCheckpoint[groupId]
+          if (!groupLabel) throw new Error(`Checkpoint ${groupId} has no canonical authoring record group`)
           const groupCatalog = phase1CanonicalRecordCatalog.filter((entry) => entry.group === groupLabel)
           const targets = (await Promise.all(groupCatalog.map((entry) =>
             options.nextPhase1AuthoringTarget(current.id, entry.kind))))

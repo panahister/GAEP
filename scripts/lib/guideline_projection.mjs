@@ -74,7 +74,7 @@ function generatedBlock(id, content) {
 }
 
 function visual(id, title, direction, body) {
-  return `<!-- GAEP-VISUAL:${id} -->\n\n**${title}**\n\n\`\`\`mermaid\n%% ${title}\nflowchart ${direction}\n${body}\n\`\`\``;
+  return `<!-- GAEP-VISUAL:${id} -->\n\n**${title}**\n\n\`\`\`mermaid\n%% ${title}\nflowchart ${direction}\n${body}\n\`\`\`\n\n<details><summary>Text alternative for ${title}</summary>\n\n\`\`\`text\n${body}\n\`\`\`\n\n</details>`;
 }
 
 function parseFrontmatterIdentity(rawText) {
@@ -295,11 +295,23 @@ function enterpriseContractErrors(runtimePresentation, responsibility, assurance
         if (displayed.length === 0 || displayed.some(command => !chatCommands.has(command))) errors.push(`${step.stepId}: current sequence action does not resolve to a contributed command`);
       }
       if (step.maturity === "target-only" && step.currentAction) errors.push(`${step.stepId}: target-only action cannot be executable`);
+      if (step.responsibilityEnforcement !== "policy-only-not-runtime-authenticated") errors.push(`${step.stepId}: current runtime must not claim authenticated RACI enforcement`);
       for (const assuranceRoleId of step.independentAssuranceRoleIds) {
         if (step.responsibleRoleIds.includes(assuranceRoleId) || step.accountableRoleId === assuranceRoleId) errors.push(`${step.stepId}: independent assurance role conflicts with delivery/accountability role`);
       }
     }
+    const acceptSteps = checkpoint.executionSubsteps.filter(step => step.interactionType === "human-decision" && /@gaep \/accept/.test(step.currentAction?.value ?? ""));
+    const commitSteps = checkpoint.executionSubsteps.filter(step => step.interactionType === "governed-commit" && /@gaep \/commit CONFIRM/.test(step.currentAction?.value ?? ""));
+    if (checkpoint.checkpointId !== "source-intake" && (acceptSteps.length === 0 || commitSteps.length === 0)) errors.push(`${checkpoint.checkpointId}: acceptance and commit must be separate transitions`);
+    if (commitSteps.some(step => /perform(?:s|ing)? acceptance|accept the exact candidate, then commit/i.test(`${step.purpose} ${step.authorityEffect}`))) errors.push(`${checkpoint.checkpointId}: commit cannot perform acceptance`);
+    if (checkpoint.checkpointId === "source-intake") {
+      const actions = checkpoint.executionSubsteps.flatMap(step => [...(step.currentAction?.value.matchAll(/@gaep \/([a-z]+)/g) ?? [])].map(match => match[1]));
+      for (const action of ["intake", "manifest", "align", "record"]) if (!actions.includes(action)) errors.push(`source-intake: missing distinct /${action} action`);
+      if (actions.includes("accept") || actions.includes("commit")) errors.push("source-intake: current /record workflow must not invent accept/commit transitions");
+    }
   }
+  const substantiveSignatures = runtimePresentation.checkpoints.map(checkpoint => checkpoint.executionSubsteps.map(step => `${step.interactionType}:${step.purpose}`).join("|"));
+  if (duplicateValues(substantiveSignatures).length > 0) errors.push("current checkpoints share a generic substantive execution sequence");
   if (accountableRoles.length > 0 && accountableRoles.every(role => role === "product-owner")) errors.push("Product Owner cannot be the universal accountable role");
   const catalogReferenceIds = catalog.references.map(entry => entry.referenceId);
   const assessedReferenceIds = assurance.referenceDepthAssessments.map(entry => entry.referenceId);
@@ -486,7 +498,7 @@ function renderExecutiveFacts(catalog, market, manifest) {
     "**Current GAEP repository maturity:**",
     "",
     `- ${maturity.get("implemented-and-automated-tested") ?? 0} implemented and automated-tested`,
-    `- ${maturity.get("implemented-awaiting-product-owner-acceptance") ?? 0} implemented, awaiting independent P03 review`,
+    `- ${maturity.get("implemented-awaiting-product-owner-acceptance") ?? 0} implemented, awaiting independent acceptance`,
     `- ${maturity.get("partial") ?? 0} partial`,
     `- ${maturity.get("planned-deferred-coming-soon") ?? 0} planned/deferred`,
     "- 0 approved or published by this projection",
@@ -1024,7 +1036,8 @@ function renderMaintenanceContract(manifest) {
 }
 
 function sequenceVisual(id, title, lines) {
-  return `<!-- GAEP-SEQUENCE:${id} -->\n\n**${title}**\n\n\`\`\`mermaid\n%% ${title}\nsequenceDiagram\n${lines.join("\n")}\n\`\`\``;
+  const messages = lines.filter(line => /(?:->>|-->>)/.test(line));
+  return `<!-- GAEP-SEQUENCE:${id} -->\n\n**${title}**\n\n\`\`\`mermaid\n%% ${title}\nsequenceDiagram\n${lines.join("\n")}\n\`\`\`\n\n<details><summary>Text alternative for ${title}</summary>\n\n${messages.map((line, index) => `${index + 1}. ${line.replace(/--?>>/g, " → ")}`).join("\n")}\n\n</details>`;
 }
 
 function roleLabel(roleId, responsibility) {
@@ -1175,8 +1188,10 @@ function renderCheckpointExecution(runtimePresentation, manifest) {
       const message = mermaidSafe(`${step.order}. ${step.purpose}${step.currentAction ? ` Action: ${step.currentAction.value}` : ""}`);
       return step.interactionType === "ai-assisted-candidate"
         ? [`${responsible}->>gaep: ${message}`, `gaep-->>${responsible}: Candidate only · ${step.stateAfter}`]
+        : step.interactionType === "human-decision"
+          ? [`${responsible}->>${accountable}: ${message}`, `${accountable}->>gaep: Accept or reject the exact displayed candidate`, `gaep-->>${responsible}: ${step.stateAfter}; still candidate until explicit commit`]
         : step.interactionType === "governed-commit"
-          ? [`${responsible}->>${accountable}: ${message}`, `${accountable}->>gaep: Exact acceptance / explicit commit or reject`, `gaep-->>${responsible}: ${step.stateAfter}; authority remains bounded`]
+          ? [`${responsible}->>${accountable}: ${message}`, `${accountable}->>gaep: Confirm previously accepted digest and commit explicitly`, `gaep-->>${responsible}: ${step.stateAfter}; authority remains bounded`]
           : [`${responsible}->>gaep: ${message}`, `gaep-->>${responsible}: ${step.stateAfter}; no authority created`];
     });
     const raciRows = steps.map(step => `| \`${step.stepId}\` | ${step.responsibleRoleIds.join(", ")} | ${step.accountableRoleId ?? "— (no decision)"} | C: ${step.consultedRoleIds.join(", ") || "—"}<br/>I: ${step.informedRoleIds.join(", ") || "—"}<br/>Assurance: ${step.independentAssuranceRoleIds.join(", ") || "—"} |`).join("\n");
@@ -1233,7 +1248,6 @@ function renderTargetExecution(manifest, targetExecution) {
 function renderExceptionSequences() {
   const sequences = [
     sequenceVisual("source-review-commit", "Source selection, review, candidate recording, acceptance, and commit", ["actor contributor as Domain expert", "participant gaep as GAEP runtime", "participant accountable as Business owner", "contributor->>gaep: Select exact File/Folder; link remains metadata only", "gaep-->>contributor: Extraction limits, digest, reviewed content, Unknowns", "contributor->>gaep: @gaep /intake then @gaep /record", "gaep-->>accountable: Candidate Source records; not truth/Baseline/Provenance", "accountable->>gaep: Review/challenge; @gaep /accept exact digest", "accountable->>gaep: @gaep /commit CONFIRM", "gaep-->>contributor: Governed Source revision and audit event; broader authority unchanged"]),
-    sequenceVisual("generic-checkpoint-loop", "Generic checkpoint execution loop", ["actor responsible as Responsible role", "participant gaep as GAEP runtime", "participant accountable as Accountable role", "participant assurer as Independent assurance", "responsible->>gaep: Inspect exact prerequisites and evidence", "gaep-->>responsible: Blockers, Unknowns, and valid current action", "responsible->>gaep: Execute current action and prepare candidate", "gaep-->>accountable: Exact candidate, digest, limitations, decisions", "accountable->>assurer: Request required independent review", "assurer-->>accountable: Findings", "accountable->>gaep: Accept exact candidate or reject/revise", "gaep-->>responsible: Explicit commit creates bounded governed state"]),
     sequenceVisual("evidence-conflict", "Evidence conflict, revision, challenge, and resolution", ["actor expert as Domain expert", "participant gaep as GAEP runtime", "participant accountable as Accountable role", "expert->>gaep: Supply conflicting exact Sources", "gaep-->>expert: Preserve both identities, provenance, conflict, and Unknown conclusion", "expert->>accountable: Challenge candidate against named criteria", "accountable-->>gaep: Reject, request revision, or record scoped unresolved decision", "gaep-->>expert: New candidate digest; prior evidence and decision history retained"]),
     sequenceVisual("missing-prerequisite", "Missing prerequisite and blocked progression", ["actor participant as Initiative lead", "participant gaep as GAEP runtime", "participant accountable as Accountable role", "participant->>gaep: Request downstream action", "gaep-->>participant: Waiting for prerequisite; named blocker and persisted prior state", "participant->>accountable: Resolve evidence/decision or assign owner", "accountable-->>gaep: Bounded disposition", "gaep-->>participant: Recompute next valid action; never bypass prerequisite silently"]),
     sequenceVisual("scoped-exception", "Decision escalation and scoped exception", ["actor responsible as Responsible role", "participant accountable as Accountable role", "participant risk as Risk/compliance specialist", "participant assurance as Independent assurance", "responsible->>accountable: Escalate material blocker with exact evidence", "accountable->>risk: Request applicability and residual-risk analysis", "risk->>assurance: Request independent challenge when required", "assurance-->>accountable: Findings and limitations", "accountable-->>responsible: Reject, defer, or authorize only the bounded exception outside GAEP", "responsible->>gaep: Record decision/evidence; no broader waiver inferred"]),

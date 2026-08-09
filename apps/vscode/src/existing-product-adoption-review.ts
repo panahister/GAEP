@@ -4,6 +4,7 @@ import {
   type ExistingProductJourneyCoverage,
   type ExistingProductJourneyCheckpointId,
 } from "./existing-product-journey-coverage.js"
+import { currentProductJourneyCheckpointPresentation } from "./product-journey-presentation.js"
 import type { CandidateSourceAttachment } from "./product-chat-source-recording.js"
 import { markdownTable, nonWrappingTableLabel } from "./product-chat-source-intake.js"
 
@@ -165,23 +166,9 @@ export function existingProductAdoptionFollowThrough(checkpoint: ExistingProduct
   prompt: string
   title: string
 } {
-  return checkpoint === "product-definition"
-    ? { command: "revise", prompt: "", title: "Revise Governed Product Definition" }
-    : checkpoint === "initiative-definition"
-      ? { command: "adopt", prompt: "create:initiative-definition", title: "Generate Initiative Proposal" }
-      : checkpoint === "initiative-classification"
-        ? { command: "adopt", prompt: "create:initiative-classification", title: "Generate Classification Proposal" }
-        : checkpoint === "initiative-applicability"
-          ? { command: "adopt", prompt: "create:initiative-applicability", title: "Generate Applicability Proposal" }
-          : checkpoint === "source-intake"
-            ? { command: "adopt", prompt: "consume", title: "Bind Reviewed Sources to Initiative" }
-            : checkpoint === "source-baseline"
-              ? { command: "baseline", prompt: "", title: "Generate Source Baseline Proposal" }
-              : checkpoint === "source-provenance"
-                ? { command: "provenance", prompt: "", title: "Generate Source Provenance Proposal" }
-                : {
-                    command: "adopt",
-                    prompt: `create:${checkpoint}`,
-                    title: `Generate ${journeyCheckpointLabels[checkpoint]} Proposal`,
-                  }
+  const contract = currentProductJourneyCheckpointPresentation.find((candidate) =>
+    candidate.checkpointId === checkpoint || candidate.compatibilityAliases.includes(checkpoint))
+  if (!contract) throw new Error(`Adoption checkpoint ${checkpoint} is absent from the canonical Product Journey contract`)
+  const { command, prompt, title } = contract.adoptionFollowThrough
+  return { command, prompt, title }
 }

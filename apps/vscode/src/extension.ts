@@ -74,6 +74,7 @@ import {
   validatePhase1CanonicalDraft,
 } from "./phase1-canonical-authoring.js"
 import { buildProductJourneyExportFiles, buildProductJourneyReview } from "./product-journey-markdown-export.js"
+import { currentProductJourneyCheckpoint } from "./product-journey-presentation.js"
 import { addReferenceLink, readReferenceLinks, removeReferenceLink } from "./reference-links.js"
 import {
   isProductChatAdvisorSelection,
@@ -1243,27 +1244,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       ])
       const group = <T extends string>(
         id: T,
-        label: string,
         present: boolean[],
         route: "direction" | "architecture" | "risks-decisions" | "readiness",
-      ) => ({ id, label, recorded: present.filter(Boolean).length, total: present.length, complete: present.every(Boolean), route })
+      ) => {
+        const checkpoint = currentProductJourneyCheckpoint(id as Parameters<typeof currentProductJourneyCheckpoint>[0])
+        if (!checkpoint.recordGroup) throw new Error(`Canonical authoring checkpoint ${id} has no record group`)
+        return { id, label: checkpoint.recordGroup, recorded: present.filter(Boolean).length, total: present.length, complete: present.every(Boolean), route }
+      }
       return { groups: [
-        group("product-discovery", "Product discovery", [
+        group("product-discovery", [
           Boolean(discovery.businessUnderstanding), Boolean(discovery.stakeholderModel), Boolean(discovery.outcomeModel),
         ], "direction"),
-        group("business-architecture", "Business architecture", [
+        group("business-architecture", [
           Boolean(capability.capabilityMap), Boolean(valueStream.valueStreamModel), Boolean(operating.operatingModel),
           Boolean(rules.businessRuleCatalog), Boolean(businessBaseline.baseline),
         ], "architecture"),
-        group("solution-security-architecture", "Solution and security architecture", [
+        group("solution-security-architecture", [
           Boolean(solution.architecture), Boolean(boundedContext.model), Boolean(security.assessment),
         ], "architecture"),
-        group("detailed-design-assurance", "Detailed design and assurance", [
+        group("detailed-design-assurance", [
           Boolean(process.model), Boolean(data.model), Boolean(authorization.model), Boolean(integration.model),
           Boolean(recovery.model), Boolean(challenge.model), Boolean(decisions.register), Boolean(risks.register),
           Boolean(evidence.registry), Boolean(traceability.traceability),
         ], "risks-decisions"),
-        group("p0-p4-readiness", "P0–P4 readiness and handoff", [
+        group("p0-p4-readiness", [
           Boolean(readiness.gate), Boolean(handoff.handoff),
         ], "readiness"),
       ] }

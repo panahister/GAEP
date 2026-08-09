@@ -2,7 +2,7 @@
   "schemaId": "https://gaep.example/schemas/guideline-projection-manifest-1.1.0.json",
   "schemaVersion": "1.1.0",
   "registryId": "GAEP-REG-014",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "status": "proposed",
   "projectionStewardRoleId": "product-leadership",
   "approval": {
@@ -47,17 +47,17 @@
       "kind": "runtime-presentation-contract",
       "path": "apps/vscode/src/product-journey-presentation.ts",
       "identity": "runtime-product-journey-presentation",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "schemaVersion": null,
-      "sha256": "49c98d63ab74489503dc130ed4863d5e6a71edae8a78d99149e00e6414e6e584"
+      "sha256": "74754cd61cd751bb54a51f798b381cb66f0cc95e62bed3cb33521fd1cf2904ae"
     },
     {
       "kind": "runtime-contract-schema",
       "path": "docs/next/99_Registries_and_References/015_CURRENT_RUNTIME_JOURNEY_CONTRACT.schema.json",
       "identity": "current-runtime-journey-contract-schema",
-      "version": "1.0.0",
-      "schemaVersion": "1.0.0",
-      "sha256": "d3070aab3b88ca709caebc4fe6b96b827a722307f885d6e20d7385e1eadf911e"
+      "version": "1.1.0",
+      "schemaVersion": "1.1.0",
+      "sha256": "18759b168abd1998d3a72e7abc7b98000c92c34353c2860dbce3038ea61751b2"
     },
     {
       "kind": "responsibility-competency-registry",
@@ -305,6 +305,6 @@
   },
   "commandSurface": {
     "extensionCommandIds": ["gaep.openGuide", "gaep.openProductStudio", "gaep.chooseFile", "gaep.chooseFolder", "gaep.addReferenceLink"],
-    "chatCommands": ["initialize", "adopt", "continue", "classification", "applicability", "intake", "record", "baseline", "provenance", "author", "inspect", "accept", "status", "commit", "help"]
+    "chatCommands": ["initialize", "adopt", "revise", "initiative", "edit", "continue", "classification", "applicability", "intake", "align", "manifest", "record", "baseline", "provenance", "author", "inspect", "suggest", "resolve", "accept", "status", "back", "commit", "cancel", "help"]
   }
 }

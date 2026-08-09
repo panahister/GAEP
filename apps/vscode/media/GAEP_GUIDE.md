@@ -51,7 +51,7 @@ GAEP is not a coding-agent leaderboard, an automatic approval system, a replacem
 **Current GAEP repository maturity:**
 
 - 6 implemented and automated-tested
-- 11 implemented, awaiting independent P03 review
+- 11 implemented, awaiting independent acceptance
 - 11 partial
 - 2 planned/deferred
 - 0 approved or published by this projection
@@ -77,6 +77,22 @@ flowchart TD
   intent --> sources --> decision --> architecture --> design --> delivery --> operations
   operations -. new evidence or changed context .-> intent
 ```
+
+<details><summary>Text alternative for Evidence-governed operating model</summary>
+
+```text
+  intent["Product intent and bounded problem"]
+  sources["Exact Sources, Baseline, and Provenance"]
+  decision["Human-governed Initiative decisions"]
+  architecture["Business, domain, and solution architecture"]
+  design["Product Design and architecture-bound backlog"]
+  delivery["Governed implementation, QA, and release evidence"]
+  operations["Operations, recovery, and feedback"]
+  intent --> sources --> decision --> architecture --> design --> delivery --> operations
+  operations -. new evidence or changed context .-> intent
+```
+
+</details>
 <!-- END GENERATED:EXECUTIVE_OPERATING_MODEL -->
 
 The thread is intentionally vertical: evidence grounds a candidate; a human reviews and decides; committed truth constrains downstream work; runtime feedback can trigger a new governed change. Skipping a decision does not silently turn it into “not applicable.”
@@ -98,6 +114,19 @@ flowchart TD
   decision -- "Yes: explicit acceptance" --> commit["Explicit commit creates governed state"]
   commit --> separate["Approval, publication, rollout, and operations authority remain separate"]
 ```
+
+<details><summary>Text alternative for Human authority loop</summary>
+
+```text
+  evidence["Evidence and governed context"] --> candidate["AI or tool prepares a candidate"]
+  candidate --> review["Human reviews exact content and limitations"]
+  review --> decision{"Accept this exact candidate?"}
+  decision -- "No: revise or cancel" --> candidate
+  decision -- "Yes: explicit acceptance" --> commit["Explicit commit creates governed state"]
+  commit --> separate["Approval, publication, rollout, and operations authority remain separate"]
+```
+
+</details>
 <!-- END GENERATED:AUTHORITY_LOOP -->
 
 AI and tools may propose, challenge, summarize, compare, and prepare evidence. Named human role archetypes remain accountable for bounded decisions; actual organizational authority is separate. “Implemented and automated-tested” is repository evidence—not independent acceptance, enterprise readiness, security certification, compliance, production authorization, or outcome proof.
@@ -136,6 +165,30 @@ flowchart TD
   intake --> author["6 · @gaep /author"] --> review["7 · @gaep /inspect<br/>challenge exact candidate"]
   review --> accept["8 · @gaep /accept"] --> commit["9 · @gaep /commit CONFIRM"]
 ```
+
+<details><summary>Text alternative for First-session source-first path</summary>
+
+```text
+  open["1 · Open a trusted Product workspace"] --> sources{"2 · Plan optional reference input"}
+  sources --> files["File · GAEP: Choose File<br/>select during Adopt or after Intake prerequisites"]
+  sources --> folder["Folder · GAEP: Choose Folder<br/>bounded recursive selection"]
+  sources --> link["Link · GAEP: Add Useful Link<br/>metadata only; never fetched"]
+  sources --> none["No sources · allowed for Initialize<br/>missing evidence stays visible"]
+  files --> route{"3 · Existing or new Product?"}
+  folder --> route
+  link --> route
+  none --> route
+  route -- "Existing · readable documents required" --> adopt["@gaep /adopt"]
+  route -- "New · sources optional" --> initialize["@gaep /initialize"]
+  adopt --> productReview["Inspect/challenge Product candidate<br/>@gaep /accept · @gaep /commit CONFIRM"]
+  initialize --> productReview
+  productReview --> status["4 · @gaep /status"] --> next["5 · @gaep /continue"]
+  next --> intake["When Source Intake is current:<br/>@gaep /intake · @gaep /record"]
+  intake --> author["6 · @gaep /author"] --> review["7 · @gaep /inspect<br/>challenge exact candidate"]
+  review --> accept["8 · @gaep /accept"] --> commit["9 · @gaep /commit CONFIRM"]
+```
+
+</details>
 
 #### What the four source paths actually do
 
@@ -186,6 +239,30 @@ flowchart TD
   position --> authority["Apply competency, accountability, assurance, and authority gates"]
 ```
 
+<details><summary>Text alternative for Newcomer and mid-journey entry routes</summary>
+
+```text
+  context["Describe the real starting context"] --> route{"Which entry path applies?"}
+  route --> newProduct["New Product"]
+  route --> existing["Existing Product / active Initiative"]
+  route --> midway["Discovery / architecture / backlog already exists"]
+  route --> repository["Existing implementation repository"]
+  route --> highRisk["Regulated, high-risk, AI/data Product"]
+  route --> operational["Operational change or incident-driven evolution"]
+  newProduct --> assess["Bounded current-state assessment"]
+  existing --> assess
+  midway --> assess
+  repository --> assess
+  highRisk --> assess
+  operational --> assess
+  assess --> evidence{"Artifacts, source quality, architecture, decisions, assumptions, freshness, repositories, operations, governance gaps sufficient?"}
+  evidence -- "No" --> gap["Record gaps, owners, blockers, and guided work"] --> assess
+  evidence -- "Yes" --> position["Select earliest checkpoint needing governed evidence — do not restart by default"]
+  position --> authority["Apply competency, accountability, assurance, and authority gates"]
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:entry-selection -->
 
 **First session and entry-path selection**
@@ -206,6 +283,19 @@ assurer-->>accountable: Findings, limitations, or unresolved assurance requireme
 accountable-->>gaep: Accept bounded entry decision or return for revision
 gaep-->>participant: Current checkpoint, blockers, next valid action; no automatic restart
 ```
+
+<details><summary>Text alternative for First session and entry-path selection</summary>
+
+1. participant → gaep: Describe Product, Initiative, repository, risk, and operating context
+2. gaep → participant: Request exact artifacts, source quality, decisions, freshness, and governance gaps
+3. participant → gaep: Supply available evidence or continue with named gaps
+4. gaep → accountable: Candidate current-state assessment and proposed entry checkpoint
+5. accountable → assurer: Request independent review when risk/applicability requires it
+6. assurer → accountable: Findings, limitations, or unresolved assurance requirement
+7. accountable → gaep: Accept bounded entry decision or return for revision
+8. gaep → participant: Current checkpoint, blockers, next valid action; no automatic restart
+
+</details>
 
 | Entry path | Required assessment evidence | Honest route |
 |---|---|---|
@@ -245,6 +335,24 @@ flowchart TD
   guided --> boundary
 ```
 
+<details><summary>Text alternative for Role- and risk-based competency gateway</summary>
+
+```text
+  activity["Select bounded checkpoint / substep"] --> roles["Resolve required role archetypes"]
+  roles --> risk["Apply Initiative risk, data, AI, security, privacy, release, and operations profile"]
+  risk --> scenario["Evaluate scenario evidence — not title or confidence"]
+  scenario --> decision{"Competence, accountability, and assurance sufficient?"}
+  decision -- "Yes" --> ready["Ready for bounded activity"]
+  decision -- "Guidance needed" --> guided["Ready with guidance"]
+  decision -- "Skill gap" --> develop["Competency development required"]
+  decision -- "No accountable authority" --> accountable["Accountable role required"]
+  decision -- "Independence required" --> assurance["Independent assurance required"]
+  ready --> boundary["Competence does not grant authority"]
+  guided --> boundary
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:competency-assessment -->
 
 **Competency assessment and guided-participation decision**
@@ -266,6 +374,19 @@ accountable->>assurer: Request independent review when required
 assurer-->>accountable: Assurance disposition
 accountable-->>participant: Authorized participation decision outside GAEP
 ```
+
+<details><summary>Text alternative for Competency assessment and guided-participation decision</summary>
+
+1. participant → gaep: Select bounded activity and declared role
+2. gaep → participant: Required competencies and risk-based scenario evidence
+3. participant → practitioner: Demonstrate scenario handling, failure response, and evidence
+4. practitioner → gaep: Observed evidence and guidance requirement
+5. gaep → accountable: Gateway outcome; competence and authority shown separately
+6. accountable → assurer: Request independent review when required
+7. assurer → accountable: Assurance disposition
+8. accountable → participant: Authorized participation decision outside GAEP
+
+</details>
 
 > **Authority boundary:** Role assignment, RACI, and demonstrated competence do not appoint a person or grant recommendation, acceptance, risk, implementation, repository, release, operational, assurance, or audit authority.
 
@@ -313,18 +434,18 @@ R = Responsible · A = Accountable · C = Consulted · I = Informed · IA = inde
 
 | Checkpoint | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `product-definition` · Product definition | product-manager | business-owner | business-owner, affected-user-stakeholder, initiative-lead |
-| `initiative-definition` · Initiative definition | initiative-lead, product-manager | business-owner | business-owner, initiative-lead |
-| `initiative-classification` · Initiative classification | initiative-lead, risk-compliance-specialist | business-owner | security-architect, privacy-specialist, initiative-lead, internal-audit-independent-assurance |
-| `initiative-applicability` · Initiative applicability | initiative-lead, risk-compliance-specialist | business-owner | security-architect, privacy-specialist, legal-regulatory-specialist, initiative-lead, internal-audit-independent-assurance |
-| `source-intake` · Source intake | initiative-lead, domain-expert | business-owner | risk-compliance-specialist, initiative-lead |
-| `source-baseline` · Source baseline | initiative-lead | business-owner | domain-expert, risk-compliance-specialist, initiative-lead |
-| `source-provenance` · Source provenance | initiative-lead, domain-expert | business-owner | internal-audit-independent-assurance, initiative-lead |
-| `product-discovery` · Product discovery | product-manager, product-design-research | business-owner | domain-expert, affected-user-stakeholder, initiative-lead |
-| `business-architecture` · Business architecture | business-architect, domain-expert | product-leadership | enterprise-architect, affected-user-stakeholder, initiative-lead |
-| `solution-security-architecture` · Solution and security architecture | solution-architect, security-architect | enterprise-architect | data-ai-architect, privacy-specialist, platform-devops, initiative-lead, risk-compliance-specialist, internal-audit-independent-assurance |
-| `detailed-design-assurance` · Detailed design and assurance | solution-architect, quality-engineering | engineering-leadership | security-architect, ai-evaluation-tevv, engineering-leadership, initiative-lead, internal-audit-independent-assurance |
-| `p0-p4-readiness` · P0–P4 readiness and handoff | initiative-lead, quality-engineering | engineering-leadership | engineering-leadership, release-change-management, initiative-lead, internal-audit-independent-assurance |
+| `product-definition` · Product definition | product-manager | business-owner | business-owner, affected-user-stakeholder, product-leadership |
+| `initiative-definition` · Initiative definition | initiative-lead, product-manager | business-owner | product-manager, business-owner, domain-expert |
+| `initiative-classification` · Initiative classification | initiative-lead, risk-compliance-specialist | business-owner | security-architect, privacy-specialist, legal-regulatory-specialist, business-owner, internal-audit-independent-assurance |
+| `initiative-applicability` · Initiative applicability | initiative-lead, risk-compliance-specialist | business-owner | security-architect, privacy-specialist, legal-regulatory-specialist, domain-expert, business-owner, internal-audit-independent-assurance |
+| `source-intake` · Source intake | initiative-lead, domain-expert | business-owner | risk-compliance-specialist, product-manager |
+| `source-baseline` · Source baseline | initiative-lead, domain-expert | business-owner | domain-expert, risk-compliance-specialist |
+| `source-provenance` · Source provenance | initiative-lead, domain-expert | business-owner | internal-audit-independent-assurance, domain-expert |
+| `product-discovery` · Product discovery | product-manager, product-design-research, product-owner | business-owner | domain-expert, affected-user-stakeholder |
+| `business-architecture` · Business architecture | business-architect, domain-expert | product-leadership | enterprise-architect, affected-user-stakeholder, product-manager |
+| `solution-security-architecture` · Solution and security architecture | solution-architect, security-architect | enterprise-architect | data-ai-architect, privacy-specialist, platform-devops, risk-compliance-specialist, internal-audit-independent-assurance |
+| `detailed-design-assurance` · Detailed design and assurance | solution-architect, quality-engineering | engineering-leadership | security-architect, data-ai-architect, platform-devops, product-owner, ai-evaluation-tevv, internal-audit-independent-assurance |
+| `p0-p4-readiness` · P0–P4 readiness and handoff | initiative-lead, quality-engineering, product-owner | engineering-leadership | release-change-management, product-manager, internal-audit-independent-assurance |
 
 <details>
 <summary><strong>Role-to-lifecycle participation — current and target</strong></summary>
@@ -335,27 +456,27 @@ Target participation is proposed and non-executable. A role mapping does not app
 |---|---|---|
 | `governing-body` · Governing body | — | — |
 | `executive-sponsor` · Executive sponsor | — | — |
-| `product-leadership` · Product leadership | `business-architecture` (A) | `lifecycle-11` Phase, wave, Product, and vertical-slice planning (A)<br/>`lifecycle-12` Product Design preparation and iterative evidence (A)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (A) |
-| `product-manager` · Product Manager | `product-definition` (R)<br/>`initiative-definition` (R)<br/>`product-discovery` (R) | `lifecycle-01` Product intent and problem discovery (R)<br/>`lifecycle-03` Product and Initiative definition (R)<br/>`lifecycle-05` Product discovery (R)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (R)<br/>`lifecycle-12` Product Design preparation and iterative evidence (R)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (R)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (C) |
-| `product-owner` · Product Owner | — | — |
-| `initiative-lead` · Initiative lead | `product-definition` (I)<br/>`initiative-definition` (R/I)<br/>`initiative-classification` (R/I)<br/>`initiative-applicability` (R/I)<br/>`source-intake` (R/I)<br/>`source-baseline` (R/I)<br/>`source-provenance` (R/I)<br/>`product-discovery` (I)<br/>`business-architecture` (I)<br/>`solution-security-architecture` (I)<br/>`detailed-design-assurance` (I)<br/>`p0-p4-readiness` (R/I) | `lifecycle-02` Source-first workspace initialization and change governance (R)<br/>`lifecycle-04` Initiative classification and applicability (R) |
-| `business-owner` · Business owner | `product-definition` (C/A)<br/>`initiative-definition` (C/A)<br/>`initiative-classification` (A)<br/>`initiative-applicability` (A)<br/>`source-intake` (A)<br/>`source-baseline` (A)<br/>`source-provenance` (A)<br/>`product-discovery` (A) | `lifecycle-01` Product intent and problem discovery (A)<br/>`lifecycle-02` Source-first workspace initialization and change governance (A)<br/>`lifecycle-03` Product and Initiative definition (A)<br/>`lifecycle-04` Initiative classification and applicability (A)<br/>`lifecycle-05` Product discovery (A) |
-| `domain-expert` · Domain expert | `source-intake` (R)<br/>`source-baseline` (C)<br/>`source-provenance` (R)<br/>`product-discovery` (C)<br/>`business-architecture` (R) | `lifecycle-01` Product intent and problem discovery (R)<br/>`lifecycle-03` Product and Initiative definition (R)<br/>`lifecycle-05` Product discovery (R) |
+| `product-leadership` · Product leadership | `product-definition` (I)<br/>`business-architecture` (A) | `lifecycle-11` Phase, wave, Product, and vertical-slice planning (A)<br/>`lifecycle-12` Product Design preparation and iterative evidence (A)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (A) |
+| `product-manager` · Product Manager | `product-definition` (R)<br/>`initiative-definition` (C/R/I)<br/>`source-intake` (C)<br/>`product-discovery` (R)<br/>`business-architecture` (C)<br/>`p0-p4-readiness` (C) | `lifecycle-01` Product intent and problem discovery (R)<br/>`lifecycle-03` Product and Initiative definition (R)<br/>`lifecycle-05` Product discovery (R)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (R)<br/>`lifecycle-12` Product Design preparation and iterative evidence (R)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (R)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (C) |
+| `product-owner` · Product Owner | `product-discovery` (R)<br/>`detailed-design-assurance` (C)<br/>`p0-p4-readiness` (R) | — |
+| `initiative-lead` · Initiative lead | `initiative-definition` (R)<br/>`initiative-classification` (R)<br/>`initiative-applicability` (R)<br/>`source-intake` (R)<br/>`source-baseline` (R)<br/>`source-provenance` (R)<br/>`p0-p4-readiness` (R) | `lifecycle-02` Source-first workspace initialization and change governance (R)<br/>`lifecycle-04` Initiative classification and applicability (R) |
+| `business-owner` · Business owner | `product-definition` (C/A)<br/>`initiative-definition` (C/A)<br/>`initiative-classification` (C/A)<br/>`initiative-applicability` (C/A)<br/>`source-intake` (A)<br/>`source-baseline` (A)<br/>`source-provenance` (A)<br/>`product-discovery` (A) | `lifecycle-01` Product intent and problem discovery (A)<br/>`lifecycle-02` Source-first workspace initialization and change governance (A)<br/>`lifecycle-03` Product and Initiative definition (A)<br/>`lifecycle-04` Initiative classification and applicability (A)<br/>`lifecycle-05` Product discovery (A) |
+| `domain-expert` · Domain expert | `initiative-definition` (C)<br/>`initiative-applicability` (C)<br/>`source-intake` (R)<br/>`source-baseline` (C/R/I)<br/>`source-provenance` (R/C)<br/>`product-discovery` (C)<br/>`business-architecture` (R) | `lifecycle-01` Product intent and problem discovery (R)<br/>`lifecycle-03` Product and Initiative definition (R)<br/>`lifecycle-05` Product discovery (R) |
 | `business-architect` · Business architect | `business-architecture` (R) | `lifecycle-06` Business architecture and value streams (R)<br/>`lifecycle-07` Domain discovery and Event Storming (R)<br/>`lifecycle-08` DDD strategic design and context mapping (R)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (R)<br/>`lifecycle-10` Architecture decisions and quality scenarios (R) |
-| `enterprise-architect` · Enterprise architect | `business-architecture` (C/IA)<br/>`solution-security-architecture` (A) | `lifecycle-06` Business architecture and value streams (A)<br/>`lifecycle-07` Domain discovery and Event Storming (A)<br/>`lifecycle-08` DDD strategic design and context mapping (A)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (A)<br/>`lifecycle-10` Architecture decisions and quality scenarios (A) |
+| `enterprise-architect` · Enterprise architect | `business-architecture` (C)<br/>`solution-security-architecture` (A) | `lifecycle-06` Business architecture and value streams (A)<br/>`lifecycle-07` Domain discovery and Event Storming (A)<br/>`lifecycle-08` DDD strategic design and context mapping (A)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (A)<br/>`lifecycle-10` Architecture decisions and quality scenarios (A) |
 | `solution-architect` · Solution architect | `solution-security-architecture` (R)<br/>`detailed-design-assurance` (R) | `lifecycle-06` Business architecture and value streams (R)<br/>`lifecycle-07` Domain discovery and Event Storming (R)<br/>`lifecycle-08` DDD strategic design and context mapping (R)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (R)<br/>`lifecycle-10` Architecture decisions and quality scenarios (R)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (C)<br/>`lifecycle-12` Product Design preparation and iterative evidence (C)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (C) |
-| `data-ai-architect` · Data/AI architect | `solution-security-architecture` (C) | `lifecycle-06` Business architecture and value streams (C)<br/>`lifecycle-07` Domain discovery and Event Storming (C)<br/>`lifecycle-08` DDD strategic design and context mapping (C)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (C)<br/>`lifecycle-10` Architecture decisions and quality scenarios (C) |
+| `data-ai-architect` · Data/AI architect | `solution-security-architecture` (C)<br/>`detailed-design-assurance` (C) | `lifecycle-06` Business architecture and value streams (C)<br/>`lifecycle-07` Domain discovery and Event Storming (C)<br/>`lifecycle-08` DDD strategic design and context mapping (C)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (C)<br/>`lifecycle-10` Architecture decisions and quality scenarios (C) |
 | `security-architect` · Security architect | `initiative-classification` (C)<br/>`initiative-applicability` (C)<br/>`solution-security-architecture` (R)<br/>`detailed-design-assurance` (C) | `lifecycle-02` Source-first workspace initialization and change governance (C)<br/>`lifecycle-04` Initiative classification and applicability (C)<br/>`lifecycle-06` Business architecture and value streams (C/IA)<br/>`lifecycle-07` Domain discovery and Event Storming (C/IA)<br/>`lifecycle-08` DDD strategic design and context mapping (C/IA)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (C/IA)<br/>`lifecycle-10` Architecture decisions and quality scenarios (C/IA) |
 | `privacy-specialist` · Privacy specialist | `initiative-classification` (C)<br/>`initiative-applicability` (C)<br/>`solution-security-architecture` (C) | `lifecycle-02` Source-first workspace initialization and change governance (C)<br/>`lifecycle-04` Initiative classification and applicability (C)<br/>`lifecycle-06` Business architecture and value streams (C)<br/>`lifecycle-07` Domain discovery and Event Storming (C)<br/>`lifecycle-08` DDD strategic design and context mapping (C)<br/>`lifecycle-09` Solution, data, integration, security, privacy, and deployment architecture (C)<br/>`lifecycle-10` Architecture decisions and quality scenarios (C) |
-| `legal-regulatory-specialist` · Legal/regulatory specialist | `initiative-applicability` (C) | — |
-| `risk-compliance-specialist` · Risk/compliance specialist | `initiative-classification` (R)<br/>`initiative-applicability` (R)<br/>`source-intake` (C)<br/>`source-baseline` (C)<br/>`solution-security-architecture` (IA) | `lifecycle-02` Source-first workspace initialization and change governance (R)<br/>`lifecycle-04` Initiative classification and applicability (R)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (C) |
+| `legal-regulatory-specialist` · Legal/regulatory specialist | `initiative-classification` (C)<br/>`initiative-applicability` (C) | — |
+| `risk-compliance-specialist` · Risk/compliance specialist | `initiative-classification` (R)<br/>`initiative-applicability` (R)<br/>`source-intake` (C)<br/>`source-baseline` (C)<br/>`solution-security-architecture` (C) | `lifecycle-02` Source-first workspace initialization and change governance (R)<br/>`lifecycle-04` Initiative classification and applicability (R)<br/>`lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (C) |
 | `product-design-research` · User research and Product Design | `product-discovery` (R) | `lifecycle-01` Product intent and problem discovery (C)<br/>`lifecycle-03` Product and Initiative definition (C)<br/>`lifecycle-05` Product discovery (C)<br/>`lifecycle-11` Phase, wave, Product, and vertical-slice planning (R)<br/>`lifecycle-12` Product Design preparation and iterative evidence (R)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (R) |
-| `engineering-leadership` · Engineering leadership | `detailed-design-assurance` (C/A)<br/>`p0-p4-readiness` (C/A) | `lifecycle-11` Phase, wave, Product, and vertical-slice planning (C/IA)<br/>`lifecycle-12` Product Design preparation and iterative evidence (C/IA)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (C/IA)<br/>`lifecycle-14` Repository and implementation-target topology (A)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (A)<br/>`lifecycle-16` Governed implementation agents and code generation (A)<br/>`lifecycle-17` Product QA and independent P03 review (A)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (A) |
+| `engineering-leadership` · Engineering leadership | `detailed-design-assurance` (A)<br/>`p0-p4-readiness` (A) | `lifecycle-11` Phase, wave, Product, and vertical-slice planning (C/IA)<br/>`lifecycle-12` Product Design preparation and iterative evidence (C/IA)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (C/IA)<br/>`lifecycle-14` Repository and implementation-target topology (A)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (A)<br/>`lifecycle-16` Governed implementation agents and code generation (A)<br/>`lifecycle-17` Product QA and independent P03 review (A)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (A) |
 | `software-engineering` · Software engineering | — | `lifecycle-14` Repository and implementation-target topology (R)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (R)<br/>`lifecycle-16` Governed implementation agents and code generation (R)<br/>`lifecycle-17` Product QA and independent P03 review (R)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (R) |
 | `data-ai-engineering` · Data/AI engineering | — | `lifecycle-14` Repository and implementation-target topology (C)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (C)<br/>`lifecycle-16` Governed implementation agents and code generation (C)<br/>`lifecycle-17` Product QA and independent P03 review (C)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (C) |
-| `platform-devops` · Platform/DevOps | `solution-security-architecture` (C) | `lifecycle-14` Repository and implementation-target topology (R)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (R)<br/>`lifecycle-16` Governed implementation agents and code generation (R)<br/>`lifecycle-17` Product QA and independent P03 review (R)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (R) |
+| `platform-devops` · Platform/DevOps | `solution-security-architecture` (C)<br/>`detailed-design-assurance` (C) | `lifecycle-14` Repository and implementation-target topology (R)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (R)<br/>`lifecycle-16` Governed implementation agents and code generation (R)<br/>`lifecycle-17` Product QA and independent P03 review (R)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (R) |
 | `quality-engineering` · Quality engineering | `detailed-design-assurance` (R)<br/>`p0-p4-readiness` (R) | `lifecycle-11` Phase, wave, Product, and vertical-slice planning (R)<br/>`lifecycle-12` Product Design preparation and iterative evidence (R)<br/>`lifecycle-13` Architecture-bound backlog, readiness, done, and test design (R)<br/>`lifecycle-14` Repository and implementation-target topology (R)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (R)<br/>`lifecycle-16` Governed implementation agents and code generation (R)<br/>`lifecycle-17` Product QA and independent P03 review (R)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (R) |
-| `ai-evaluation-tevv` · AI evaluation / TEVV | `detailed-design-assurance` (C/IA) | `lifecycle-14` Repository and implementation-target topology (IA)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (IA)<br/>`lifecycle-16` Governed implementation agents and code generation (IA)<br/>`lifecycle-17` Product QA and independent P03 review (IA)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (IA) |
+| `ai-evaluation-tevv` · AI evaluation / TEVV | `detailed-design-assurance` (IA) | `lifecycle-14` Repository and implementation-target topology (IA)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (IA)<br/>`lifecycle-16` Governed implementation agents and code generation (IA)<br/>`lifecycle-17` Product QA and independent P03 review (IA)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (IA) |
 | `release-change-management` · Release/change management | `p0-p4-readiness` (C) | `lifecycle-14` Repository and implementation-target topology (C)<br/>`lifecycle-15` Cross-repository slice distribution, synchronization, and drift (C)<br/>`lifecycle-16` Governed implementation agents and code generation (C)<br/>`lifecycle-17` Product QA and independent P03 review (C)<br/>`lifecycle-18` CI/CD, release, deployment, and environment governance (C) |
 | `service-management` · Service management | — | `lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (R) |
 | `sre-operations` · SRE/operations | — | `lifecycle-19` Operations, observability, incident/recovery evidence, and feedback (R) |
@@ -395,6 +516,17 @@ flowchart TD
   next["Next · → Next<br/>Initiative applicability<br/>CTA: @gaep /continue"]
   previous --> current --> next
 ```
+
+<details><summary>Text alternative for Previous, Current, and Next example — not live workspace state</summary>
+
+```text
+  previous["Previous · ✓ Recorded<br/>Initiative definition · governed"]
+  current["Current · ● Current<br/>Initiative classification · candidate<br/>! 1 blocker · ? 2 open questions"]
+  next["Next · → Next<br/>Initiative applicability<br/>CTA: @gaep /continue"]
+  previous --> current --> next
+```
+
+</details>
 
 > **Static example, not live state.** Open Product Studio or run `@gaep /status` for the actual workspace position, candidate/governed status, blockers, attention count, open questions, and next valid CTA.
 <!-- END GENERATED:CHECKPOINT_POSITION_EXAMPLE -->
@@ -566,6 +698,26 @@ flowchart TD
   product_definition --> initiative_definition --> initiative_classification --> initiative_applicability --> source_intake --> source_baseline --> source_provenance --> product_discovery --> business_architecture --> solution_security_architecture --> detailed_design_assurance --> p0_p4_readiness
 ```
 
+<details><summary>Text alternative for Current runtime checkpoint inventory</summary>
+
+```text
+  product_definition["10. Product definition"]
+  initiative_definition["20. Initiative definition"]
+  initiative_classification["30. Initiative classification"]
+  initiative_applicability["40. Initiative applicability"]
+  source_intake["50. Source intake"]
+  source_baseline["60. Source baseline"]
+  source_provenance["70. Source provenance"]
+  product_discovery["80. Product discovery"]
+  business_architecture["90. Business architecture"]
+  solution_security_architecture["100. Solution and security architecture"]
+  detailed_design_assurance["110. Detailed design and assurance"]
+  p0_p4_readiness["120. P0–P4 readiness and handoff"]
+  product_definition --> initiative_definition --> initiative_classification --> initiative_applicability --> source_intake --> source_baseline --> source_provenance --> product_discovery --> business_architecture --> solution_security_architecture --> detailed_design_assurance --> p0_p4_readiness
+```
+
+</details>
+
 | Stable checkpoint ID | Order and current label | Current prerequisites | Implemented CTA, maturity, and limitation |
 |---|---|---|---|
 | `product-definition` | 10 · Product definition | None | @gaep /initialize; @gaep /adopt; Edit Product definition<br/>[IA] Implemented; awaiting independent P03 review<br/>Records a Product boundary; it does not establish market need, funding, or investment approval. |
@@ -591,11 +743,11 @@ flowchart TD
 |---|---|---|---|
 | 1 · Product and Initiative foundation | product-manager, initiative-lead, risk-compliance-specialist | business-owner | internal-audit-independent-assurance |
 | 2 · Trusted sources | initiative-lead, domain-expert | business-owner | internal-audit-independent-assurance |
-| 3 · Product discovery | product-manager, product-design-research | business-owner | — |
-| 4 · Business architecture | business-architect, domain-expert | product-leadership | enterprise-architect |
-| 5 · Solution and security architecture | solution-architect, security-architect | enterprise-architect | risk-compliance-specialist, internal-audit-independent-assurance |
+| 3 · Product discovery | product-manager, product-design-research, product-owner | business-owner | — |
+| 4 · Business architecture | business-architect, domain-expert | product-leadership | — |
+| 5 · Solution and security architecture | solution-architect, security-architect | enterprise-architect | internal-audit-independent-assurance |
 | 6 · Detailed design and assurance | solution-architect, quality-engineering | engineering-leadership | ai-evaluation-tevv, internal-audit-independent-assurance |
-| 7 · Readiness and handoff | initiative-lead, quality-engineering | engineering-leadership | internal-audit-independent-assurance |
+| 7 · Readiness and handoff | initiative-lead, quality-engineering, product-owner | engineering-leadership | internal-audit-independent-assurance |
 
 #### Every current checkpoint — canonical substeps, RACI, sequence, and authority
 
@@ -619,14 +771,36 @@ flowchart TD
 ```mermaid
 %% Product definition substeps and return path
 flowchart TD
-  product_definition_0["10. Inspect the exact inputs for Product definition; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.<br/>current · none"]
-  product_definition_1["20. Use the implemented @gaep /initialize or @gaep /adopt route to prepare a bounded Product definition candidate from the reviewed context, preserving Unknowns and limitations.<br/>current · candidate"]
+  product_definition_0["10. Open a trusted workspace and choose the new-Product /initialize route or the existing-Product /adopt route; selected files are context only.<br/>current · none"]
+  product_definition_1["20. Collect and challenge Product name, summary, problem, affected users, outcome, success signals, first workflow, exclusions, and profile through the actual multi-field conversation.<br/>current · candidate"]
   product_definition_0 --> product_definition_1
-  product_definition_2["30. Have business-owner review the exact Product definition candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.<br/>current · governed"]
+  product_definition_2["30. Inspect the complete Product draft and its exact digest; use /back, /edit, /revise, or /cancel without changing the governed Product.<br/>current · candidate"]
   product_definition_1 --> product_definition_2
-  product_definition_2 -. "failure / blocker" .-> product_definition_revise["Preserve evidence · revise · retry or escalate"]
+  product_definition_3["40. Record the human decision to accept only the exact displayed Product candidate; acceptance does not initialize the Product.<br/>current · candidate"]
+  product_definition_2 --> product_definition_3
+  product_definition_4["50. Initialize or revise the governed Product only after prior acceptance and exact /commit CONFIRM validation.<br/>current · governed"]
+  product_definition_3 --> product_definition_4
+  product_definition_4 -. "failure / blocker" .-> product_definition_revise["Preserve evidence · revise · retry or escalate"]
   product_definition_revise --> product_definition_0
 ```
+
+<details><summary>Text alternative for Product definition substeps and return path</summary>
+
+```text
+  product_definition_0["10. Open a trusted workspace and choose the new-Product /initialize route or the existing-Product /adopt route; selected files are context only.<br/>current · none"]
+  product_definition_1["20. Collect and challenge Product name, summary, problem, affected users, outcome, success signals, first workflow, exclusions, and profile through the actual multi-field conversation.<br/>current · candidate"]
+  product_definition_0 --> product_definition_1
+  product_definition_2["30. Inspect the complete Product draft and its exact digest; use /back, /edit, /revise, or /cancel without changing the governed Product.<br/>current · candidate"]
+  product_definition_1 --> product_definition_2
+  product_definition_3["40. Record the human decision to accept only the exact displayed Product candidate; acceptance does not initialize the Product.<br/>current · candidate"]
+  product_definition_2 --> product_definition_3
+  product_definition_4["50. Initialize or revise the governed Product only after prior acceptance and exact /commit CONFIRM validation.<br/>current · governed"]
+  product_definition_3 --> product_definition_4
+  product_definition_4 -. "failure / blocker" .-> product_definition_revise["Preserve evidence · revise · retry or escalate"]
+  product_definition_revise --> product_definition_0
+```
+
+</details>
 
 <!-- GAEP-SEQUENCE:checkpoint-product-definition -->
 
@@ -638,24 +812,48 @@ sequenceDiagram
 participant role0 as product-manager
 participant role1 as business-owner
 participant gaep as GAEP runtime
-role0->>gaep: 10. Inspect the exact inputs for Product definition; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.
-gaep-->>role0: review-context-ready; no authority created
-role0->>gaep: 20. Use the implemented @gaep /initialize or @gaep /adopt route to prepare a bounded Product definition candidate from the reviewed context, preserving Unknowns and limitations. Action: @gaep /initialize or @gaep /adopt
-gaep-->>role0: Candidate only · candidate-ready-for-review
-role0->>role1: 30. Have business-owner review the exact Product definition candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. Action: @gaep /commit CONFIRM
-role1->>gaep: Exact acceptance / explicit commit or reject
-gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
+role0->>gaep: 10. Open a trusted workspace and choose the new-Product /initialize route or the existing-Product /adopt route; selected files are context only. Action: @gaep /initialize or @gaep /adopt
+gaep-->>role0: product-question-cycle; no authority created
+role0->>gaep: 20. Collect and challenge Product name, summary, problem, affected users, outcome, success signals, first workflow, exclusions, and profile through the actual multi-field conversation.
+gaep-->>role0: Candidate only · product-draft-review
+role0->>gaep: 30. Inspect the complete Product draft and its exact digest; use /back, /edit, /revise, or /cancel without changing the governed Product. Action: @gaep /inspect or @gaep /back or @gaep /edit or @gaep /revise or @gaep /cancel
+gaep-->>role0: product-candidate-ready-or-cancelled; no authority created
+role0->>role1: 40. Record the human decision to accept only the exact displayed Product candidate; acceptance does not initialize the Product. Action: @gaep /accept
+role1->>gaep: Accept or reject the exact displayed candidate
+gaep-->>role0: product-proposal-accepted-awaiting-commit; still candidate until explicit commit
+role0->>role1: 50. Initialize or revise the governed Product only after prior acceptance and exact /commit CONFIRM validation. Action: @gaep /commit CONFIRM
+role1->>gaep: Confirm previously accepted digest and commit explicitly
+gaep-->>role0: product-definition-recorded; authority remains bounded
 ```
+
+<details><summary>Text alternative for Product definition — current canonical execution sequence</summary>
+
+1. role0 → gaep: 10. Open a trusted workspace and choose the new-Product /initialize route or the existing-Product /adopt route; selected files are context only. Action: @gaep /initialize or @gaep /adopt
+2. gaep → role0: product-question-cycle; no authority created
+3. role0 → gaep: 20. Collect and challenge Product name, summary, problem, affected users, outcome, success signals, first workflow, exclusions, and profile through the actual multi-field conversation.
+4. gaep → role0: Candidate only · product-draft-review
+5. role0 → gaep: 30. Inspect the complete Product draft and its exact digest; use /back, /edit, /revise, or /cancel without changing the governed Product. Action: @gaep /inspect or @gaep /back or @gaep /edit or @gaep /revise or @gaep /cancel
+6. gaep → role0: product-candidate-ready-or-cancelled; no authority created
+7. role0 → role1: 40. Record the human decision to accept only the exact displayed Product candidate; acceptance does not initialize the Product. Action: @gaep /accept
+8. role1 → gaep: Accept or reject the exact displayed candidate
+9. gaep → role0: product-proposal-accepted-awaiting-commit; still candidate until explicit commit
+10. role0 → role1: 50. Initialize or revise the governed Product only after prior acceptance and exact /commit CONFIRM validation. Action: @gaep /commit CONFIRM
+11. role1 → gaep: Confirm previously accepted digest and commit explicitly
+12. gaep → role0: product-definition-recorded; authority remains bounded
+
+</details>
 
 **Ordered substeps**
 
-- **10 · `product-definition-inspect`** — Inspect the exact inputs for Product definition; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. **Before/after:** not-started-or-prerequisite-satisfied → review-context-ready. **Action:** none; inspect only. **Evidence:** consumes Reviewed Product references and stakeholder evidence; produces Bounded review context, named gaps, conflicts, assumptions, and freshness observations. **Criteria:** What Product and problem are in scope?; Who is affected and what measurable outcome matters?; What is explicitly excluded?; Every material assertion has exact evidence or remains Unknown. **Failure/blocker:** Required input cannot be identified; Evidence limitation prevents a bounded conclusion Expose the missing prerequisite/evidence and stop the affected proposal path without discarding prior records. **Retry:** Supply or revise the bounded input, preserve the prior review context, and inspect again. **Audit:** The current runtime records workflow/audit evidence only when its implemented action executes; this inspection description creates none by itself. **Authority:** Inspection creates no candidate, acceptance, governed state, or execution authority.
-- **20 · `product-definition-propose`** — Use the implemented @gaep /initialize or @gaep /adopt route to prepare a bounded Product definition candidate from the reviewed context, preserving Unknowns and limitations. **Before/after:** review-context-ready → candidate-ready-for-review. **Action:** `@gaep /initialize or @gaep /adopt` (chat-command). **Evidence:** consumes Reviewed Product references and stakeholder evidence; Current governed prerequisite digests; produces Exact Product definition candidate, candidate digest, unresolved decisions, and evidence bindings. **Criteria:** Candidate is bounded to exact inputs; AI inference is visible; No missing evidence is converted to fact. **Failure/blocker:** Implemented action is unavailable; Candidate output is incomplete, stale, or exceeds its evidence Keep the candidate non-governed, show the failure, and require correction or cancellation. **Retry:** Challenge or revise exact inputs and rerun the same implemented action; never overwrite prior governed state. **Audit:** The runtime preserves candidate/run diagnostics and exact evidence digests where the implemented workflow supports them. **Authority:** AI assistance creates a candidate only; it cannot accept, approve, waive, commit, or authorize work.
-- **30 · `product-definition-decide-commit`** — Have business-owner review the exact Product definition candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. **Before/after:** candidate-ready-for-review → recorded-or-needs-decisions. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes Exact Product definition candidate and limitations; Challenge and assurance findings; produces Human acceptance disposition, governed revision, audit event, and retained candidate/input digests. **Criteria:** Exactly one accountable role is named; Required assurance findings are resolved or explicitly retained; The accepted digest equals the committed digest. **Failure/blocker:** Accountability is absent; Candidate changed after review; Material blocker or assurance finding remains undisposed Do not commit; preserve the candidate and blocker with an accountable owner and escalation path. **Retry:** Reject or revise the candidate, regenerate a new digest, repeat review, then accept and commit explicitly. **Audit:** The implemented commit records the exact accepted proposal and actor/context in governed audit history. **Authority:** Commit governs this bounded record only; separate authorities remain required for risk acceptance, implementation, repository mutation, release, deployment, and operations.
+- **10 · `product-definition-prepare-workspace`** — Open a trusted workspace and choose the new-Product /initialize route or the existing-Product /adopt route; selected files are context only. **Before/after:** no-product-workflow → product-question-cycle. **Action:** `@gaep /initialize or @gaep /adopt` (chat-command). **Evidence:** consumes trusted-workspace; optional-selected-files-or-link-metadata; produces product-entry-context. **Criteria:** Workspace is trusted; Entry route matches new versus existing Product; Attachments are not represented as governed truth. **Failure/blocker:** Workspace is restricted; Adopt has no readable supported document Stop before reading or mutation and show the exact trust or attachment blocker. **Retry:** Trust the intended workspace or select supported material, then restart the chosen route. **Audit:** No governed audit event is asserted for route selection. **Authority:** Preparing context creates no Product candidate or governed record.
+- **20 · `product-definition-collect-fields`** — Collect and challenge Product name, summary, problem, affected users, outcome, success signals, first workflow, exclusions, and profile through the actual multi-field conversation. **Before/after:** product-question-cycle → product-draft-review. **Action:** none; inspect only. **Evidence:** consumes product-entry-context; reviewed-adopt-content-when-present; produces product-field-answer-candidates; product-answer-gaps. **Criteria:** Every required Product field has a concrete bounded answer; Adopted content citations remain candidate evidence; Unknowns and exclusions remain explicit. **Failure/blocker:** Advisor unavailable; Required answer remains placeholder or contract-invalid Preserve completed field answers and report the failed field without initializing Product state. **Retry:** Retry the field, switch advisor, or use /back to revise earlier answers. **Audit:** Conversation candidate metadata may persist in Chat history; no governed Product audit record is claimed. **Authority:** Advisor output is an editable Product candidate only.
+- **30 · `product-definition-inspect-revise`** — Inspect the complete Product draft and its exact digest; use /back, /edit, /revise, or /cancel without changing the governed Product. **Before/after:** product-draft-review → product-candidate-ready-or-cancelled. **Action:** `@gaep /inspect or @gaep /back or @gaep /edit or @gaep /revise or @gaep /cancel` (chat-command). **Evidence:** consumes product-field-answer-candidates; product-candidate-digest; produces reviewed-or-revised-product-candidate. **Criteria:** Displayed draft is the exact candidate under review; Corrections produce a new candidate digest; Cancellation leaves governed state unchanged. **Failure/blocker:** Candidate is incomplete; Candidate changed outside the displayed review Keep the draft unaccepted and require another review cycle. **Retry:** Revise the selected field and re-open the full review. **Audit:** No governed Product audit event is asserted before commit. **Authority:** Inspection, revision, and cancellation do not accept or govern the candidate.
+- **40 · `product-definition-accept`** — Record the human decision to accept only the exact displayed Product candidate; acceptance does not initialize the Product. **Before/after:** product-candidate-ready → product-proposal-accepted-awaiting-commit. **Action:** `@gaep /accept` (chat-command). **Evidence:** consumes reviewed-or-revised-product-candidate; product-candidate-digest; produces accepted-product-proposal. **Criteria:** Human reviewed every field and limitation; Accepted digest equals the displayed digest. **Failure/blocker:** No complete candidate is awaiting acceptance; Candidate digest changed Refuse acceptance and preserve the candidate for review. **Retry:** Inspect or revise, then accept the newly displayed digest. **Audit:** Acceptance is represented in workflow state; no separately authenticated organizational role event is claimed. **Authority:** Acceptance applies to the proposal only and creates no governed Product or organizational approval.
+- **50 · `product-definition-commit`** — Initialize or revise the governed Product only after prior acceptance and exact /commit CONFIRM validation. **Before/after:** product-proposal-accepted-awaiting-commit → product-definition-recorded. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes accepted-product-proposal; product-candidate-digest; produces governed-product-definition; product-revision. **Criteria:** Workflow phase is accepted/review; Prompt is exactly CONFIRM; Expected revision and candidate digest remain current. **Failure/blocker:** /accept was not completed; CONFIRM is absent; Expected revision is stale; Engine validation fails Persist no partial Product revision and show the exact failure. **Retry:** Return to the accepted candidate or regenerate after stale-input review, then commit explicitly. **Audit:** The Engine persists the Product record and immutable revision; this contract claims only the returned Product identity and revision fields. **Authority:** Commit records bounded Product state; it grants no funding, implementation, release, or operational authority.
 
-**AI activity:** Use the implemented @gaep /initialize or @gaep /adopt route to prepare a bounded Product definition candidate from the reviewed context, preserving Unknowns and limitations.
+**AI activity:** Collect and challenge Product name, summary, problem, affected users, outcome, success signals, first workflow, exclusions, and profile through the actual multi-field conversation.
 
-**Human activity:** Inspect the exact inputs for Product definition; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. Have business-owner review the exact Product definition candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.
+**Human activity:** Open a trusted workspace and choose the new-Product /initialize route or the existing-Product /adopt route; selected files are context only. Inspect the complete Product draft and its exact digest; use /back, /edit, /revise, or /cancel without changing the governed Product. Record the human decision to accept only the exact displayed Product candidate; acceptance does not initialize the Product. Initialize or revise the governed Product only after prior acceptance and exact /commit CONFIRM validation.
 
 **Candidate outputs:** governed-product-definition-candidate. **Governed outputs:** governed-product-definition. **Decision records:** product-definition-acceptance-decision.
 
@@ -665,9 +863,11 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 
 | Step | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `product-definition-inspect` | product-manager | — (no decision) | C: business-owner, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
-| `product-definition-propose` | product-manager | — (no decision) | C: business-owner, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
-| `product-definition-decide-commit` | product-manager | business-owner | C: affected-user-stakeholder<br/>I: initiative-lead<br/>Assurance: — |
+| `product-definition-prepare-workspace` | product-manager | — (no decision) | C: business-owner<br/>I: —<br/>Assurance: — |
+| `product-definition-collect-fields` | product-manager | — (no decision) | C: business-owner, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
+| `product-definition-inspect-revise` | product-manager | — (no decision) | C: business-owner, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
+| `product-definition-accept` | product-manager | business-owner | C: affected-user-stakeholder<br/>I: —<br/>Assurance: — |
+| `product-definition-commit` | product-manager | business-owner | C: —<br/>I: product-leadership<br/>Assurance: — |
 
 **Decision and authority:** Acceptance applies only to the exact candidate Commit creates governed state; it does not grant implementation, release, operational, security, privacy, compliance, or certification authority
 
@@ -701,14 +901,36 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 ```mermaid
 %% Initiative definition substeps and return path
 flowchart TD
-  initiative_definition_0["10. Inspect the exact inputs for Initiative definition; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.<br/>current · none"]
-  initiative_definition_1["20. Use the implemented @gaep /continue route to prepare a bounded Initiative definition candidate from the reviewed context, preserving Unknowns and limitations.<br/>current · candidate"]
+  initiative_definition_0["10. Use /continue to resume an uncommitted Initiative draft or start a new bounded Initiative after a governed Product exists.<br/>current · none"]
+  initiative_definition_1["20. Collect Initiative title, bounded outcome, included scope, exclusions, and lifecycle state through field-specific questions and bounded advisor repair.<br/>current · candidate"]
   initiative_definition_0 --> initiative_definition_1
-  initiative_definition_2["30. Have business-owner review the exact Initiative definition candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.<br/>current · governed"]
+  initiative_definition_2["30. Inspect the complete Initiative proposal and use /initiative, /back, or /cancel to revise one field while preserving the current governed revision.<br/>current · candidate"]
   initiative_definition_1 --> initiative_definition_2
-  initiative_definition_2 -. "failure / blocker" .-> initiative_definition_revise["Preserve evidence · revise · retry or escalate"]
+  initiative_definition_3["40. Accept the exact Initiative proposal as a commit-eligible workflow state without persisting it.<br/>current · candidate"]
+  initiative_definition_2 --> initiative_definition_3
+  initiative_definition_4["50. Persist the accepted Initiative definition only after exact /commit CONFIRM and expected-revision validation.<br/>current · governed"]
+  initiative_definition_3 --> initiative_definition_4
+  initiative_definition_4 -. "failure / blocker" .-> initiative_definition_revise["Preserve evidence · revise · retry or escalate"]
   initiative_definition_revise --> initiative_definition_0
 ```
+
+<details><summary>Text alternative for Initiative definition substeps and return path</summary>
+
+```text
+  initiative_definition_0["10. Use /continue to resume an uncommitted Initiative draft or start a new bounded Initiative after a governed Product exists.<br/>current · none"]
+  initiative_definition_1["20. Collect Initiative title, bounded outcome, included scope, exclusions, and lifecycle state through field-specific questions and bounded advisor repair.<br/>current · candidate"]
+  initiative_definition_0 --> initiative_definition_1
+  initiative_definition_2["30. Inspect the complete Initiative proposal and use /initiative, /back, or /cancel to revise one field while preserving the current governed revision.<br/>current · candidate"]
+  initiative_definition_1 --> initiative_definition_2
+  initiative_definition_3["40. Accept the exact Initiative proposal as a commit-eligible workflow state without persisting it.<br/>current · candidate"]
+  initiative_definition_2 --> initiative_definition_3
+  initiative_definition_4["50. Persist the accepted Initiative definition only after exact /commit CONFIRM and expected-revision validation.<br/>current · governed"]
+  initiative_definition_3 --> initiative_definition_4
+  initiative_definition_4 -. "failure / blocker" .-> initiative_definition_revise["Preserve evidence · revise · retry or escalate"]
+  initiative_definition_revise --> initiative_definition_0
+```
+
+</details>
 
 <!-- GAEP-SEQUENCE:checkpoint-initiative-definition -->
 
@@ -721,24 +943,48 @@ participant role0 as initiative-lead
 participant role1 as product-manager
 participant role2 as business-owner
 participant gaep as GAEP runtime
-role0->>gaep: 10. Inspect the exact inputs for Initiative definition; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.
-gaep-->>role0: review-context-ready; no authority created
-role0->>gaep: 20. Use the implemented @gaep /continue route to prepare a bounded Initiative definition candidate from the reviewed context, preserving Unknowns and limitations. Action: @gaep /continue
-gaep-->>role0: Candidate only · candidate-ready-for-review
-role0->>role2: 30. Have business-owner review the exact Initiative definition candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. Action: @gaep /commit CONFIRM
-role2->>gaep: Exact acceptance / explicit commit or reject
-gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
+role0->>gaep: 10. Use /continue to resume an uncommitted Initiative draft or start a new bounded Initiative after a governed Product exists. Action: @gaep /continue
+gaep-->>role0: initiative-question-cycle; no authority created
+role0->>gaep: 20. Collect Initiative title, bounded outcome, included scope, exclusions, and lifecycle state through field-specific questions and bounded advisor repair.
+gaep-->>role0: Candidate only · initiative-draft-review
+role0->>gaep: 30. Inspect the complete Initiative proposal and use /initiative, /back, or /cancel to revise one field while preserving the current governed revision. Action: @gaep /inspect or @gaep /initiative or @gaep /back or @gaep /cancel
+gaep-->>role0: initiative-candidate-ready-or-cancelled; no authority created
+role0->>role2: 40. Accept the exact Initiative proposal as a commit-eligible workflow state without persisting it. Action: @gaep /accept
+role2->>gaep: Accept or reject the exact displayed candidate
+gaep-->>role0: initiative-proposal-accepted-awaiting-commit; still candidate until explicit commit
+role0->>role2: 50. Persist the accepted Initiative definition only after exact /commit CONFIRM and expected-revision validation. Action: @gaep /commit CONFIRM
+role2->>gaep: Confirm previously accepted digest and commit explicitly
+gaep-->>role0: initiative-definition-recorded; authority remains bounded
 ```
+
+<details><summary>Text alternative for Initiative definition — current canonical execution sequence</summary>
+
+1. role0 → gaep: 10. Use /continue to resume an uncommitted Initiative draft or start a new bounded Initiative after a governed Product exists. Action: @gaep /continue
+2. gaep → role0: initiative-question-cycle; no authority created
+3. role0 → gaep: 20. Collect Initiative title, bounded outcome, included scope, exclusions, and lifecycle state through field-specific questions and bounded advisor repair.
+4. gaep → role0: Candidate only · initiative-draft-review
+5. role0 → gaep: 30. Inspect the complete Initiative proposal and use /initiative, /back, or /cancel to revise one field while preserving the current governed revision. Action: @gaep /inspect or @gaep /initiative or @gaep /back or @gaep /cancel
+6. gaep → role0: initiative-candidate-ready-or-cancelled; no authority created
+7. role0 → role2: 40. Accept the exact Initiative proposal as a commit-eligible workflow state without persisting it. Action: @gaep /accept
+8. role2 → gaep: Accept or reject the exact displayed candidate
+9. gaep → role0: initiative-proposal-accepted-awaiting-commit; still candidate until explicit commit
+10. role0 → role2: 50. Persist the accepted Initiative definition only after exact /commit CONFIRM and expected-revision validation. Action: @gaep /commit CONFIRM
+11. role2 → gaep: Confirm previously accepted digest and commit explicitly
+12. gaep → role0: initiative-definition-recorded; authority remains bounded
+
+</details>
 
 **Ordered substeps**
 
-- **10 · `initiative-definition-inspect`** — Inspect the exact inputs for Initiative definition; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. **Before/after:** not-started-or-prerequisite-satisfied → review-context-ready. **Action:** none; inspect only. **Evidence:** consumes Reviewed change request, objectives, constraints, and stakeholder context; produces Bounded review context, named gaps, conflicts, assumptions, and freshness observations. **Criteria:** What change and outcome are bounded?; What is included and excluded?; Which constraints and dependencies apply?; Every material assertion has exact evidence or remains Unknown. **Failure/blocker:** Required input cannot be identified; Evidence limitation prevents a bounded conclusion Expose the missing prerequisite/evidence and stop the affected proposal path without discarding prior records. **Retry:** Supply or revise the bounded input, preserve the prior review context, and inspect again. **Audit:** The current runtime records workflow/audit evidence only when its implemented action executes; this inspection description creates none by itself. **Authority:** Inspection creates no candidate, acceptance, governed state, or execution authority.
-- **20 · `initiative-definition-propose`** — Use the implemented @gaep /continue route to prepare a bounded Initiative definition candidate from the reviewed context, preserving Unknowns and limitations. **Before/after:** review-context-ready → candidate-ready-for-review. **Action:** `@gaep /continue` (chat-command). **Evidence:** consumes Reviewed change request, objectives, constraints, and stakeholder context; Current governed prerequisite digests; produces Exact Initiative definition candidate, candidate digest, unresolved decisions, and evidence bindings. **Criteria:** Candidate is bounded to exact inputs; AI inference is visible; No missing evidence is converted to fact. **Failure/blocker:** Implemented action is unavailable; Candidate output is incomplete, stale, or exceeds its evidence Keep the candidate non-governed, show the failure, and require correction or cancellation. **Retry:** Challenge or revise exact inputs and rerun the same implemented action; never overwrite prior governed state. **Audit:** The runtime preserves candidate/run diagnostics and exact evidence digests where the implemented workflow supports them. **Authority:** AI assistance creates a candidate only; it cannot accept, approve, waive, commit, or authorize work.
-- **30 · `initiative-definition-decide-commit`** — Have business-owner review the exact Initiative definition candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. **Before/after:** candidate-ready-for-review → recorded-or-needs-decisions. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes Exact Initiative definition candidate and limitations; Challenge and assurance findings; produces Human acceptance disposition, governed revision, audit event, and retained candidate/input digests. **Criteria:** Exactly one accountable role is named; Required assurance findings are resolved or explicitly retained; The accepted digest equals the committed digest. **Failure/blocker:** Accountability is absent; Candidate changed after review; Material blocker or assurance finding remains undisposed Do not commit; preserve the candidate and blocker with an accountable owner and escalation path. **Retry:** Reject or revise the candidate, regenerate a new digest, repeat review, then accept and commit explicitly. **Audit:** The implemented commit records the exact accepted proposal and actor/context in governed audit history. **Authority:** Commit governs this bounded record only; separate authorities remain required for risk acceptance, implementation, repository mutation, release, deployment, and operations.
+- **10 · `initiative-definition-resume-or-start`** — Use /continue to resume an uncommitted Initiative draft or start a new bounded Initiative after a governed Product exists. **Before/after:** product-definition-recorded → initiative-question-cycle. **Action:** `@gaep /continue` (chat-command). **Evidence:** consumes governed-product-definition; optional-adoption-initiative-candidate; produces initiative-entry-context. **Criteria:** Governed Product exists; Existing draft is resumed before a second draft is created. **Failure/blocker:** Product is missing or partial; No executable advisor is selected Stop and preserve any current draft. **Retry:** Recover Product state or select an advisor, then continue. **Audit:** No governed Initiative audit event is asserted for navigation. **Authority:** Continuation chooses workflow position only.
+- **20 · `initiative-definition-collect-and-challenge`** — Collect Initiative title, bounded outcome, included scope, exclusions, and lifecycle state through field-specific questions and bounded advisor repair. **Before/after:** initiative-question-cycle → initiative-draft-review. **Action:** none; inspect only. **Evidence:** consumes initiative-entry-context; governed-product-definition; produces initiative-field-candidates; initiative-gaps. **Criteria:** Initiative is distinct from the Product; Scope and exclusions are explicit; Placeholders and unsupported authority claims are rejected. **Failure/blocker:** Advisor output cannot be normalized after bounded repair; Required field remains empty Preserve earlier answers and keep the Initiative ungoverned. **Retry:** Retry the natural-language answer or switch advisor without learning internal format. **Audit:** No governed Initiative audit event is asserted for candidate generation. **Authority:** Advisor challenge creates an Initiative candidate only.
+- **30 · `initiative-definition-review-revise`** — Inspect the complete Initiative proposal and use /initiative, /back, or /cancel to revise one field while preserving the current governed revision. **Before/after:** initiative-draft-review → initiative-candidate-ready-or-cancelled. **Action:** `@gaep /inspect or @gaep /initiative or @gaep /back or @gaep /cancel` (chat-command). **Evidence:** consumes initiative-field-candidates; initiative-candidate-digest; produces reviewed-initiative-candidate; downstream-impact-preview. **Criteria:** Exact candidate and downstream impact are visible; Revision changes only the selected field; Cancel preserves governed state. **Failure/blocker:** Revision field is not selected; Candidate bindings changed Keep the proposal unaccepted and surface the stale or missing selection. **Retry:** Select a field or restart /continue from current governed context. **Audit:** No governed record is persisted during review/revision. **Authority:** Review and revision grant no Initiative or delivery authority.
+- **40 · `initiative-definition-accept`** — Accept the exact Initiative proposal as a commit-eligible workflow state without persisting it. **Before/after:** initiative-candidate-ready → initiative-proposal-accepted-awaiting-commit. **Action:** `@gaep /accept` (chat-command). **Evidence:** consumes reviewed-initiative-candidate; initiative-candidate-digest; produces accepted-initiative-proposal. **Criteria:** Outcome, scope, and exclusions were reviewed; Accepted digest equals displayed digest. **Failure/blocker:** No complete proposal awaits acceptance Refuse the transition and retain the candidate. **Retry:** Complete/review the candidate and accept again. **Audit:** Only workflow acceptance state is claimed; no authenticated accountable-role event is claimed. **Authority:** Acceptance is not commit, funding approval, or execution authorization.
+- **50 · `initiative-definition-commit`** — Persist the accepted Initiative definition only after exact /commit CONFIRM and expected-revision validation. **Before/after:** initiative-proposal-accepted-awaiting-commit → initiative-definition-recorded. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes accepted-initiative-proposal; governed-product-definition; produces governed-initiative-definition; initiative-revision. **Criteria:** Proposal was accepted separately; CONFIRM is exact; Product and Initiative revision bindings are current. **Failure/blocker:** Acceptance missing; Stale revision; Engine rejects input Write no partial Initiative revision. **Retry:** Rebuild against current Product/Initiative state, accept, then commit. **Audit:** The Engine persists the Initiative identity and revision returned by the commit operation. **Authority:** Commit records the bounded change; it does not authorize funding or implementation.
 
-**AI activity:** Use the implemented @gaep /continue route to prepare a bounded Initiative definition candidate from the reviewed context, preserving Unknowns and limitations.
+**AI activity:** Collect Initiative title, bounded outcome, included scope, exclusions, and lifecycle state through field-specific questions and bounded advisor repair.
 
-**Human activity:** Inspect the exact inputs for Initiative definition; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. Have business-owner review the exact Initiative definition candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.
+**Human activity:** Use /continue to resume an uncommitted Initiative draft or start a new bounded Initiative after a governed Product exists. Inspect the complete Initiative proposal and use /initiative, /back, or /cancel to revise one field while preserving the current governed revision. Accept the exact Initiative proposal as a commit-eligible workflow state without persisting it. Persist the accepted Initiative definition only after exact /commit CONFIRM and expected-revision validation.
 
 **Candidate outputs:** governed-initiative-definition-candidate. **Governed outputs:** governed-initiative-definition. **Decision records:** initiative-definition-acceptance-decision.
 
@@ -748,9 +994,11 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 
 | Step | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `initiative-definition-inspect` | initiative-lead, product-manager | — (no decision) | C: business-owner<br/>I: —<br/>Assurance: — |
-| `initiative-definition-propose` | initiative-lead, product-manager | — (no decision) | C: business-owner<br/>I: —<br/>Assurance: — |
-| `initiative-definition-decide-commit` | initiative-lead, product-manager | business-owner | C: —<br/>I: initiative-lead<br/>Assurance: — |
+| `initiative-definition-resume-or-start` | initiative-lead | — (no decision) | C: product-manager, business-owner<br/>I: —<br/>Assurance: — |
+| `initiative-definition-collect-and-challenge` | initiative-lead, product-manager | — (no decision) | C: business-owner, domain-expert<br/>I: —<br/>Assurance: — |
+| `initiative-definition-review-revise` | initiative-lead, product-manager | — (no decision) | C: business-owner, domain-expert<br/>I: —<br/>Assurance: — |
+| `initiative-definition-accept` | initiative-lead, product-manager | business-owner | C: —<br/>I: —<br/>Assurance: — |
+| `initiative-definition-commit` | initiative-lead | business-owner | C: —<br/>I: product-manager<br/>Assurance: — |
 
 **Decision and authority:** Acceptance applies only to the exact candidate Commit creates governed state; it does not grant implementation, release, operational, security, privacy, compliance, or certification authority
 
@@ -784,14 +1032,36 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 ```mermaid
 %% Initiative classification substeps and return path
 flowchart TD
-  initiative_classification_0["10. Inspect the exact inputs for Initiative classification; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.<br/>current · none"]
-  initiative_classification_1["20. Use the implemented @gaep /classification route to prepare a bounded Initiative classification candidate from the reviewed context, preserving Unknowns and limitations.<br/>current · candidate"]
+  initiative_classification_0["10. Use /continue for a missing classification or /classification for revision, preserving the current classification and open questions as the starting context.<br/>current · none"]
+  initiative_classification_1["20. Use /suggest or /resolve to challenge the natural-language brief and produce a complete contract-valid classification through at most three bounded repair attempts.<br/>current · candidate"]
   initiative_classification_0 --> initiative_classification_1
-  initiative_classification_2["30. Have business-owner review the exact Initiative classification candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.<br/>current · governed"]
+  initiative_classification_2["30. Inspect the full classification, challenge open questions, and use /back or /cancel before any acceptance.<br/>current · candidate"]
   initiative_classification_1 --> initiative_classification_2
-  initiative_classification_2 -. "failure / blocker" .-> initiative_classification_revise["Preserve evidence · revise · retry or escalate"]
+  initiative_classification_3["40. Accept only the exact reviewed classification candidate as a separate workflow transition.<br/>current · candidate"]
+  initiative_classification_2 --> initiative_classification_3
+  initiative_classification_4["50. Persist the separately accepted classification only after /commit CONFIRM and current Product/Initiative revision checks.<br/>current · governed"]
+  initiative_classification_3 --> initiative_classification_4
+  initiative_classification_4 -. "failure / blocker" .-> initiative_classification_revise["Preserve evidence · revise · retry or escalate"]
   initiative_classification_revise --> initiative_classification_0
 ```
+
+<details><summary>Text alternative for Initiative classification substeps and return path</summary>
+
+```text
+  initiative_classification_0["10. Use /continue for a missing classification or /classification for revision, preserving the current classification and open questions as the starting context.<br/>current · none"]
+  initiative_classification_1["20. Use /suggest or /resolve to challenge the natural-language brief and produce a complete contract-valid classification through at most three bounded repair attempts.<br/>current · candidate"]
+  initiative_classification_0 --> initiative_classification_1
+  initiative_classification_2["30. Inspect the full classification, challenge open questions, and use /back or /cancel before any acceptance.<br/>current · candidate"]
+  initiative_classification_1 --> initiative_classification_2
+  initiative_classification_3["40. Accept only the exact reviewed classification candidate as a separate workflow transition.<br/>current · candidate"]
+  initiative_classification_2 --> initiative_classification_3
+  initiative_classification_4["50. Persist the separately accepted classification only after /commit CONFIRM and current Product/Initiative revision checks.<br/>current · governed"]
+  initiative_classification_3 --> initiative_classification_4
+  initiative_classification_4 -. "failure / blocker" .-> initiative_classification_revise["Preserve evidence · revise · retry or escalate"]
+  initiative_classification_revise --> initiative_classification_0
+```
+
+</details>
 
 <!-- GAEP-SEQUENCE:checkpoint-initiative-classification -->
 
@@ -805,24 +1075,48 @@ participant role1 as risk-compliance-specialist
 participant role2 as business-owner
 participant role3 as internal-audit-independent-assurance
 participant gaep as GAEP runtime
-role0->>gaep: 10. Inspect the exact inputs for Initiative classification; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.
-gaep-->>role0: review-context-ready; no authority created
-role0->>gaep: 20. Use the implemented @gaep /classification route to prepare a bounded Initiative classification candidate from the reviewed context, preserving Unknowns and limitations. Action: @gaep /classification
-gaep-->>role0: Candidate only · candidate-ready-for-review
-role0->>role2: 30. Have business-owner review the exact Initiative classification candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. Action: @gaep /commit CONFIRM
-role2->>gaep: Exact acceptance / explicit commit or reject
-gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
+role0->>gaep: 10. Use /continue for a missing classification or /classification for revision, preserving the current classification and open questions as the starting context. Action: @gaep /continue or @gaep /classification
+gaep-->>role0: classification-brief-ready; no authority created
+role0->>gaep: 20. Use /suggest or /resolve to challenge the natural-language brief and produce a complete contract-valid classification through at most three bounded repair attempts. Action: @gaep /suggest or @gaep /resolve
+gaep-->>role0: Candidate only · classification-candidate-awaiting-approval
+role0->>gaep: 30. Inspect the full classification, challenge open questions, and use /back or /cancel before any acceptance. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+gaep-->>role0: classification-candidate-ready-or-cancelled; no authority created
+role0->>role2: 40. Accept only the exact reviewed classification candidate as a separate workflow transition. Action: @gaep /accept
+role2->>gaep: Accept or reject the exact displayed candidate
+gaep-->>role0: classification-accepted-awaiting-commit; still candidate until explicit commit
+role0->>role2: 50. Persist the separately accepted classification only after /commit CONFIRM and current Product/Initiative revision checks. Action: @gaep /commit CONFIRM
+role2->>gaep: Confirm previously accepted digest and commit explicitly
+gaep-->>role0: initiative-classification-recorded; authority remains bounded
 ```
+
+<details><summary>Text alternative for Initiative classification — current canonical execution sequence</summary>
+
+1. role0 → gaep: 10. Use /continue for a missing classification or /classification for revision, preserving the current classification and open questions as the starting context. Action: @gaep /continue or @gaep /classification
+2. gaep → role0: classification-brief-ready; no authority created
+3. role0 → gaep: 20. Use /suggest or /resolve to challenge the natural-language brief and produce a complete contract-valid classification through at most three bounded repair attempts. Action: @gaep /suggest or @gaep /resolve
+4. gaep → role0: Candidate only · classification-candidate-awaiting-approval
+5. role0 → gaep: 30. Inspect the full classification, challenge open questions, and use /back or /cancel before any acceptance. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+6. gaep → role0: classification-candidate-ready-or-cancelled; no authority created
+7. role0 → role2: 40. Accept only the exact reviewed classification candidate as a separate workflow transition. Action: @gaep /accept
+8. role2 → gaep: Accept or reject the exact displayed candidate
+9. gaep → role0: classification-accepted-awaiting-commit; still candidate until explicit commit
+10. role0 → role2: 50. Persist the separately accepted classification only after /commit CONFIRM and current Product/Initiative revision checks. Action: @gaep /commit CONFIRM
+11. role2 → gaep: Confirm previously accepted digest and commit explicitly
+12. gaep → role0: initiative-classification-recorded; authority remains bounded
+
+</details>
 
 **Ordered substeps**
 
-- **10 · `initiative-classification-inspect`** — Inspect the exact inputs for Initiative classification; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. **Before/after:** not-started-or-prerequisite-satisfied → review-context-ready. **Action:** none; inspect only. **Evidence:** consumes Applicable policies, data/AI characteristics, jurisdictions, and risk evidence; produces Bounded review context, named gaps, conflicts, assumptions, and freshness observations. **Criteria:** Which risk, data, AI, regulatory, and delivery traits apply?; Which classifications remain Unknown?; Which assurance roles become mandatory?; Every material assertion has exact evidence or remains Unknown. **Failure/blocker:** Required input cannot be identified; Evidence limitation prevents a bounded conclusion Expose the missing prerequisite/evidence and stop the affected proposal path without discarding prior records. **Retry:** Supply or revise the bounded input, preserve the prior review context, and inspect again. **Audit:** The current runtime records workflow/audit evidence only when its implemented action executes; this inspection description creates none by itself. **Authority:** Inspection creates no candidate, acceptance, governed state, or execution authority.
-- **20 · `initiative-classification-propose`** — Use the implemented @gaep /classification route to prepare a bounded Initiative classification candidate from the reviewed context, preserving Unknowns and limitations. **Before/after:** review-context-ready → candidate-ready-for-review. **Action:** `@gaep /classification` (chat-command). **Evidence:** consumes Applicable policies, data/AI characteristics, jurisdictions, and risk evidence; Current governed prerequisite digests; produces Exact Initiative classification candidate, candidate digest, unresolved decisions, and evidence bindings. **Criteria:** Candidate is bounded to exact inputs; AI inference is visible; No missing evidence is converted to fact. **Failure/blocker:** Implemented action is unavailable; Candidate output is incomplete, stale, or exceeds its evidence Keep the candidate non-governed, show the failure, and require correction or cancellation. **Retry:** Challenge or revise exact inputs and rerun the same implemented action; never overwrite prior governed state. **Audit:** The runtime preserves candidate/run diagnostics and exact evidence digests where the implemented workflow supports them. **Authority:** AI assistance creates a candidate only; it cannot accept, approve, waive, commit, or authorize work.
-- **30 · `initiative-classification-decide-commit`** — Have business-owner review the exact Initiative classification candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. **Before/after:** candidate-ready-for-review → recorded-or-needs-decisions. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes Exact Initiative classification candidate and limitations; Challenge and assurance findings; produces Human acceptance disposition, governed revision, audit event, and retained candidate/input digests. **Criteria:** Exactly one accountable role is named; Required assurance findings are resolved or explicitly retained; The accepted digest equals the committed digest. **Failure/blocker:** Accountability is absent; Candidate changed after review; Material blocker or assurance finding remains undisposed Do not commit; preserve the candidate and blocker with an accountable owner and escalation path. **Retry:** Reject or revise the candidate, regenerate a new digest, repeat review, then accept and commit explicitly. **Audit:** The implemented commit records the exact accepted proposal and actor/context in governed audit history. **Authority:** Commit governs this bounded record only; separate authorities remain required for risk acceptance, implementation, repository mutation, release, deployment, and operations.
+- **10 · `initiative-classification-load-current`** — Use /continue for a missing classification or /classification for revision, preserving the current classification and open questions as the starting context. **Before/after:** initiative-definition-recorded → classification-brief-ready. **Action:** `@gaep /continue or @gaep /classification` (chat-command). **Evidence:** consumes governed-initiative-definition; current-or-adopted-classification; produces classification-resolution-context. **Criteria:** Product and Initiative revisions are bound; Current classification is not overwritten; Unknown dimensions remain explicit. **Failure/blocker:** Governed Initiative missing; Current revision cannot be loaded Fail closed and preserve the prior classification. **Retry:** Recover the governed Initiative or restart against the latest revision. **Audit:** No governed audit event is asserted for loading context. **Authority:** Loading classification context makes no decision.
+- **20 · `initiative-classification-propose`** — Use /suggest or /resolve to challenge the natural-language brief and produce a complete contract-valid classification through at most three bounded repair attempts. **Before/after:** classification-brief-ready → classification-candidate-awaiting-approval. **Action:** `@gaep /suggest or @gaep /resolve` (chat-command). **Evidence:** consumes classification-resolution-context; classification-human-brief; produces initiative-classification-candidate; classification-open-questions; classification-candidate-digest. **Criteria:** All classification dimensions satisfy the contract; Open questions are retained; No regulation, owner, or authority is invented. **Failure/blocker:** Provider fails; Three contract repairs fail; Candidate is incomplete Preserve the human brief and current governed classification. **Retry:** Retry the same brief or switch advisor. **Audit:** Candidate/diagnostic state may appear in Chat; no governed classification event is claimed. **Authority:** Advisor classification is a candidate, not a risk or regulatory decision.
+- **30 · `initiative-classification-review-revise`** — Inspect the full classification, challenge open questions, and use /back or /cancel before any acceptance. **Before/after:** classification-candidate-awaiting-approval → classification-candidate-ready-or-cancelled. **Action:** `@gaep /inspect or @gaep /back or @gaep /cancel` (chat-command). **Evidence:** consumes initiative-classification-candidate; classification-candidate-digest; produces reviewed-classification-candidate. **Criteria:** Primary/secondary type, system state, posture, motivations, owner, authority, rationale, and open questions are visible; Revision preserves prior governed state. **Failure/blocker:** Material question lacks disposition; Candidate becomes stale Keep candidate unresolved and do not progress to commit. **Retry:** Provide corrections or restart from current classification. **Audit:** No governed classification audit event is asserted. **Authority:** Review/revision does not accept risk or classification.
+- **40 · `initiative-classification-accept`** — Accept only the exact reviewed classification candidate as a separate workflow transition. **Before/after:** classification-candidate-ready → classification-accepted-awaiting-commit. **Action:** `@gaep /accept` (chat-command). **Evidence:** consumes reviewed-classification-candidate; classification-candidate-digest; produces accepted-classification-proposal. **Criteria:** Material unknowns have accountable dispositions; Accepted digest matches review. **Failure/blocker:** Candidate not complete; Required review is unresolved Refuse acceptance; retain open questions. **Retry:** Resolve/revise then repeat acceptance. **Audit:** Workflow acceptance is claimed without runtime authentication of the RACI roles. **Authority:** Acceptance is scoped to the classification proposal and is not risk acceptance or a waiver.
+- **50 · `initiative-classification-commit`** — Persist the separately accepted classification only after /commit CONFIRM and current Product/Initiative revision checks. **Before/after:** classification-accepted-awaiting-commit → initiative-classification-recorded. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes accepted-classification-proposal; initiative-revision-binding; product-revision-binding; produces governed-initiative-classification; initiative-revision. **Criteria:** Acceptance exists; CONFIRM exact; Revision bindings current. **Failure/blocker:** Acceptance missing; Stale binding; Engine rejection No partial classification revision is persisted. **Retry:** Regenerate from current bindings, reaccept, and recommit. **Audit:** The Engine persists the Initiative revision and classification fields; no authenticated role/assurer identity is claimed. **Authority:** Commit records classification; it does not grant approval, waiver, security, privacy, or compliance authority.
 
-**AI activity:** Use the implemented @gaep /classification route to prepare a bounded Initiative classification candidate from the reviewed context, preserving Unknowns and limitations.
+**AI activity:** Use /suggest or /resolve to challenge the natural-language brief and produce a complete contract-valid classification through at most three bounded repair attempts.
 
-**Human activity:** Inspect the exact inputs for Initiative classification; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. Have business-owner review the exact Initiative classification candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.
+**Human activity:** Use /continue for a missing classification or /classification for revision, preserving the current classification and open questions as the starting context. Inspect the full classification, challenge open questions, and use /back or /cancel before any acceptance. Accept only the exact reviewed classification candidate as a separate workflow transition. Persist the separately accepted classification only after /commit CONFIRM and current Product/Initiative revision checks.
 
 **Candidate outputs:** governed-initiative-classification-candidate. **Governed outputs:** governed-initiative-classification. **Decision records:** initiative-classification-acceptance-decision.
 
@@ -832,9 +1126,11 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 
 | Step | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `initiative-classification-inspect` | initiative-lead, risk-compliance-specialist | — (no decision) | C: security-architect, privacy-specialist<br/>I: —<br/>Assurance: — |
-| `initiative-classification-propose` | initiative-lead, risk-compliance-specialist | — (no decision) | C: security-architect, privacy-specialist<br/>I: —<br/>Assurance: — |
-| `initiative-classification-decide-commit` | initiative-lead, risk-compliance-specialist | business-owner | C: security-architect, privacy-specialist<br/>I: initiative-lead<br/>Assurance: internal-audit-independent-assurance |
+| `initiative-classification-load-current` | initiative-lead, risk-compliance-specialist | — (no decision) | C: security-architect, privacy-specialist<br/>I: —<br/>Assurance: — |
+| `initiative-classification-propose` | initiative-lead, risk-compliance-specialist | — (no decision) | C: security-architect, privacy-specialist, legal-regulatory-specialist<br/>I: —<br/>Assurance: — |
+| `initiative-classification-review-revise` | initiative-lead, risk-compliance-specialist | — (no decision) | C: security-architect, privacy-specialist, business-owner<br/>I: —<br/>Assurance: — |
+| `initiative-classification-accept` | initiative-lead, risk-compliance-specialist | business-owner | C: —<br/>I: —<br/>Assurance: internal-audit-independent-assurance |
+| `initiative-classification-commit` | initiative-lead, risk-compliance-specialist | business-owner | C: —<br/>I: —<br/>Assurance: — |
 
 **Decision and authority:** Acceptance applies only to the exact candidate Commit creates governed state; it does not grant implementation, release, operational, security, privacy, compliance, or certification authority
 
@@ -868,14 +1164,36 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 ```mermaid
 %% Initiative applicability substeps and return path
 flowchart TD
-  initiative_applicability_0["10. Inspect the exact inputs for Initiative applicability; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.<br/>current · none"]
-  initiative_applicability_1["20. Use the implemented @gaep /applicability route to prepare a bounded Initiative applicability candidate from the reviewed context, preserving Unknowns and limitations.<br/>current · candidate"]
+  initiative_applicability_0["10. Use /continue for a missing/stale matrix or /applicability for revision; load the exact canonical subject catalog, current classification, and prior matrix without treating silence as not-applicable.<br/>current · none"]
+  initiative_applicability_1["20. Use /suggest or /resolve to map every canonical subject exactly once, with explicit applied, excluded, pending, or unresolved decisions and bounded automatic repair.<br/>current · candidate"]
   initiative_applicability_0 --> initiative_applicability_1
-  initiative_applicability_2["30. Have business-owner review the exact Initiative applicability candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.<br/>current · governed"]
+  initiative_applicability_2["30. Inspect all mapped and unresolved subjects, supply explicit human decisions through /resolve, and use /back or /cancel when revision is required.<br/>current · candidate"]
   initiative_applicability_1 --> initiative_applicability_2
-  initiative_applicability_2 -. "failure / blocker" .-> initiative_applicability_revise["Preserve evidence · revise · retry or escalate"]
+  initiative_applicability_3["40. Accept the exact reviewed applicability matrix as a separate candidate transition without persisting it.<br/>current · candidate"]
+  initiative_applicability_2 --> initiative_applicability_3
+  initiative_applicability_4["50. Persist the accepted matrix only after exact /commit CONFIRM and stale classification/Initiative checks.<br/>current · governed"]
+  initiative_applicability_3 --> initiative_applicability_4
+  initiative_applicability_4 -. "failure / blocker" .-> initiative_applicability_revise["Preserve evidence · revise · retry or escalate"]
   initiative_applicability_revise --> initiative_applicability_0
 ```
+
+<details><summary>Text alternative for Initiative applicability substeps and return path</summary>
+
+```text
+  initiative_applicability_0["10. Use /continue for a missing/stale matrix or /applicability for revision; load the exact canonical subject catalog, current classification, and prior matrix without treating silence as not-applicable.<br/>current · none"]
+  initiative_applicability_1["20. Use /suggest or /resolve to map every canonical subject exactly once, with explicit applied, excluded, pending, or unresolved decisions and bounded automatic repair.<br/>current · candidate"]
+  initiative_applicability_0 --> initiative_applicability_1
+  initiative_applicability_2["30. Inspect all mapped and unresolved subjects, supply explicit human decisions through /resolve, and use /back or /cancel when revision is required.<br/>current · candidate"]
+  initiative_applicability_1 --> initiative_applicability_2
+  initiative_applicability_3["40. Accept the exact reviewed applicability matrix as a separate candidate transition without persisting it.<br/>current · candidate"]
+  initiative_applicability_2 --> initiative_applicability_3
+  initiative_applicability_4["50. Persist the accepted matrix only after exact /commit CONFIRM and stale classification/Initiative checks.<br/>current · governed"]
+  initiative_applicability_3 --> initiative_applicability_4
+  initiative_applicability_4 -. "failure / blocker" .-> initiative_applicability_revise["Preserve evidence · revise · retry or escalate"]
+  initiative_applicability_revise --> initiative_applicability_0
+```
+
+</details>
 
 <!-- GAEP-SEQUENCE:checkpoint-initiative-applicability -->
 
@@ -889,24 +1207,48 @@ participant role1 as risk-compliance-specialist
 participant role2 as business-owner
 participant role3 as internal-audit-independent-assurance
 participant gaep as GAEP runtime
-role0->>gaep: 10. Inspect the exact inputs for Initiative applicability; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.
-gaep-->>role0: review-context-ready; no authority created
-role0->>gaep: 20. Use the implemented @gaep /applicability route to prepare a bounded Initiative applicability candidate from the reviewed context, preserving Unknowns and limitations. Action: @gaep /applicability
-gaep-->>role0: Candidate only · candidate-ready-for-review
-role0->>role2: 30. Have business-owner review the exact Initiative applicability candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. Action: @gaep /commit CONFIRM
-role2->>gaep: Exact acceptance / explicit commit or reject
-gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
+role0->>gaep: 10. Use /continue for a missing/stale matrix or /applicability for revision; load the exact canonical subject catalog, current classification, and prior matrix without treating silence as not-applicable. Action: @gaep /continue or @gaep /applicability
+gaep-->>role0: applicability-brief-ready; no authority created
+role0->>gaep: 20. Use /suggest or /resolve to map every canonical subject exactly once, with explicit applied, excluded, pending, or unresolved decisions and bounded automatic repair. Action: @gaep /suggest or @gaep /resolve
+gaep-->>role0: Candidate only · applicability-candidate-awaiting-approval
+role0->>gaep: 30. Inspect all mapped and unresolved subjects, supply explicit human decisions through /resolve, and use /back or /cancel when revision is required. Action: @gaep /inspect or @gaep /resolve or @gaep /back or @gaep /cancel
+gaep-->>role0: applicability-candidate-ready-or-unresolved; no authority created
+role0->>role2: 40. Accept the exact reviewed applicability matrix as a separate candidate transition without persisting it. Action: @gaep /accept
+role2->>gaep: Accept or reject the exact displayed candidate
+gaep-->>role0: applicability-accepted-awaiting-commit; still candidate until explicit commit
+role0->>role2: 50. Persist the accepted matrix only after exact /commit CONFIRM and stale classification/Initiative checks. Action: @gaep /commit CONFIRM
+role2->>gaep: Confirm previously accepted digest and commit explicitly
+gaep-->>role0: initiative-applicability-recorded; authority remains bounded
 ```
+
+<details><summary>Text alternative for Initiative applicability — current canonical execution sequence</summary>
+
+1. role0 → gaep: 10. Use /continue for a missing/stale matrix or /applicability for revision; load the exact canonical subject catalog, current classification, and prior matrix without treating silence as not-applicable. Action: @gaep /continue or @gaep /applicability
+2. gaep → role0: applicability-brief-ready; no authority created
+3. role0 → gaep: 20. Use /suggest or /resolve to map every canonical subject exactly once, with explicit applied, excluded, pending, or unresolved decisions and bounded automatic repair. Action: @gaep /suggest or @gaep /resolve
+4. gaep → role0: Candidate only · applicability-candidate-awaiting-approval
+5. role0 → gaep: 30. Inspect all mapped and unresolved subjects, supply explicit human decisions through /resolve, and use /back or /cancel when revision is required. Action: @gaep /inspect or @gaep /resolve or @gaep /back or @gaep /cancel
+6. gaep → role0: applicability-candidate-ready-or-unresolved; no authority created
+7. role0 → role2: 40. Accept the exact reviewed applicability matrix as a separate candidate transition without persisting it. Action: @gaep /accept
+8. role2 → gaep: Accept or reject the exact displayed candidate
+9. gaep → role0: applicability-accepted-awaiting-commit; still candidate until explicit commit
+10. role0 → role2: 50. Persist the accepted matrix only after exact /commit CONFIRM and stale classification/Initiative checks. Action: @gaep /commit CONFIRM
+11. role2 → gaep: Confirm previously accepted digest and commit explicitly
+12. gaep → role0: initiative-applicability-recorded; authority remains bounded
+
+</details>
 
 **Ordered substeps**
 
-- **10 · `initiative-applicability-inspect`** — Inspect the exact inputs for Initiative applicability; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. **Before/after:** not-started-or-prerequisite-satisfied → review-context-ready. **Action:** none; inspect only. **Evidence:** consumes Classification, policy, jurisdiction, risk, and explicit inclusion/exclusion rationale; produces Bounded review context, named gaps, conflicts, assumptions, and freshness observations. **Criteria:** What applies and why?; What is excluded and who is accountable?; Which missing decisions block progression?; Every material assertion has exact evidence or remains Unknown. **Failure/blocker:** Required input cannot be identified; Evidence limitation prevents a bounded conclusion Expose the missing prerequisite/evidence and stop the affected proposal path without discarding prior records. **Retry:** Supply or revise the bounded input, preserve the prior review context, and inspect again. **Audit:** The current runtime records workflow/audit evidence only when its implemented action executes; this inspection description creates none by itself. **Authority:** Inspection creates no candidate, acceptance, governed state, or execution authority.
-- **20 · `initiative-applicability-propose`** — Use the implemented @gaep /applicability route to prepare a bounded Initiative applicability candidate from the reviewed context, preserving Unknowns and limitations. **Before/after:** review-context-ready → candidate-ready-for-review. **Action:** `@gaep /applicability` (chat-command). **Evidence:** consumes Classification, policy, jurisdiction, risk, and explicit inclusion/exclusion rationale; Current governed prerequisite digests; produces Exact Initiative applicability candidate, candidate digest, unresolved decisions, and evidence bindings. **Criteria:** Candidate is bounded to exact inputs; AI inference is visible; No missing evidence is converted to fact. **Failure/blocker:** Implemented action is unavailable; Candidate output is incomplete, stale, or exceeds its evidence Keep the candidate non-governed, show the failure, and require correction or cancellation. **Retry:** Challenge or revise exact inputs and rerun the same implemented action; never overwrite prior governed state. **Audit:** The runtime preserves candidate/run diagnostics and exact evidence digests where the implemented workflow supports them. **Authority:** AI assistance creates a candidate only; it cannot accept, approve, waive, commit, or authorize work.
-- **30 · `initiative-applicability-decide-commit`** — Have business-owner review the exact Initiative applicability candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. **Before/after:** candidate-ready-for-review → recorded-or-needs-decisions. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes Exact Initiative applicability candidate and limitations; Challenge and assurance findings; produces Human acceptance disposition, governed revision, audit event, and retained candidate/input digests. **Criteria:** Exactly one accountable role is named; Required assurance findings are resolved or explicitly retained; The accepted digest equals the committed digest. **Failure/blocker:** Accountability is absent; Candidate changed after review; Material blocker or assurance finding remains undisposed Do not commit; preserve the candidate and blocker with an accountable owner and escalation path. **Retry:** Reject or revise the candidate, regenerate a new digest, repeat review, then accept and commit explicitly. **Audit:** The implemented commit records the exact accepted proposal and actor/context in governed audit history. **Authority:** Commit governs this bounded record only; separate authorities remain required for risk acceptance, implementation, repository mutation, release, deployment, and operations.
+- **10 · `initiative-applicability-load-catalog`** — Use /continue for a missing/stale matrix or /applicability for revision; load the exact canonical subject catalog, current classification, and prior matrix without treating silence as not-applicable. **Before/after:** initiative-classification-recorded → applicability-brief-ready. **Action:** `@gaep /continue or @gaep /applicability` (chat-command). **Evidence:** consumes governed-initiative-classification; canonical-applicability-catalog; prior-applicability-when-present; produces applicability-resolution-context. **Criteria:** Classification is current; Every canonical subject is loaded; Prior matrix is labeled current or stale. **Failure/blocker:** Classification/catalog missing; Prior matrix cannot be bound Fail closed and preserve the prior matrix. **Retry:** Restore the canonical catalog/current classification, then restart. **Audit:** No governed event is asserted for context preparation. **Authority:** Catalog loading makes no applicability decision.
+- **20 · `initiative-applicability-propose-matrix`** — Use /suggest or /resolve to map every canonical subject exactly once, with explicit applied, excluded, pending, or unresolved decisions and bounded automatic repair. **Before/after:** applicability-brief-ready → applicability-candidate-awaiting-approval. **Action:** `@gaep /suggest or @gaep /resolve` (chat-command). **Evidence:** consumes applicability-resolution-context; applicability-human-brief; produces initiative-applicability-candidate; applicability-open-decisions; applicability-candidate-digest. **Criteria:** Exact catalog cardinality and identity; No absence becomes excluded; Owners/approvers are candidate role strings, not appointments. **Failure/blocker:** Provider fails; Matrix incomplete after repair; Unknown catalog identity Preserve the brief and prior matrix; persist nothing. **Retry:** Retry or switch advisor with the same governed context. **Audit:** No governed applicability event is asserted for candidate generation. **Authority:** AI mapping cannot decide applicability, waive controls, or appoint roles.
+- **30 · `initiative-applicability-review-resolve`** — Inspect all mapped and unresolved subjects, supply explicit human decisions through /resolve, and use /back or /cancel when revision is required. **Before/after:** applicability-candidate-awaiting-approval → applicability-candidate-ready-or-unresolved. **Action:** `@gaep /inspect or @gaep /resolve or @gaep /back or @gaep /cancel` (chat-command). **Evidence:** consumes initiative-applicability-candidate; applicability-open-decisions; produces reviewed-applicability-candidate. **Criteria:** Every subject has evidence and rationale or remains unresolved; Pending human decisions are visible; Stale matrices are not treated as current. **Failure/blocker:** Subject coverage incomplete; Material decision lacks accountable disposition; Candidate stale Keep the matrix candidate and expose unresolved subjects. **Retry:** Revise the named subjects or rebuild from current classification. **Audit:** No governed applicability event is asserted during review. **Authority:** Resolution input remains candidate until separate acceptance and commit.
+- **40 · `initiative-applicability-accept`** — Accept the exact reviewed applicability matrix as a separate candidate transition without persisting it. **Before/after:** applicability-candidate-ready → applicability-accepted-awaiting-commit. **Action:** `@gaep /accept` (chat-command). **Evidence:** consumes reviewed-applicability-candidate; applicability-candidate-digest; produces accepted-applicability-proposal. **Criteria:** All required human decisions are explicit; Accepted digest matches displayed matrix. **Failure/blocker:** Pending material decisions remain; Digest changed Refuse acceptance and retain the matrix for resolution. **Retry:** Resolve/review and accept the new exact matrix. **Audit:** Workflow acceptance is recorded without runtime authentication of policy roles. **Authority:** Acceptance is not a waiver, regulatory conclusion, or control approval.
+- **50 · `initiative-applicability-commit`** — Persist the accepted matrix only after exact /commit CONFIRM and stale classification/Initiative checks. **Before/after:** applicability-accepted-awaiting-commit → initiative-applicability-recorded. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes accepted-applicability-proposal; classification-revision-binding; initiative-revision-binding; produces governed-initiative-applicability; initiative-applicability-revision. **Criteria:** Acceptance precedes commit; CONFIRM exact; Classification and Initiative bindings current. **Failure/blocker:** Acceptance missing; Matrix stale; Engine validation fails Persist no partial matrix. **Retry:** Rebuild/review/accept against current bindings, then commit. **Audit:** The Engine persists the applicability revision, decisions, unresolved subjects, and Initiative binding. **Authority:** Commit records scoped applicability decisions only.
 
-**AI activity:** Use the implemented @gaep /applicability route to prepare a bounded Initiative applicability candidate from the reviewed context, preserving Unknowns and limitations.
+**AI activity:** Use /suggest or /resolve to map every canonical subject exactly once, with explicit applied, excluded, pending, or unresolved decisions and bounded automatic repair.
 
-**Human activity:** Inspect the exact inputs for Initiative applicability; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. Have business-owner review the exact Initiative applicability candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.
+**Human activity:** Use /continue for a missing/stale matrix or /applicability for revision; load the exact canonical subject catalog, current classification, and prior matrix without treating silence as not-applicable. Inspect all mapped and unresolved subjects, supply explicit human decisions through /resolve, and use /back or /cancel when revision is required. Accept the exact reviewed applicability matrix as a separate candidate transition without persisting it. Persist the accepted matrix only after exact /commit CONFIRM and stale classification/Initiative checks.
 
 **Candidate outputs:** governed-initiative-applicability-candidate. **Governed outputs:** governed-initiative-applicability. **Decision records:** initiative-applicability-acceptance-decision.
 
@@ -916,9 +1258,11 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 
 | Step | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `initiative-applicability-inspect` | initiative-lead, risk-compliance-specialist | — (no decision) | C: security-architect, privacy-specialist, legal-regulatory-specialist<br/>I: —<br/>Assurance: — |
-| `initiative-applicability-propose` | initiative-lead, risk-compliance-specialist | — (no decision) | C: security-architect, privacy-specialist, legal-regulatory-specialist<br/>I: —<br/>Assurance: — |
-| `initiative-applicability-decide-commit` | initiative-lead, risk-compliance-specialist | business-owner | C: security-architect, privacy-specialist, legal-regulatory-specialist<br/>I: initiative-lead<br/>Assurance: internal-audit-independent-assurance |
+| `initiative-applicability-load-catalog` | initiative-lead, risk-compliance-specialist | — (no decision) | C: security-architect, privacy-specialist, legal-regulatory-specialist<br/>I: —<br/>Assurance: — |
+| `initiative-applicability-propose-matrix` | initiative-lead, risk-compliance-specialist | — (no decision) | C: security-architect, privacy-specialist, legal-regulatory-specialist, domain-expert<br/>I: —<br/>Assurance: — |
+| `initiative-applicability-review-resolve` | initiative-lead, risk-compliance-specialist | — (no decision) | C: business-owner, security-architect, privacy-specialist, legal-regulatory-specialist<br/>I: —<br/>Assurance: — |
+| `initiative-applicability-accept` | initiative-lead, risk-compliance-specialist | business-owner | C: —<br/>I: —<br/>Assurance: internal-audit-independent-assurance |
+| `initiative-applicability-commit` | initiative-lead, risk-compliance-specialist | business-owner | C: —<br/>I: —<br/>Assurance: — |
 
 **Decision and authority:** Acceptance applies only to the exact candidate Commit creates governed state; it does not grant implementation, release, operational, security, privacy, compliance, or certification authority
 
@@ -952,14 +1296,32 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 ```mermaid
 %% Source intake substeps and return path
 flowchart TD
-  source_intake_0["10. Inspect the exact inputs for Source intake; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.<br/>current · none"]
-  source_intake_1["20. Use the implemented @gaep /intake then @gaep /record route to prepare a bounded Source intake candidate from the reviewed context, preserving Unknowns and limitations.<br/>current · candidate"]
+  source_intake_0["10. Choose one or more files or a folder, or use native Add Context; links remain metadata and no content is fetched automatically.<br/>current · none"]
+  source_intake_1["20. Use /intake to read bounded content, report extraction limitations, and reason over the exact attachment cache without recording a Source.<br/>current · candidate"]
   source_intake_0 --> source_intake_1
-  source_intake_2["30. Have business-owner review the exact Source intake candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.<br/>current · governed"]
+  source_intake_2["30. Use /manifest to inspect exact candidate file metadata and optionally /align to create a separate seven-checkpoint evidence-bounded alignment preview.<br/>current · candidate"]
   source_intake_1 --> source_intake_2
-  source_intake_2 -. "failure / blocker" .-> source_intake_revise["Preserve evidence · revise · retry or escalate"]
+  source_intake_3["40. Use /record to persist only the exact reviewed files as non-authoritative candidate Source records; this runtime path does not use /accept or /commit CONFIRM.<br/>current · governed"]
+  source_intake_2 --> source_intake_3
+  source_intake_3 -. "failure / blocker" .-> source_intake_revise["Preserve evidence · revise · retry or escalate"]
   source_intake_revise --> source_intake_0
 ```
+
+<details><summary>Text alternative for Source intake substeps and return path</summary>
+
+```text
+  source_intake_0["10. Choose one or more files or a folder, or use native Add Context; links remain metadata and no content is fetched automatically.<br/>current · none"]
+  source_intake_1["20. Use /intake to read bounded content, report extraction limitations, and reason over the exact attachment cache without recording a Source.<br/>current · candidate"]
+  source_intake_0 --> source_intake_1
+  source_intake_2["30. Use /manifest to inspect exact candidate file metadata and optionally /align to create a separate seven-checkpoint evidence-bounded alignment preview.<br/>current · candidate"]
+  source_intake_1 --> source_intake_2
+  source_intake_3["40. Use /record to persist only the exact reviewed files as non-authoritative candidate Source records; this runtime path does not use /accept or /commit CONFIRM.<br/>current · governed"]
+  source_intake_2 --> source_intake_3
+  source_intake_3 -. "failure / blocker" .-> source_intake_revise["Preserve evidence · revise · retry or escalate"]
+  source_intake_revise --> source_intake_0
+```
+
+</details>
 
 <!-- GAEP-SEQUENCE:checkpoint-source-intake -->
 
@@ -972,24 +1334,41 @@ participant role0 as initiative-lead
 participant role1 as domain-expert
 participant role2 as business-owner
 participant gaep as GAEP runtime
-role0->>gaep: 10. Inspect the exact inputs for Source intake; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.
-gaep-->>role0: review-context-ready; no authority created
-role0->>gaep: 20. Use the implemented @gaep /intake then @gaep /record route to prepare a bounded Source intake candidate from the reviewed context, preserving Unknowns and limitations. Action: @gaep /intake
-gaep-->>role0: Candidate only · candidate-ready-for-review
-role0->>role2: 30. Have business-owner review the exact Source intake candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. Action: @gaep /commit CONFIRM
-role2->>gaep: Exact acceptance / explicit commit or reject
-gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
+role0->>gaep: 10. Choose one or more files or a folder, or use native Add Context; links remain metadata and no content is fetched automatically. Action: gaep.chooseFile or gaep.chooseFolder
+gaep-->>role0: attachments-selected; no authority created
+role0->>gaep: 20. Use /intake to read bounded content, report extraction limitations, and reason over the exact attachment cache without recording a Source. Action: @gaep /intake
+gaep-->>role0: Candidate only · attachment-review-active
+role0->>gaep: 30. Use /manifest to inspect exact candidate file metadata and optionally /align to create a separate seven-checkpoint evidence-bounded alignment preview. Action: @gaep /manifest or @gaep /align
+gaep-->>role0: reviewed-attachments-ready-to-record; no authority created
+role0->>role2: 40. Use /record to persist only the exact reviewed files as non-authoritative candidate Source records; this runtime path does not use /accept or /commit CONFIRM. Action: @gaep /record
+role2->>gaep: Confirm previously accepted digest and commit explicitly
+gaep-->>role0: source-intake-recorded; authority remains bounded
 ```
+
+<details><summary>Text alternative for Source intake — current canonical execution sequence</summary>
+
+1. role0 → gaep: 10. Choose one or more files or a folder, or use native Add Context; links remain metadata and no content is fetched automatically. Action: gaep.chooseFile or gaep.chooseFolder
+2. gaep → role0: attachments-selected; no authority created
+3. role0 → gaep: 20. Use /intake to read bounded content, report extraction limitations, and reason over the exact attachment cache without recording a Source. Action: @gaep /intake
+4. gaep → role0: Candidate only · attachment-review-active
+5. role0 → gaep: 30. Use /manifest to inspect exact candidate file metadata and optionally /align to create a separate seven-checkpoint evidence-bounded alignment preview. Action: @gaep /manifest or @gaep /align
+6. gaep → role0: reviewed-attachments-ready-to-record; no authority created
+7. role0 → role2: 40. Use /record to persist only the exact reviewed files as non-authoritative candidate Source records; this runtime path does not use /accept or /commit CONFIRM. Action: @gaep /record
+8. role2 → gaep: Confirm previously accepted digest and commit explicitly
+9. gaep → role0: source-intake-recorded; authority remains bounded
+
+</details>
 
 **Ordered substeps**
 
-- **10 · `source-intake-inspect`** — Inspect the exact inputs for Source intake; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. **Before/after:** not-started-or-prerequisite-satisfied → review-context-ready. **Action:** none; inspect only. **Evidence:** consumes Exact selected bytes, extraction report, content digest, locator, and human review; produces Bounded review context, named gaps, conflicts, assumptions, and freshness observations. **Criteria:** What exact content was reviewed?; What are its identity, revision, freshness, limitations, and semantic standing?; What remains link-only or unreadable?; Every material assertion has exact evidence or remains Unknown. **Failure/blocker:** Required input cannot be identified; Evidence limitation prevents a bounded conclusion Expose the missing prerequisite/evidence and stop the affected proposal path without discarding prior records. **Retry:** Supply or revise the bounded input, preserve the prior review context, and inspect again. **Audit:** The current runtime records workflow/audit evidence only when its implemented action executes; this inspection description creates none by itself. **Authority:** Inspection creates no candidate, acceptance, governed state, or execution authority.
-- **20 · `source-intake-propose`** — Use the implemented @gaep /intake then @gaep /record route to prepare a bounded Source intake candidate from the reviewed context, preserving Unknowns and limitations. **Before/after:** review-context-ready → candidate-ready-for-review. **Action:** `@gaep /intake` (chat-command). **Evidence:** consumes Exact selected bytes, extraction report, content digest, locator, and human review; Current governed prerequisite digests; produces Exact Source intake candidate, candidate digest, unresolved decisions, and evidence bindings. **Criteria:** Candidate is bounded to exact inputs; AI inference is visible; No missing evidence is converted to fact. **Failure/blocker:** Implemented action is unavailable; Candidate output is incomplete, stale, or exceeds its evidence Keep the candidate non-governed, show the failure, and require correction or cancellation. **Retry:** Challenge or revise exact inputs and rerun the same implemented action; never overwrite prior governed state. **Audit:** The runtime preserves candidate/run diagnostics and exact evidence digests where the implemented workflow supports them. **Authority:** AI assistance creates a candidate only; it cannot accept, approve, waive, commit, or authorize work.
-- **30 · `source-intake-decide-commit`** — Have business-owner review the exact Source intake candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. **Before/after:** candidate-ready-for-review → recorded-or-needs-decisions. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes Exact Source intake candidate and limitations; Challenge and assurance findings; produces Human acceptance disposition, governed revision, audit event, and retained candidate/input digests. **Criteria:** Exactly one accountable role is named; Required assurance findings are resolved or explicitly retained; The accepted digest equals the committed digest. **Failure/blocker:** Accountability is absent; Candidate changed after review; Material blocker or assurance finding remains undisposed Do not commit; preserve the candidate and blocker with an accountable owner and escalation path. **Retry:** Reject or revise the candidate, regenerate a new digest, repeat review, then accept and commit explicitly. **Audit:** The implemented commit records the exact accepted proposal and actor/context in governed audit history. **Authority:** Commit governs this bounded record only; separate authorities remain required for risk acceptance, implementation, repository mutation, release, deployment, and operations.
+- **10 · `source-intake-select`** — Choose one or more files or a folder, or use native Add Context; links remain metadata and no content is fetched automatically. **Before/after:** source-intake-not-started → attachments-selected. **Action:** `gaep.chooseFile or gaep.chooseFolder` (studio-action). **Evidence:** consumes user-selected-file-folder-or-link; produces bounded-attachment-selection. **Criteria:** Selection is explicit; Supported format and limits are visible; Link-only input is not content evidence. **Failure/blocker:** No attachment; Unsupported or rejected format; Restricted workspace Reject unsafe/unreadable items and record no Source. **Retry:** Choose supported accessible material or proceed without sources where allowed. **Audit:** No governed Source event is asserted for selection. **Authority:** Selection attaches context only.
+- **20 · `source-intake-review-content`** — Use /intake to read bounded content, report extraction limitations, and reason over the exact attachment cache without recording a Source. **Before/after:** attachments-selected → attachment-review-active. **Action:** `@gaep /intake` (chat-command). **Evidence:** consumes bounded-attachment-selection; current-product-initiative-applicability; produces attachment-content-review; attachment-content-digests; extraction-limitations. **Criteria:** Exact bytes/content digest identified; Extraction limits and rejected items visible; Reasoning is advisory. **Failure/blocker:** Prerequisites missing; No candidate content; Advisor failure Preserve prior review when possible and record no Source. **Retry:** Reattach or retry /intake; raw cache is intentionally machine-local. **Audit:** Portable state includes bounded attachment metadata; raw content is not claimed as governed audit evidence. **Authority:** Content review creates no Source, Baseline, Provenance, approval, or truth status.
+- **30 · `source-intake-inspect-or-align`** — Use /manifest to inspect exact candidate file metadata and optionally /align to create a separate seven-checkpoint evidence-bounded alignment preview. **Before/after:** attachment-review-active → reviewed-attachments-ready-to-record. **Action:** `@gaep /manifest or @gaep /align` (chat-command). **Evidence:** consumes attachment-content-review; attachment-content-digests; produces candidate-source-manifest; optional-adoption-alignment-preview. **Criteria:** File identity/digest pairing visible; Alignment authority remains candidate; Unsupported knowledge remains explicit. **Failure/blocker:** Review cache expired; Alignment output invalid Require reattachment; do not infer missing content. **Retry:** Repeat /intake then inspect or align again. **Audit:** No governed Source event is asserted. **Authority:** Manifest and alignment preview do not record Sources or complete checkpoints.
+- **40 · `source-intake-record-candidates`** — Use /record to persist only the exact reviewed files as non-authoritative candidate Source records; this runtime path does not use /accept or /commit CONFIRM. **Before/after:** reviewed-attachments-ready-to-record → source-intake-recorded. **Action:** `@gaep /record` (chat-command). **Evidence:** consumes candidate-source-manifest; attachment-content-digests; current-initiative-binding; produces governed-candidate-source-records. **Criteria:** Active review cache exists; Initiative binding current; Recorded metadata/digests match reviewed files. **Failure/blocker:** Cache missing; Initiative stale; Engine recording fails Record no partial Source and keep the review available when safe. **Retry:** Inspect diagnostics and retry /record or repeat /intake after cache loss. **Audit:** The Source engine persists exact Source identity, revision, content digest, and Initiative relationship returned by recording. **Authority:** Recording creates candidate Source identities only; it does not establish truth, authority, Baseline membership, or approval.
 
-**AI activity:** Use the implemented @gaep /intake then @gaep /record route to prepare a bounded Source intake candidate from the reviewed context, preserving Unknowns and limitations.
+**AI activity:** Use /intake to read bounded content, report extraction limitations, and reason over the exact attachment cache without recording a Source.
 
-**Human activity:** Inspect the exact inputs for Source intake; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. Have business-owner review the exact Source intake candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.
+**Human activity:** Choose one or more files or a folder, or use native Add Context; links remain metadata and no content is fetched automatically. Use /manifest to inspect exact candidate file metadata and optionally /align to create a separate seven-checkpoint evidence-bounded alignment preview. Use /record to persist only the exact reviewed files as non-authoritative candidate Source records; this runtime path does not use /accept or /commit CONFIRM.
 
 **Candidate outputs:** governed-source-record-set-candidate. **Governed outputs:** governed-source-record-set. **Decision records:** source-intake-acceptance-decision.
 
@@ -999,9 +1378,10 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 
 | Step | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `source-intake-inspect` | initiative-lead, domain-expert | — (no decision) | C: risk-compliance-specialist<br/>I: —<br/>Assurance: — |
-| `source-intake-propose` | initiative-lead, domain-expert | — (no decision) | C: risk-compliance-specialist<br/>I: —<br/>Assurance: — |
-| `source-intake-decide-commit` | initiative-lead, domain-expert | business-owner | C: risk-compliance-specialist<br/>I: initiative-lead<br/>Assurance: — |
+| `source-intake-select` | initiative-lead, domain-expert | — (no decision) | C: risk-compliance-specialist<br/>I: —<br/>Assurance: — |
+| `source-intake-review-content` | initiative-lead, domain-expert | — (no decision) | C: risk-compliance-specialist<br/>I: —<br/>Assurance: — |
+| `source-intake-inspect-or-align` | initiative-lead, domain-expert | — (no decision) | C: product-manager, risk-compliance-specialist<br/>I: —<br/>Assurance: — |
+| `source-intake-record-candidates` | initiative-lead, domain-expert | business-owner | C: —<br/>I: —<br/>Assurance: — |
 
 **Decision and authority:** Acceptance applies only to the exact candidate Commit creates governed state; it does not grant implementation, release, operational, security, privacy, compliance, or certification authority
 
@@ -1035,14 +1415,36 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 ```mermaid
 %% Source baseline substeps and return path
 flowchart TD
-  source_baseline_0["10. Inspect the exact inputs for Source baseline; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.<br/>current · none"]
-  source_baseline_1["20. Use the implemented @gaep /baseline route to prepare a bounded Source baseline candidate from the reviewed context, preserving Unknowns and limitations.<br/>current · candidate"]
+  source_baseline_0["10. Use /baseline only after current applicability and at least one candidate Source; bind the proposal to exact Initiative revision, Source titles, count, and membership digest.<br/>current · candidate"]
+  source_baseline_1["20. Inspect exact membership and limitations; /back returns the proposal to revision and /cancel discards it while preserving all Source and Baseline records.<br/>current · candidate"]
   source_baseline_0 --> source_baseline_1
-  source_baseline_2["30. Have business-owner review the exact Source baseline candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.<br/>current · governed"]
+  source_baseline_2["30. Use /accept to mark the exact membership proposal commit-eligible without recording a Baseline.<br/>current · candidate"]
   source_baseline_1 --> source_baseline_2
-  source_baseline_2 -. "failure / blocker" .-> source_baseline_revise["Preserve evidence · revise · retry or escalate"]
+  source_baseline_3["40. Before commit, compare the proposal binding with current Initiative revision, Source count/titles, and membership digest; reject any stale proposal.<br/>current · candidate"]
+  source_baseline_2 --> source_baseline_3
+  source_baseline_4["50. Use /commit CONFIRM after separate acceptance and current-state validation to record or reuse the exact candidate Baseline.<br/>current · governed"]
+  source_baseline_3 --> source_baseline_4
+  source_baseline_4 -. "failure / blocker" .-> source_baseline_revise["Preserve evidence · revise · retry or escalate"]
   source_baseline_revise --> source_baseline_0
 ```
+
+<details><summary>Text alternative for Source baseline substeps and return path</summary>
+
+```text
+  source_baseline_0["10. Use /baseline only after current applicability and at least one candidate Source; bind the proposal to exact Initiative revision, Source titles, count, and membership digest.<br/>current · candidate"]
+  source_baseline_1["20. Inspect exact membership and limitations; /back returns the proposal to revision and /cancel discards it while preserving all Source and Baseline records.<br/>current · candidate"]
+  source_baseline_0 --> source_baseline_1
+  source_baseline_2["30. Use /accept to mark the exact membership proposal commit-eligible without recording a Baseline.<br/>current · candidate"]
+  source_baseline_1 --> source_baseline_2
+  source_baseline_3["40. Before commit, compare the proposal binding with current Initiative revision, Source count/titles, and membership digest; reject any stale proposal.<br/>current · candidate"]
+  source_baseline_2 --> source_baseline_3
+  source_baseline_4["50. Use /commit CONFIRM after separate acceptance and current-state validation to record or reuse the exact candidate Baseline.<br/>current · governed"]
+  source_baseline_3 --> source_baseline_4
+  source_baseline_4 -. "failure / blocker" .-> source_baseline_revise["Preserve evidence · revise · retry or escalate"]
+  source_baseline_revise --> source_baseline_0
+```
+
+</details>
 
 <!-- GAEP-SEQUENCE:checkpoint-source-baseline -->
 
@@ -1052,26 +1454,51 @@ flowchart TD
 %% Source baseline — current canonical execution sequence
 sequenceDiagram
 participant role0 as initiative-lead
-participant role1 as business-owner
+participant role1 as domain-expert
+participant role2 as business-owner
 participant gaep as GAEP runtime
-role0->>gaep: 10. Inspect the exact inputs for Source baseline; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.
-gaep-->>role0: review-context-ready; no authority created
-role0->>gaep: 20. Use the implemented @gaep /baseline route to prepare a bounded Source baseline candidate from the reviewed context, preserving Unknowns and limitations. Action: @gaep /baseline
-gaep-->>role0: Candidate only · candidate-ready-for-review
-role0->>role1: 30. Have business-owner review the exact Source baseline candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. Action: @gaep /commit CONFIRM
-role1->>gaep: Exact acceptance / explicit commit or reject
-gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
+role0->>gaep: 10. Use /baseline only after current applicability and at least one candidate Source; bind the proposal to exact Initiative revision, Source titles, count, and membership digest. Action: @gaep /baseline
+gaep-->>role0: source-baseline-proposal; no authority created
+role0->>gaep: 20. Inspect exact membership and limitations; /back returns the proposal to revision and /cancel discards it while preserving all Source and Baseline records. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+gaep-->>role0: source-baseline-ready-or-cancelled; no authority created
+role0->>role2: 30. Use /accept to mark the exact membership proposal commit-eligible without recording a Baseline. Action: @gaep /accept
+role2->>gaep: Accept or reject the exact displayed candidate
+gaep-->>role0: source-baseline-accepted-awaiting-commit; still candidate until explicit commit
+role0->>gaep: 40. Before commit, compare the proposal binding with current Initiative revision, Source count/titles, and membership digest; reject any stale proposal.
+gaep-->>role0: source-baseline-commit-eligible-or-stale; no authority created
+role0->>role2: 50. Use /commit CONFIRM after separate acceptance and current-state validation to record or reuse the exact candidate Baseline. Action: @gaep /commit CONFIRM
+role2->>gaep: Confirm previously accepted digest and commit explicitly
+gaep-->>role0: source-baseline-recorded; authority remains bounded
 ```
+
+<details><summary>Text alternative for Source baseline — current canonical execution sequence</summary>
+
+1. role0 → gaep: 10. Use /baseline only after current applicability and at least one candidate Source; bind the proposal to exact Initiative revision, Source titles, count, and membership digest. Action: @gaep /baseline
+2. gaep → role0: source-baseline-proposal; no authority created
+3. role0 → gaep: 20. Inspect exact membership and limitations; /back returns the proposal to revision and /cancel discards it while preserving all Source and Baseline records. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+4. gaep → role0: source-baseline-ready-or-cancelled; no authority created
+5. role0 → role2: 30. Use /accept to mark the exact membership proposal commit-eligible without recording a Baseline. Action: @gaep /accept
+6. role2 → gaep: Accept or reject the exact displayed candidate
+7. gaep → role0: source-baseline-accepted-awaiting-commit; still candidate until explicit commit
+8. role0 → gaep: 40. Before commit, compare the proposal binding with current Initiative revision, Source count/titles, and membership digest; reject any stale proposal.
+9. gaep → role0: source-baseline-commit-eligible-or-stale; no authority created
+10. role0 → role2: 50. Use /commit CONFIRM after separate acceptance and current-state validation to record or reuse the exact candidate Baseline. Action: @gaep /commit CONFIRM
+11. role2 → gaep: Confirm previously accepted digest and commit explicitly
+12. gaep → role0: source-baseline-recorded; authority remains bounded
+
+</details>
 
 **Ordered substeps**
 
-- **10 · `source-baseline-inspect`** — Inspect the exact inputs for Source baseline; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. **Before/after:** not-started-or-prerequisite-satisfied → review-context-ready. **Action:** none; inspect only. **Evidence:** consumes Exact Source IDs, revisions, record/content digests, membership rationale, and freshness; produces Bounded review context, named gaps, conflicts, assumptions, and freshness observations. **Criteria:** Which exact Source revisions are in scope?; Is membership complete enough for the bounded decision?; What changes require revalidation?; Every material assertion has exact evidence or remains Unknown. **Failure/blocker:** Required input cannot be identified; Evidence limitation prevents a bounded conclusion Expose the missing prerequisite/evidence and stop the affected proposal path without discarding prior records. **Retry:** Supply or revise the bounded input, preserve the prior review context, and inspect again. **Audit:** The current runtime records workflow/audit evidence only when its implemented action executes; this inspection description creates none by itself. **Authority:** Inspection creates no candidate, acceptance, governed state, or execution authority.
-- **20 · `source-baseline-propose`** — Use the implemented @gaep /baseline route to prepare a bounded Source baseline candidate from the reviewed context, preserving Unknowns and limitations. **Before/after:** review-context-ready → candidate-ready-for-review. **Action:** `@gaep /baseline` (chat-command). **Evidence:** consumes Exact Source IDs, revisions, record/content digests, membership rationale, and freshness; Current governed prerequisite digests; produces Exact Source baseline candidate, candidate digest, unresolved decisions, and evidence bindings. **Criteria:** Candidate is bounded to exact inputs; AI inference is visible; No missing evidence is converted to fact. **Failure/blocker:** Implemented action is unavailable; Candidate output is incomplete, stale, or exceeds its evidence Keep the candidate non-governed, show the failure, and require correction or cancellation. **Retry:** Challenge or revise exact inputs and rerun the same implemented action; never overwrite prior governed state. **Audit:** The runtime preserves candidate/run diagnostics and exact evidence digests where the implemented workflow supports them. **Authority:** AI assistance creates a candidate only; it cannot accept, approve, waive, commit, or authorize work.
-- **30 · `source-baseline-decide-commit`** — Have business-owner review the exact Source baseline candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. **Before/after:** candidate-ready-for-review → recorded-or-needs-decisions. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes Exact Source baseline candidate and limitations; Challenge and assurance findings; produces Human acceptance disposition, governed revision, audit event, and retained candidate/input digests. **Criteria:** Exactly one accountable role is named; Required assurance findings are resolved or explicitly retained; The accepted digest equals the committed digest. **Failure/blocker:** Accountability is absent; Candidate changed after review; Material blocker or assurance finding remains undisposed Do not commit; preserve the candidate and blocker with an accountable owner and escalation path. **Retry:** Reject or revise the candidate, regenerate a new digest, repeat review, then accept and commit explicitly. **Audit:** The implemented commit records the exact accepted proposal and actor/context in governed audit history. **Authority:** Commit governs this bounded record only; separate authorities remain required for risk acceptance, implementation, repository mutation, release, deployment, and operations.
+- **10 · `source-baseline-bind-current-membership`** — Use /baseline only after current applicability and at least one candidate Source; bind the proposal to exact Initiative revision, Source titles, count, and membership digest. **Before/after:** source-intake-recorded → source-baseline-proposal. **Action:** `@gaep /baseline` (chat-command). **Evidence:** consumes governed-candidate-source-records; current-initiative-applicability; produces source-baseline-proposal. **Criteria:** Source count is nonzero; Membership digest and Initiative revision exact; Prior Baseline remains preserved. **Failure/blocker:** No Sources; Applicability not current Do not create a proposal; point to the missing prerequisite. **Retry:** Complete Source Intake/applicability then regenerate. **Audit:** No governed Baseline event is asserted for proposal generation. **Authority:** Proposal does not freeze or approve membership.
+- **20 · `source-baseline-review-revise`** — Inspect exact membership and limitations; /back returns the proposal to revision and /cancel discards it while preserving all Source and Baseline records. **Before/after:** source-baseline-proposal → source-baseline-ready-or-cancelled. **Action:** `@gaep /inspect or @gaep /back or @gaep /cancel` (chat-command). **Evidence:** consumes source-baseline-proposal; produces reviewed-source-baseline-proposal. **Criteria:** Every exact Source revision is visible; Membership digest reconstructable; Baseline is not described as approval/precedence. **Failure/blocker:** Membership cannot be reconstructed; Source limitation hidden Keep the proposal unaccepted. **Retry:** Revise Source set, regenerate /baseline, and review again. **Audit:** No governed Baseline event is asserted. **Authority:** Review/revision does not create Baseline membership.
+- **30 · `source-baseline-accept`** — Use /accept to mark the exact membership proposal commit-eligible without recording a Baseline. **Before/after:** source-baseline-ready → source-baseline-accepted-awaiting-commit. **Action:** `@gaep /accept` (chat-command). **Evidence:** consumes reviewed-source-baseline-proposal; source-membership-digest; produces accepted-source-baseline-proposal. **Criteria:** Exact membership and limitations reviewed; Accepted digest matches displayed proposal. **Failure/blocker:** Proposal not ready; Digest mismatch Refuse acceptance. **Retry:** Regenerate/review and accept current membership. **Audit:** Only workflow acceptance state is claimed. **Authority:** Acceptance is not Baseline commit or Source approval.
+- **40 · `source-baseline-stale-check`** — Before commit, compare the proposal binding with current Initiative revision, Source count/titles, and membership digest; reject any stale proposal. **Before/after:** source-baseline-accepted-awaiting-commit → source-baseline-commit-eligible-or-stale. **Action:** none; inspect only. **Evidence:** consumes accepted-source-baseline-proposal; current-source-checkpoint; produces source-baseline-current-state-validation. **Criteria:** Initiative revision unchanged; Source membership digest/count/titles unchanged. **Failure/blocker:** Any bound input changed Block commit and preserve all prior records. **Retry:** Cancel and generate a fresh /baseline proposal. **Audit:** No governed Baseline event is asserted for stale checking. **Authority:** Validation creates no Baseline.
+- **50 · `source-baseline-commit`** — Use /commit CONFIRM after separate acceptance and current-state validation to record or reuse the exact candidate Baseline. **Before/after:** source-baseline-commit-eligible → source-baseline-recorded. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes accepted-source-baseline-proposal; source-baseline-current-state-validation; produces governed-source-baseline. **Criteria:** Acceptance complete; CONFIRM exact; Membership current. **Failure/blocker:** Acceptance missing; CONFIRM missing; Stale membership; Engine rejection Persist no partial Baseline. **Retry:** Regenerate/review/accept from current membership. **Audit:** The Source engine persists Baseline revision, member count, membership digest, and reuse result. **Authority:** Commit freezes exact membership only; it does not approve, designate, validate, authorize, or supersede a Source.
 
-**AI activity:** Use the implemented @gaep /baseline route to prepare a bounded Source baseline candidate from the reviewed context, preserving Unknowns and limitations.
+**AI activity:** No AI activity is claimed.
 
-**Human activity:** Inspect the exact inputs for Source baseline; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. Have business-owner review the exact Source baseline candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.
+**Human activity:** Use /baseline only after current applicability and at least one candidate Source; bind the proposal to exact Initiative revision, Source titles, count, and membership digest. Inspect exact membership and limitations; /back returns the proposal to revision and /cancel discards it while preserving all Source and Baseline records. Use /accept to mark the exact membership proposal commit-eligible without recording a Baseline. Before commit, compare the proposal binding with current Initiative revision, Source count/titles, and membership digest; reject any stale proposal. Use /commit CONFIRM after separate acceptance and current-state validation to record or reuse the exact candidate Baseline.
 
 **Candidate outputs:** governed-source-baseline-candidate. **Governed outputs:** governed-source-baseline. **Decision records:** source-baseline-acceptance-decision.
 
@@ -1081,9 +1508,11 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 
 | Step | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `source-baseline-inspect` | initiative-lead | — (no decision) | C: domain-expert, risk-compliance-specialist<br/>I: —<br/>Assurance: — |
-| `source-baseline-propose` | initiative-lead | — (no decision) | C: domain-expert, risk-compliance-specialist<br/>I: —<br/>Assurance: — |
-| `source-baseline-decide-commit` | initiative-lead | business-owner | C: domain-expert, risk-compliance-specialist<br/>I: initiative-lead<br/>Assurance: — |
+| `source-baseline-bind-current-membership` | initiative-lead | — (no decision) | C: domain-expert, risk-compliance-specialist<br/>I: —<br/>Assurance: — |
+| `source-baseline-review-revise` | initiative-lead, domain-expert | — (no decision) | C: risk-compliance-specialist<br/>I: —<br/>Assurance: — |
+| `source-baseline-accept` | initiative-lead | business-owner | C: —<br/>I: —<br/>Assurance: — |
+| `source-baseline-stale-check` | initiative-lead | — (no decision) | C: domain-expert<br/>I: —<br/>Assurance: — |
+| `source-baseline-commit` | initiative-lead | business-owner | C: —<br/>I: domain-expert<br/>Assurance: — |
 
 **Decision and authority:** Acceptance applies only to the exact candidate Commit creates governed state; it does not grant implementation, release, operational, security, privacy, compliance, or certification authority
 
@@ -1117,14 +1546,36 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 ```mermaid
 %% Source provenance substeps and return path
 flowchart TD
-  source_provenance_0["10. Inspect the exact inputs for Source provenance; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.<br/>current · none"]
-  source_provenance_1["20. Use the implemented @gaep /provenance route to prepare a bounded Source provenance candidate from the reviewed context, preserving Unknowns and limitations.<br/>current · candidate"]
+  source_provenance_0["10. Use /provenance after a current Baseline; bind exact Source membership and Baseline revision/member count/digest to the current Initiative revision.<br/>current · candidate"]
+  source_provenance_1["20. Inspect exact Source-to-Initiative lineage, locators, transformations, limitations, and unknown disposition; use /back or /cancel before acceptance.<br/>current · candidate"]
   source_provenance_0 --> source_provenance_1
-  source_provenance_2["30. Have business-owner review the exact Source provenance candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.<br/>current · governed"]
+  source_provenance_2["30. Use /accept to mark the exact lineage proposal commit-eligible while preserving candidate status.<br/>current · candidate"]
   source_provenance_1 --> source_provenance_2
-  source_provenance_2 -. "failure / blocker" .-> source_provenance_revise["Preserve evidence · revise · retry or escalate"]
+  source_provenance_3["40. Compare current Initiative, Source membership, and Baseline fields with the accepted proposal before commit; any change invalidates commit eligibility.<br/>current · candidate"]
+  source_provenance_2 --> source_provenance_3
+  source_provenance_4["50. Use /commit CONFIRM after separate acceptance and stale checks to record exact Source-to-Initiative lineage.<br/>current · governed"]
+  source_provenance_3 --> source_provenance_4
+  source_provenance_4 -. "failure / blocker" .-> source_provenance_revise["Preserve evidence · revise · retry or escalate"]
   source_provenance_revise --> source_provenance_0
 ```
+
+<details><summary>Text alternative for Source provenance substeps and return path</summary>
+
+```text
+  source_provenance_0["10. Use /provenance after a current Baseline; bind exact Source membership and Baseline revision/member count/digest to the current Initiative revision.<br/>current · candidate"]
+  source_provenance_1["20. Inspect exact Source-to-Initiative lineage, locators, transformations, limitations, and unknown disposition; use /back or /cancel before acceptance.<br/>current · candidate"]
+  source_provenance_0 --> source_provenance_1
+  source_provenance_2["30. Use /accept to mark the exact lineage proposal commit-eligible while preserving candidate status.<br/>current · candidate"]
+  source_provenance_1 --> source_provenance_2
+  source_provenance_3["40. Compare current Initiative, Source membership, and Baseline fields with the accepted proposal before commit; any change invalidates commit eligibility.<br/>current · candidate"]
+  source_provenance_2 --> source_provenance_3
+  source_provenance_4["50. Use /commit CONFIRM after separate acceptance and stale checks to record exact Source-to-Initiative lineage.<br/>current · governed"]
+  source_provenance_3 --> source_provenance_4
+  source_provenance_4 -. "failure / blocker" .-> source_provenance_revise["Preserve evidence · revise · retry or escalate"]
+  source_provenance_revise --> source_provenance_0
+```
+
+</details>
 
 <!-- GAEP-SEQUENCE:checkpoint-source-provenance -->
 
@@ -1138,24 +1589,48 @@ participant role1 as domain-expert
 participant role2 as business-owner
 participant role3 as internal-audit-independent-assurance
 participant gaep as GAEP runtime
-role0->>gaep: 10. Inspect the exact inputs for Source provenance; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.
-gaep-->>role0: review-context-ready; no authority created
-role0->>gaep: 20. Use the implemented @gaep /provenance route to prepare a bounded Source provenance candidate from the reviewed context, preserving Unknowns and limitations. Action: @gaep /provenance
-gaep-->>role0: Candidate only · candidate-ready-for-review
-role0->>role2: 30. Have business-owner review the exact Source provenance candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. Action: @gaep /commit CONFIRM
-role2->>gaep: Exact acceptance / explicit commit or reject
-gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
+role0->>gaep: 10. Use /provenance after a current Baseline; bind exact Source membership and Baseline revision/member count/digest to the current Initiative revision. Action: @gaep /provenance
+gaep-->>role0: source-provenance-proposal; no authority created
+role0->>gaep: 20. Inspect exact Source-to-Initiative lineage, locators, transformations, limitations, and unknown disposition; use /back or /cancel before acceptance. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+gaep-->>role0: source-provenance-ready-or-cancelled; no authority created
+role0->>role2: 30. Use /accept to mark the exact lineage proposal commit-eligible while preserving candidate status. Action: @gaep /accept
+role2->>gaep: Accept or reject the exact displayed candidate
+gaep-->>role0: source-provenance-accepted-awaiting-commit; still candidate until explicit commit
+role0->>gaep: 40. Compare current Initiative, Source membership, and Baseline fields with the accepted proposal before commit; any change invalidates commit eligibility.
+gaep-->>role0: source-provenance-commit-eligible-or-stale; no authority created
+role0->>role2: 50. Use /commit CONFIRM after separate acceptance and stale checks to record exact Source-to-Initiative lineage. Action: @gaep /commit CONFIRM
+role2->>gaep: Confirm previously accepted digest and commit explicitly
+gaep-->>role0: source-provenance-recorded; authority remains bounded
 ```
+
+<details><summary>Text alternative for Source provenance — current canonical execution sequence</summary>
+
+1. role0 → gaep: 10. Use /provenance after a current Baseline; bind exact Source membership and Baseline revision/member count/digest to the current Initiative revision. Action: @gaep /provenance
+2. gaep → role0: source-provenance-proposal; no authority created
+3. role0 → gaep: 20. Inspect exact Source-to-Initiative lineage, locators, transformations, limitations, and unknown disposition; use /back or /cancel before acceptance. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+4. gaep → role0: source-provenance-ready-or-cancelled; no authority created
+5. role0 → role2: 30. Use /accept to mark the exact lineage proposal commit-eligible while preserving candidate status. Action: @gaep /accept
+6. role2 → gaep: Accept or reject the exact displayed candidate
+7. gaep → role0: source-provenance-accepted-awaiting-commit; still candidate until explicit commit
+8. role0 → gaep: 40. Compare current Initiative, Source membership, and Baseline fields with the accepted proposal before commit; any change invalidates commit eligibility.
+9. gaep → role0: source-provenance-commit-eligible-or-stale; no authority created
+10. role0 → role2: 50. Use /commit CONFIRM after separate acceptance and stale checks to record exact Source-to-Initiative lineage. Action: @gaep /commit CONFIRM
+11. role2 → gaep: Confirm previously accepted digest and commit explicitly
+12. gaep → role0: source-provenance-recorded; authority remains bounded
+
+</details>
 
 **Ordered substeps**
 
-- **10 · `source-provenance-inspect`** — Inspect the exact inputs for Source provenance; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. **Before/after:** not-started-or-prerequisite-satisfied → review-context-ready. **Action:** none; inspect only. **Evidence:** consumes Exact Source/target revisions, locators, derivation roles, transformations, and limitations; produces Bounded review context, named gaps, conflicts, assumptions, and freshness observations. **Criteria:** Which exact Source revision supports which target?; What transformation or interpretation occurred?; What uncertainty and limitations remain?; Every material assertion has exact evidence or remains Unknown. **Failure/blocker:** Required input cannot be identified; Evidence limitation prevents a bounded conclusion Expose the missing prerequisite/evidence and stop the affected proposal path without discarding prior records. **Retry:** Supply or revise the bounded input, preserve the prior review context, and inspect again. **Audit:** The current runtime records workflow/audit evidence only when its implemented action executes; this inspection description creates none by itself. **Authority:** Inspection creates no candidate, acceptance, governed state, or execution authority.
-- **20 · `source-provenance-propose`** — Use the implemented @gaep /provenance route to prepare a bounded Source provenance candidate from the reviewed context, preserving Unknowns and limitations. **Before/after:** review-context-ready → candidate-ready-for-review. **Action:** `@gaep /provenance` (chat-command). **Evidence:** consumes Exact Source/target revisions, locators, derivation roles, transformations, and limitations; Current governed prerequisite digests; produces Exact Source provenance candidate, candidate digest, unresolved decisions, and evidence bindings. **Criteria:** Candidate is bounded to exact inputs; AI inference is visible; No missing evidence is converted to fact. **Failure/blocker:** Implemented action is unavailable; Candidate output is incomplete, stale, or exceeds its evidence Keep the candidate non-governed, show the failure, and require correction or cancellation. **Retry:** Challenge or revise exact inputs and rerun the same implemented action; never overwrite prior governed state. **Audit:** The runtime preserves candidate/run diagnostics and exact evidence digests where the implemented workflow supports them. **Authority:** AI assistance creates a candidate only; it cannot accept, approve, waive, commit, or authorize work.
-- **30 · `source-provenance-decide-commit`** — Have business-owner review the exact Source provenance candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. **Before/after:** candidate-ready-for-review → recorded-or-needs-decisions. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes Exact Source provenance candidate and limitations; Challenge and assurance findings; produces Human acceptance disposition, governed revision, audit event, and retained candidate/input digests. **Criteria:** Exactly one accountable role is named; Required assurance findings are resolved or explicitly retained; The accepted digest equals the committed digest. **Failure/blocker:** Accountability is absent; Candidate changed after review; Material blocker or assurance finding remains undisposed Do not commit; preserve the candidate and blocker with an accountable owner and escalation path. **Retry:** Reject or revise the candidate, regenerate a new digest, repeat review, then accept and commit explicitly. **Audit:** The implemented commit records the exact accepted proposal and actor/context in governed audit history. **Authority:** Commit governs this bounded record only; separate authorities remain required for risk acceptance, implementation, repository mutation, release, deployment, and operations.
+- **10 · `source-provenance-bind-lineage`** — Use /provenance after a current Baseline; bind exact Source membership and Baseline revision/member count/digest to the current Initiative revision. **Before/after:** source-baseline-recorded → source-provenance-proposal. **Action:** `@gaep /provenance` (chat-command). **Evidence:** consumes governed-source-baseline; governed-candidate-source-records; current-initiative; produces source-provenance-proposal. **Criteria:** Baseline current; Source/Baseline/Initiative identities exact; Claim truth remains unknown. **Failure/blocker:** Baseline missing/stale; Applicability not current Do not create proposal; preserve prior provenance. **Retry:** Record a current Baseline then regenerate. **Audit:** No governed Provenance event is asserted for proposal generation. **Authority:** Proposal does not establish lineage or correctness.
+- **20 · `source-provenance-review-revise`** — Inspect exact Source-to-Initiative lineage, locators, transformations, limitations, and unknown disposition; use /back or /cancel before acceptance. **Before/after:** source-provenance-proposal → source-provenance-ready-or-cancelled. **Action:** `@gaep /inspect or @gaep /back or @gaep /cancel` (chat-command). **Evidence:** consumes source-provenance-proposal; produces reviewed-source-provenance-proposal. **Criteria:** Lineage identities and transformations visible; Limitations retained; Provenance not represented as truth or authority. **Failure/blocker:** Lineage incomplete; Baseline binding unclear Keep proposal candidate and expose gaps. **Retry:** Correct Sources/Baseline or regenerate proposal. **Audit:** No governed Provenance event is asserted. **Authority:** Review/revision creates no Provenance record.
+- **30 · `source-provenance-accept`** — Use /accept to mark the exact lineage proposal commit-eligible while preserving candidate status. **Before/after:** source-provenance-ready → source-provenance-accepted-awaiting-commit. **Action:** `@gaep /accept` (chat-command). **Evidence:** consumes reviewed-source-provenance-proposal; produces accepted-source-provenance-proposal. **Criteria:** Lineage and limitations reviewed; Acceptance is scoped to exact proposal. **Failure/blocker:** Proposal not ready Refuse acceptance and preserve candidate. **Retry:** Revise/review and accept current proposal. **Audit:** Only workflow acceptance state is claimed. **Authority:** Acceptance does not establish correctness, authenticity, or Source authority.
+- **40 · `source-provenance-stale-check`** — Compare current Initiative, Source membership, and Baseline fields with the accepted proposal before commit; any change invalidates commit eligibility. **Before/after:** source-provenance-accepted-awaiting-commit → source-provenance-commit-eligible-or-stale. **Action:** none; inspect only. **Evidence:** consumes accepted-source-provenance-proposal; current-source-checkpoint; produces source-provenance-current-state-validation. **Criteria:** Initiative revision current; Source membership unchanged; Baseline revision/count/digest current. **Failure/blocker:** Any bound identity/digest changed Block commit and require a fresh proposal. **Retry:** Cancel, regenerate /provenance, review, and accept. **Audit:** No governed event is asserted for stale checking. **Authority:** Stale validation creates no governed lineage.
+- **50 · `source-provenance-commit`** — Use /commit CONFIRM after separate acceptance and stale checks to record exact Source-to-Initiative lineage. **Before/after:** source-provenance-commit-eligible → source-provenance-recorded. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes accepted-source-provenance-proposal; source-provenance-current-state-validation; produces governed-source-provenance. **Criteria:** Acceptance complete; CONFIRM exact; All bindings current. **Failure/blocker:** Acceptance/CONFIRM missing; Bindings stale; Engine rejection Persist no partial Provenance record. **Retry:** Regenerate/review/accept from current bindings. **Audit:** The Source engine persists Source count, Initiative target revision, and reuse result for the lineage operation. **Authority:** Commit records lineage only; disposition remains unknown until claim-level review.
 
-**AI activity:** Use the implemented @gaep /provenance route to prepare a bounded Source provenance candidate from the reviewed context, preserving Unknowns and limitations.
+**AI activity:** No AI activity is claimed.
 
-**Human activity:** Inspect the exact inputs for Source provenance; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. Have business-owner review the exact Source provenance candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.
+**Human activity:** Use /provenance after a current Baseline; bind exact Source membership and Baseline revision/member count/digest to the current Initiative revision. Inspect exact Source-to-Initiative lineage, locators, transformations, limitations, and unknown disposition; use /back or /cancel before acceptance. Use /accept to mark the exact lineage proposal commit-eligible while preserving candidate status. Compare current Initiative, Source membership, and Baseline fields with the accepted proposal before commit; any change invalidates commit eligibility. Use /commit CONFIRM after separate acceptance and stale checks to record exact Source-to-Initiative lineage.
 
 **Candidate outputs:** governed-source-provenance-candidate. **Governed outputs:** governed-source-provenance. **Decision records:** source-provenance-acceptance-decision.
 
@@ -1165,9 +1640,11 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 
 | Step | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `source-provenance-inspect` | initiative-lead, domain-expert | — (no decision) | C: internal-audit-independent-assurance<br/>I: —<br/>Assurance: — |
-| `source-provenance-propose` | initiative-lead, domain-expert | — (no decision) | C: internal-audit-independent-assurance<br/>I: —<br/>Assurance: — |
-| `source-provenance-decide-commit` | initiative-lead, domain-expert | business-owner | C: internal-audit-independent-assurance<br/>I: initiative-lead<br/>Assurance: internal-audit-independent-assurance |
+| `source-provenance-bind-lineage` | initiative-lead, domain-expert | — (no decision) | C: internal-audit-independent-assurance<br/>I: —<br/>Assurance: — |
+| `source-provenance-review-revise` | initiative-lead, domain-expert | — (no decision) | C: internal-audit-independent-assurance<br/>I: —<br/>Assurance: — |
+| `source-provenance-accept` | initiative-lead, domain-expert | business-owner | C: —<br/>I: —<br/>Assurance: internal-audit-independent-assurance |
+| `source-provenance-stale-check` | initiative-lead | — (no decision) | C: domain-expert<br/>I: —<br/>Assurance: — |
+| `source-provenance-commit` | initiative-lead, domain-expert | business-owner | C: —<br/>I: —<br/>Assurance: internal-audit-independent-assurance |
 
 **Decision and authority:** Acceptance applies only to the exact candidate Commit creates governed state; it does not grant implementation, release, operational, security, privacy, compliance, or certification authority
 
@@ -1201,14 +1678,36 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 ```mermaid
 %% Product discovery substeps and return path
 flowchart TD
-  product_discovery_0["10. Inspect the exact inputs for Product discovery; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.<br/>current · none"]
-  product_discovery_1["20. Use the implemented @gaep /author route to prepare a bounded Product discovery candidate from the reviewed context, preserving Unknowns and limitations.<br/>current · candidate"]
+  product_discovery_0["10. Use /author to open the Product discovery record group, inspect its required record families, and select the next missing or revisable record.<br/>current · none"]
+  product_discovery_1["20. For each selected Product discovery record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.<br/>current · candidate"]
   product_discovery_0 --> product_discovery_1
-  product_discovery_2["30. Have business-owner review the exact Product discovery candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.<br/>current · governed"]
+  product_discovery_2["30. Inspect the exact Product discovery candidate and digest; use /back, free-text revision, or /cancel before a human decision.<br/>current · candidate"]
   product_discovery_1 --> product_discovery_2
-  product_discovery_2 -. "failure / blocker" .-> product_discovery_revise["Preserve evidence · revise · retry or escalate"]
+  product_discovery_3["40. Use /accept to accept only the exact reviewed Product discovery candidate and digest; repeat this decision separately for each record in the group.<br/>current · candidate"]
+  product_discovery_2 --> product_discovery_3
+  product_discovery_4["50. Use /commit CONFIRM only after separate acceptance to persist the selected Product discovery canonical record, then return to /author for the next required record.<br/>current · governed"]
+  product_discovery_3 --> product_discovery_4
+  product_discovery_4 -. "failure / blocker" .-> product_discovery_revise["Preserve evidence · revise · retry or escalate"]
   product_discovery_revise --> product_discovery_0
 ```
+
+<details><summary>Text alternative for Product discovery substeps and return path</summary>
+
+```text
+  product_discovery_0["10. Use /author to open the Product discovery record group, inspect its required record families, and select the next missing or revisable record.<br/>current · none"]
+  product_discovery_1["20. For each selected Product discovery record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.<br/>current · candidate"]
+  product_discovery_0 --> product_discovery_1
+  product_discovery_2["30. Inspect the exact Product discovery candidate and digest; use /back, free-text revision, or /cancel before a human decision.<br/>current · candidate"]
+  product_discovery_1 --> product_discovery_2
+  product_discovery_3["40. Use /accept to accept only the exact reviewed Product discovery candidate and digest; repeat this decision separately for each record in the group.<br/>current · candidate"]
+  product_discovery_2 --> product_discovery_3
+  product_discovery_4["50. Use /commit CONFIRM only after separate acceptance to persist the selected Product discovery canonical record, then return to /author for the next required record.<br/>current · governed"]
+  product_discovery_3 --> product_discovery_4
+  product_discovery_4 -. "failure / blocker" .-> product_discovery_revise["Preserve evidence · revise · retry or escalate"]
+  product_discovery_revise --> product_discovery_0
+```
+
+</details>
 
 <!-- GAEP-SEQUENCE:checkpoint-product-discovery -->
 
@@ -1219,26 +1718,51 @@ flowchart TD
 sequenceDiagram
 participant role0 as product-manager
 participant role1 as product-design-research
-participant role2 as business-owner
+participant role2 as product-owner
+participant role3 as business-owner
 participant gaep as GAEP runtime
-role0->>gaep: 10. Inspect the exact inputs for Product discovery; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.
-gaep-->>role0: review-context-ready; no authority created
-role0->>gaep: 20. Use the implemented @gaep /author route to prepare a bounded Product discovery candidate from the reviewed context, preserving Unknowns and limitations. Action: @gaep /author
-gaep-->>role0: Candidate only · candidate-ready-for-review
-role0->>role2: 30. Have business-owner review the exact Product discovery candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. Action: @gaep /commit CONFIRM
-role2->>gaep: Exact acceptance / explicit commit or reject
-gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
+role0->>gaep: 10. Use /author to open the Product discovery record group, inspect its required record families, and select the next missing or revisable record. Action: @gaep /author
+gaep-->>role0: authoring-record-selected; no authority created
+role0->>gaep: 20. For each selected Product discovery record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. Action: @gaep /author
+gaep-->>role0: Candidate only · canonical-record-candidate-ready
+role0->>gaep: 30. Inspect the exact Product discovery candidate and digest; use /back, free-text revision, or /cancel before a human decision. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+gaep-->>role0: canonical-record-reviewed-or-cancelled; no authority created
+role0->>role3: 40. Use /accept to accept only the exact reviewed Product discovery candidate and digest; repeat this decision separately for each record in the group. Action: @gaep /accept
+role3->>gaep: Accept or reject the exact displayed candidate
+gaep-->>role0: canonical-record-accepted-awaiting-commit; still candidate until explicit commit
+role0->>role3: 50. Use /commit CONFIRM only after separate acceptance to persist the selected Product discovery canonical record, then return to /author for the next required record. Action: @gaep /commit CONFIRM
+role3->>gaep: Confirm previously accepted digest and commit explicitly
+gaep-->>role0: canonical-record-recorded-or-next-record-required; authority remains bounded
 ```
+
+<details><summary>Text alternative for Product discovery — current canonical execution sequence</summary>
+
+1. role0 → gaep: 10. Use /author to open the Product discovery record group, inspect its required record families, and select the next missing or revisable record. Action: @gaep /author
+2. gaep → role0: authoring-record-selected; no authority created
+3. role0 → gaep: 20. For each selected Product discovery record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. Action: @gaep /author
+4. gaep → role0: Candidate only · canonical-record-candidate-ready
+5. role0 → gaep: 30. Inspect the exact Product discovery candidate and digest; use /back, free-text revision, or /cancel before a human decision. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+6. gaep → role0: canonical-record-reviewed-or-cancelled; no authority created
+7. role0 → role3: 40. Use /accept to accept only the exact reviewed Product discovery candidate and digest; repeat this decision separately for each record in the group. Action: @gaep /accept
+8. role3 → gaep: Accept or reject the exact displayed candidate
+9. gaep → role0: canonical-record-accepted-awaiting-commit; still candidate until explicit commit
+10. role0 → role3: 50. Use /commit CONFIRM only after separate acceptance to persist the selected Product discovery canonical record, then return to /author for the next required record. Action: @gaep /commit CONFIRM
+11. role3 → gaep: Confirm previously accepted digest and commit explicitly
+12. gaep → role0: canonical-record-recorded-or-next-record-required; authority remains bounded
+
+</details>
 
 **Ordered substeps**
 
-- **10 · `product-discovery-inspect`** — Inspect the exact inputs for Product discovery; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. **Before/after:** not-started-or-prerequisite-satisfied → review-context-ready. **Action:** none; inspect only. **Evidence:** consumes User, stakeholder, business, outcome, and assumption evidence with provenance; produces Bounded review context, named gaps, conflicts, assumptions, and freshness observations. **Criteria:** Which user and business problem is evidenced?; Which outcomes and measures matter?; What assumptions need testing?; Every material assertion has exact evidence or remains Unknown. **Failure/blocker:** Required input cannot be identified; Evidence limitation prevents a bounded conclusion Expose the missing prerequisite/evidence and stop the affected proposal path without discarding prior records. **Retry:** Supply or revise the bounded input, preserve the prior review context, and inspect again. **Audit:** The current runtime records workflow/audit evidence only when its implemented action executes; this inspection description creates none by itself. **Authority:** Inspection creates no candidate, acceptance, governed state, or execution authority.
-- **20 · `product-discovery-propose`** — Use the implemented @gaep /author route to prepare a bounded Product discovery candidate from the reviewed context, preserving Unknowns and limitations. **Before/after:** review-context-ready → candidate-ready-for-review. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes User, stakeholder, business, outcome, and assumption evidence with provenance; Current governed prerequisite digests; produces Exact Product discovery candidate, candidate digest, unresolved decisions, and evidence bindings. **Criteria:** Candidate is bounded to exact inputs; AI inference is visible; No missing evidence is converted to fact. **Failure/blocker:** Implemented action is unavailable; Candidate output is incomplete, stale, or exceeds its evidence Keep the candidate non-governed, show the failure, and require correction or cancellation. **Retry:** Challenge or revise exact inputs and rerun the same implemented action; never overwrite prior governed state. **Audit:** The runtime preserves candidate/run diagnostics and exact evidence digests where the implemented workflow supports them. **Authority:** AI assistance creates a candidate only; it cannot accept, approve, waive, commit, or authorize work.
-- **30 · `product-discovery-decide-commit`** — Have business-owner review the exact Product discovery candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. **Before/after:** candidate-ready-for-review → recorded-or-needs-decisions. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes Exact Product discovery candidate and limitations; Challenge and assurance findings; produces Human acceptance disposition, governed revision, audit event, and retained candidate/input digests. **Criteria:** Exactly one accountable role is named; Required assurance findings are resolved or explicitly retained; The accepted digest equals the committed digest. **Failure/blocker:** Accountability is absent; Candidate changed after review; Material blocker or assurance finding remains undisposed Do not commit; preserve the candidate and blocker with an accountable owner and escalation path. **Retry:** Reject or revise the candidate, regenerate a new digest, repeat review, then accept and commit explicitly. **Audit:** The implemented commit records the exact accepted proposal and actor/context in governed audit history. **Authority:** Commit governs this bounded record only; separate authorities remain required for risk acceptance, implementation, repository mutation, release, deployment, and operations.
+- **10 · `product-discovery-open-group`** — Use /author to open the Product discovery record group, inspect its required record families, and select the next missing or revisable record. **Before/after:** prerequisites-current → authoring-record-selected. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes governed-initiative-applicability; governed-source-record-set; produces product-discovery-authoring-context. **Criteria:** The Product discovery group is derived from the canonical checkpoint contract; Required record kinds are business-understanding, stakeholder-model, outcome-model; Current governed revisions and missing records are distinguished. **Failure/blocker:** Prerequisite checkpoint is incomplete; No current Product/Initiative context; Record group cannot be resolved Keep prior records unchanged and identify the missing prerequisite or invalid group. **Retry:** Restore the prerequisite or select a valid record, then reopen /author. **Audit:** Navigation and record selection do not create a governed audit event. **Authority:** Opening an authoring group or selecting a record creates no candidate or governed record.
+- **20 · `product-discovery-generate-record-candidate`** — For each selected Product discovery record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. **Before/after:** authoring-record-selected → canonical-record-candidate-ready. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes governed-initiative-applicability; governed-source-record-set; product-discovery-authoring-context; authoring-human-instruction; produces product-discovery-canonical-record-candidate; product-discovery-candidate-digest; product-discovery-repair-diagnostics. **Criteria:** Problem and outcomes remain evidence-bounded; Affected users and stakeholder needs are represented; Assumptions and missing validation remain explicit; Candidate satisfies the exact canonical record schema; Unsupported content remains Unknown or an unresolved question; No more than three bounded repair attempts occur. **Failure/blocker:** Advisor unavailable; Provider-facing schema rejected; Three normalization/repair attempts fail; Input context becomes stale Preserve any prior governed record and contract-valid prior candidate; expose diagnostics without partial commit. **Retry:** Revise the instruction, switch advisor/model, or regenerate the selected record against current inputs. **Audit:** Candidate and diagnostics may remain in the Chat workflow; no governed record event is claimed. **Authority:** Advisor output is a candidate for one record kind only and cannot accept, commit, or authorize work.
+- **30 · `product-discovery-inspect-revise-record`** — Inspect the exact Product discovery candidate and digest; use /back, free-text revision, or /cancel before a human decision. **Before/after:** canonical-record-candidate-ready → canonical-record-reviewed-or-cancelled. **Action:** `@gaep /inspect or @gaep /back or @gaep /cancel` (chat-command). **Evidence:** consumes product-discovery-canonical-record-candidate; product-discovery-candidate-digest; produces reviewed-product-discovery-canonical-record-candidate; product-discovery-challenge-findings. **Criteria:** Problem and outcomes remain evidence-bounded; Affected users and stakeholder needs are represented; Assumptions and missing validation remain explicit; Displayed record and digest are the exact candidate under review; Evidence limits, assumptions, open questions, and conflicts remain visible. **Failure/blocker:** Candidate is stale; Required traceability is absent; Material challenge finding is unresolved Keep the candidate unaccepted and preserve the prior governed revision. **Retry:** Revise in natural language or return to the record selector, then inspect the new exact digest. **Audit:** No governed record event is asserted for review or revision. **Authority:** Inspection, challenge, revision, and cancellation create no acceptance or governed state.
+- **40 · `product-discovery-accept-record`** — Use /accept to accept only the exact reviewed Product discovery candidate and digest; repeat this decision separately for each record in the group. **Before/after:** canonical-record-reviewed → canonical-record-accepted-awaiting-commit. **Action:** `@gaep /accept` (chat-command). **Evidence:** consumes reviewed-product-discovery-canonical-record-candidate; product-discovery-candidate-digest; produces accepted-product-discovery-canonical-record-candidate. **Criteria:** The exact record was inspected; Material findings have an explicit disposition; Accepted digest equals the displayed digest. **Failure/blocker:** No reviewed candidate; Candidate digest changed; Required decision is missing Refuse acceptance and retain the candidate for challenge or revision. **Retry:** Inspect or revise the record, then accept the new displayed digest. **Audit:** Workflow acceptance state is recorded without runtime authentication of the policy role. **Authority:** Acceptance makes one candidate commit-eligible only; it is not organizational approval, readiness, assurance, or commit.
+- **50 · `product-discovery-commit-record`** — Use /commit CONFIRM only after separate acceptance to persist the selected Product discovery canonical record, then return to /author for the next required record. **Before/after:** canonical-record-accepted-awaiting-commit → canonical-record-recorded-or-next-record-required. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes accepted-product-discovery-canonical-record-candidate; governed-initiative-applicability; governed-source-record-set; produces governed-product-discovery-canonical-record; product-discovery-record-revision. **Criteria:** Acceptance occurred in the prior state; CONFIRM is exact; Expected record and prerequisite revisions remain current; All Product discovery records remain individually governed. **Failure/blocker:** Acceptance missing; CONFIRM absent; Expected revision stale; Engine schema/revision validation fails Persist no partial record and preserve all prior governed revisions. **Retry:** Regenerate against current state when stale, inspect, accept, and commit the exact replacement. **Audit:** The Engine persists the selected canonical record identity, kind, revision, and its contract fields; the Guide does not claim unauthenticated role identity. **Authority:** Commit records one Product discovery artifact only; it creates no implementation, release, production, security, privacy, compliance, or independent-assurance authority.
 
-**AI activity:** Use the implemented @gaep /author route to prepare a bounded Product discovery candidate from the reviewed context, preserving Unknowns and limitations.
+**AI activity:** For each selected Product discovery record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.
 
-**Human activity:** Inspect the exact inputs for Product discovery; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. Have business-owner review the exact Product discovery candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.
+**Human activity:** Use /author to open the Product discovery record group, inspect its required record families, and select the next missing or revisable record. Inspect the exact Product discovery candidate and digest; use /back, free-text revision, or /cancel before a human decision. Use /accept to accept only the exact reviewed Product discovery candidate and digest; repeat this decision separately for each record in the group. Use /commit CONFIRM only after separate acceptance to persist the selected Product discovery canonical record, then return to /author for the next required record.
 
 **Candidate outputs:** governed-product-discovery-candidate. **Governed outputs:** governed-product-discovery. **Decision records:** product-discovery-acceptance-decision.
 
@@ -1248,9 +1772,11 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 
 | Step | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `product-discovery-inspect` | product-manager, product-design-research | — (no decision) | C: domain-expert, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
-| `product-discovery-propose` | product-manager, product-design-research | — (no decision) | C: domain-expert, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
-| `product-discovery-decide-commit` | product-manager, product-design-research | business-owner | C: domain-expert, affected-user-stakeholder<br/>I: initiative-lead<br/>Assurance: — |
+| `product-discovery-open-group` | product-manager, product-design-research, product-owner | — (no decision) | C: domain-expert, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
+| `product-discovery-generate-record-candidate` | product-manager, product-design-research, product-owner | — (no decision) | C: domain-expert, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
+| `product-discovery-inspect-revise-record` | product-manager, product-design-research, product-owner | — (no decision) | C: domain-expert, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
+| `product-discovery-accept-record` | product-manager, product-design-research, product-owner | business-owner | C: domain-expert, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
+| `product-discovery-commit-record` | product-manager, product-design-research, product-owner | business-owner | C: domain-expert, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
 
 **Decision and authority:** Acceptance applies only to the exact candidate Commit creates governed state; it does not grant implementation, release, operational, security, privacy, compliance, or certification authority
 
@@ -1284,14 +1810,36 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 ```mermaid
 %% Business architecture substeps and return path
 flowchart TD
-  business_architecture_0["10. Inspect the exact inputs for Business architecture; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.<br/>current · none"]
-  business_architecture_1["20. Use the implemented @gaep /author route to prepare a bounded Business architecture candidate from the reviewed context, preserving Unknowns and limitations.<br/>current · candidate"]
+  business_architecture_0["10. Use /author to open the Business architecture record group, inspect its required record families, and select the next missing or revisable record.<br/>current · none"]
+  business_architecture_1["20. For each selected Business architecture record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.<br/>current · candidate"]
   business_architecture_0 --> business_architecture_1
-  business_architecture_2["30. Have product-leadership review the exact Business architecture candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.<br/>current · governed"]
+  business_architecture_2["30. Inspect the exact Business architecture candidate and digest; use /back, free-text revision, or /cancel before a human decision.<br/>current · candidate"]
   business_architecture_1 --> business_architecture_2
-  business_architecture_2 -. "failure / blocker" .-> business_architecture_revise["Preserve evidence · revise · retry or escalate"]
+  business_architecture_3["40. Use /accept to accept only the exact reviewed Business architecture candidate and digest; repeat this decision separately for each record in the group.<br/>current · candidate"]
+  business_architecture_2 --> business_architecture_3
+  business_architecture_4["50. Use /commit CONFIRM only after separate acceptance to persist the selected Business architecture canonical record, then return to /author for the next required record.<br/>current · governed"]
+  business_architecture_3 --> business_architecture_4
+  business_architecture_4 -. "failure / blocker" .-> business_architecture_revise["Preserve evidence · revise · retry or escalate"]
   business_architecture_revise --> business_architecture_0
 ```
+
+<details><summary>Text alternative for Business architecture substeps and return path</summary>
+
+```text
+  business_architecture_0["10. Use /author to open the Business architecture record group, inspect its required record families, and select the next missing or revisable record.<br/>current · none"]
+  business_architecture_1["20. For each selected Business architecture record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.<br/>current · candidate"]
+  business_architecture_0 --> business_architecture_1
+  business_architecture_2["30. Inspect the exact Business architecture candidate and digest; use /back, free-text revision, or /cancel before a human decision.<br/>current · candidate"]
+  business_architecture_1 --> business_architecture_2
+  business_architecture_3["40. Use /accept to accept only the exact reviewed Business architecture candidate and digest; repeat this decision separately for each record in the group.<br/>current · candidate"]
+  business_architecture_2 --> business_architecture_3
+  business_architecture_4["50. Use /commit CONFIRM only after separate acceptance to persist the selected Business architecture canonical record, then return to /author for the next required record.<br/>current · governed"]
+  business_architecture_3 --> business_architecture_4
+  business_architecture_4 -. "failure / blocker" .-> business_architecture_revise["Preserve evidence · revise · retry or escalate"]
+  business_architecture_revise --> business_architecture_0
+```
+
+</details>
 
 <!-- GAEP-SEQUENCE:checkpoint-business-architecture -->
 
@@ -1303,26 +1851,49 @@ sequenceDiagram
 participant role0 as business-architect
 participant role1 as domain-expert
 participant role2 as product-leadership
-participant role3 as enterprise-architect
 participant gaep as GAEP runtime
-role0->>gaep: 10. Inspect the exact inputs for Business architecture; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.
-gaep-->>role0: review-context-ready; no authority created
-role0->>gaep: 20. Use the implemented @gaep /author route to prepare a bounded Business architecture candidate from the reviewed context, preserving Unknowns and limitations. Action: @gaep /author
-gaep-->>role0: Candidate only · candidate-ready-for-review
-role0->>role2: 30. Have product-leadership review the exact Business architecture candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. Action: @gaep /commit CONFIRM
-role2->>gaep: Exact acceptance / explicit commit or reject
-gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
+role0->>gaep: 10. Use /author to open the Business architecture record group, inspect its required record families, and select the next missing or revisable record. Action: @gaep /author
+gaep-->>role0: authoring-record-selected; no authority created
+role0->>gaep: 20. For each selected Business architecture record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. Action: @gaep /author
+gaep-->>role0: Candidate only · canonical-record-candidate-ready
+role0->>gaep: 30. Inspect the exact Business architecture candidate and digest; use /back, free-text revision, or /cancel before a human decision. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+gaep-->>role0: canonical-record-reviewed-or-cancelled; no authority created
+role0->>role2: 40. Use /accept to accept only the exact reviewed Business architecture candidate and digest; repeat this decision separately for each record in the group. Action: @gaep /accept
+role2->>gaep: Accept or reject the exact displayed candidate
+gaep-->>role0: canonical-record-accepted-awaiting-commit; still candidate until explicit commit
+role0->>role2: 50. Use /commit CONFIRM only after separate acceptance to persist the selected Business architecture canonical record, then return to /author for the next required record. Action: @gaep /commit CONFIRM
+role2->>gaep: Confirm previously accepted digest and commit explicitly
+gaep-->>role0: canonical-record-recorded-or-next-record-required; authority remains bounded
 ```
+
+<details><summary>Text alternative for Business architecture — current canonical execution sequence</summary>
+
+1. role0 → gaep: 10. Use /author to open the Business architecture record group, inspect its required record families, and select the next missing or revisable record. Action: @gaep /author
+2. gaep → role0: authoring-record-selected; no authority created
+3. role0 → gaep: 20. For each selected Business architecture record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. Action: @gaep /author
+4. gaep → role0: Candidate only · canonical-record-candidate-ready
+5. role0 → gaep: 30. Inspect the exact Business architecture candidate and digest; use /back, free-text revision, or /cancel before a human decision. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+6. gaep → role0: canonical-record-reviewed-or-cancelled; no authority created
+7. role0 → role2: 40. Use /accept to accept only the exact reviewed Business architecture candidate and digest; repeat this decision separately for each record in the group. Action: @gaep /accept
+8. role2 → gaep: Accept or reject the exact displayed candidate
+9. gaep → role0: canonical-record-accepted-awaiting-commit; still candidate until explicit commit
+10. role0 → role2: 50. Use /commit CONFIRM only after separate acceptance to persist the selected Business architecture canonical record, then return to /author for the next required record. Action: @gaep /commit CONFIRM
+11. role2 → gaep: Confirm previously accepted digest and commit explicitly
+12. gaep → role0: canonical-record-recorded-or-next-record-required; authority remains bounded
+
+</details>
 
 **Ordered substeps**
 
-- **10 · `business-architecture-inspect`** — Inspect the exact inputs for Business architecture; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. **Before/after:** not-started-or-prerequisite-satisfied → review-context-ready. **Action:** none; inspect only. **Evidence:** consumes Discovery, business rules, capabilities, value streams, events, domain language, and ownership evidence; produces Bounded review context, named gaps, conflicts, assumptions, and freshness observations. **Criteria:** Which capabilities and value streams change?; Which events, rules, domains, and ownership boundaries matter?; Where are conflicts or unknowns?; Every material assertion has exact evidence or remains Unknown. **Failure/blocker:** Required input cannot be identified; Evidence limitation prevents a bounded conclusion Expose the missing prerequisite/evidence and stop the affected proposal path without discarding prior records. **Retry:** Supply or revise the bounded input, preserve the prior review context, and inspect again. **Audit:** The current runtime records workflow/audit evidence only when its implemented action executes; this inspection description creates none by itself. **Authority:** Inspection creates no candidate, acceptance, governed state, or execution authority.
-- **20 · `business-architecture-propose`** — Use the implemented @gaep /author route to prepare a bounded Business architecture candidate from the reviewed context, preserving Unknowns and limitations. **Before/after:** review-context-ready → candidate-ready-for-review. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes Discovery, business rules, capabilities, value streams, events, domain language, and ownership evidence; Current governed prerequisite digests; produces Exact Business architecture candidate, candidate digest, unresolved decisions, and evidence bindings. **Criteria:** Candidate is bounded to exact inputs; AI inference is visible; No missing evidence is converted to fact. **Failure/blocker:** Implemented action is unavailable; Candidate output is incomplete, stale, or exceeds its evidence Keep the candidate non-governed, show the failure, and require correction or cancellation. **Retry:** Challenge or revise exact inputs and rerun the same implemented action; never overwrite prior governed state. **Audit:** The runtime preserves candidate/run diagnostics and exact evidence digests where the implemented workflow supports them. **Authority:** AI assistance creates a candidate only; it cannot accept, approve, waive, commit, or authorize work.
-- **30 · `business-architecture-decide-commit`** — Have product-leadership review the exact Business architecture candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. **Before/after:** candidate-ready-for-review → recorded-or-needs-decisions. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes Exact Business architecture candidate and limitations; Challenge and assurance findings; produces Human acceptance disposition, governed revision, audit event, and retained candidate/input digests. **Criteria:** Exactly one accountable role is named; Required assurance findings are resolved or explicitly retained; The accepted digest equals the committed digest. **Failure/blocker:** Accountability is absent; Candidate changed after review; Material blocker or assurance finding remains undisposed Do not commit; preserve the candidate and blocker with an accountable owner and escalation path. **Retry:** Reject or revise the candidate, regenerate a new digest, repeat review, then accept and commit explicitly. **Audit:** The implemented commit records the exact accepted proposal and actor/context in governed audit history. **Authority:** Commit governs this bounded record only; separate authorities remain required for risk acceptance, implementation, repository mutation, release, deployment, and operations.
+- **10 · `business-architecture-open-group`** — Use /author to open the Business architecture record group, inspect its required record families, and select the next missing or revisable record. **Before/after:** prerequisites-current → authoring-record-selected. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes governed-product-discovery; governed-source-baseline; governed-source-provenance; produces business-architecture-authoring-context. **Criteria:** The Business architecture group is derived from the canonical checkpoint contract; Required record kinds are business-capability-map, value-stream-model, operating-model, business-rule-catalog, business-architecture-baseline; Current governed revisions and missing records are distinguished. **Failure/blocker:** Prerequisite checkpoint is incomplete; No current Product/Initiative context; Record group cannot be resolved Keep prior records unchanged and identify the missing prerequisite or invalid group. **Retry:** Restore the prerequisite or select a valid record, then reopen /author. **Audit:** Navigation and record selection do not create a governed audit event. **Authority:** Opening an authoring group or selecting a record creates no candidate or governed record.
+- **20 · `business-architecture-generate-record-candidate`** — For each selected Business architecture record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. **Before/after:** authoring-record-selected → canonical-record-candidate-ready. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes governed-product-discovery; governed-source-baseline; governed-source-provenance; business-architecture-authoring-context; authoring-human-instruction; produces business-architecture-canonical-record-candidate; business-architecture-candidate-digest; business-architecture-repair-diagnostics. **Criteria:** Capabilities and value streams trace to outcomes; Business rules and domain language are consistent; Candidate boundaries do not prescribe deployment topology; Candidate satisfies the exact canonical record schema; Unsupported content remains Unknown or an unresolved question; No more than three bounded repair attempts occur. **Failure/blocker:** Advisor unavailable; Provider-facing schema rejected; Three normalization/repair attempts fail; Input context becomes stale Preserve any prior governed record and contract-valid prior candidate; expose diagnostics without partial commit. **Retry:** Revise the instruction, switch advisor/model, or regenerate the selected record against current inputs. **Audit:** Candidate and diagnostics may remain in the Chat workflow; no governed record event is claimed. **Authority:** Advisor output is a candidate for one record kind only and cannot accept, commit, or authorize work.
+- **30 · `business-architecture-inspect-revise-record`** — Inspect the exact Business architecture candidate and digest; use /back, free-text revision, or /cancel before a human decision. **Before/after:** canonical-record-candidate-ready → canonical-record-reviewed-or-cancelled. **Action:** `@gaep /inspect or @gaep /back or @gaep /cancel` (chat-command). **Evidence:** consumes business-architecture-canonical-record-candidate; business-architecture-candidate-digest; produces reviewed-business-architecture-canonical-record-candidate; business-architecture-challenge-findings. **Criteria:** Capabilities and value streams trace to outcomes; Business rules and domain language are consistent; Candidate boundaries do not prescribe deployment topology; Displayed record and digest are the exact candidate under review; Evidence limits, assumptions, open questions, and conflicts remain visible. **Failure/blocker:** Candidate is stale; Required traceability is absent; Material challenge finding is unresolved Keep the candidate unaccepted and preserve the prior governed revision. **Retry:** Revise in natural language or return to the record selector, then inspect the new exact digest. **Audit:** No governed record event is asserted for review or revision. **Authority:** Inspection, challenge, revision, and cancellation create no acceptance or governed state.
+- **40 · `business-architecture-accept-record`** — Use /accept to accept only the exact reviewed Business architecture candidate and digest; repeat this decision separately for each record in the group. **Before/after:** canonical-record-reviewed → canonical-record-accepted-awaiting-commit. **Action:** `@gaep /accept` (chat-command). **Evidence:** consumes reviewed-business-architecture-canonical-record-candidate; business-architecture-candidate-digest; produces accepted-business-architecture-canonical-record-candidate. **Criteria:** The exact record was inspected; Material findings have an explicit disposition; Accepted digest equals the displayed digest. **Failure/blocker:** No reviewed candidate; Candidate digest changed; Required decision is missing Refuse acceptance and retain the candidate for challenge or revision. **Retry:** Inspect or revise the record, then accept the new displayed digest. **Audit:** Workflow acceptance state is recorded without runtime authentication of the policy role. **Authority:** Acceptance makes one candidate commit-eligible only; it is not organizational approval, readiness, assurance, or commit.
+- **50 · `business-architecture-commit-record`** — Use /commit CONFIRM only after separate acceptance to persist the selected Business architecture canonical record, then return to /author for the next required record. **Before/after:** canonical-record-accepted-awaiting-commit → canonical-record-recorded-or-next-record-required. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes accepted-business-architecture-canonical-record-candidate; governed-product-discovery; governed-source-baseline; governed-source-provenance; produces governed-business-architecture-canonical-record; business-architecture-record-revision. **Criteria:** Acceptance occurred in the prior state; CONFIRM is exact; Expected record and prerequisite revisions remain current; All Business architecture records remain individually governed. **Failure/blocker:** Acceptance missing; CONFIRM absent; Expected revision stale; Engine schema/revision validation fails Persist no partial record and preserve all prior governed revisions. **Retry:** Regenerate against current state when stale, inspect, accept, and commit the exact replacement. **Audit:** The Engine persists the selected canonical record identity, kind, revision, and its contract fields; the Guide does not claim unauthenticated role identity. **Authority:** Commit records one Business architecture artifact only; it creates no implementation, release, production, security, privacy, compliance, or independent-assurance authority.
 
-**AI activity:** Use the implemented @gaep /author route to prepare a bounded Business architecture candidate from the reviewed context, preserving Unknowns and limitations.
+**AI activity:** For each selected Business architecture record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.
 
-**Human activity:** Inspect the exact inputs for Business architecture; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. Have product-leadership review the exact Business architecture candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.
+**Human activity:** Use /author to open the Business architecture record group, inspect its required record families, and select the next missing or revisable record. Inspect the exact Business architecture candidate and digest; use /back, free-text revision, or /cancel before a human decision. Use /accept to accept only the exact reviewed Business architecture candidate and digest; repeat this decision separately for each record in the group. Use /commit CONFIRM only after separate acceptance to persist the selected Business architecture canonical record, then return to /author for the next required record.
 
 **Candidate outputs:** governed-business-architecture-candidate. **Governed outputs:** governed-business-architecture. **Decision records:** business-architecture-acceptance-decision.
 
@@ -1332,9 +1903,11 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 
 | Step | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `business-architecture-inspect` | business-architect, domain-expert | — (no decision) | C: enterprise-architect, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
-| `business-architecture-propose` | business-architect, domain-expert | — (no decision) | C: enterprise-architect, affected-user-stakeholder<br/>I: —<br/>Assurance: — |
-| `business-architecture-decide-commit` | business-architect, domain-expert | product-leadership | C: enterprise-architect, affected-user-stakeholder<br/>I: initiative-lead<br/>Assurance: enterprise-architect |
+| `business-architecture-open-group` | business-architect, domain-expert | — (no decision) | C: enterprise-architect, affected-user-stakeholder, product-manager<br/>I: —<br/>Assurance: — |
+| `business-architecture-generate-record-candidate` | business-architect, domain-expert | — (no decision) | C: enterprise-architect, affected-user-stakeholder, product-manager<br/>I: —<br/>Assurance: — |
+| `business-architecture-inspect-revise-record` | business-architect, domain-expert | — (no decision) | C: enterprise-architect, affected-user-stakeholder, product-manager<br/>I: —<br/>Assurance: — |
+| `business-architecture-accept-record` | business-architect, domain-expert | product-leadership | C: enterprise-architect, affected-user-stakeholder, product-manager<br/>I: —<br/>Assurance: — |
+| `business-architecture-commit-record` | business-architect, domain-expert | product-leadership | C: enterprise-architect, affected-user-stakeholder, product-manager<br/>I: —<br/>Assurance: — |
 
 **Decision and authority:** Acceptance applies only to the exact candidate Commit creates governed state; it does not grant implementation, release, operational, security, privacy, compliance, or certification authority
 
@@ -1368,14 +1941,36 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 ```mermaid
 %% Solution and security architecture substeps and return path
 flowchart TD
-  solution_security_architecture_0["10. Inspect the exact inputs for Solution and security architecture; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.<br/>current · none"]
-  solution_security_architecture_1["20. Use the implemented @gaep /author route to prepare a bounded Solution and security architecture candidate from the reviewed context, preserving Unknowns and limitations.<br/>current · candidate"]
+  solution_security_architecture_0["10. Use /author to open the Solution and security architecture record group, inspect its required record families, and select the next missing or revisable record.<br/>current · none"]
+  solution_security_architecture_1["20. For each selected Solution and security architecture record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.<br/>current · candidate"]
   solution_security_architecture_0 --> solution_security_architecture_1
-  solution_security_architecture_2["30. Have enterprise-architect review the exact Solution and security architecture candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.<br/>current · governed"]
+  solution_security_architecture_2["30. Inspect the exact Solution and security architecture candidate and digest; use /back, free-text revision, or /cancel before a human decision.<br/>current · candidate"]
   solution_security_architecture_1 --> solution_security_architecture_2
-  solution_security_architecture_2 -. "failure / blocker" .-> solution_security_architecture_revise["Preserve evidence · revise · retry or escalate"]
+  solution_security_architecture_3["40. Use /accept to accept only the exact reviewed Solution and security architecture candidate and digest; repeat this decision separately for each record in the group.<br/>current · candidate"]
+  solution_security_architecture_2 --> solution_security_architecture_3
+  solution_security_architecture_4["50. Use /commit CONFIRM only after separate acceptance to persist the selected Solution and security architecture canonical record, then return to /author for the next required record.<br/>current · governed"]
+  solution_security_architecture_3 --> solution_security_architecture_4
+  solution_security_architecture_4 -. "failure / blocker" .-> solution_security_architecture_revise["Preserve evidence · revise · retry or escalate"]
   solution_security_architecture_revise --> solution_security_architecture_0
 ```
+
+<details><summary>Text alternative for Solution and security architecture substeps and return path</summary>
+
+```text
+  solution_security_architecture_0["10. Use /author to open the Solution and security architecture record group, inspect its required record families, and select the next missing or revisable record.<br/>current · none"]
+  solution_security_architecture_1["20. For each selected Solution and security architecture record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.<br/>current · candidate"]
+  solution_security_architecture_0 --> solution_security_architecture_1
+  solution_security_architecture_2["30. Inspect the exact Solution and security architecture candidate and digest; use /back, free-text revision, or /cancel before a human decision.<br/>current · candidate"]
+  solution_security_architecture_1 --> solution_security_architecture_2
+  solution_security_architecture_3["40. Use /accept to accept only the exact reviewed Solution and security architecture candidate and digest; repeat this decision separately for each record in the group.<br/>current · candidate"]
+  solution_security_architecture_2 --> solution_security_architecture_3
+  solution_security_architecture_4["50. Use /commit CONFIRM only after separate acceptance to persist the selected Solution and security architecture canonical record, then return to /author for the next required record.<br/>current · governed"]
+  solution_security_architecture_3 --> solution_security_architecture_4
+  solution_security_architecture_4 -. "failure / blocker" .-> solution_security_architecture_revise["Preserve evidence · revise · retry or escalate"]
+  solution_security_architecture_revise --> solution_security_architecture_0
+```
+
+</details>
 
 <!-- GAEP-SEQUENCE:checkpoint-solution-security-architecture -->
 
@@ -1386,28 +1981,51 @@ flowchart TD
 sequenceDiagram
 participant role0 as solution-architect
 participant role1 as security-architect
-participant role2 as enterprise-architect
-participant role3 as risk-compliance-specialist
-participant role4 as internal-audit-independent-assurance
+participant role2 as internal-audit-independent-assurance
+participant role3 as enterprise-architect
 participant gaep as GAEP runtime
-role0->>gaep: 10. Inspect the exact inputs for Solution and security architecture; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.
-gaep-->>role0: review-context-ready; no authority created
-role0->>gaep: 20. Use the implemented @gaep /author route to prepare a bounded Solution and security architecture candidate from the reviewed context, preserving Unknowns and limitations. Action: @gaep /author
-gaep-->>role0: Candidate only · candidate-ready-for-review
-role0->>role2: 30. Have enterprise-architect review the exact Solution and security architecture candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. Action: @gaep /commit CONFIRM
-role2->>gaep: Exact acceptance / explicit commit or reject
-gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
+role0->>gaep: 10. Use /author to open the Solution and security architecture record group, inspect its required record families, and select the next missing or revisable record. Action: @gaep /author
+gaep-->>role0: authoring-record-selected; no authority created
+role0->>gaep: 20. For each selected Solution and security architecture record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. Action: @gaep /author
+gaep-->>role0: Candidate only · canonical-record-candidate-ready
+role0->>gaep: 30. Inspect the exact Solution and security architecture candidate and digest; use /back, free-text revision, or /cancel before a human decision. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+gaep-->>role0: canonical-record-reviewed-or-cancelled; no authority created
+role0->>role3: 40. Use /accept to accept only the exact reviewed Solution and security architecture candidate and digest; repeat this decision separately for each record in the group. Action: @gaep /accept
+role3->>gaep: Accept or reject the exact displayed candidate
+gaep-->>role0: canonical-record-accepted-awaiting-commit; still candidate until explicit commit
+role0->>role3: 50. Use /commit CONFIRM only after separate acceptance to persist the selected Solution and security architecture canonical record, then return to /author for the next required record. Action: @gaep /commit CONFIRM
+role3->>gaep: Confirm previously accepted digest and commit explicitly
+gaep-->>role0: canonical-record-recorded-or-next-record-required; authority remains bounded
 ```
+
+<details><summary>Text alternative for Solution and security architecture — current canonical execution sequence</summary>
+
+1. role0 → gaep: 10. Use /author to open the Solution and security architecture record group, inspect its required record families, and select the next missing or revisable record. Action: @gaep /author
+2. gaep → role0: authoring-record-selected; no authority created
+3. role0 → gaep: 20. For each selected Solution and security architecture record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. Action: @gaep /author
+4. gaep → role0: Candidate only · canonical-record-candidate-ready
+5. role0 → gaep: 30. Inspect the exact Solution and security architecture candidate and digest; use /back, free-text revision, or /cancel before a human decision. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+6. gaep → role0: canonical-record-reviewed-or-cancelled; no authority created
+7. role0 → role3: 40. Use /accept to accept only the exact reviewed Solution and security architecture candidate and digest; repeat this decision separately for each record in the group. Action: @gaep /accept
+8. role3 → gaep: Accept or reject the exact displayed candidate
+9. gaep → role0: canonical-record-accepted-awaiting-commit; still candidate until explicit commit
+10. role0 → role3: 50. Use /commit CONFIRM only after separate acceptance to persist the selected Solution and security architecture canonical record, then return to /author for the next required record. Action: @gaep /commit CONFIRM
+11. role3 → gaep: Confirm previously accepted digest and commit explicitly
+12. gaep → role0: canonical-record-recorded-or-next-record-required; authority remains bounded
+
+</details>
 
 **Ordered substeps**
 
-- **10 · `solution-security-architecture-inspect`** — Inspect the exact inputs for Solution and security architecture; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. **Before/after:** not-started-or-prerequisite-satisfied → review-context-ready. **Action:** none; inspect only. **Evidence:** consumes Architecture alternatives, constraints, threats, privacy/data/AI impacts, decisions, and verification evidence; produces Bounded review context, named gaps, conflicts, assumptions, and freshness observations. **Criteria:** Which architecture style fits the evidence and constraints?; How are security, privacy, data, AI, integration, and deployment risks handled?; What decisions and alternatives remain?; Every material assertion has exact evidence or remains Unknown. **Failure/blocker:** Required input cannot be identified; Evidence limitation prevents a bounded conclusion Expose the missing prerequisite/evidence and stop the affected proposal path without discarding prior records. **Retry:** Supply or revise the bounded input, preserve the prior review context, and inspect again. **Audit:** The current runtime records workflow/audit evidence only when its implemented action executes; this inspection description creates none by itself. **Authority:** Inspection creates no candidate, acceptance, governed state, or execution authority.
-- **20 · `solution-security-architecture-propose`** — Use the implemented @gaep /author route to prepare a bounded Solution and security architecture candidate from the reviewed context, preserving Unknowns and limitations. **Before/after:** review-context-ready → candidate-ready-for-review. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes Architecture alternatives, constraints, threats, privacy/data/AI impacts, decisions, and verification evidence; Current governed prerequisite digests; produces Exact Solution and security architecture candidate, candidate digest, unresolved decisions, and evidence bindings. **Criteria:** Candidate is bounded to exact inputs; AI inference is visible; No missing evidence is converted to fact. **Failure/blocker:** Implemented action is unavailable; Candidate output is incomplete, stale, or exceeds its evidence Keep the candidate non-governed, show the failure, and require correction or cancellation. **Retry:** Challenge or revise exact inputs and rerun the same implemented action; never overwrite prior governed state. **Audit:** The runtime preserves candidate/run diagnostics and exact evidence digests where the implemented workflow supports them. **Authority:** AI assistance creates a candidate only; it cannot accept, approve, waive, commit, or authorize work.
-- **30 · `solution-security-architecture-decide-commit`** — Have enterprise-architect review the exact Solution and security architecture candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. **Before/after:** candidate-ready-for-review → recorded-or-needs-decisions. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes Exact Solution and security architecture candidate and limitations; Challenge and assurance findings; produces Human acceptance disposition, governed revision, audit event, and retained candidate/input digests. **Criteria:** Exactly one accountable role is named; Required assurance findings are resolved or explicitly retained; The accepted digest equals the committed digest. **Failure/blocker:** Accountability is absent; Candidate changed after review; Material blocker or assurance finding remains undisposed Do not commit; preserve the candidate and blocker with an accountable owner and escalation path. **Retry:** Reject or revise the candidate, regenerate a new digest, repeat review, then accept and commit explicitly. **Audit:** The implemented commit records the exact accepted proposal and actor/context in governed audit history. **Authority:** Commit governs this bounded record only; separate authorities remain required for risk acceptance, implementation, repository mutation, release, deployment, and operations.
+- **10 · `solution-security-architecture-open-group`** — Use /author to open the Solution and security architecture record group, inspect its required record families, and select the next missing or revisable record. **Before/after:** prerequisites-current → authoring-record-selected. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes governed-business-architecture; architecture-constraints; applicable-control-outcomes; produces solution-security-architecture-authoring-context. **Criteria:** The Solution and security architecture group is derived from the canonical checkpoint contract; Required record kinds are system-solution-architecture, bounded-context-model, security-privacy-assessment; Current governed revisions and missing records are distinguished. **Failure/blocker:** Prerequisite checkpoint is incomplete; No current Product/Initiative context; Record group cannot be resolved Keep prior records unchanged and identify the missing prerequisite or invalid group. **Retry:** Restore the prerequisite or select a valid record, then reopen /author. **Audit:** Navigation and record selection do not create a governed audit event. **Authority:** Opening an authoring group or selecting a record creates no candidate or governed record.
+- **20 · `solution-security-architecture-generate-record-candidate`** — For each selected Solution and security architecture record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. **Before/after:** authoring-record-selected → canonical-record-candidate-ready. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes governed-business-architecture; architecture-constraints; applicable-control-outcomes; solution-security-architecture-authoring-context; authoring-human-instruction; produces solution-security-architecture-canonical-record-candidate; solution-security-architecture-candidate-digest; solution-security-architecture-repair-diagnostics. **Criteria:** Alternatives and trade-offs are explicit; Security/privacy constraints have evidence and owners; Architecture decisions precede architecture-bound backlog; Candidate satisfies the exact canonical record schema; Unsupported content remains Unknown or an unresolved question; No more than three bounded repair attempts occur. **Failure/blocker:** Advisor unavailable; Provider-facing schema rejected; Three normalization/repair attempts fail; Input context becomes stale Preserve any prior governed record and contract-valid prior candidate; expose diagnostics without partial commit. **Retry:** Revise the instruction, switch advisor/model, or regenerate the selected record against current inputs. **Audit:** Candidate and diagnostics may remain in the Chat workflow; no governed record event is claimed. **Authority:** Advisor output is a candidate for one record kind only and cannot accept, commit, or authorize work.
+- **30 · `solution-security-architecture-inspect-revise-record`** — Inspect the exact Solution and security architecture candidate and digest; use /back, free-text revision, or /cancel before a human decision. **Before/after:** canonical-record-candidate-ready → canonical-record-reviewed-or-cancelled. **Action:** `@gaep /inspect or @gaep /back or @gaep /cancel` (chat-command). **Evidence:** consumes solution-security-architecture-canonical-record-candidate; solution-security-architecture-candidate-digest; produces reviewed-solution-security-architecture-canonical-record-candidate; solution-security-architecture-challenge-findings. **Criteria:** Alternatives and trade-offs are explicit; Security/privacy constraints have evidence and owners; Architecture decisions precede architecture-bound backlog; Displayed record and digest are the exact candidate under review; Evidence limits, assumptions, open questions, and conflicts remain visible. **Failure/blocker:** Candidate is stale; Required traceability is absent; Material challenge finding is unresolved Keep the candidate unaccepted and preserve the prior governed revision. **Retry:** Revise in natural language or return to the record selector, then inspect the new exact digest. **Audit:** No governed record event is asserted for review or revision. **Authority:** Inspection, challenge, revision, and cancellation create no acceptance or governed state.
+- **40 · `solution-security-architecture-accept-record`** — Use /accept to accept only the exact reviewed Solution and security architecture candidate and digest; repeat this decision separately for each record in the group. **Before/after:** canonical-record-reviewed → canonical-record-accepted-awaiting-commit. **Action:** `@gaep /accept` (chat-command). **Evidence:** consumes reviewed-solution-security-architecture-canonical-record-candidate; solution-security-architecture-candidate-digest; produces accepted-solution-security-architecture-canonical-record-candidate. **Criteria:** The exact record was inspected; Material findings have an explicit disposition; Accepted digest equals the displayed digest. **Failure/blocker:** No reviewed candidate; Candidate digest changed; Required decision is missing Refuse acceptance and retain the candidate for challenge or revision. **Retry:** Inspect or revise the record, then accept the new displayed digest. **Audit:** Workflow acceptance state is recorded without runtime authentication of the policy role. **Authority:** Acceptance makes one candidate commit-eligible only; it is not organizational approval, readiness, assurance, or commit.
+- **50 · `solution-security-architecture-commit-record`** — Use /commit CONFIRM only after separate acceptance to persist the selected Solution and security architecture canonical record, then return to /author for the next required record. **Before/after:** canonical-record-accepted-awaiting-commit → canonical-record-recorded-or-next-record-required. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes accepted-solution-security-architecture-canonical-record-candidate; governed-business-architecture; architecture-constraints; applicable-control-outcomes; produces governed-solution-security-architecture-canonical-record; solution-security-architecture-record-revision. **Criteria:** Acceptance occurred in the prior state; CONFIRM is exact; Expected record and prerequisite revisions remain current; All Solution and security architecture records remain individually governed. **Failure/blocker:** Acceptance missing; CONFIRM absent; Expected revision stale; Engine schema/revision validation fails Persist no partial record and preserve all prior governed revisions. **Retry:** Regenerate against current state when stale, inspect, accept, and commit the exact replacement. **Audit:** The Engine persists the selected canonical record identity, kind, revision, and its contract fields; the Guide does not claim unauthenticated role identity. **Authority:** Commit records one Solution and security architecture artifact only; it creates no implementation, release, production, security, privacy, compliance, or independent-assurance authority.
 
-**AI activity:** Use the implemented @gaep /author route to prepare a bounded Solution and security architecture candidate from the reviewed context, preserving Unknowns and limitations.
+**AI activity:** For each selected Solution and security architecture record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.
 
-**Human activity:** Inspect the exact inputs for Solution and security architecture; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. Have enterprise-architect review the exact Solution and security architecture candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.
+**Human activity:** Use /author to open the Solution and security architecture record group, inspect its required record families, and select the next missing or revisable record. Inspect the exact Solution and security architecture candidate and digest; use /back, free-text revision, or /cancel before a human decision. Use /accept to accept only the exact reviewed Solution and security architecture candidate and digest; repeat this decision separately for each record in the group. Use /commit CONFIRM only after separate acceptance to persist the selected Solution and security architecture canonical record, then return to /author for the next required record.
 
 **Candidate outputs:** governed-solution-security-architecture-candidate. **Governed outputs:** governed-solution-security-architecture. **Decision records:** solution-security-architecture-acceptance-decision.
 
@@ -1417,9 +2035,11 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 
 | Step | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `solution-security-architecture-inspect` | solution-architect, security-architect | — (no decision) | C: data-ai-architect, privacy-specialist, platform-devops<br/>I: —<br/>Assurance: — |
-| `solution-security-architecture-propose` | solution-architect, security-architect | — (no decision) | C: data-ai-architect, privacy-specialist, platform-devops<br/>I: —<br/>Assurance: — |
-| `solution-security-architecture-decide-commit` | solution-architect, security-architect | enterprise-architect | C: data-ai-architect, privacy-specialist, platform-devops<br/>I: initiative-lead<br/>Assurance: risk-compliance-specialist, internal-audit-independent-assurance |
+| `solution-security-architecture-open-group` | solution-architect, security-architect | — (no decision) | C: data-ai-architect, privacy-specialist, platform-devops, risk-compliance-specialist<br/>I: —<br/>Assurance: — |
+| `solution-security-architecture-generate-record-candidate` | solution-architect, security-architect | — (no decision) | C: data-ai-architect, privacy-specialist, platform-devops, risk-compliance-specialist<br/>I: —<br/>Assurance: — |
+| `solution-security-architecture-inspect-revise-record` | solution-architect, security-architect | — (no decision) | C: data-ai-architect, privacy-specialist, platform-devops, risk-compliance-specialist<br/>I: —<br/>Assurance: internal-audit-independent-assurance |
+| `solution-security-architecture-accept-record` | solution-architect, security-architect | enterprise-architect | C: data-ai-architect, privacy-specialist, platform-devops, risk-compliance-specialist<br/>I: —<br/>Assurance: internal-audit-independent-assurance |
+| `solution-security-architecture-commit-record` | solution-architect, security-architect | enterprise-architect | C: data-ai-architect, privacy-specialist, platform-devops, risk-compliance-specialist<br/>I: —<br/>Assurance: internal-audit-independent-assurance |
 
 **Decision and authority:** Acceptance applies only to the exact candidate Commit creates governed state; it does not grant implementation, release, operational, security, privacy, compliance, or certification authority
 
@@ -1453,14 +2073,36 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 ```mermaid
 %% Detailed design and assurance substeps and return path
 flowchart TD
-  detailed_design_assurance_0["10. Inspect the exact inputs for Detailed design and assurance; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.<br/>current · none"]
-  detailed_design_assurance_1["20. Use the implemented @gaep /author route to prepare a bounded Detailed design and assurance candidate from the reviewed context, preserving Unknowns and limitations.<br/>current · candidate"]
+  detailed_design_assurance_0["10. Use /author to open the Detailed design and assurance record group, inspect its required record families, and select the next missing or revisable record.<br/>current · none"]
+  detailed_design_assurance_1["20. For each selected Detailed design and assurance record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.<br/>current · candidate"]
   detailed_design_assurance_0 --> detailed_design_assurance_1
-  detailed_design_assurance_2["30. Have engineering-leadership review the exact Detailed design and assurance candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.<br/>current · governed"]
+  detailed_design_assurance_2["30. Inspect the exact Detailed design and assurance candidate and digest; use /back, free-text revision, or /cancel before a human decision.<br/>current · candidate"]
   detailed_design_assurance_1 --> detailed_design_assurance_2
-  detailed_design_assurance_2 -. "failure / blocker" .-> detailed_design_assurance_revise["Preserve evidence · revise · retry or escalate"]
+  detailed_design_assurance_3["40. Use /accept to accept only the exact reviewed Detailed design and assurance candidate and digest; repeat this decision separately for each record in the group.<br/>current · candidate"]
+  detailed_design_assurance_2 --> detailed_design_assurance_3
+  detailed_design_assurance_4["50. Use /commit CONFIRM only after separate acceptance to persist the selected Detailed design and assurance canonical record, then return to /author for the next required record.<br/>current · governed"]
+  detailed_design_assurance_3 --> detailed_design_assurance_4
+  detailed_design_assurance_4 -. "failure / blocker" .-> detailed_design_assurance_revise["Preserve evidence · revise · retry or escalate"]
   detailed_design_assurance_revise --> detailed_design_assurance_0
 ```
+
+<details><summary>Text alternative for Detailed design and assurance substeps and return path</summary>
+
+```text
+  detailed_design_assurance_0["10. Use /author to open the Detailed design and assurance record group, inspect its required record families, and select the next missing or revisable record.<br/>current · none"]
+  detailed_design_assurance_1["20. For each selected Detailed design and assurance record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.<br/>current · candidate"]
+  detailed_design_assurance_0 --> detailed_design_assurance_1
+  detailed_design_assurance_2["30. Inspect the exact Detailed design and assurance candidate and digest; use /back, free-text revision, or /cancel before a human decision.<br/>current · candidate"]
+  detailed_design_assurance_1 --> detailed_design_assurance_2
+  detailed_design_assurance_3["40. Use /accept to accept only the exact reviewed Detailed design and assurance candidate and digest; repeat this decision separately for each record in the group.<br/>current · candidate"]
+  detailed_design_assurance_2 --> detailed_design_assurance_3
+  detailed_design_assurance_4["50. Use /commit CONFIRM only after separate acceptance to persist the selected Detailed design and assurance canonical record, then return to /author for the next required record.<br/>current · governed"]
+  detailed_design_assurance_3 --> detailed_design_assurance_4
+  detailed_design_assurance_4 -. "failure / blocker" .-> detailed_design_assurance_revise["Preserve evidence · revise · retry or escalate"]
+  detailed_design_assurance_revise --> detailed_design_assurance_0
+```
+
+</details>
 
 <!-- GAEP-SEQUENCE:checkpoint-detailed-design-assurance -->
 
@@ -1471,28 +2113,52 @@ flowchart TD
 sequenceDiagram
 participant role0 as solution-architect
 participant role1 as quality-engineering
-participant role2 as engineering-leadership
-participant role3 as ai-evaluation-tevv
-participant role4 as internal-audit-independent-assurance
+participant role2 as ai-evaluation-tevv
+participant role3 as internal-audit-independent-assurance
+participant role4 as engineering-leadership
 participant gaep as GAEP runtime
-role0->>gaep: 10. Inspect the exact inputs for Detailed design and assurance; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.
-gaep-->>role0: review-context-ready; no authority created
-role0->>gaep: 20. Use the implemented @gaep /author route to prepare a bounded Detailed design and assurance candidate from the reviewed context, preserving Unknowns and limitations. Action: @gaep /author
-gaep-->>role0: Candidate only · candidate-ready-for-review
-role0->>role2: 30. Have engineering-leadership review the exact Detailed design and assurance candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. Action: @gaep /commit CONFIRM
-role2->>gaep: Exact acceptance / explicit commit or reject
-gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
+role0->>gaep: 10. Use /author to open the Detailed design and assurance record group, inspect its required record families, and select the next missing or revisable record. Action: @gaep /author
+gaep-->>role0: authoring-record-selected; no authority created
+role0->>gaep: 20. For each selected Detailed design and assurance record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. Action: @gaep /author
+gaep-->>role0: Candidate only · canonical-record-candidate-ready
+role0->>gaep: 30. Inspect the exact Detailed design and assurance candidate and digest; use /back, free-text revision, or /cancel before a human decision. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+gaep-->>role0: canonical-record-reviewed-or-cancelled; no authority created
+role0->>role4: 40. Use /accept to accept only the exact reviewed Detailed design and assurance candidate and digest; repeat this decision separately for each record in the group. Action: @gaep /accept
+role4->>gaep: Accept or reject the exact displayed candidate
+gaep-->>role0: canonical-record-accepted-awaiting-commit; still candidate until explicit commit
+role0->>role4: 50. Use /commit CONFIRM only after separate acceptance to persist the selected Detailed design and assurance canonical record, then return to /author for the next required record. Action: @gaep /commit CONFIRM
+role4->>gaep: Confirm previously accepted digest and commit explicitly
+gaep-->>role0: canonical-record-recorded-or-next-record-required; authority remains bounded
 ```
+
+<details><summary>Text alternative for Detailed design and assurance — current canonical execution sequence</summary>
+
+1. role0 → gaep: 10. Use /author to open the Detailed design and assurance record group, inspect its required record families, and select the next missing or revisable record. Action: @gaep /author
+2. gaep → role0: authoring-record-selected; no authority created
+3. role0 → gaep: 20. For each selected Detailed design and assurance record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. Action: @gaep /author
+4. gaep → role0: Candidate only · canonical-record-candidate-ready
+5. role0 → gaep: 30. Inspect the exact Detailed design and assurance candidate and digest; use /back, free-text revision, or /cancel before a human decision. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+6. gaep → role0: canonical-record-reviewed-or-cancelled; no authority created
+7. role0 → role4: 40. Use /accept to accept only the exact reviewed Detailed design and assurance candidate and digest; repeat this decision separately for each record in the group. Action: @gaep /accept
+8. role4 → gaep: Accept or reject the exact displayed candidate
+9. gaep → role0: canonical-record-accepted-awaiting-commit; still candidate until explicit commit
+10. role0 → role4: 50. Use /commit CONFIRM only after separate acceptance to persist the selected Detailed design and assurance canonical record, then return to /author for the next required record. Action: @gaep /commit CONFIRM
+11. role4 → gaep: Confirm previously accepted digest and commit explicitly
+12. gaep → role0: canonical-record-recorded-or-next-record-required; authority remains bounded
+
+</details>
 
 **Ordered substeps**
 
-- **10 · `detailed-design-assurance-inspect`** — Inspect the exact inputs for Detailed design and assurance; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. **Before/after:** not-started-or-prerequisite-satisfied → review-context-ready. **Action:** none; inspect only. **Evidence:** consumes Detailed models, threats, decisions, risks, tests, assurance findings, and end-to-end traceability; produces Bounded review context, named gaps, conflicts, assumptions, and freshness observations. **Criteria:** Are detailed models mutually consistent and traceable?; Which tests and assurance evidence are required?; Which risks, decisions, and recovery paths remain open?; Every material assertion has exact evidence or remains Unknown. **Failure/blocker:** Required input cannot be identified; Evidence limitation prevents a bounded conclusion Expose the missing prerequisite/evidence and stop the affected proposal path without discarding prior records. **Retry:** Supply or revise the bounded input, preserve the prior review context, and inspect again. **Audit:** The current runtime records workflow/audit evidence only when its implemented action executes; this inspection description creates none by itself. **Authority:** Inspection creates no candidate, acceptance, governed state, or execution authority.
-- **20 · `detailed-design-assurance-propose`** — Use the implemented @gaep /author route to prepare a bounded Detailed design and assurance candidate from the reviewed context, preserving Unknowns and limitations. **Before/after:** review-context-ready → candidate-ready-for-review. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes Detailed models, threats, decisions, risks, tests, assurance findings, and end-to-end traceability; Current governed prerequisite digests; produces Exact Detailed design and assurance candidate, candidate digest, unresolved decisions, and evidence bindings. **Criteria:** Candidate is bounded to exact inputs; AI inference is visible; No missing evidence is converted to fact. **Failure/blocker:** Implemented action is unavailable; Candidate output is incomplete, stale, or exceeds its evidence Keep the candidate non-governed, show the failure, and require correction or cancellation. **Retry:** Challenge or revise exact inputs and rerun the same implemented action; never overwrite prior governed state. **Audit:** The runtime preserves candidate/run diagnostics and exact evidence digests where the implemented workflow supports them. **Authority:** AI assistance creates a candidate only; it cannot accept, approve, waive, commit, or authorize work.
-- **30 · `detailed-design-assurance-decide-commit`** — Have engineering-leadership review the exact Detailed design and assurance candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. **Before/after:** candidate-ready-for-review → recorded-or-needs-decisions. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes Exact Detailed design and assurance candidate and limitations; Challenge and assurance findings; produces Human acceptance disposition, governed revision, audit event, and retained candidate/input digests. **Criteria:** Exactly one accountable role is named; Required assurance findings are resolved or explicitly retained; The accepted digest equals the committed digest. **Failure/blocker:** Accountability is absent; Candidate changed after review; Material blocker or assurance finding remains undisposed Do not commit; preserve the candidate and blocker with an accountable owner and escalation path. **Retry:** Reject or revise the candidate, regenerate a new digest, repeat review, then accept and commit explicitly. **Audit:** The implemented commit records the exact accepted proposal and actor/context in governed audit history. **Authority:** Commit governs this bounded record only; separate authorities remain required for risk acceptance, implementation, repository mutation, release, deployment, and operations.
+- **10 · `detailed-design-assurance-open-group`** — Use /author to open the Detailed design and assurance record group, inspect its required record families, and select the next missing or revisable record. **Before/after:** prerequisites-current → authoring-record-selected. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes governed-solution-security-architecture; assurance-criteria; produces detailed-design-assurance-authoring-context. **Criteria:** The Detailed design and assurance group is derived from the canonical checkpoint contract; Required record kinds are process-model, data-model, authorization-model, event-integration-model, failure-recovery-model, architecture-challenge-model, decision-register, risk-register, evidence-registry, end-to-end-traceability; Current governed revisions and missing records are distinguished. **Failure/blocker:** Prerequisite checkpoint is incomplete; No current Product/Initiative context; Record group cannot be resolved Keep prior records unchanged and identify the missing prerequisite or invalid group. **Retry:** Restore the prerequisite or select a valid record, then reopen /author. **Audit:** Navigation and record selection do not create a governed audit event. **Authority:** Opening an authoring group or selecting a record creates no candidate or governed record.
+- **20 · `detailed-design-assurance-generate-record-candidate`** — For each selected Detailed design and assurance record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. **Before/after:** authoring-record-selected → canonical-record-candidate-ready. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes governed-solution-security-architecture; assurance-criteria; detailed-design-assurance-authoring-context; authoring-human-instruction; produces detailed-design-assurance-canonical-record-candidate; detailed-design-assurance-candidate-digest; detailed-design-assurance-repair-diagnostics. **Criteria:** Models are mutually consistent and traceable; Failure and recovery paths are testable; Assurance findings and residual risks remain visible; Candidate satisfies the exact canonical record schema; Unsupported content remains Unknown or an unresolved question; No more than three bounded repair attempts occur. **Failure/blocker:** Advisor unavailable; Provider-facing schema rejected; Three normalization/repair attempts fail; Input context becomes stale Preserve any prior governed record and contract-valid prior candidate; expose diagnostics without partial commit. **Retry:** Revise the instruction, switch advisor/model, or regenerate the selected record against current inputs. **Audit:** Candidate and diagnostics may remain in the Chat workflow; no governed record event is claimed. **Authority:** Advisor output is a candidate for one record kind only and cannot accept, commit, or authorize work.
+- **30 · `detailed-design-assurance-inspect-revise-record`** — Inspect the exact Detailed design and assurance candidate and digest; use /back, free-text revision, or /cancel before a human decision. **Before/after:** canonical-record-candidate-ready → canonical-record-reviewed-or-cancelled. **Action:** `@gaep /inspect or @gaep /back or @gaep /cancel` (chat-command). **Evidence:** consumes detailed-design-assurance-canonical-record-candidate; detailed-design-assurance-candidate-digest; produces reviewed-detailed-design-assurance-canonical-record-candidate; detailed-design-assurance-challenge-findings. **Criteria:** Models are mutually consistent and traceable; Failure and recovery paths are testable; Assurance findings and residual risks remain visible; Displayed record and digest are the exact candidate under review; Evidence limits, assumptions, open questions, and conflicts remain visible. **Failure/blocker:** Candidate is stale; Required traceability is absent; Material challenge finding is unresolved Keep the candidate unaccepted and preserve the prior governed revision. **Retry:** Revise in natural language or return to the record selector, then inspect the new exact digest. **Audit:** No governed record event is asserted for review or revision. **Authority:** Inspection, challenge, revision, and cancellation create no acceptance or governed state.
+- **40 · `detailed-design-assurance-accept-record`** — Use /accept to accept only the exact reviewed Detailed design and assurance candidate and digest; repeat this decision separately for each record in the group. **Before/after:** canonical-record-reviewed → canonical-record-accepted-awaiting-commit. **Action:** `@gaep /accept` (chat-command). **Evidence:** consumes reviewed-detailed-design-assurance-canonical-record-candidate; detailed-design-assurance-candidate-digest; produces accepted-detailed-design-assurance-canonical-record-candidate. **Criteria:** The exact record was inspected; Material findings have an explicit disposition; Accepted digest equals the displayed digest. **Failure/blocker:** No reviewed candidate; Candidate digest changed; Required decision is missing Refuse acceptance and retain the candidate for challenge or revision. **Retry:** Inspect or revise the record, then accept the new displayed digest. **Audit:** Workflow acceptance state is recorded without runtime authentication of the policy role. **Authority:** Acceptance makes one candidate commit-eligible only; it is not organizational approval, readiness, assurance, or commit.
+- **50 · `detailed-design-assurance-commit-record`** — Use /commit CONFIRM only after separate acceptance to persist the selected Detailed design and assurance canonical record, then return to /author for the next required record. **Before/after:** canonical-record-accepted-awaiting-commit → canonical-record-recorded-or-next-record-required. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes accepted-detailed-design-assurance-canonical-record-candidate; governed-solution-security-architecture; assurance-criteria; produces governed-detailed-design-assurance-canonical-record; detailed-design-assurance-record-revision. **Criteria:** Acceptance occurred in the prior state; CONFIRM is exact; Expected record and prerequisite revisions remain current; All Detailed design and assurance records remain individually governed. **Failure/blocker:** Acceptance missing; CONFIRM absent; Expected revision stale; Engine schema/revision validation fails Persist no partial record and preserve all prior governed revisions. **Retry:** Regenerate against current state when stale, inspect, accept, and commit the exact replacement. **Audit:** The Engine persists the selected canonical record identity, kind, revision, and its contract fields; the Guide does not claim unauthenticated role identity. **Authority:** Commit records one Detailed design and assurance artifact only; it creates no implementation, release, production, security, privacy, compliance, or independent-assurance authority.
 
-**AI activity:** Use the implemented @gaep /author route to prepare a bounded Detailed design and assurance candidate from the reviewed context, preserving Unknowns and limitations.
+**AI activity:** For each selected Detailed design and assurance record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.
 
-**Human activity:** Inspect the exact inputs for Detailed design and assurance; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. Have engineering-leadership review the exact Detailed design and assurance candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.
+**Human activity:** Use /author to open the Detailed design and assurance record group, inspect its required record families, and select the next missing or revisable record. Inspect the exact Detailed design and assurance candidate and digest; use /back, free-text revision, or /cancel before a human decision. Use /accept to accept only the exact reviewed Detailed design and assurance candidate and digest; repeat this decision separately for each record in the group. Use /commit CONFIRM only after separate acceptance to persist the selected Detailed design and assurance canonical record, then return to /author for the next required record.
 
 **Candidate outputs:** governed-detailed-design-assurance-candidate. **Governed outputs:** governed-detailed-design-assurance. **Decision records:** detailed-design-assurance-acceptance-decision.
 
@@ -1502,9 +2168,11 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 
 | Step | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `detailed-design-assurance-inspect` | solution-architect, quality-engineering | — (no decision) | C: security-architect, ai-evaluation-tevv, engineering-leadership<br/>I: —<br/>Assurance: — |
-| `detailed-design-assurance-propose` | solution-architect, quality-engineering | — (no decision) | C: security-architect, ai-evaluation-tevv, engineering-leadership<br/>I: —<br/>Assurance: — |
-| `detailed-design-assurance-decide-commit` | solution-architect, quality-engineering | engineering-leadership | C: security-architect, ai-evaluation-tevv<br/>I: initiative-lead<br/>Assurance: ai-evaluation-tevv, internal-audit-independent-assurance |
+| `detailed-design-assurance-open-group` | solution-architect, quality-engineering | — (no decision) | C: security-architect, data-ai-architect, platform-devops, product-owner<br/>I: —<br/>Assurance: — |
+| `detailed-design-assurance-generate-record-candidate` | solution-architect, quality-engineering | — (no decision) | C: security-architect, data-ai-architect, platform-devops, product-owner<br/>I: —<br/>Assurance: — |
+| `detailed-design-assurance-inspect-revise-record` | solution-architect, quality-engineering | — (no decision) | C: security-architect, data-ai-architect, platform-devops, product-owner<br/>I: —<br/>Assurance: ai-evaluation-tevv, internal-audit-independent-assurance |
+| `detailed-design-assurance-accept-record` | solution-architect, quality-engineering | engineering-leadership | C: security-architect, data-ai-architect, platform-devops, product-owner<br/>I: —<br/>Assurance: ai-evaluation-tevv, internal-audit-independent-assurance |
+| `detailed-design-assurance-commit-record` | solution-architect, quality-engineering | engineering-leadership | C: security-architect, data-ai-architect, platform-devops, product-owner<br/>I: —<br/>Assurance: ai-evaluation-tevv, internal-audit-independent-assurance |
 
 **Decision and authority:** Acceptance applies only to the exact candidate Commit creates governed state; it does not grant implementation, release, operational, security, privacy, compliance, or certification authority
 
@@ -1538,14 +2206,36 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 ```mermaid
 %% P0–P4 readiness and handoff substeps and return path
 flowchart TD
-  p0_p4_readiness_0["10. Inspect the exact inputs for P0–P4 readiness and handoff; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.<br/>current · none"]
-  p0_p4_readiness_1["20. Use the implemented @gaep /author route to prepare a bounded P0–P4 readiness and handoff candidate from the reviewed context, preserving Unknowns and limitations.<br/>current · candidate"]
+  p0_p4_readiness_0["10. Use /author to open the P0–P4 readiness and handoff record group, inspect its required record families, and select the next missing or revisable record.<br/>current · none"]
+  p0_p4_readiness_1["20. For each selected P0–P4 readiness and handoff record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.<br/>current · candidate"]
   p0_p4_readiness_0 --> p0_p4_readiness_1
-  p0_p4_readiness_2["30. Have engineering-leadership review the exact P0–P4 readiness and handoff candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.<br/>current · governed"]
+  p0_p4_readiness_2["30. Inspect the exact P0–P4 readiness and handoff candidate and digest; use /back, free-text revision, or /cancel before a human decision.<br/>current · candidate"]
   p0_p4_readiness_1 --> p0_p4_readiness_2
-  p0_p4_readiness_2 -. "failure / blocker" .-> p0_p4_readiness_revise["Preserve evidence · revise · retry or escalate"]
+  p0_p4_readiness_3["40. Use /accept to accept only the exact reviewed P0–P4 readiness and handoff candidate and digest; repeat this decision separately for each record in the group.<br/>current · candidate"]
+  p0_p4_readiness_2 --> p0_p4_readiness_3
+  p0_p4_readiness_4["50. Use /commit CONFIRM only after separate acceptance to persist the selected P0–P4 readiness and handoff canonical record, then return to /author for the next required record.<br/>current · governed"]
+  p0_p4_readiness_3 --> p0_p4_readiness_4
+  p0_p4_readiness_4 -. "failure / blocker" .-> p0_p4_readiness_revise["Preserve evidence · revise · retry or escalate"]
   p0_p4_readiness_revise --> p0_p4_readiness_0
 ```
+
+<details><summary>Text alternative for P0–P4 readiness and handoff substeps and return path</summary>
+
+```text
+  p0_p4_readiness_0["10. Use /author to open the P0–P4 readiness and handoff record group, inspect its required record families, and select the next missing or revisable record.<br/>current · none"]
+  p0_p4_readiness_1["20. For each selected P0–P4 readiness and handoff record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.<br/>current · candidate"]
+  p0_p4_readiness_0 --> p0_p4_readiness_1
+  p0_p4_readiness_2["30. Inspect the exact P0–P4 readiness and handoff candidate and digest; use /back, free-text revision, or /cancel before a human decision.<br/>current · candidate"]
+  p0_p4_readiness_1 --> p0_p4_readiness_2
+  p0_p4_readiness_3["40. Use /accept to accept only the exact reviewed P0–P4 readiness and handoff candidate and digest; repeat this decision separately for each record in the group.<br/>current · candidate"]
+  p0_p4_readiness_2 --> p0_p4_readiness_3
+  p0_p4_readiness_4["50. Use /commit CONFIRM only after separate acceptance to persist the selected P0–P4 readiness and handoff canonical record, then return to /author for the next required record.<br/>current · governed"]
+  p0_p4_readiness_3 --> p0_p4_readiness_4
+  p0_p4_readiness_4 -. "failure / blocker" .-> p0_p4_readiness_revise["Preserve evidence · revise · retry or escalate"]
+  p0_p4_readiness_revise --> p0_p4_readiness_0
+```
+
+</details>
 
 <!-- GAEP-SEQUENCE:checkpoint-p0-p4-readiness -->
 
@@ -1556,27 +2246,52 @@ flowchart TD
 sequenceDiagram
 participant role0 as initiative-lead
 participant role1 as quality-engineering
-participant role2 as engineering-leadership
+participant role2 as product-owner
 participant role3 as internal-audit-independent-assurance
+participant role4 as engineering-leadership
 participant gaep as GAEP runtime
-role0->>gaep: 10. Inspect the exact inputs for P0–P4 readiness and handoff; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation.
-gaep-->>role0: review-context-ready; no authority created
-role0->>gaep: 20. Use the implemented @gaep /author route to prepare a bounded P0–P4 readiness and handoff candidate from the reviewed context, preserving Unknowns and limitations. Action: @gaep /author
-gaep-->>role0: Candidate only · candidate-ready-for-review
-role0->>role2: 30. Have engineering-leadership review the exact P0–P4 readiness and handoff candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. Action: @gaep /commit CONFIRM
-role2->>gaep: Exact acceptance / explicit commit or reject
-gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
+role0->>gaep: 10. Use /author to open the P0–P4 readiness and handoff record group, inspect its required record families, and select the next missing or revisable record. Action: @gaep /author
+gaep-->>role0: authoring-record-selected; no authority created
+role0->>gaep: 20. For each selected P0–P4 readiness and handoff record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. Action: @gaep /author
+gaep-->>role0: Candidate only · canonical-record-candidate-ready
+role0->>gaep: 30. Inspect the exact P0–P4 readiness and handoff candidate and digest; use /back, free-text revision, or /cancel before a human decision. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+gaep-->>role0: canonical-record-reviewed-or-cancelled; no authority created
+role0->>role4: 40. Use /accept to accept only the exact reviewed P0–P4 readiness and handoff candidate and digest; repeat this decision separately for each record in the group. Action: @gaep /accept
+role4->>gaep: Accept or reject the exact displayed candidate
+gaep-->>role0: canonical-record-accepted-awaiting-commit; still candidate until explicit commit
+role0->>role4: 50. Use /commit CONFIRM only after separate acceptance to persist the selected P0–P4 readiness and handoff canonical record, then return to /author for the next required record. Action: @gaep /commit CONFIRM
+role4->>gaep: Confirm previously accepted digest and commit explicitly
+gaep-->>role0: canonical-record-recorded-or-next-record-required; authority remains bounded
 ```
+
+<details><summary>Text alternative for P0–P4 readiness and handoff — current canonical execution sequence</summary>
+
+1. role0 → gaep: 10. Use /author to open the P0–P4 readiness and handoff record group, inspect its required record families, and select the next missing or revisable record. Action: @gaep /author
+2. gaep → role0: authoring-record-selected; no authority created
+3. role0 → gaep: 20. For each selected P0–P4 readiness and handoff record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. Action: @gaep /author
+4. gaep → role0: Candidate only · canonical-record-candidate-ready
+5. role0 → gaep: 30. Inspect the exact P0–P4 readiness and handoff candidate and digest; use /back, free-text revision, or /cancel before a human decision. Action: @gaep /inspect or @gaep /back or @gaep /cancel
+6. gaep → role0: canonical-record-reviewed-or-cancelled; no authority created
+7. role0 → role4: 40. Use /accept to accept only the exact reviewed P0–P4 readiness and handoff candidate and digest; repeat this decision separately for each record in the group. Action: @gaep /accept
+8. role4 → gaep: Accept or reject the exact displayed candidate
+9. gaep → role0: canonical-record-accepted-awaiting-commit; still candidate until explicit commit
+10. role0 → role4: 50. Use /commit CONFIRM only after separate acceptance to persist the selected P0–P4 readiness and handoff canonical record, then return to /author for the next required record. Action: @gaep /commit CONFIRM
+11. role4 → gaep: Confirm previously accepted digest and commit explicitly
+12. gaep → role0: canonical-record-recorded-or-next-record-required; authority remains bounded
+
+</details>
 
 **Ordered substeps**
 
-- **10 · `p0-p4-readiness-inspect`** — Inspect the exact inputs for P0–P4 readiness and handoff; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. **Before/after:** not-started-or-prerequisite-satisfied → review-context-ready. **Action:** none; inspect only. **Evidence:** consumes Exact governed P0–P4 records, readiness criteria, challenge findings, unresolved decisions, and handoff contents; produces Bounded review context, named gaps, conflicts, assumptions, and freshness observations. **Criteria:** Which P0–P4 evidence is complete, partial, stale, or missing?; What unresolved work blocks later activation?; Who owns the bounded handoff and next decision?; Every material assertion has exact evidence or remains Unknown. **Failure/blocker:** Required input cannot be identified; Evidence limitation prevents a bounded conclusion Expose the missing prerequisite/evidence and stop the affected proposal path without discarding prior records. **Retry:** Supply or revise the bounded input, preserve the prior review context, and inspect again. **Audit:** The current runtime records workflow/audit evidence only when its implemented action executes; this inspection description creates none by itself. **Authority:** Inspection creates no candidate, acceptance, governed state, or execution authority.
-- **20 · `p0-p4-readiness-propose`** — Use the implemented @gaep /author route to prepare a bounded P0–P4 readiness and handoff candidate from the reviewed context, preserving Unknowns and limitations. **Before/after:** review-context-ready → candidate-ready-for-review. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes Exact governed P0–P4 records, readiness criteria, challenge findings, unresolved decisions, and handoff contents; Current governed prerequisite digests; produces Exact P0–P4 readiness and handoff candidate, candidate digest, unresolved decisions, and evidence bindings. **Criteria:** Candidate is bounded to exact inputs; AI inference is visible; No missing evidence is converted to fact. **Failure/blocker:** Implemented action is unavailable; Candidate output is incomplete, stale, or exceeds its evidence Keep the candidate non-governed, show the failure, and require correction or cancellation. **Retry:** Challenge or revise exact inputs and rerun the same implemented action; never overwrite prior governed state. **Audit:** The runtime preserves candidate/run diagnostics and exact evidence digests where the implemented workflow supports them. **Authority:** AI assistance creates a candidate only; it cannot accept, approve, waive, commit, or authorize work.
-- **30 · `p0-p4-readiness-decide-commit`** — Have engineering-leadership review the exact P0–P4 readiness and handoff candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record. **Before/after:** candidate-ready-for-review → recorded-or-needs-decisions. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes Exact P0–P4 readiness and handoff candidate and limitations; Challenge and assurance findings; produces Human acceptance disposition, governed revision, audit event, and retained candidate/input digests. **Criteria:** Exactly one accountable role is named; Required assurance findings are resolved or explicitly retained; The accepted digest equals the committed digest. **Failure/blocker:** Accountability is absent; Candidate changed after review; Material blocker or assurance finding remains undisposed Do not commit; preserve the candidate and blocker with an accountable owner and escalation path. **Retry:** Reject or revise the candidate, regenerate a new digest, repeat review, then accept and commit explicitly. **Audit:** The implemented commit records the exact accepted proposal and actor/context in governed audit history. **Authority:** Commit governs this bounded record only; separate authorities remain required for risk acceptance, implementation, repository mutation, release, deployment, and operations.
+- **10 · `p0-p4-readiness-open-group`** — Use /author to open the P0–P4 readiness and handoff record group, inspect its required record families, and select the next missing or revisable record. **Before/after:** prerequisites-current → authoring-record-selected. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes governed-detailed-design-assurance; p0-p4-readiness-criteria; produces p0-p4-readiness-authoring-context. **Criteria:** The P0–P4 readiness and handoff group is derived from the canonical checkpoint contract; Required record kinds are p0-p4-readiness-gate, p5-handoff-package; Current governed revisions and missing records are distinguished. **Failure/blocker:** Prerequisite checkpoint is incomplete; No current Product/Initiative context; Record group cannot be resolved Keep prior records unchanged and identify the missing prerequisite or invalid group. **Retry:** Restore the prerequisite or select a valid record, then reopen /author. **Audit:** Navigation and record selection do not create a governed audit event. **Authority:** Opening an authoring group or selecting a record creates no candidate or governed record.
+- **20 · `p0-p4-readiness-generate-record-candidate`** — For each selected P0–P4 readiness and handoff record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts. **Before/after:** authoring-record-selected → canonical-record-candidate-ready. **Action:** `@gaep /author` (chat-command). **Evidence:** consumes governed-detailed-design-assurance; p0-p4-readiness-criteria; p0-p4-readiness-authoring-context; authoring-human-instruction; produces p0-p4-readiness-canonical-record-candidate; p0-p4-readiness-candidate-digest; p0-p4-readiness-repair-diagnostics. **Criteria:** Every required record family is present or explicitly unresolved; Readiness assessment distinguishes evidence from authority; Handoff does not claim later Product Design, implementation, release, or operations execution; Candidate satisfies the exact canonical record schema; Unsupported content remains Unknown or an unresolved question; No more than three bounded repair attempts occur. **Failure/blocker:** Advisor unavailable; Provider-facing schema rejected; Three normalization/repair attempts fail; Input context becomes stale Preserve any prior governed record and contract-valid prior candidate; expose diagnostics without partial commit. **Retry:** Revise the instruction, switch advisor/model, or regenerate the selected record against current inputs. **Audit:** Candidate and diagnostics may remain in the Chat workflow; no governed record event is claimed. **Authority:** Advisor output is a candidate for one record kind only and cannot accept, commit, or authorize work.
+- **30 · `p0-p4-readiness-inspect-revise-record`** — Inspect the exact P0–P4 readiness and handoff candidate and digest; use /back, free-text revision, or /cancel before a human decision. **Before/after:** canonical-record-candidate-ready → canonical-record-reviewed-or-cancelled. **Action:** `@gaep /inspect or @gaep /back or @gaep /cancel` (chat-command). **Evidence:** consumes p0-p4-readiness-canonical-record-candidate; p0-p4-readiness-candidate-digest; produces reviewed-p0-p4-readiness-canonical-record-candidate; p0-p4-readiness-challenge-findings. **Criteria:** Every required record family is present or explicitly unresolved; Readiness assessment distinguishes evidence from authority; Handoff does not claim later Product Design, implementation, release, or operations execution; Displayed record and digest are the exact candidate under review; Evidence limits, assumptions, open questions, and conflicts remain visible. **Failure/blocker:** Candidate is stale; Required traceability is absent; Material challenge finding is unresolved Keep the candidate unaccepted and preserve the prior governed revision. **Retry:** Revise in natural language or return to the record selector, then inspect the new exact digest. **Audit:** No governed record event is asserted for review or revision. **Authority:** Inspection, challenge, revision, and cancellation create no acceptance or governed state.
+- **40 · `p0-p4-readiness-accept-record`** — Use /accept to accept only the exact reviewed P0–P4 readiness and handoff candidate and digest; repeat this decision separately for each record in the group. **Before/after:** canonical-record-reviewed → canonical-record-accepted-awaiting-commit. **Action:** `@gaep /accept` (chat-command). **Evidence:** consumes reviewed-p0-p4-readiness-canonical-record-candidate; p0-p4-readiness-candidate-digest; produces accepted-p0-p4-readiness-canonical-record-candidate. **Criteria:** The exact record was inspected; Material findings have an explicit disposition; Accepted digest equals the displayed digest. **Failure/blocker:** No reviewed candidate; Candidate digest changed; Required decision is missing Refuse acceptance and retain the candidate for challenge or revision. **Retry:** Inspect or revise the record, then accept the new displayed digest. **Audit:** Workflow acceptance state is recorded without runtime authentication of the policy role. **Authority:** Acceptance makes one candidate commit-eligible only; it is not organizational approval, readiness, assurance, or commit.
+- **50 · `p0-p4-readiness-commit-record`** — Use /commit CONFIRM only after separate acceptance to persist the selected P0–P4 readiness and handoff canonical record, then return to /author for the next required record. **Before/after:** canonical-record-accepted-awaiting-commit → canonical-record-recorded-or-next-record-required. **Action:** `@gaep /commit CONFIRM` (chat-command). **Evidence:** consumes accepted-p0-p4-readiness-canonical-record-candidate; governed-detailed-design-assurance; p0-p4-readiness-criteria; produces governed-p0-p4-readiness-canonical-record; p0-p4-readiness-record-revision. **Criteria:** Acceptance occurred in the prior state; CONFIRM is exact; Expected record and prerequisite revisions remain current; All P0–P4 readiness and handoff records remain individually governed. **Failure/blocker:** Acceptance missing; CONFIRM absent; Expected revision stale; Engine schema/revision validation fails Persist no partial record and preserve all prior governed revisions. **Retry:** Regenerate against current state when stale, inspect, accept, and commit the exact replacement. **Audit:** The Engine persists the selected canonical record identity, kind, revision, and its contract fields; the Guide does not claim unauthenticated role identity. **Authority:** Commit records one P0–P4 readiness and handoff artifact only; it creates no implementation, release, production, security, privacy, compliance, or independent-assurance authority.
 
-**AI activity:** Use the implemented @gaep /author route to prepare a bounded P0–P4 readiness and handoff candidate from the reviewed context, preserving Unknowns and limitations.
+**AI activity:** For each selected P0–P4 readiness and handoff record, collect a natural-language instruction and let the selected advisor produce one schema-bound candidate with at most three repair attempts.
 
-**Human activity:** Inspect the exact inputs for P0–P4 readiness and handoff; answer the prominent questions and identify stale, missing, conflicting, or unprovenanced evidence before proposal generation. Have engineering-leadership review the exact P0–P4 readiness and handoff candidate against exit criteria, obtain required assurance, accept only that candidate, and explicitly commit the governed record.
+**Human activity:** Use /author to open the P0–P4 readiness and handoff record group, inspect its required record families, and select the next missing or revisable record. Inspect the exact P0–P4 readiness and handoff candidate and digest; use /back, free-text revision, or /cancel before a human decision. Use /accept to accept only the exact reviewed P0–P4 readiness and handoff candidate and digest; repeat this decision separately for each record in the group. Use /commit CONFIRM only after separate acceptance to persist the selected P0–P4 readiness and handoff canonical record, then return to /author for the next required record.
 
 **Candidate outputs:** governed-p0-p4-readiness-handoff-candidate. **Governed outputs:** governed-p0-p4-readiness-handoff. **Decision records:** p0-p4-readiness-acceptance-decision.
 
@@ -1586,9 +2301,11 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 
 | Step | R | A | C / I / independent assurance |
 |---|---|---|---|
-| `p0-p4-readiness-inspect` | initiative-lead, quality-engineering | — (no decision) | C: engineering-leadership, release-change-management<br/>I: —<br/>Assurance: — |
-| `p0-p4-readiness-propose` | initiative-lead, quality-engineering | — (no decision) | C: engineering-leadership, release-change-management<br/>I: —<br/>Assurance: — |
-| `p0-p4-readiness-decide-commit` | initiative-lead, quality-engineering | engineering-leadership | C: release-change-management<br/>I: initiative-lead<br/>Assurance: internal-audit-independent-assurance |
+| `p0-p4-readiness-open-group` | initiative-lead, quality-engineering, product-owner | — (no decision) | C: release-change-management, product-manager<br/>I: —<br/>Assurance: — |
+| `p0-p4-readiness-generate-record-candidate` | initiative-lead, quality-engineering, product-owner | — (no decision) | C: release-change-management, product-manager<br/>I: —<br/>Assurance: — |
+| `p0-p4-readiness-inspect-revise-record` | initiative-lead, quality-engineering, product-owner | — (no decision) | C: release-change-management, product-manager<br/>I: —<br/>Assurance: internal-audit-independent-assurance |
+| `p0-p4-readiness-accept-record` | initiative-lead, quality-engineering, product-owner | engineering-leadership | C: release-change-management, product-manager<br/>I: —<br/>Assurance: internal-audit-independent-assurance |
+| `p0-p4-readiness-commit-record` | initiative-lead, quality-engineering, product-owner | engineering-leadership | C: release-change-management, product-manager<br/>I: —<br/>Assurance: internal-audit-independent-assurance |
 
 **Decision and authority:** Acceptance applies only to the exact candidate Commit creates governed state; it does not grant implementation, release, operational, security, privacy, compliance, or certification authority
 
@@ -1625,26 +2342,17 @@ accountable->>gaep: @gaep /commit CONFIRM
 gaep-->>contributor: Governed Source revision and audit event; broader authority unchanged
 ```
 
-<!-- GAEP-SEQUENCE:generic-checkpoint-loop -->
+<details><summary>Text alternative for Source selection, review, candidate recording, acceptance, and commit</summary>
 
-**Generic checkpoint execution loop**
+1. contributor → gaep: Select exact File/Folder; link remains metadata only
+2. gaep → contributor: Extraction limits, digest, reviewed content, Unknowns
+3. contributor → gaep: @gaep /intake then @gaep /record
+4. gaep → accountable: Candidate Source records; not truth/Baseline/Provenance
+5. accountable → gaep: Review/challenge; @gaep /accept exact digest
+6. accountable → gaep: @gaep /commit CONFIRM
+7. gaep → contributor: Governed Source revision and audit event; broader authority unchanged
 
-```mermaid
-%% Generic checkpoint execution loop
-sequenceDiagram
-actor responsible as Responsible role
-participant gaep as GAEP runtime
-participant accountable as Accountable role
-participant assurer as Independent assurance
-responsible->>gaep: Inspect exact prerequisites and evidence
-gaep-->>responsible: Blockers, Unknowns, and valid current action
-responsible->>gaep: Execute current action and prepare candidate
-gaep-->>accountable: Exact candidate, digest, limitations, decisions
-accountable->>assurer: Request required independent review
-assurer-->>accountable: Findings
-accountable->>gaep: Accept exact candidate or reject/revise
-gaep-->>responsible: Explicit commit creates bounded governed state
-```
+</details>
 
 <!-- GAEP-SEQUENCE:evidence-conflict -->
 
@@ -1663,6 +2371,16 @@ accountable-->>gaep: Reject, request revision, or record scoped unresolved decis
 gaep-->>expert: New candidate digest; prior evidence and decision history retained
 ```
 
+<details><summary>Text alternative for Evidence conflict, revision, challenge, and resolution</summary>
+
+1. expert → gaep: Supply conflicting exact Sources
+2. gaep → expert: Preserve both identities, provenance, conflict, and Unknown conclusion
+3. expert → accountable: Challenge candidate against named criteria
+4. accountable → gaep: Reject, request revision, or record scoped unresolved decision
+5. gaep → expert: New candidate digest; prior evidence and decision history retained
+
+</details>
+
 <!-- GAEP-SEQUENCE:missing-prerequisite -->
 
 **Missing prerequisite and blocked progression**
@@ -1679,6 +2397,16 @@ participant->>accountable: Resolve evidence/decision or assign owner
 accountable-->>gaep: Bounded disposition
 gaep-->>participant: Recompute next valid action; never bypass prerequisite silently
 ```
+
+<details><summary>Text alternative for Missing prerequisite and blocked progression</summary>
+
+1. participant → gaep: Request downstream action
+2. gaep → participant: Waiting for prerequisite; named blocker and persisted prior state
+3. participant → accountable: Resolve evidence/decision or assign owner
+4. accountable → gaep: Bounded disposition
+5. gaep → participant: Recompute next valid action; never bypass prerequisite silently
+
+</details>
 
 <!-- GAEP-SEQUENCE:scoped-exception -->
 
@@ -1698,6 +2426,17 @@ assurance-->>accountable: Findings and limitations
 accountable-->>responsible: Reject, defer, or authorize only the bounded exception outside GAEP
 responsible->>gaep: Record decision/evidence; no broader waiver inferred
 ```
+
+<details><summary>Text alternative for Decision escalation and scoped exception</summary>
+
+1. responsible → accountable: Escalate material blocker with exact evidence
+2. accountable → risk: Request applicability and residual-risk analysis
+3. risk → assurance: Request independent challenge when required
+4. assurance → accountable: Findings and limitations
+5. accountable → responsible: Reject, defer, or authorize only the bounded exception outside GAEP
+6. responsible → gaep: Record decision/evidence; no broader waiver inferred
+
+</details>
 <!-- END GENERATED:EXCEPTION_SEQUENCES -->
 
 ### B. Target Product-to-Operations Operating Model
@@ -1730,6 +2469,20 @@ flowchart TD
   lifecycle_01 --> lifecycle_02 --> lifecycle_03 --> lifecycle_04 --> lifecycle_05 --> lifecycle_06
 ```
 
+<details><summary>Text alternative for Target lifecycle: discover and define</summary>
+
+```text
+  lifecycle_01["10. [PT] Product intent and problem discovery<br/>GAEP-CAP-101, GAEP-CAP-102"]
+  lifecycle_02["20. [IT] Source-first workspace initialization and change governance<br/>GAEP-CAP-103, GAEP-CAP-104, GAEP-CAP-105"]
+  lifecycle_03["30. [IA] Product and Initiative definition<br/>GAEP-CAP-106, GAEP-CAP-107"]
+  lifecycle_04["40. [IT] Initiative classification and applicability<br/>GAEP-CAP-108, GAEP-CAP-109"]
+  lifecycle_05["50. [IA] Product discovery<br/>GAEP-CAP-101"]
+  lifecycle_06["60. [IA] Business architecture and value streams<br/>GAEP-CAP-110"]
+  lifecycle_01 --> lifecycle_02 --> lifecycle_03 --> lifecycle_04 --> lifecycle_05 --> lifecycle_06
+```
+
+</details>
+
 ↓ Continue to the next target segment
 
 <!-- GAEP-VISUAL:lifecycle-architecture-plan -->
@@ -1749,6 +2502,21 @@ flowchart TD
   lifecycle_07 --> lifecycle_08 --> lifecycle_09 --> lifecycle_10 --> lifecycle_11 --> lifecycle_12 --> lifecycle_13
 ```
 
+<details><summary>Text alternative for Target lifecycle: architecture and planning</summary>
+
+```text
+  lifecycle_07["70. [IA] Domain discovery and Event Storming<br/>GAEP-CAP-111"]
+  lifecycle_08["80. [IA] DDD strategic design and context mapping<br/>GAEP-CAP-112"]
+  lifecycle_09["90. [PT] Solution, data, integration, security, privacy, and deployment architecture<br/>GAEP-CAP-113, GAEP-CAP-121, GAEP-CAP-122, GAEP-CAP-129, GAEP-CAP-130"]
+  lifecycle_10["100. [PT] Architecture decisions and quality scenarios<br/>GAEP-CAP-113, GAEP-CAP-114"]
+  lifecycle_11["110. [PT] Phase, wave, Product, and vertical-slice planning<br/>GAEP-CAP-115"]
+  lifecycle_12["120. [PT] Product Design preparation and iterative evidence<br/>GAEP-CAP-116"]
+  lifecycle_13["130. [PT] Architecture-bound backlog, readiness, done, and test design<br/>GAEP-CAP-117, GAEP-CAP-118, GAEP-CAP-119"]
+  lifecycle_07 --> lifecycle_08 --> lifecycle_09 --> lifecycle_10 --> lifecycle_11 --> lifecycle_12 --> lifecycle_13
+```
+
+</details>
+
 ↓ Continue to the next target segment
 
 <!-- GAEP-VISUAL:lifecycle-deliver-operate -->
@@ -1766,6 +2534,20 @@ flowchart TD
   lifecycle_19["190. [PD] Operations, observability, incident/recovery evidence, and feedback<br/>GAEP-CAP-127, GAEP-CAP-128"]
   lifecycle_14 --> lifecycle_15 --> lifecycle_16 --> lifecycle_17 --> lifecycle_18 --> lifecycle_19
 ```
+
+<details><summary>Text alternative for Target lifecycle: delivery and operations</summary>
+
+```text
+  lifecycle_14["140. [PT] Repository and implementation-target topology<br/>GAEP-CAP-123"]
+  lifecycle_15["150. [PD] Cross-repository slice distribution, synchronization, and drift<br/>GAEP-CAP-120, GAEP-CAP-124"]
+  lifecycle_16["160. [IA] Governed implementation agents and code generation<br/>GAEP-CAP-125"]
+  lifecycle_17["170. [IA] Product QA and independent P03 review<br/>GAEP-CAP-119"]
+  lifecycle_18["180. [PT] CI/CD, release, deployment, and environment governance<br/>GAEP-CAP-126"]
+  lifecycle_19["190. [PD] Operations, observability, incident/recovery evidence, and feedback<br/>GAEP-CAP-127, GAEP-CAP-128"]
+  lifecycle_14 --> lifecycle_15 --> lifecycle_16 --> lifecycle_17 --> lifecycle_18 --> lifecycle_19
+```
+
+</details>
 
 <details>
 <summary><strong>Exact capability-to-node derivation</strong></summary>
@@ -1847,6 +2629,18 @@ flowchart TD
   lifecycle_01_1 --> lifecycle_01_2
 ```
 
+<details><summary>Text alternative for Product intent and problem discovery planned substeps</summary>
+
+```text
+  lifecycle_01_0["1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.<br/>Target — planned, not executable"]
+  lifecycle_01_1["2. Facilitate challenge and prepare a traceable candidate model or decision.<br/>Target — planned, not executable"]
+  lifecycle_01_0 --> lifecycle_01_1
+  lifecycle_01_2["3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.<br/>Target — planned, not executable"]
+  lifecycle_01_1 --> lifecycle_01_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-01 -->
 
 **Product intent and problem discovery — Target — planned, not executable**
@@ -1866,6 +2660,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role0->>accountable: Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Product intent and problem discovery — Target — planned, not executable</summary>
+
+1. role0 → gaep: Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Facilitate challenge and prepare a traceable candidate model or decision.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role0 → accountable: Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
+6. accountable → role0: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown. 2. Facilitate challenge and prepare a traceable candidate model or decision. 3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
 
@@ -1908,6 +2713,18 @@ flowchart TD
   lifecycle_02_1 --> lifecycle_02_2
 ```
 
+<details><summary>Text alternative for Source-first workspace initialization and change governance planned substeps</summary>
+
+```text
+  lifecycle_02_0["1. Assess classification, applicability, policy, jurisdiction, and risk evidence.<br/>Target — planned, not executable"]
+  lifecycle_02_1["2. Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners.<br/>Target — planned, not executable"]
+  lifecycle_02_0 --> lifecycle_02_1
+  lifecycle_02_2["3. Block the governed decision until one accountable role and required independent assurance review the exact scope.<br/>Target — planned, not executable"]
+  lifecycle_02_1 --> lifecycle_02_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-02 -->
 
 **Source-first workspace initialization and change governance — Target — planned, not executable**
@@ -1928,6 +2745,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role0->>accountable: Block the governed decision until one accountable role and required independent assurance review the exact scope.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Source-first workspace initialization and change governance — Target — planned, not executable</summary>
+
+1. role0 → gaep: Assess classification, applicability, policy, jurisdiction, and risk evidence.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role0 → accountable: Block the governed decision until one accountable role and required independent assurance review the exact scope.
+6. accountable → role0: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Assess classification, applicability, policy, jurisdiction, and risk evidence. 2. Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners. 3. Block the governed decision until one accountable role and required independent assurance review the exact scope.
 
@@ -1970,6 +2798,18 @@ flowchart TD
   lifecycle_03_1 --> lifecycle_03_2
 ```
 
+<details><summary>Text alternative for Product and Initiative definition planned substeps</summary>
+
+```text
+  lifecycle_03_0["1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.<br/>Target — planned, not executable"]
+  lifecycle_03_1["2. Facilitate challenge and prepare a traceable candidate model or decision.<br/>Target — planned, not executable"]
+  lifecycle_03_0 --> lifecycle_03_1
+  lifecycle_03_2["3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.<br/>Target — planned, not executable"]
+  lifecycle_03_1 --> lifecycle_03_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-03 -->
 
 **Product and Initiative definition — Target — planned, not executable**
@@ -1989,6 +2829,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role0->>accountable: Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Product and Initiative definition — Target — planned, not executable</summary>
+
+1. role0 → gaep: Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Facilitate challenge and prepare a traceable candidate model or decision.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role0 → accountable: Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
+6. accountable → role0: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown. 2. Facilitate challenge and prepare a traceable candidate model or decision. 3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
 
@@ -2031,6 +2882,18 @@ flowchart TD
   lifecycle_04_1 --> lifecycle_04_2
 ```
 
+<details><summary>Text alternative for Initiative classification and applicability planned substeps</summary>
+
+```text
+  lifecycle_04_0["1. Assess classification, applicability, policy, jurisdiction, and risk evidence.<br/>Target — planned, not executable"]
+  lifecycle_04_1["2. Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners.<br/>Target — planned, not executable"]
+  lifecycle_04_0 --> lifecycle_04_1
+  lifecycle_04_2["3. Block the governed decision until one accountable role and required independent assurance review the exact scope.<br/>Target — planned, not executable"]
+  lifecycle_04_1 --> lifecycle_04_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-04 -->
 
 **Initiative classification and applicability — Target — planned, not executable**
@@ -2051,6 +2914,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role0->>accountable: Block the governed decision until one accountable role and required independent assurance review the exact scope.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Initiative classification and applicability — Target — planned, not executable</summary>
+
+1. role0 → gaep: Assess classification, applicability, policy, jurisdiction, and risk evidence.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role0 → accountable: Block the governed decision until one accountable role and required independent assurance review the exact scope.
+6. accountable → role0: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Assess classification, applicability, policy, jurisdiction, and risk evidence. 2. Prepare explicit decisions, exclusions, open questions, assurance triggers, and escalation owners. 3. Block the governed decision until one accountable role and required independent assurance review the exact scope.
 
@@ -2093,6 +2967,18 @@ flowchart TD
   lifecycle_05_1 --> lifecycle_05_2
 ```
 
+<details><summary>Text alternative for Product discovery planned substeps</summary>
+
+```text
+  lifecycle_05_0["1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.<br/>Target — planned, not executable"]
+  lifecycle_05_1["2. Facilitate challenge and prepare a traceable candidate model or decision.<br/>Target — planned, not executable"]
+  lifecycle_05_0 --> lifecycle_05_1
+  lifecycle_05_2["3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.<br/>Target — planned, not executable"]
+  lifecycle_05_1 --> lifecycle_05_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-05 -->
 
 **Product discovery — Target — planned, not executable**
@@ -2112,6 +2998,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role0->>accountable: Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Product discovery — Target — planned, not executable</summary>
+
+1. role0 → gaep: Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Facilitate challenge and prepare a traceable candidate model or decision.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role0 → accountable: Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
+6. accountable → role0: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Inspect bounded user, business, domain, and Source evidence; keep unsupported assumptions Unknown. 2. Facilitate challenge and prepare a traceable candidate model or decision. 3. Have the accountable business role review exact evidence, limitations, and exit criteria before a future governed commit.
 
@@ -2154,6 +3051,18 @@ flowchart TD
   lifecycle_06_1 --> lifecycle_06_2
 ```
 
+<details><summary>Text alternative for Business architecture and value streams planned substeps</summary>
+
+```text
+  lifecycle_06_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
+  lifecycle_06_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_06_0 --> lifecycle_06_1
+  lifecycle_06_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_06_1 --> lifecycle_06_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-06 -->
 
 **Business architecture and value streams — Target — planned, not executable**
@@ -2175,6 +3084,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role0->>accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Business architecture and value streams — Target — planned, not executable</summary>
+
+1. role0 → gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role0 → accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+6. accountable → role0: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice. 2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements. 3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
 
@@ -2217,6 +3137,18 @@ flowchart TD
   lifecycle_07_1 --> lifecycle_07_2
 ```
 
+<details><summary>Text alternative for Domain discovery and Event Storming planned substeps</summary>
+
+```text
+  lifecycle_07_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
+  lifecycle_07_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_07_0 --> lifecycle_07_1
+  lifecycle_07_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_07_1 --> lifecycle_07_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-07 -->
 
 **Domain discovery and Event Storming — Target — planned, not executable**
@@ -2238,6 +3170,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role0->>accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Domain discovery and Event Storming — Target — planned, not executable</summary>
+
+1. role0 → gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role0 → accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+6. accountable → role0: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice. 2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements. 3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
 
@@ -2280,6 +3223,18 @@ flowchart TD
   lifecycle_08_1 --> lifecycle_08_2
 ```
 
+<details><summary>Text alternative for DDD strategic design and context mapping planned substeps</summary>
+
+```text
+  lifecycle_08_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
+  lifecycle_08_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_08_0 --> lifecycle_08_1
+  lifecycle_08_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_08_1 --> lifecycle_08_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-08 -->
 
 **DDD strategic design and context mapping — Target — planned, not executable**
@@ -2301,6 +3256,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role0->>accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for DDD strategic design and context mapping — Target — planned, not executable</summary>
+
+1. role0 → gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role0 → accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+6. accountable → role0: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice. 2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements. 3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
 
@@ -2343,6 +3309,18 @@ flowchart TD
   lifecycle_09_1 --> lifecycle_09_2
 ```
 
+<details><summary>Text alternative for Solution, data, integration, security, privacy, and deployment architecture planned substeps</summary>
+
+```text
+  lifecycle_09_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
+  lifecycle_09_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_09_0 --> lifecycle_09_1
+  lifecycle_09_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_09_1 --> lifecycle_09_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-09 -->
 
 **Solution, data, integration, security, privacy, and deployment architecture — Target — planned, not executable**
@@ -2364,6 +3342,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role0->>accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Solution, data, integration, security, privacy, and deployment architecture — Target — planned, not executable</summary>
+
+1. role0 → gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role0 → accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+6. accountable → role0: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice. 2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements. 3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
 
@@ -2406,6 +3395,18 @@ flowchart TD
   lifecycle_10_1 --> lifecycle_10_2
 ```
 
+<details><summary>Text alternative for Architecture decisions and quality scenarios planned substeps</summary>
+
+```text
+  lifecycle_10_0["1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.<br/>Target — planned, not executable"]
+  lifecycle_10_1["2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.<br/>Target — planned, not executable"]
+  lifecycle_10_0 --> lifecycle_10_1
+  lifecycle_10_2["3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.<br/>Target — planned, not executable"]
+  lifecycle_10_1 --> lifecycle_10_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-10 -->
 
 **Architecture decisions and quality scenarios — Target — planned, not executable**
@@ -2427,6 +3428,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role0->>accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Architecture decisions and quality scenarios — Target — planned, not executable</summary>
+
+1. role0 → gaep: Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role0 → accountable: Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
+6. accountable → role0: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Inspect domain, architecture, quality, risk, deployment, and evidence constraints for the affected slice. 2. Compare alternatives and prepare traceable models, decisions, quality scenarios, and assurance requirements. 3. Obtain accountable architecture decision and required independent challenge; preserve rejected alternatives and residual risks.
 
@@ -2469,6 +3481,18 @@ flowchart TD
   lifecycle_11_1 --> lifecycle_11_2
 ```
 
+<details><summary>Text alternative for Phase, wave, Product, and vertical-slice planning planned substeps</summary>
+
+```text
+  lifecycle_11_0["1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.<br/>Target — planned, not executable"]
+  lifecycle_11_1["2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.<br/>Target — planned, not executable"]
+  lifecycle_11_0 --> lifecycle_11_1
+  lifecycle_11_2["3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.<br/>Target — planned, not executable"]
+  lifecycle_11_1 --> lifecycle_11_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-11 -->
 
 **Phase, wave, Product, and vertical-slice planning — Target — planned, not executable**
@@ -2490,6 +3514,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role2->>accountable: Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Phase, wave, Product, and vertical-slice planning — Target — planned, not executable</summary>
+
+1. role0 → gaep: Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role2 → accountable: Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
+6. accountable → role2: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria. 2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability. 3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
 
@@ -2532,6 +3567,18 @@ flowchart TD
   lifecycle_12_1 --> lifecycle_12_2
 ```
 
+<details><summary>Text alternative for Product Design preparation and iterative evidence planned substeps</summary>
+
+```text
+  lifecycle_12_0["1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.<br/>Target — planned, not executable"]
+  lifecycle_12_1["2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.<br/>Target — planned, not executable"]
+  lifecycle_12_0 --> lifecycle_12_1
+  lifecycle_12_2["3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.<br/>Target — planned, not executable"]
+  lifecycle_12_1 --> lifecycle_12_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-12 -->
 
 **Product Design preparation and iterative evidence — Target — planned, not executable**
@@ -2553,6 +3600,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role2->>accountable: Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Product Design preparation and iterative evidence — Target — planned, not executable</summary>
+
+1. role0 → gaep: Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role2 → accountable: Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
+6. accountable → role2: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria. 2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability. 3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
 
@@ -2595,6 +3653,18 @@ flowchart TD
   lifecycle_13_1 --> lifecycle_13_2
 ```
 
+<details><summary>Text alternative for Architecture-bound backlog, readiness, done, and test design planned substeps</summary>
+
+```text
+  lifecycle_13_0["1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.<br/>Target — planned, not executable"]
+  lifecycle_13_1["2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.<br/>Target — planned, not executable"]
+  lifecycle_13_0 --> lifecycle_13_1
+  lifecycle_13_2["3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.<br/>Target — planned, not executable"]
+  lifecycle_13_1 --> lifecycle_13_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-13 -->
 
 **Architecture-bound backlog, readiness, done, and test design — Target — planned, not executable**
@@ -2616,6 +3686,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role2->>accountable: Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Architecture-bound backlog, readiness, done, and test design — Target — planned, not executable</summary>
+
+1. role0 → gaep: Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role2 → accountable: Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
+6. accountable → role2: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Inspect current architecture, Product evidence, constraints, dependencies, and readiness criteria. 2. Prepare tool-neutral Product Design, vertical-slice, backlog, acceptance, dependency, and test candidates with traceability. 3. Reconcile challenge evidence and obtain the bounded accountable product/engineering decision without granting implementation authority.
 
@@ -2658,6 +3739,18 @@ flowchart TD
   lifecycle_14_1 --> lifecycle_14_2
 ```
 
+<details><summary>Text alternative for Repository and implementation-target topology planned substeps</summary>
+
+```text
+  lifecycle_14_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
+  lifecycle_14_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_14_0 --> lifecycle_14_1
+  lifecycle_14_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_14_1 --> lifecycle_14_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-14 -->
 
 **Repository and implementation-target topology — Target — planned, not executable**
@@ -2680,6 +3773,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role2->>accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Repository and implementation-target topology — Target — planned, not executable</summary>
+
+1. role0 → gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role2 → accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+6. accountable → role2: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries. 2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence. 3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
 
@@ -2722,6 +3826,18 @@ flowchart TD
   lifecycle_15_1 --> lifecycle_15_2
 ```
 
+<details><summary>Text alternative for Cross-repository slice distribution, synchronization, and drift planned substeps</summary>
+
+```text
+  lifecycle_15_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
+  lifecycle_15_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_15_0 --> lifecycle_15_1
+  lifecycle_15_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_15_1 --> lifecycle_15_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-15 -->
 
 **Cross-repository slice distribution, synchronization, and drift — Target — planned, not executable**
@@ -2744,6 +3860,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role2->>accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Cross-repository slice distribution, synchronization, and drift — Target — planned, not executable</summary>
+
+1. role0 → gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role2 → accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+6. accountable → role2: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries. 2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence. 3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
 
@@ -2786,6 +3913,18 @@ flowchart TD
   lifecycle_16_1 --> lifecycle_16_2
 ```
 
+<details><summary>Text alternative for Governed implementation agents and code generation planned substeps</summary>
+
+```text
+  lifecycle_16_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
+  lifecycle_16_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_16_0 --> lifecycle_16_1
+  lifecycle_16_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_16_1 --> lifecycle_16_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-16 -->
 
 **Governed implementation agents and code generation — Target — planned, not executable**
@@ -2808,6 +3947,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role2->>accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Governed implementation agents and code generation — Target — planned, not executable</summary>
+
+1. role0 → gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role2 → accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+6. accountable → role2: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries. 2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence. 3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
 
@@ -2850,6 +4000,18 @@ flowchart TD
   lifecycle_17_1 --> lifecycle_17_2
 ```
 
+<details><summary>Text alternative for Product QA and independent P03 review planned substeps</summary>
+
+```text
+  lifecycle_17_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
+  lifecycle_17_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_17_0 --> lifecycle_17_1
+  lifecycle_17_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_17_1 --> lifecycle_17_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-17 -->
 
 **Product QA and independent P03 review — Target — planned, not executable**
@@ -2872,6 +4034,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role2->>accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Product QA and independent P03 review — Target — planned, not executable</summary>
+
+1. role0 → gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role2 → accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+6. accountable → role2: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries. 2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence. 3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
 
@@ -2914,6 +4087,18 @@ flowchart TD
   lifecycle_18_1 --> lifecycle_18_2
 ```
 
+<details><summary>Text alternative for CI/CD, release, deployment, and environment governance planned substeps</summary>
+
+```text
+  lifecycle_18_0["1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.<br/>Target — planned, not executable"]
+  lifecycle_18_1["2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.<br/>Target — planned, not executable"]
+  lifecycle_18_0 --> lifecycle_18_1
+  lifecycle_18_2["3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.<br/>Target — planned, not executable"]
+  lifecycle_18_1 --> lifecycle_18_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-18 -->
 
 **CI/CD, release, deployment, and environment governance — Target — planned, not executable**
@@ -2936,6 +4121,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role2->>accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
 accountable-->>role2: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for CI/CD, release, deployment, and environment governance — Target — planned, not executable</summary>
+
+1. role0 → gaep: Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role2 → accountable: Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
+6. accountable → role2: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Resolve repository topology, implementation targets, dependencies, authority, and protected evidence boundaries. 2. Execute only authorized bounded changes and collect code, scan, test, traceability, and drift evidence. 3. Separate product acceptance, implementation/repository authority, release/change authorization, and deployment evidence.
 
@@ -2978,6 +4174,18 @@ flowchart TD
   lifecycle_19_1 --> lifecycle_19_2
 ```
 
+<details><summary>Text alternative for Operations, observability, incident/recovery evidence, and feedback planned substeps</summary>
+
+```text
+  lifecycle_19_0["1. Observe service, environment, user, incident, recovery, risk, and outcome evidence with exact scope and freshness.<br/>Target — planned, not executable"]
+  lifecycle_19_1["2. Respond and recover under operational authority while preserving material decisions and evidence.<br/>Target — planned, not executable"]
+  lifecycle_19_0 --> lifecycle_19_1
+  lifecycle_19_2["3. Feed validated observations into a newly bounded Product/Initiative change; never rewrite prior governed intent silently.<br/>Target — planned, not executable"]
+  lifecycle_19_1 --> lifecycle_19_2
+```
+
+</details>
+
 <!-- GAEP-SEQUENCE:target-lifecycle-19 -->
 
 **Operations, observability, incident/recovery evidence, and feedback — Target — planned, not executable**
@@ -2998,6 +4206,17 @@ gaep-->>role1: Planned candidate/evidence projection only
 role0->>accountable: Feed validated observations into a newly bounded Product/Initiative change; never rewrite prior governed intent silently.
 accountable-->>role0: Planned decision or return for revision; no executable action
 ```
+
+<details><summary>Text alternative for Operations, observability, incident/recovery evidence, and feedback — Target — planned, not executable</summary>
+
+1. role0 → gaep: Observe service, environment, user, incident, recovery, risk, and outcome evidence with exact scope and freshness.
+2. gaep → role0: Planned candidate/evidence projection only
+3. role1 → gaep: Respond and recover under operational authority while preserving material decisions and evidence.
+4. gaep → role1: Planned candidate/evidence projection only
+5. role0 → accountable: Feed validated observations into a newly bounded Product/Initiative change; never rewrite prior governed intent silently.
+6. accountable → role0: Planned decision or return for revision; no executable action
+
+</details>
 
 **Planned substeps:** 1. Observe service, environment, user, incident, recovery, risk, and outcome evidence with exact scope and freshness. 2. Respond and recover under operational authority while preserving material decisions and evidence. 3. Feed validated observations into a newly bounded Product/Initiative change; never rewrite prior governed intent silently.
 
@@ -3032,6 +4251,16 @@ flowchart TD
   mapping --> target["B. Target Operating Model<br/>intent and conservative maturity"]
   target -. "later authorized prompts" .-> future["Future runtime implementation"]
 ```
+
+<details><summary>Text alternative for Current-to-target transition</summary>
+
+```text
+  current["A. Current Runtime<br/>implemented behavior only"] --> mapping["C. Explicit transition records<br/>retained, expanded, split, merged, or replaced"]
+  mapping --> target["B. Target Operating Model<br/>intent and conservative maturity"]
+  target -. "later authorized prompts" .-> future["Future runtime implementation"]
+```
+
+</details>
 
 | Current stable ID | Transition and target | Current evidence | Target intent, dependency, and status |
 |---|---|---|---|
@@ -3138,6 +4367,21 @@ flowchart TD
   human --> governed["Governed record<br/>authority still bounded"]
   change["Added · Changed · Excluded · Superseded · Unavailable"] -. "review, revise, or remain unresolved" .-> source
 ```
+
+<details><summary>Text alternative for Source Intake, Baseline, Provenance, and change review</summary>
+
+```text
+  material["Selected bytes or link metadata<br/>not approved truth"] --> review["Review exact available content<br/>or preserve missing evidence"]
+  review --> source["Explicit candidate Source record"]
+  source --> baseline["Explicit Baseline membership<br/>exact identity and revision"]
+  baseline --> provenance["Provenance<br/>lineage, transformations, limitations"]
+  provenance --> candidate["Bounded downstream candidate"]
+  candidate --> human["Human review · accept · explicit commit"]
+  human --> governed["Governed record<br/>authority still bounded"]
+  change["Added · Changed · Excluded · Superseded · Unavailable"] -. "review, revise, or remain unresolved" .-> source
+```
+
+</details>
 
 #### Three distinct records
 
@@ -3286,6 +4530,19 @@ flowchart TD
   augment --> measure["Predeclare baseline, observation window, burden countermetric, and decision threshold"]
   measure --> pilot["Run bounded proof of value"] --> human["Human adoption decision"]
 ```
+
+<details><summary>Text alternative for Scenario-led adoption choice</summary>
+
+```text
+  need["State the exact job and required evidence"] --> scenario["Select the closest governed scenario"]
+  scenario --> fit{"Fit conditions hold and non-fit conditions do not?"}
+  fit -- "No" --> narrow["Use or buy the narrower specialist Product"]
+  fit -- "Yes" --> augment["Decide what GAEP augments; keep incumbent authorities"]
+  augment --> measure["Predeclare baseline, observation window, burden countermetric, and decision threshold"]
+  measure --> pilot["Run bounded proof of value"] --> human["Human adoption decision"]
+```
+
+</details>
 
 | Scenario | Fit condition | Non-fit boundary |
 |---|---|---|
@@ -3725,15 +4982,15 @@ The ledger is not marketing copy. It retains dispositions, qualifiers, limitatio
 <summary><strong>Show generation commands, canonical paths, full digests, drift maintenance, and projection ownership</strong></summary>
 
 <!-- BEGIN GENERATED:MAINTENANCE_CONTRACT -->
-**Projection contract:** GAEP-REG-014 v0.4.0 · schema 1.1.0 · not-approved · not-published.
+**Projection contract:** GAEP-REG-014 v0.5.0 · schema 1.1.0 · not-approved · not-published.
 
 | Source role | Exact identity | Repository path | SHA-256 |
 |---|---|---|---|
 | methodology-catalog | `GAEP-REG-011` v0.4.0 | `docs/next/99_Registries_and_References/011_METHODOLOGY_REFERENCE_CATALOG.json` | `6859769b56eeae9025dfff5407113dbc7b22ec7809e518d69a399effb156b209` |
 | market-registry | `GAEP-REG-013` v0.2.1 | `docs/next/99_Registries_and_References/013_MARKET_EVIDENCE_AND_BENCHMARK_REGISTRY.json` | `3dcfe5531a1bb4630dc3afdb2990389728e2d39cac2ac915986badb9fe9e5c17` |
 | terminology-index | `GAEP-REG-005` v0.3.0 | `docs/next/99_Registries_and_References/005_CANONICAL_TERMINOLOGY_INDEX.md` | `9e5765683133d3904742bd9a05be7a3323d83848b7015d06a864f5e37af6aca5` |
-| runtime-presentation-contract | `runtime-product-journey-presentation` v1.0.0 | `apps/vscode/src/product-journey-presentation.ts` | `49c98d63ab74489503dc130ed4863d5e6a71edae8a78d99149e00e6414e6e584` |
-| runtime-contract-schema | `current-runtime-journey-contract-schema` v1.0.0 | `docs/next/99_Registries_and_References/015_CURRENT_RUNTIME_JOURNEY_CONTRACT.schema.json` | `d3070aab3b88ca709caebc4fe6b96b827a722307f885d6e20d7385e1eadf911e` |
+| runtime-presentation-contract | `runtime-product-journey-presentation` v1.1.0 | `apps/vscode/src/product-journey-presentation.ts` | `74754cd61cd751bb54a51f798b381cb66f0cc95e62bed3cb33521fd1cf2904ae` |
+| runtime-contract-schema | `current-runtime-journey-contract-schema` v1.1.0 | `docs/next/99_Registries_and_References/015_CURRENT_RUNTIME_JOURNEY_CONTRACT.schema.json` | `18759b168abd1998d3a72e7abc7b98000c92c34353c2860dbce3038ea61751b2` |
 | responsibility-competency-registry | `GAEP-REG-016` v1.0.0 | `docs/next/99_Registries_and_References/016_ENTERPRISE_RESPONSIBILITY_COMPETENCY_REGISTRY.json` | `9cf4e1d0e5243d53f467edb7c84f79463bd69f5b22d64bf76f492b203e05e82c` |
 | enterprise-assurance-registry | `GAEP-REG-017` v1.0.0 | `docs/next/99_Registries_and_References/017_ENTERPRISE_ASSURANCE_DECISION_REGISTRY.json` | `c6fbb89dacbbf6ea030b113fd040f19396a2e99ee9246a01dfea3dbe9b7f11e0` |
 | target-execution-registry | `GAEP-REG-018` v1.0.0 | `docs/next/99_Registries_and_References/018_TARGET_LIFECYCLE_EXECUTION_REGISTRY.json` | `d7c8f2c048d894bbab690b032cb0f0ef1d41e4b28f974a92839445f56cf84cf4` |

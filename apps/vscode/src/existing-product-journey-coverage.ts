@@ -1,4 +1,5 @@
 import {
+  currentProductJourneyCompatibilityCheckpointId,
   currentProductJourneyCheckpointPresentation,
   type ProductJourneyCheckpointId,
 } from "./product-journey-presentation.js"
@@ -10,7 +11,7 @@ export const existingProductJourneyCheckpointIds = currentProductJourneyCheckpoi
   .slice()
   .sort((left, right) => left.order - right.order)
   .map((checkpoint): ExistingProductJourneyCheckpointId =>
-    checkpoint.checkpointId === "p0-p4-readiness" ? "design-implementation-handoff" : checkpoint.checkpointId)
+    currentProductJourneyCompatibilityCheckpointId(checkpoint.checkpointId))
 
 export type ExistingProductJourneyCoverage = {
   checkpoint: ExistingProductJourneyCheckpointId

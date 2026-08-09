@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gaep.example/schemas/current-runtime-journey-contract/1.0.0",
+  "$id": "https://gaep.example/schemas/current-runtime-journey-contract/1.1.0",
   "title": "GAEP current-runtime checkpoint execution contract",
   "type": "object",
   "additionalProperties": false,
@@ -26,15 +26,26 @@
         "label": { "$ref": "#/$defs/nonEmpty" }
       }
     },
+    "adoptionFollowThrough": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "prompt", "title"],
+      "properties": {
+        "command": { "$ref": "#/$defs/nonEmpty" },
+        "prompt": { "type": "string" },
+        "title": { "$ref": "#/$defs/nonEmpty" },
+        "compatibilityCheckpointId": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
     "step": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["stepId", "order", "purpose", "interactionType", "responsibleRoleIds", "accountableRoleId", "consultedRoleIds", "informedRoleIds", "independentAssuranceRoleIds", "inputContractIds", "currentAction", "outputContractIds", "evidenceProduced", "evidenceConsumed", "reviewCriteria", "stateBefore", "stateAfter", "recordEffect", "authorityEffect", "failureConditions", "blockerBehavior", "retryRevisionPath", "auditEventEffect", "maturity"],
+      "required": ["stepId", "order", "purpose", "interactionType", "responsibleRoleIds", "accountableRoleId", "consultedRoleIds", "informedRoleIds", "independentAssuranceRoleIds", "inputContractIds", "currentAction", "outputContractIds", "evidenceProduced", "evidenceConsumed", "reviewCriteria", "stateBefore", "stateAfter", "recordEffect", "authorityEffect", "failureConditions", "blockerBehavior", "retryRevisionPath", "auditEventEffect", "persistedAuditFieldIds", "responsibilityEnforcement", "maturity"],
       "properties": {
         "stepId": { "$ref": "#/$defs/nonEmpty" },
         "order": { "type": "integer", "minimum": 1 },
         "purpose": { "$ref": "#/$defs/nonEmpty" },
-        "interactionType": { "enum": ["inspect", "human-decision", "ai-assisted-candidate", "governed-commit"] },
+        "interactionType": { "enum": ["context-preparation", "inspect", "revision", "human-decision", "ai-assisted-candidate", "governed-commit"] },
         "responsibleRoleIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
         "accountableRoleId": { "anyOf": [{ "$ref": "#/$defs/nonEmpty" }, { "type": "null" }] },
         "consultedRoleIds": { "$ref": "#/$defs/stringArray" },
@@ -54,13 +65,15 @@
         "blockerBehavior": { "$ref": "#/$defs/nonEmpty" },
         "retryRevisionPath": { "$ref": "#/$defs/nonEmpty" },
         "auditEventEffect": { "$ref": "#/$defs/nonEmpty" },
+        "persistedAuditFieldIds": { "$ref": "#/$defs/stringArray" },
+        "responsibilityEnforcement": { "const": "policy-only-not-runtime-authenticated" },
         "maturity": { "enum": ["current", "partial", "unavailable", "target-only"] }
       }
     },
     "checkpoint": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["checkpointId", "compatibilityAliases", "stableTitle", "label", "purpose", "whyItExists", "phase", "order", "terminal", "entryConditions", "prerequisites", "requiredRoleArchetypeIds", "requiredCompetencyProfileIds", "requiredInputContractIds", "prominentQuestions", "executionSubsteps", "candidateOutputContractIds", "governedOutputContractIds", "decisionRecordContractIds", "evidenceRequirements", "blockers", "exceptionPath", "escalationPath", "exitCriteria", "nextValidTransitions", "implementedCtas", "limitations", "implementationMaturity", "authorityEffects", "transitionType", "targetEvolution"],
+      "required": ["checkpointId", "compatibilityAliases", "stableTitle", "label", "adoptionFollowThrough", "purpose", "whyItExists", "phase", "order", "terminal", "entryConditions", "prerequisites", "requiredRoleArchetypeIds", "requiredCompetencyProfileIds", "requiredInputContractIds", "prominentQuestions", "executionSubsteps", "candidateOutputContractIds", "governedOutputContractIds", "decisionRecordContractIds", "evidenceRequirements", "blockers", "exceptionPath", "escalationPath", "exitCriteria", "nextValidTransitions", "implementedCtas", "limitations", "implementationMaturity", "authorityEffects", "transitionType", "targetEvolution"],
       "properties": {
         "checkpointId": { "$ref": "#/$defs/nonEmpty" },
         "compatibilityAliases": { "$ref": "#/$defs/stringArray" },
@@ -69,6 +82,7 @@
         "label": { "$ref": "#/$defs/nonEmpty" },
         "guideLabel": { "$ref": "#/$defs/nonEmpty" },
         "recordGroup": { "$ref": "#/$defs/nonEmpty" },
+        "adoptionFollowThrough": { "$ref": "#/$defs/adoptionFollowThrough" },
         "purpose": { "$ref": "#/$defs/nonEmpty" },
         "whyItExists": { "$ref": "#/$defs/nonEmpty" },
         "phase": { "type": "object", "additionalProperties": false, "required": ["id", "label", "order"], "properties": { "id": { "$ref": "#/$defs/nonEmpty" }, "label": { "$ref": "#/$defs/nonEmpty" }, "order": { "type": "integer", "minimum": 1 } } },

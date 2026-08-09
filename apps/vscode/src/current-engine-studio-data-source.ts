@@ -158,6 +158,8 @@ import type { PortableDesignSnapshot } from "./portable-design-workflow.js"
 import {
   currentProductJourneyCheckpoint,
   currentProductJourneyCheckpointIds,
+  currentProductJourneyCompatibilityCheckpointId,
+  currentProductJourneyRecordGroupByCheckpoint,
 } from "./product-journey-presentation.js"
 import type { AdoptionAccelerationPlan } from "./adoption-acceleration.js"
 import { summarizeCanonicalRecord } from "./phase1-canonical-summary.js"
@@ -3339,7 +3341,7 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
       }
       return { id, label, phase: phaseForCheckpoint(id), state: "complete", summary, ...(action ? { action } : {}), ...metadata }
     }
-    const adoptionCheckpointId = id === "p0-p4-readiness" ? "design-implementation-handoff" : id
+    const adoptionCheckpointId = currentProductJourneyCompatibilityCheckpointId(id)
     const candidate = adoption?.checkpoints.find((row) => row.checkpoint === adoptionCheckpointId)
     if (candidate) {
       open = false
@@ -7490,13 +7492,9 @@ function surfaceFor(route: StudioRoute, context: CurrentEngineStudioContext, sta
 }
 
 function commandFor(action: StudioAction): { command: ExistingStudioCommand; args: unknown[]; announcement: string } | undefined {
-  const canonicalGroupCheckpointIds = new Set<ProductJourneyCheckpoint["id"]>([
-    "product-discovery",
-    "business-architecture",
-    "solution-security-architecture",
-    "detailed-design-assurance",
-    "p0-p4-readiness",
-  ])
+  const canonicalGroupCheckpointIds = new Set<ProductJourneyCheckpoint["id"]>(
+    Object.keys(currentProductJourneyRecordGroupByCheckpoint) as ProductJourneyCheckpoint["id"][],
+  )
   switch (action.kind) {
     case "continue-product-journey": return {
       command: "gaep.openInteractiveChat",
@@ -7510,7 +7508,7 @@ function commandFor(action: StudioAction): { command: ExistingStudioCommand; arg
     }
     case "review-adoption-candidate": return {
       command: "gaep.openInteractiveChat",
-      args: ["adopt", `review:${action.checkpointId === "p0-p4-readiness" ? "design-implementation-handoff" : action.checkpointId}`, true, true],
+      args: ["adopt", `review:${currentProductJourneyCompatibilityCheckpointId(action.checkpointId)}`, true, true],
       announcement: `Opened the adopted ${action.checkpointId.replaceAll("-", " ")} candidate for review and governed follow-through.`,
     }
     case "edit-product-journey-checkpoint": {
