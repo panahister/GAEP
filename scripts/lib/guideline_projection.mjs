@@ -19,7 +19,7 @@ export const AJV_VERSION = require("ajv/package.json").version;
 export const AJV_FORMATS_VERSION = require("ajv-formats/package.json").version;
 
 export const EXPECTED_LAYERS = ["executive-orientation", "quick-start", "practitioner-guide", "methodology-appendix"];
-export const EXPECTED_SOURCE_KINDS = ["methodology-catalog", "market-registry", "terminology-index", "runtime-presentation-contract", "extension-package"];
+export const EXPECTED_SOURCE_KINDS = ["methodology-catalog", "market-registry", "terminology-index", "runtime-presentation-contract", "runtime-contract-schema", "responsibility-competency-registry", "enterprise-assurance-registry", "extension-package"];
 export const EXPECTED_STATES = [
   "unknown-not-assessed",
   "planned-deferred-coming-soon",
@@ -95,10 +95,13 @@ export function parseRuntimePresentationContract(rawText) {
   const primaryStates = value.productJourneyPrimaryStatePresentation;
   const attentionIndicators = value.productJourneyAttentionIndicatorPresentation;
   const runtimeStates = value.productJourneyRuntimeStatePresentation;
+  const roleArchetypeIds = value.productJourneyRoleArchetypeIds;
+  const competencyProfileIds = value.productJourneyCompetencyProfileIds;
   if (!Array.isArray(checkpoints) || checkpoints.length === 0 || !primaryStates || !attentionIndicators || !runtimeStates) {
     throw new Error("runtime presentation contract does not expose checkpoints, primary states, indicators, and runtime mappings");
   }
-  return { checkpoints: structuredClone(checkpoints), primaryStates: structuredClone(primaryStates), attentionIndicators: structuredClone(attentionIndicators), runtimeStates: structuredClone(runtimeStates) };
+  if (!Array.isArray(roleArchetypeIds) || !Array.isArray(competencyProfileIds)) throw new Error("runtime contract does not expose role and competency identities");
+  return { checkpoints: structuredClone(checkpoints), primaryStates: structuredClone(primaryStates), attentionIndicators: structuredClone(attentionIndicators), runtimeStates: structuredClone(runtimeStates), roleArchetypeIds: structuredClone(roleArchetypeIds), competencyProfileIds: structuredClone(competencyProfileIds) };
 }
 
 export function loadProjectionContext({ root = ROOT, manifestPath = MANIFEST_PATH, schemaPath = SCHEMA_PATH } = {}) {
@@ -110,9 +113,14 @@ export function loadProjectionContext({ root = ROOT, manifestPath = MANIFEST_PAT
   const catalog = JSON.parse(rawSources.get("methodology-catalog").toString("utf8"));
   const market = JSON.parse(rawSources.get("market-registry").toString("utf8"));
   const extensionPackage = JSON.parse(rawSources.get("extension-package").toString("utf8"));
+  const runtimeContractSchema = JSON.parse(rawSources.get("runtime-contract-schema").toString("utf8"));
+  const responsibility = JSON.parse(rawSources.get("responsibility-competency-registry").toString("utf8"));
+  const assurance = JSON.parse(rawSources.get("enterprise-assurance-registry").toString("utf8"));
+  const responsibilitySchema = readJson(path.join(root, "docs/next/99_Registries_and_References/016_ENTERPRISE_RESPONSIBILITY_COMPETENCY_REGISTRY.schema.json"));
+  const assuranceSchema = readJson(path.join(root, "docs/next/99_Registries_and_References/017_ENTERPRISE_ASSURANCE_DECISION_REGISTRY.schema.json"));
   const runtimePresentation = parseRuntimePresentationContract(rawSources.get("runtime-presentation-contract").toString("utf8"));
   const runtimeCheckpoints = runtimePresentation.checkpoints.slice().sort((left, right) => left.order - right.order);
-  return { root, manifest, schema, rawSources, template, catalog, market, extensionPackage, runtimePresentation, runtimeCheckpoints };
+  return { root, manifest, schema, rawSources, template, catalog, market, extensionPackage, runtimeContractSchema, responsibility, responsibilitySchema, assurance, assuranceSchema, runtimePresentation, runtimeCheckpoints };
 }
 
 export function sourceBindingErrors(manifest, { rawSources }) {
@@ -139,6 +147,8 @@ export function sourceBindingErrors(manifest, { rawSources }) {
   };
   jsonIdentity("methodology-catalog", "catalogId");
   jsonIdentity("market-registry", "registryId");
+  jsonIdentity("responsibility-competency-registry", "registryId");
+  jsonIdentity("enterprise-assurance-registry", "registryId");
 
   const terminology = bindings.get("terminology-index");
   if (terminology && rawSources.get("terminology-index")) {
@@ -254,7 +264,57 @@ function runtimePresentationErrors(runtimePresentation) {
   return errors;
 }
 
-export function manifestSemanticErrors(manifest, { catalog, market, extensionPackage, runtimePresentation, runtimeCheckpoints }) {
+function enterpriseContractErrors(runtimePresentation, responsibility, assurance, catalog, extensionPackage, manifest) {
+  const errors = [];
+  const roleIds = new Set(responsibility.roleArchetypes.map(entry => entry.roleId));
+  const competencyIds = new Set(responsibility.competencyDimensions.map(entry => entry.competencyId));
+  const chatCommands = new Set((extensionPackage.contributes?.chatParticipants ?? []).flatMap(entry => entry.commands ?? []).map(entry => entry.name));
+  if (JSON.stringify([...roleIds]) !== JSON.stringify(runtimePresentation.roleArchetypeIds)) errors.push("runtime and responsibility-registry role identities drift");
+  if (JSON.stringify([...competencyIds]) !== JSON.stringify(runtimePresentation.competencyProfileIds)) errors.push("runtime and responsibility-registry competency identities drift");
+  const accountableRoles = [];
+  for (const checkpoint of runtimePresentation.checkpoints) {
+    const stepIds = checkpoint.executionSubsteps.map(step => step.stepId);
+    const stepOrders = checkpoint.executionSubsteps.map(step => step.order);
+    if (duplicateValues(stepIds).length > 0 || duplicateValues(stepOrders).length > 0) errors.push(`${checkpoint.checkpointId}: substep identities/orders must be unique`);
+    if (JSON.stringify(stepOrders) !== JSON.stringify(stepOrders.slice().sort((a, b) => a - b))) errors.push(`${checkpoint.checkpointId}: substeps must follow explicit order`);
+    for (const roleId of checkpoint.requiredRoleArchetypeIds) if (!roleIds.has(roleId)) errors.push(`${checkpoint.checkpointId}: unknown role ${roleId}`);
+    for (const competencyId of checkpoint.requiredCompetencyProfileIds) if (!competencyIds.has(competencyId)) errors.push(`${checkpoint.checkpointId}: unknown competency ${competencyId}`);
+    for (const step of checkpoint.executionSubsteps) {
+      for (const roleId of [...step.responsibleRoleIds, ...step.consultedRoleIds, ...step.informedRoleIds, ...step.independentAssuranceRoleIds, ...(step.accountableRoleId ? [step.accountableRoleId] : [])]) if (!roleIds.has(roleId)) errors.push(`${step.stepId}: unknown RACI/assurance role ${roleId}`);
+      if (["human-decision", "governed-commit"].includes(step.interactionType) && !step.accountableRoleId) errors.push(`${step.stepId}: governed decision lacks exactly one accountable role`);
+      if (step.accountableRoleId) accountableRoles.push(step.accountableRoleId);
+      if (step.currentAction?.kind === "chat-command") {
+        const displayed = [...step.currentAction.value.matchAll(/@gaep \/([a-z]+)/g)].map(match => match[1]);
+        if (displayed.length === 0 || displayed.some(command => !chatCommands.has(command))) errors.push(`${step.stepId}: current sequence action does not resolve to a contributed command`);
+      }
+      if (step.maturity === "target-only" && step.currentAction) errors.push(`${step.stepId}: target-only action cannot be executable`);
+      for (const assuranceRoleId of step.independentAssuranceRoleIds) {
+        if (step.responsibleRoleIds.includes(assuranceRoleId) || step.accountableRoleId === assuranceRoleId) errors.push(`${step.stepId}: independent assurance role conflicts with delivery/accountability role`);
+      }
+    }
+  }
+  if (accountableRoles.length > 0 && accountableRoles.every(role => role === "product-owner")) errors.push("Product Owner cannot be the universal accountable role");
+  const catalogReferenceIds = catalog.references.map(entry => entry.referenceId);
+  const assessedReferenceIds = assurance.referenceDepthAssessments.map(entry => entry.referenceId);
+  if (JSON.stringify(catalogReferenceIds) !== JSON.stringify(assessedReferenceIds)) errors.push("enterprise evidence-depth assessment must cover every P01 reference in canonical order");
+  for (const assessment of assurance.referenceDepthAssessments) {
+    if (assessment.evidenceDepth === "ED1" && !/(?:no |not established|illustrative|bounded)/i.test(assessment.currentGaepMapping)) errors.push(`${assessment.referenceId}: ED1 abstract-only evidence cannot support normative mapping`);
+  }
+  const requirementsStandard = assurance.referenceDepthAssessments.find(entry => entry.referenceId === "GAEP-XREF-012");
+  if (!requirementsStandard || requirementsStandard.evidenceDepth !== "ED1" || !/2018 Edition 2/i.test(requirementsStandard.reviewedCoverage) || !/Edition 3 DIS.*distinct successor draft/i.test(requirementsStandard.reviewedCoverage) || !/insufficient decision evidence/i.test(requirementsStandard.adoptionConsequence)) errors.push("ISO/IEC/IEEE 29148 abstract-only disposition is not conservative and successor-aware");
+  for (const claim of assurance.claimAssurance) {
+    if (claim.status !== "not-established" && claim.repositoryEvidence.length === 0 && claim.runtimeEvidence.length === 0) errors.push(`${claim.claimId}: established claim lacks inspectable repository/runtime evidence`);
+    if (/conform|certif|compli/i.test(claim.claim) && claim.status !== "not-established") errors.push(`${claim.claimId}: a referenced standard cannot imply GAEP conformance`);
+  }
+  if (assurance.decisionProfileTemplate.weightingRules.some(rule => /default weights/i.test(rule) && !/^No default weights$/i.test(rule))) errors.push("organization-specific weights cannot become a universal ranking");
+  if (!assurance.decisionProfileTemplate.weightingRules.some(rule => /Unknown is not scored as No or zero/i.test(rule))) errors.push("Unknown cannot silently receive a losing score");
+  for (const gap of manifest.proposedCanonicalGaps) {
+    if (gap.scopedImpacts.p03ProjectionAcceptance !== "non-blocking-when-honestly-projected" || gap.scopedImpacts.executableState !== "proposed-non-executable") errors.push(`${gap.gapId}: gap impact is circular or executable`);
+  }
+  return errors;
+}
+
+export function manifestSemanticErrors(manifest, { catalog, market, extensionPackage, runtimePresentation, runtimeCheckpoints, responsibility, assurance }) {
   const errors = [];
   const layerIds = manifest.audienceLayers.map(entry => entry.layerId);
   if (JSON.stringify(layerIds) !== JSON.stringify(EXPECTED_LAYERS)) errors.push("audience layers must be the exact four progressive layers in canonical order");
@@ -267,7 +327,7 @@ export function manifestSemanticErrors(manifest, { catalog, market, extensionPac
     ["lifecycle segment IDs", manifest.lifecycleSegments.map(entry => entry.segmentId)],
     ["lifecycle IDs", manifest.lifecycleNodes.map(entry => entry.nodeId)],
     ["transition checkpoint IDs", manifest.transitionRoadmap.map(entry => entry.currentCheckpointId)],
-    ["Product Owner requirement IDs", manifest.productOwnerRequirements.map(entry => entry.requirementId)],
+    ["stakeholder requirement IDs", manifest.stakeholderRequirements.map(entry => entry.requirementId)],
     ["proposed gap IDs", manifest.proposedCanonicalGaps.map(entry => entry.gapId)],
   ]) {
     const duplicates = duplicateValues(values);
@@ -339,16 +399,17 @@ export function manifestSemanticErrors(manifest, { catalog, market, extensionPac
     }
   }
   for (const node of manifest.lifecycleNodes) for (const gapId of node.proposedGapIds) if (!gapIds.has(gapId)) errors.push(`${node.nodeId}: unknown proposed gap ${gapId}`);
-  for (const requirement of manifest.productOwnerRequirements) {
+  for (const requirement of manifest.stakeholderRequirements) {
     for (const nodeId of requirement.targetNodeIds) if (!targetIds.has(nodeId)) errors.push(`${requirement.requirementId}: unknown target node ${nodeId}`);
     for (const checkpointId of requirement.currentCheckpointIds) if (!runtimeIds.has(checkpointId)) errors.push(`${requirement.requirementId}: unknown current checkpoint ${checkpointId}`);
     for (const sourceId of requirement.canonicalSourceIds.filter(id => id.startsWith("GAEP-CAP-"))) if (!knownCapabilities.has(sourceId)) errors.push(`${requirement.requirementId}: unknown canonical capability ${sourceId}`);
   }
   for (const node of manifest.lifecycleNodes) {
-    const mappedByRequirement = manifest.productOwnerRequirements.some(requirement => requirement.targetNodeIds.includes(node.nodeId));
-    if (!mappedByRequirement) errors.push(`${node.nodeId}: target node lacks Product Owner requirement coverage`);
+    const mappedByRequirement = manifest.stakeholderRequirements.some(requirement => requirement.targetNodeIds.includes(node.nodeId));
+    if (!mappedByRequirement) errors.push(`${node.nodeId}: target node lacks stakeholder requirement coverage`);
   }
   errors.push(...runtimePresentationErrors(runtimePresentation));
+  errors.push(...enterpriseContractErrors(runtimePresentation, responsibility, assurance, catalog, extensionPackage, manifest));
   errors.push(...commandErrors(manifest, extensionPackage));
   errors.push(...repositoryMaturityErrors(market));
   errors.push(...marketDecisionSupportSemanticErrors(market));
@@ -357,11 +418,17 @@ export function manifestSemanticErrors(manifest, { catalog, market, extensionPac
 
 export function validateProjectionContext(context) {
   const validate = compileSchema(context.schema);
+  const validateRuntime = compileSchema(context.runtimeContractSchema);
+  const validateResponsibility = compileSchema(context.responsibilitySchema);
+  const validateAssurance = compileSchema(context.assuranceSchema);
   const errors = [];
   if (!validate(context.manifest)) {
     errors.push(...validate.errors.map(error => `manifest schema ${error.instancePath || "/"}: ${error.message}`));
   }
   if (context.manifest.schemaId !== context.schema.$id) errors.push("manifest schemaId does not equal schema $id");
+  if (!validateRuntime(context.runtimePresentation)) errors.push(...validateRuntime.errors.map(error => `runtime contract schema ${error.instancePath || "/"}: ${error.message}`));
+  if (!validateResponsibility(context.responsibility)) errors.push(...validateResponsibility.errors.map(error => `responsibility schema ${error.instancePath || "/"}: ${error.message}`));
+  if (!validateAssurance(context.assurance)) errors.push(...validateAssurance.errors.map(error => `assurance schema ${error.instancePath || "/"}: ${error.message}`));
   errors.push(...sourceBindingErrors(context.manifest, context));
   errors.push(...manifestSemanticErrors(context.manifest, context));
   return errors;
@@ -401,7 +468,7 @@ function renderExecutiveFacts(catalog, market, manifest) {
     "**Current GAEP repository maturity:**",
     "",
     `- ${maturity.get("implemented-and-automated-tested") ?? 0} implemented and automated-tested`,
-    `- ${maturity.get("implemented-awaiting-product-owner-acceptance") ?? 0} implemented, awaiting Product Owner acceptance`,
+    `- ${maturity.get("implemented-awaiting-product-owner-acceptance") ?? 0} implemented, awaiting independent P03 review`,
     `- ${maturity.get("partial") ?? 0} partial`,
     `- ${maturity.get("planned-deferred-coming-soon") ?? 0} planned/deferred`,
     "- 0 approved or published by this projection",
@@ -604,7 +671,7 @@ function renderTargetLifecycle(manifest, market) {
 }
 
 function renderTransitionRoadmap(manifest) {
-  const rows = manifest.transitionRoadmap.map(entry => `| \`${entry.currentCheckpointId}\` | ${entry.transitionType}<br/>${entry.targetNodeIds.map(id => `\`${id}\``).join(", ")} | ${markdownSafe(entry.currentMaturity)}<br/>${markdownSafe(entry.implementationStatus)} | ${markdownSafe(entry.targetIntent)}<br/>Dependency: ${markdownSafe(entry.dependency)}<br/>Migration: ${entry.migrationState}; PO acceptance: ${entry.productOwnerAcceptanceStatus} |`).join("\n");
+  const rows = manifest.transitionRoadmap.map(entry => `| \`${entry.currentCheckpointId}\` | ${entry.transitionType}<br/>${entry.targetNodeIds.map(id => `\`${id}\``).join(", ")} | ${markdownSafe(entry.currentMaturity)}<br/>${markdownSafe(entry.implementationStatus)} | ${markdownSafe(entry.targetIntent)}<br/>Dependency: ${markdownSafe(entry.dependency)}<br/>Migration: ${entry.migrationState}; independent acceptance decision: ${entry.acceptanceDecision} |`).join("\n");
   const visualBody = [
     '  current["A. Current Runtime<br/>implemented behavior only"] --> mapping["C. Explicit transition records<br/>retained, expanded, split, merged, or replaced"]',
     '  mapping --> target["B. Target Operating Model<br/>intent and conservative maturity"]',
@@ -626,15 +693,15 @@ function renderRoadmapCoverage(manifest, market) {
     const current = manifest.transitionRoadmap.filter(transition => transition.targetNodeIds.some(id => targets.some(node => node.nodeId === id))).map(entry => entry.currentCheckpointId);
     return `| ${capability.capabilityId}<br/>${markdownSafe(capability.name)} | ${targets.map(node => `\`${node.nodeId}\``).join(", ")} | ${[...new Set(current)].map(id => `\`${id}\``).join(", ") || "None"} | ${manifest.statePolicy.labels[maturity.get(capability.capabilityId) ?? "unknown-not-assessed"]}<br/>Canonical source: ${market.registryId} |`;
   }).join("\n");
-  const requirementRows = manifest.productOwnerRequirements.map(entry => `| ${entry.requirementId}<br/>${markdownSafe(entry.title)} | ${entry.targetNodeIds.map(id => `\`${id}\``).join(", ")} | ${entry.currentCheckpointIds.map(id => `\`${id}\``).join(", ") || "None"} | ${markdownSafe(entry.currentMaturity)}<br/>${markdownSafe(entry.futureDisposition)}<br/>${markdownSafe(entry.gapOrDecision)} |`).join("\n");
-  const gaps = manifest.proposedCanonicalGaps.map(gap => `- **${gap.gapId} · ${gap.title}** — ${gap.status}; blocks acceptance: ${gap.blocksAcceptance}. ${gap.requiredCanonicalCorrection}`).join("\n");
+  const requirementRows = manifest.stakeholderRequirements.map(entry => `| ${entry.requirementId}<br/>${markdownSafe(entry.title)} | ${entry.targetNodeIds.map(id => `\`${id}\``).join(", ")} | ${entry.currentCheckpointIds.map(id => `\`${id}\``).join(", ") || "None"} | ${markdownSafe(entry.currentMaturity)}<br/>${markdownSafe(entry.futureDisposition)}<br/>${markdownSafe(entry.gapOrDecision)} |`).join("\n");
+  const gaps = manifest.proposedCanonicalGaps.map(gap => `- **${gap.gapId} · ${gap.title}** — ${gap.status}; P03 projection: ${gap.scopedImpacts.p03ProjectionAcceptance}; capability impact: ${gap.scopedImpacts.targetCapabilityActivation}; current runtime: ${gap.scopedImpacts.currentRuntimeAvailability}; roadmap: ${gap.scopedImpacts.responsibleRoadmapItems.join(", ")}; executable state: ${gap.scopedImpacts.executableState}. ${gap.requiredCanonicalCorrection}`).join("\n");
   return generatedBlock("ROADMAP_COVERAGE", [
-    "Every current canonical capability maps to at least one target node. Proposed Product Owner detail that exceeds accepted P01/P02 granularity remains an explicit, unaccepted gap.",
+    "Every current canonical capability maps to at least one target node. Proposed stakeholder detail that exceeds accepted P01/P02 granularity remains an explicit, unaccepted gap.",
     "",
     "<details>", "<summary><strong>Show all canonical capability mappings</strong></summary>", "",
     "| Capability | Target node(s) | Current checkpoint(s), if any | Current maturity and source |", "|---|---|---|---|", capabilityRows, "", "</details>",
     "",
-    "<details>", "<summary><strong>Show Product Owner requirement crosswalk</strong></summary>", "",
+    "<details>", "<summary><strong>Show stakeholder requirement crosswalk</strong></summary>", "",
     "| Requirement | Target node(s) | Current checkpoint(s) | Disposition and unresolved decision |", "|---|---|---|---|", requirementRows, "", "</details>",
     "",
     "#### Proposed canonical gaps — not accepted truth", "", gaps,
@@ -1008,8 +1075,7 @@ export function renderedGuidelineErrors(rendered, context) {
   }
   if (!rendered.includes(manifest.statePolicy.unknownRule)) errors.push("Guide does not preserve the Unknown-not-No rule");
   if (/Unknown\s*(?:=|means|→)\s*(?:No\b|unsupported\b)/i.test(rendered)) errors.push("Guide converts Unknown into No");
-  const compatibilityOccurrences = rendered.match(/Pre-Figma/g) ?? [];
-  if (compatibilityOccurrences.length !== 1 || !rendered.includes("Current runtime compatibility only")) errors.push("legacy Pre-Figma wording must appear exactly once inside the bounded compatibility note");
+  if (/Pre-Figma/i.test(rendered)) errors.push("legacy Pre-Figma wording cannot remain in the generated Guideline after systemic label migration");
   const lifecycleBlock = extractGenerated(rendered, "TARGET_LIFECYCLE");
   if (/Figma/i.test(lifecycleBlock)) errors.push("target lifecycle names Figma instead of tool-neutral Product Design");
   for (const node of manifest.lifecycleNodes) {

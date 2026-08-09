@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gaep.example/schemas/current-runtime-journey-contract/1.0.0",
+  "title": "GAEP current-runtime checkpoint execution contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["checkpoints", "primaryStates", "attentionIndicators", "runtimeStates", "roleArchetypeIds", "competencyProfileIds"],
+  "properties": {
+    "checkpoints": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/checkpoint" } },
+    "primaryStates": { "type": "object", "minProperties": 1 },
+    "attentionIndicators": { "type": "object", "minProperties": 1 },
+    "runtimeStates": { "type": "object", "minProperties": 1 },
+    "roleArchetypeIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmpty" } },
+    "competencyProfileIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmpty" } }
+  },
+  "$defs": {
+    "nonEmpty": { "type": "string", "minLength": 1 },
+    "stringArray": { "type": "array", "items": { "$ref": "#/$defs/nonEmpty" } },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value", "label"],
+      "properties": {
+        "kind": { "enum": ["chat-command", "studio-action"] },
+        "value": { "$ref": "#/$defs/nonEmpty" },
+        "label": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stepId", "order", "purpose", "interactionType", "responsibleRoleIds", "accountableRoleId", "consultedRoleIds", "informedRoleIds", "independentAssuranceRoleIds", "inputContractIds", "currentAction", "outputContractIds", "evidenceProduced", "evidenceConsumed", "reviewCriteria", "stateBefore", "stateAfter", "recordEffect", "authorityEffect", "failureConditions", "blockerBehavior", "retryRevisionPath", "auditEventEffect", "maturity"],
+      "properties": {
+        "stepId": { "$ref": "#/$defs/nonEmpty" },
+        "order": { "type": "integer", "minimum": 1 },
+        "purpose": { "$ref": "#/$defs/nonEmpty" },
+        "interactionType": { "enum": ["inspect", "human-decision", "ai-assisted-candidate", "governed-commit"] },
+        "responsibleRoleIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "accountableRoleId": { "anyOf": [{ "$ref": "#/$defs/nonEmpty" }, { "type": "null" }] },
+        "consultedRoleIds": { "$ref": "#/$defs/stringArray" },
+        "informedRoleIds": { "$ref": "#/$defs/stringArray" },
+        "independentAssuranceRoleIds": { "$ref": "#/$defs/stringArray" },
+        "inputContractIds": { "$ref": "#/$defs/stringArray" },
+        "currentAction": { "anyOf": [{ "$ref": "#/$defs/action" }, { "type": "null" }] },
+        "outputContractIds": { "$ref": "#/$defs/stringArray" },
+        "evidenceProduced": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "evidenceConsumed": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "reviewCriteria": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "stateBefore": { "$ref": "#/$defs/nonEmpty" },
+        "stateAfter": { "$ref": "#/$defs/nonEmpty" },
+        "recordEffect": { "enum": ["none", "candidate", "governed"] },
+        "authorityEffect": { "$ref": "#/$defs/nonEmpty" },
+        "failureConditions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "blockerBehavior": { "$ref": "#/$defs/nonEmpty" },
+        "retryRevisionPath": { "$ref": "#/$defs/nonEmpty" },
+        "auditEventEffect": { "$ref": "#/$defs/nonEmpty" },
+        "maturity": { "enum": ["current", "partial", "unavailable", "target-only"] }
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checkpointId", "compatibilityAliases", "stableTitle", "label", "purpose", "whyItExists", "phase", "order", "terminal", "entryConditions", "prerequisites", "requiredRoleArchetypeIds", "requiredCompetencyProfileIds", "requiredInputContractIds", "prominentQuestions", "executionSubsteps", "candidateOutputContractIds", "governedOutputContractIds", "decisionRecordContractIds", "evidenceRequirements", "blockers", "exceptionPath", "escalationPath", "exitCriteria", "nextValidTransitions", "implementedCtas", "limitations", "implementationMaturity", "authorityEffects", "transitionType", "targetEvolution"],
+      "properties": {
+        "checkpointId": { "$ref": "#/$defs/nonEmpty" },
+        "compatibilityAliases": { "$ref": "#/$defs/stringArray" },
+        "compatibilityNote": { "$ref": "#/$defs/nonEmpty" },
+        "stableTitle": { "$ref": "#/$defs/nonEmpty" },
+        "label": { "$ref": "#/$defs/nonEmpty" },
+        "guideLabel": { "$ref": "#/$defs/nonEmpty" },
+        "recordGroup": { "$ref": "#/$defs/nonEmpty" },
+        "purpose": { "$ref": "#/$defs/nonEmpty" },
+        "whyItExists": { "$ref": "#/$defs/nonEmpty" },
+        "phase": { "type": "object", "additionalProperties": false, "required": ["id", "label", "order"], "properties": { "id": { "$ref": "#/$defs/nonEmpty" }, "label": { "$ref": "#/$defs/nonEmpty" }, "order": { "type": "integer", "minimum": 1 } } },
+        "order": { "type": "integer", "minimum": 1 },
+        "terminal": { "type": "boolean" },
+        "entryConditions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "prerequisites": { "$ref": "#/$defs/stringArray" },
+        "requiredRoleArchetypeIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "requiredCompetencyProfileIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "requiredInputContractIds": { "$ref": "#/$defs/stringArray" },
+        "prominentQuestions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "executionSubsteps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" } },
+        "candidateOutputContractIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "governedOutputContractIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "decisionRecordContractIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "evidenceRequirements": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "blockers": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "exceptionPath": { "$ref": "#/$defs/nonEmpty" },
+        "escalationPath": { "$ref": "#/$defs/nonEmpty" },
+        "exitCriteria": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "nextValidTransitions": { "$ref": "#/$defs/stringArray" },
+        "implementedCtas": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "limitations": { "$ref": "#/$defs/nonEmpty" },
+        "implementationMaturity": { "enum": ["implemented-awaiting-product-owner-acceptance", "partial", "planned-deferred-coming-soon"] },
+        "authorityEffects": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmpty" } },
+        "transitionType": { "enum": ["retained", "expanded", "split", "replaced-by-tool-neutral-abstraction"] },
+        "targetEvolution": { "$ref": "#/$defs/nonEmpty" }
+      }
+    }
+  }
+}

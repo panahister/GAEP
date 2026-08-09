@@ -19,27 +19,27 @@ describe("Existing Product Journey coverage", () => {
       checkpoints: existingProductJourneyCheckpointIds.map(row),
     })
 
-    expect(parsed).toHaveLength(12)
+    expect(parsed).toHaveLength(existingProductJourneyCheckpointIds.length)
     expect(parsed.map((entry) => entry.checkpoint)).toEqual(existingProductJourneyCheckpointIds)
   })
 
-  it("rejects a nine-field-only adoption response", () => {
+  it("rejects an adoption response missing any canonical checkpoint", () => {
     expect(() => parseExistingProductJourneyCoverage({
-      checkpoints: existingProductJourneyCheckpointIds.slice(0, 9).map(row),
-    })).toThrow("exactly 12 checkpoints")
+      checkpoints: existingProductJourneyCheckpointIds.slice(0, -1).map(row),
+    })).toThrow(`exactly ${existingProductJourneyCheckpointIds.length} checkpoints`)
   })
 
   it("rejects duplicate, unsupported, or empty checkpoint proposals", () => {
     const duplicate = existingProductJourneyCheckpointIds.map(row)
-    duplicate[11] = row(existingProductJourneyCheckpointIds[0])
+    duplicate[duplicate.length - 1] = row(existingProductJourneyCheckpointIds[0]!)
     expect(() => parseExistingProductJourneyCoverage({ checkpoints: duplicate })).toThrow("duplicated")
 
     const unsupported = existingProductJourneyCheckpointIds.map(row)
-    unsupported[0] = { ...row(existingProductJourneyCheckpointIds[0]), coverage: "complete" }
+    unsupported[0] = { ...row(existingProductJourneyCheckpointIds[0]!), coverage: "complete" }
     expect(() => parseExistingProductJourneyCoverage({ checkpoints: unsupported })).toThrow("unsupported coverage state")
 
     const empty = existingProductJourneyCheckpointIds.map(row)
-    empty[0] = { ...row(existingProductJourneyCheckpointIds[0]), candidateProposal: "" }
+    empty[0] = { ...row(existingProductJourneyCheckpointIds[0]!), candidateProposal: "" }
     expect(() => parseExistingProductJourneyCoverage({ checkpoints: empty })).toThrow("bounded non-empty text")
   })
 })

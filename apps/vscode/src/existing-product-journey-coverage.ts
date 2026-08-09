@@ -1,19 +1,16 @@
-export const existingProductJourneyCheckpointIds = [
-  "product-definition",
-  "initiative-definition",
-  "initiative-classification",
-  "initiative-applicability",
-  "source-intake",
-  "source-baseline",
-  "source-provenance",
-  "product-discovery",
-  "business-architecture",
-  "solution-security-architecture",
-  "detailed-design-assurance",
-  "design-implementation-handoff",
-] as const
+import {
+  currentProductJourneyCheckpointPresentation,
+  type ProductJourneyCheckpointId,
+} from "./product-journey-presentation.js"
 
-export type ExistingProductJourneyCheckpointId = typeof existingProductJourneyCheckpointIds[number]
+export type ExistingProductJourneyCheckpointId = ProductJourneyCheckpointId | "design-implementation-handoff"
+
+/** Historical adoption plans used the design-implementation-handoff alias. */
+export const existingProductJourneyCheckpointIds = currentProductJourneyCheckpointPresentation
+  .slice()
+  .sort((left, right) => left.order - right.order)
+  .map((checkpoint): ExistingProductJourneyCheckpointId =>
+    checkpoint.checkpointId === "p0-p4-readiness" ? "design-implementation-handoff" : checkpoint.checkpointId)
 
 export type ExistingProductJourneyCoverage = {
   checkpoint: ExistingProductJourneyCheckpointId
@@ -23,20 +20,12 @@ export type ExistingProductJourneyCoverage = {
   missingDecisions: string
 }
 
-export const journeyCheckpointLabels: Readonly<Record<ExistingProductJourneyCheckpointId, string>> = {
-  "product-definition": "Product definition",
-  "initiative-definition": "Initiative definition",
-  "initiative-classification": "Initiative classification",
-  "initiative-applicability": "Initiative applicability",
-  "source-intake": "Source intake",
-  "source-baseline": "Source baseline",
-  "source-provenance": "Source provenance",
-  "product-discovery": "Product discovery",
-  "business-architecture": "Business architecture",
-  "solution-security-architecture": "Solution and security architecture",
-  "detailed-design-assurance": "Detailed design and assurance",
-  "design-implementation-handoff": "Pre-Figma readiness and handoff",
-}
+export const journeyCheckpointLabels = Object.fromEntries(
+  currentProductJourneyCheckpointPresentation.flatMap((checkpoint) => [
+    [checkpoint.checkpointId, checkpoint.label],
+    ...checkpoint.compatibilityAliases.map((alias) => [alias, checkpoint.label]),
+  ]),
+) as Readonly<Record<ExistingProductJourneyCheckpointId, string>>
 
 export function parseExistingProductJourneyCoverage(value: unknown): ExistingProductJourneyCoverage[] {
   if (!value || typeof value !== "object" || Array.isArray(value)) {

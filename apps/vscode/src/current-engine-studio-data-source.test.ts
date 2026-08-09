@@ -6136,7 +6136,7 @@ describe("current-engine Product Studio data source", () => {
       state: "in-progress",
       recordedCount: 11,
       totalCount: 12,
-      next: { label: "Pre-Figma readiness and handoff" },
+      next: { label: "P0–P4 readiness and handoff" },
     })
     expect(withoutHandoff.page.journey.checkpoints.at(-1)).toMatchObject({ state: "next" })
 

@@ -6,6 +6,7 @@ import {
 } from "./phase1-canonical-authoring.js"
 import { phase1CanonicalPresentation } from "./phase1-canonical-presentation.js"
 import { markdownTable } from "./product-chat-source-intake.js"
+import { currentProductJourneyCheckpointPresentation } from "./product-journey-presentation.js"
 import type { ReferenceLink } from "./reference-links.js"
 
 interface ExportOptions {
@@ -218,48 +219,26 @@ export interface ProductJourneyReview {
   readonly sections: ProductJourneyReviewSection[]
 }
 
-const reviewCheckpoints: ReadonlyArray<{ id: string; title: string; group?: string }> = [
-  { id: "product-definition", title: "Product definition" },
-  { id: "initiative-definition", title: "Initiative definition" },
-  { id: "initiative-classification", title: "Initiative classification" },
-  { id: "initiative-applicability", title: "Initiative applicability" },
-  { id: "source-intake", title: "Source intake" },
-  { id: "source-baseline", title: "Source baseline" },
-  { id: "source-provenance", title: "Source provenance" },
-  { id: "product-discovery", title: "Product discovery", group: "Product discovery" },
-  { id: "business-architecture", title: "Business architecture", group: "Business architecture" },
-  { id: "solution-security-architecture", title: "Solution and security architecture", group: "Solution and security architecture" },
-  { id: "detailed-design-assurance", title: "Detailed design and assurance", group: "Detailed design and assurance" },
-  { id: "p0-p4-readiness", title: "Pre-Figma readiness and handoff", group: "Pre-Figma readiness and handoff" },
-]
+const reviewCheckpoints = currentProductJourneyCheckpointPresentation
+  .slice()
+  .sort((left, right) => left.order - right.order)
+  .map((checkpoint) => ({
+    id: checkpoint.checkpointId,
+    title: checkpoint.label,
+    group: checkpoint.checkpointId === "p0-p4-readiness" ? "Pre-Figma readiness and handoff"
+      : checkpoint.order >= 80 ? checkpoint.phase.label : undefined,
+    responsible: checkpoint.executionSubsteps.flatMap((step) => step.responsibleRoleIds).filter((role, index, all) => all.indexOf(role) === index),
+    accountable: checkpoint.executionSubsteps.find((step) => step.accountableRoleId)?.accountableRoleId,
+  }))
 
 function anchor(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9 -]/gu, "").replace(/\s+/gu, "-")
 }
 
 /**
- * Candidate accountable/responsible role guidance per checkpoint. This is a
- * recommendation for human review — it appoints no one and grants no authority.
- */
-const checkpointRoleGuidance: Record<string, { responsible: string; accountable: string }> = {
-  "product-definition": { responsible: "Product Owner", accountable: "Business Sponsor" },
-  "initiative-definition": { responsible: "Product Owner", accountable: "Business Sponsor" },
-  "initiative-classification": { responsible: "Product Owner", accountable: "Risk Owner" },
-  "initiative-applicability": { responsible: "Product Owner", accountable: "Business Sponsor" },
-  "source-intake": { responsible: "Product Manager", accountable: "Product Owner" },
-  "source-baseline": { responsible: "Data Steward", accountable: "Product Owner" },
-  "source-provenance": { responsible: "Data Steward", accountable: "Product Owner" },
-  "product-discovery": { responsible: "Product Manager", accountable: "Product Owner" },
-  "business-architecture": { responsible: "Business Architect", accountable: "Product Owner" },
-  "solution-security-architecture": { responsible: "Solution Architect", accountable: "Architecture Authority" },
-  "detailed-design-assurance": { responsible: "Solution Architect", accountable: "Engineering Authority" },
-  "p0-p4-readiness": { responsible: "Delivery Manager", accountable: "Product Owner" },
-}
-
-/**
  * Build a single navigable, Mermaid-rich Markdown document that reviews the
  * whole Product Journey. Returned `sections` expose the exact heading line for
- * each of the twelve checkpoints so a host can open the built-in Markdown
+ * each canonical current-runtime checkpoint so a host can open the built-in Markdown
  * preview positioned on the selected checkpoint while remaining navigable to
  * the others. This is a read-only projection and grants no authority.
  */
@@ -360,10 +339,10 @@ export async function buildProductJourneyReview(
     ...sections.map((section, index) => `${index + 1}. [${section.title}](#${anchor(`${index + 1}. ${section.title}`)})`),
   ]
   reviewCheckpoints.forEach((checkpoint, index) => {
-    const roles = checkpointRoleGuidance[checkpoint.id]
-    const roleLine = roles
-      ? [`_Candidate role guidance — **Responsible:** ${roles.responsible} · **Accountable:** ${roles.accountable}. This appoints no one and grants no authority._`, ""]
-      : []
+    const roleLine = [
+      `_Contract-derived role guidance — **Responsible:** ${checkpoint.responsible.join(", ")} · **Accountable:** ${checkpoint.accountable ?? "missing; decision blocked"}. Competence and organizational authority are assessed separately._`,
+      "",
+    ]
     lines.push("", "---", "", `## ${index + 1}. ${checkpoint.title}`, "", ...roleLine, ...sectionBody(checkpoint.id, checkpoint.group))
   })
   const links = referenceLinksSection(options.referenceLinks)

@@ -57,6 +57,7 @@ import {
   type ExistingProductJourneyCheckpointId,
 } from "./existing-product-journey-coverage.js"
 import { productJourneyRoadmapDiagram } from "./product-journey-roadmap.js"
+import { currentProductJourneyCheckpointPresentation } from "./product-journey-presentation.js"
 import {
   existingProductAdoptionCheckpointMarkdown,
   existingProductAdoptionCheckpointSelectionMarkdown,
@@ -3066,20 +3067,6 @@ export function registerGaepProductChat(
           : initiativeState && !["committed", "cancelled"].includes(initiativeState.phase)
             ? `Initiative ${initiativeState.phase} (${initiativeProgress(initiativeState)})`
             : state ? `Product ${state.phase} (${productInitializationProgress(state)})` : "none"
-      const statusRows = [
-        ["Product definition", product.state === "initialized" ? "Recorded" : product.state, product.state === "initialized" ? `Revision ${product.revision}` : "No governed Product"],
-        ["Initiative definition", current ? "Recorded" : "Not started", current ? `Revision ${current.revision}` : "—"],
-        ["Initiative classification", current?.classificationStatus ?? "Not started", current?.classification ? `${current.classification.unresolvedQuestions.length} open question(s)` : "—"],
-        ["Initiative applicability", current?.applicabilityStatus ?? "Not started", current?.applicability ? `${current.applicability.decisions.length} mapped · ${current.applicability.unresolvedSubjects.length} unresolved` : "—"],
-        ["Source intake", source?.sourceCount || persistedAdoption?.sources.length ? "Recorded" : "Not started", source?.sourceCount
-          ? `${source.sourceCount} exact candidate Source(s)`
-          : persistedAdoption?.sources.length
-            ? `${persistedAdoption.sources.length} exact reviewed attachment(s) captured; Initiative binding pending`
-            : "—"],
-        ["Source baseline", source?.baseline?.status ?? "Not started", source?.baseline ? `Revision ${source.baseline.revision} · ${source.baseline.memberCount} members` : "—"],
-        ["Source provenance", source?.provenanceCount ? "Recorded" : "Not started", source?.provenanceCount ? `${source.provenanceCount} lineage record(s)` : "—"],
-        ...(phase1?.groups ?? []).map((group) => [group.label, group.complete ? "Recorded" : "In progress", `${group.recorded}/${group.total}`]),
-      ]
       const productDone = product.state === "initialized"
       const initiativeDone = Boolean(current)
       const classificationDone = current?.classificationStatus === "current"
@@ -3088,20 +3075,27 @@ export function registerGaepProductChat(
       const baselineDone = source?.baseline?.status === "current"
       const provenanceDone = Boolean(source?.provenanceCount)
       const phaseGroup = (id: string) => phase1?.groups.find((group) => group.id === id)
-      const journeyNodes = [
-        { id: "P", label: "Product definition", done: productDone },
-        { id: "I", label: "Initiative definition", done: initiativeDone },
-        { id: "C", label: "Initiative classification", done: classificationDone },
-        { id: "A", label: "Initiative applicability", done: applicabilityDone },
-        { id: "SI", label: "Source intake", done: intakeDone },
-        { id: "SB", label: "Source baseline", done: baselineDone },
-        { id: "SP", label: "Source provenance", done: provenanceDone },
-        { id: "PD", label: "Product discovery", done: Boolean(phaseGroup("product-discovery")?.complete) },
-        { id: "BA", label: "Business architecture", done: Boolean(phaseGroup("business-architecture")?.complete) },
-        { id: "SA", label: "Solution and security architecture", done: Boolean(phaseGroup("solution-security-architecture")?.complete) },
-        { id: "DD", label: "Detailed design and assurance", done: Boolean(phaseGroup("detailed-design-assurance")?.complete) },
-        { id: "R", label: "Pre-Figma readiness and handoff", done: Boolean(phaseGroup("p0-p4-readiness")?.complete) },
-      ]
+      const statusByCheckpoint = new Map<string, { done: boolean; state: string; detail: string }>([
+        ["product-definition", { done: productDone, state: productDone ? "Recorded" : product.state, detail: productDone ? `Revision ${product.revision}` : "No governed Product" }],
+        ["initiative-definition", { done: initiativeDone, state: initiativeDone ? "Recorded" : "Not started", detail: current ? `Revision ${current.revision}` : "—" }],
+        ["initiative-classification", { done: classificationDone, state: current?.classificationStatus ?? "Not started", detail: current?.classification ? `${current.classification.unresolvedQuestions.length} open question(s)` : "—" }],
+        ["initiative-applicability", { done: applicabilityDone, state: current?.applicabilityStatus ?? "Not started", detail: current?.applicability ? `${current.applicability.decisions.length} mapped · ${current.applicability.unresolvedSubjects.length} unresolved` : "—" }],
+        ["source-intake", { done: intakeDone, state: intakeDone ? "Recorded" : "Not started", detail: source?.sourceCount ? `${source.sourceCount} exact candidate Source(s)` : persistedAdoption?.sources.length ? `${persistedAdoption.sources.length} exact reviewed attachment(s) captured; Initiative binding pending` : "—" }],
+        ["source-baseline", { done: baselineDone, state: source?.baseline?.status ?? "Not started", detail: source?.baseline ? `Revision ${source.baseline.revision} · ${source.baseline.memberCount} members` : "—" }],
+        ["source-provenance", { done: provenanceDone, state: provenanceDone ? "Recorded" : "Not started", detail: provenanceDone ? `${source?.provenanceCount ?? 0} lineage record(s)` : "—" }],
+        ...currentProductJourneyCheckpointPresentation.filter((checkpoint) => checkpoint.order >= 80).map((checkpoint) => {
+          const group = phaseGroup(checkpoint.checkpointId)
+          return [checkpoint.checkpointId, { done: Boolean(group?.complete), state: group?.complete ? "Recorded" : group ? "In progress" : "Not started", detail: group ? `${group.recorded}/${group.total}` : "—" }] as const
+        }),
+      ])
+      const journeyNodes = currentProductJourneyCheckpointPresentation
+        .slice()
+        .sort((left, right) => left.order - right.order)
+        .map((checkpoint) => ({ id: checkpoint.checkpointId.replaceAll("-", "_"), label: checkpoint.label, done: statusByCheckpoint.get(checkpoint.checkpointId)?.done ?? false }))
+      const statusRows = currentProductJourneyCheckpointPresentation
+        .slice()
+        .sort((left, right) => left.order - right.order)
+        .map((checkpoint) => [checkpoint.label, statusByCheckpoint.get(checkpoint.checkpointId)?.state ?? "Not started", statusByCheckpoint.get(checkpoint.checkpointId)?.detail ?? "—"])
       const currentIndex = journeyNodes.findIndex((node) => !node.done)
       const nextIndex = currentIndex >= 0 ? journeyNodes.findIndex((node, index) => index > currentIndex && !node.done) : -1
       const journeyDiagram = productJourneyRoadmapDiagram(journeyNodes, currentIndex, nextIndex)

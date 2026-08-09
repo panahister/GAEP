@@ -25,6 +25,8 @@ function semanticContext(overrides = {}) {
     extensionPackage: overrides.extensionPackage ?? clone(base.extensionPackage),
     runtimePresentation: overrides.runtimePresentation ?? clone(base.runtimePresentation),
     runtimeCheckpoints: overrides.runtimeCheckpoints ?? clone(base.runtimeCheckpoints),
+    responsibility: overrides.responsibility ?? clone(base.responsibility),
+    assurance: overrides.assurance ?? clone(base.assurance),
   };
 }
 

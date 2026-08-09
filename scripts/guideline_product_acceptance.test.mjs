@@ -30,6 +30,8 @@ function semanticInputs(overrides = {}) {
     extensionPackage: overrides.extensionPackage ?? clone(base.extensionPackage),
     runtimePresentation: overrides.runtimePresentation ?? clone(base.runtimePresentation),
     runtimeCheckpoints: overrides.runtimeCheckpoints ?? clone(base.runtimeCheckpoints),
+    responsibility: overrides.responsibility ?? clone(base.responsibility),
+    assurance: overrides.assurance ?? clone(base.assurance),
   };
 }
 
@@ -261,10 +263,10 @@ test("a synthetic additional runtime checkpoint is projected without renderer ch
     targetIntent: "Project synthetic operations feedback without fixed checkpoint cardinality.",
     dependency: "Synthetic test fixture",
     implementationStatus: "target-only-planned",
-    productOwnerAcceptanceStatus: "unresolved",
+    acceptanceDecision: "unresolved",
     migrationState: "planned",
   });
-  manifest.productOwnerRequirements[7].currentCheckpointIds.push(extra.checkpointId);
+  manifest.stakeholderRequirements[7].currentCheckpointIds.push(extra.checkpointId);
   assert.deepEqual(semanticErrors(manifest, { runtimePresentation, runtimeCheckpoints }), []);
   const rendered = renderGuideline({ ...base, manifest, runtimePresentation, runtimeCheckpoints });
   assert.match(rendered, /`operations-feedback`/);
@@ -281,7 +283,7 @@ test("adding a checkpoint without Guide transition metadata fails visibly", () =
 test("a synthetic additional target node is projected without renderer changes", () => {
   const manifest = clone(base.manifest);
   manifest.lifecycleNodes.push({ nodeId: "lifecycle-20", order: 200, segmentId: "deliver-operate", title: "Governed learning loop", targetIntent: "Test evolvable target-node projection without claiming current implementation.", capabilityIds: ["GAEP-CAP-128"], proposedGapIds: [] });
-  manifest.productOwnerRequirements[7].targetNodeIds.push("lifecycle-20");
+  manifest.stakeholderRequirements[7].targetNodeIds.push("lifecycle-20");
   assert.deepEqual(semanticErrors(manifest), []);
   const rendered = renderGuideline({ ...base, manifest });
   assert.match(rendered, /lifecycle_20\["200\. \[IA\] Governed learning loop/);
@@ -327,7 +329,7 @@ test("a new planned capability appears automatically when canonically mapped", (
   for (const row of market.benchmarkRows) row.cells.push({ capabilityId: "GAEP-CAP-999", supportLevel: "unknown", supportAssertionIds: [], availabilityAssertionIds: [], asOfDate: market.researchAsOf, rationale: "Not assessed.", limitation: "Synthetic test only.", deliveryState: "not-assessed", applicabilityRationale: null });
   const manifest = clone(base.manifest);
   manifest.lifecycleNodes.push({ nodeId: "lifecycle-planned", order: 200, segmentId: "deliver-operate", title: "Synthetic planned target", targetIntent: "Project a new planned capability without renderer code or an implemented claim.", capabilityIds: ["GAEP-CAP-999"], proposedGapIds: [] });
-  manifest.productOwnerRequirements.push({ requirementId: "GAEP-P03-REQ-999", title: "Synthetic planned coverage", targetNodeIds: ["lifecycle-planned"], currentCheckpointIds: [], canonicalSourceIds: ["GAEP-CAP-999"], currentMaturity: "planned-deferred-coming-soon", futureDisposition: "newly-planned", gapOrDecision: "Synthetic fixture remains unimplemented and unaccepted." });
+  manifest.stakeholderRequirements.push({ requirementId: "GAEP-P03-REQ-999", title: "Synthetic planned coverage", targetNodeIds: ["lifecycle-planned"], currentCheckpointIds: [], canonicalSourceIds: ["GAEP-CAP-999"], currentMaturity: "planned-deferred-coming-soon", futureDisposition: "newly-planned", gapOrDecision: "Synthetic fixture remains unimplemented and unaccepted." });
   assert.deepEqual(semanticErrors(manifest, { market }), []);
   const rendered = renderGuideline({ ...base, manifest, market });
   assert.match(rendered, /GAEP-CAP-999/);
@@ -346,7 +348,7 @@ test("ERP remains illustrative, Figma stays an adapter, and architecture/DDD pre
   const target = base.manifest.lifecycleNodes.slice().sort((left, right) => left.order - right.order);
   assert.ok(!target.some(node => /figma/i.test(node.title)));
   assert.ok(target.find(node => /Product Design/.test(node.title)).targetIntent.includes("optional Figma"));
-  assert.ok(base.manifest.productOwnerRequirements.find(entry => entry.requirementId === "GAEP-P03-REQ-009").gapOrDecision.includes("Product-neutral"));
+  assert.ok(base.manifest.stakeholderRequirements.find(entry => entry.requirementId === "GAEP-P03-REQ-009").gapOrDecision.includes("Product-neutral"));
   const order = fragment => target.find(node => node.title.toLowerCase().includes(fragment)).order;
   assert.ok(order("ddd strategic") < order("architecture-bound backlog"));
   assert.ok(order("architecture decisions") < order("architecture-bound backlog"));
@@ -354,8 +356,8 @@ test("ERP remains illustrative, Figma stays an adapter, and architecture/DDD pre
 });
 
 test("backlog coverage retains target slice and repository-topology mappings", () => {
-  const backlog = base.manifest.productOwnerRequirements.find(entry => entry.requirementId === "GAEP-P03-REQ-005");
-  const topology = base.manifest.productOwnerRequirements.find(entry => entry.requirementId === "GAEP-P03-REQ-006");
+  const backlog = base.manifest.stakeholderRequirements.find(entry => entry.requirementId === "GAEP-P03-REQ-005");
+  const topology = base.manifest.stakeholderRequirements.find(entry => entry.requirementId === "GAEP-P03-REQ-006");
   assert.ok(backlog.targetNodeIds.includes("lifecycle-13") && backlog.targetNodeIds.includes("lifecycle-15"));
   assert.ok(topology.targetNodeIds.includes("lifecycle-14") && topology.targetNodeIds.includes("lifecycle-15"));
   assert.match(base.manifest.lifecycleNodes.find(node => node.nodeId === "lifecycle-15").targetIntent, /backlog slice.*implementation targets and repositories/i);

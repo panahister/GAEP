@@ -155,6 +155,10 @@ import type { PortableHandoffObservation } from "./handoff-observation.js"
 import { managedRecoveryPresentation } from "./managed-recovery-presentation.js"
 import { readVerifiedManagedArtifacts } from "./managed-evidence-verifier.js"
 import type { PortableDesignSnapshot } from "./portable-design-workflow.js"
+import {
+  currentProductJourneyCheckpoint,
+  currentProductJourneyCheckpointIds,
+} from "./product-journey-presentation.js"
 import type { AdoptionAccelerationPlan } from "./adoption-acceleration.js"
 import { summarizeCanonicalRecord } from "./phase1-canonical-summary.js"
 import { agentStatus } from "./provider-truth.js"
@@ -3281,53 +3285,19 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     state.p5HandoffPackageProjections.get(initiative.id)?.handoff,
   )
 
-  const checkpointOrder: ProductJourneyCheckpoint["id"][] = [
-    "product-definition", "initiative-definition", "initiative-classification", "initiative-applicability",
-    "source-intake", "source-baseline", "source-provenance", "product-discovery", "business-architecture",
-    "solution-security-architecture", "detailed-design-assurance", "p0-p4-readiness",
-  ]
-  const journeyPhases: ReadonlyArray<{ phase: ProductJourneyPhase; checkpointIds: ProductJourneyCheckpoint["id"][] }> = [
-    {
-      phase: { id: "foundation", label: "Product & Initiative foundation", order: 1 },
-      checkpointIds: ["product-definition", "initiative-definition", "initiative-classification", "initiative-applicability"],
-    },
-    {
-      phase: { id: "trusted-sources", label: "Trusted sources", order: 2 },
-      checkpointIds: ["source-intake", "source-baseline", "source-provenance"],
-    },
-    {
-      phase: { id: "product-discovery", label: "Product discovery", order: 3 },
-      checkpointIds: ["product-discovery"],
-    },
-    {
-      phase: { id: "business-architecture", label: "Business architecture", order: 4 },
-      checkpointIds: ["business-architecture"],
-    },
-    {
-      phase: { id: "solution-security-architecture", label: "Solution & security architecture", order: 5 },
-      checkpointIds: ["solution-security-architecture"],
-    },
-    {
-      phase: { id: "detailed-design-assurance", label: "Detailed design & assurance", order: 6 },
-      checkpointIds: ["detailed-design-assurance"],
-    },
-    {
-      phase: { id: "pre-figma-handoff", label: "Pre-Figma readiness & handoff", order: 7 },
-      checkpointIds: ["p0-p4-readiness"],
-    },
-  ]
-  const phaseForCheckpoint = (id: ProductJourneyCheckpoint["id"]): ProductJourneyPhase => {
-    const group = journeyPhases.find((entry) => entry.checkpointIds.includes(id))
-    return group ? group.phase : { id: "foundation", label: "Product & Initiative foundation", order: 1 }
-  }
+  const phaseForCheckpoint = (id: ProductJourneyCheckpoint["id"]): ProductJourneyPhase =>
+    currentProductJourneyCheckpoint(id).phase
   const downstreamImpact = (id: ProductJourneyCheckpoint["id"]): ProductJourneyCheckpoint["impact"] => {
-    const affectedCheckpointIds = checkpointOrder.slice(checkpointOrder.indexOf(id) + 1)
+    const affectedCheckpointIds = currentProductJourneyCheckpointIds.slice(currentProductJourneyCheckpointIds.indexOf(id) + 1)
+    const contract = currentProductJourneyCheckpoint(id)
     return {
       state: affectedCheckpointIds.length > 0 ? "review-required" : "aligned",
       affectedCheckpointIds,
       summary: affectedCheckpointIds.length > 0
         ? `A new revision must revalidate ${affectedCheckpointIds.length} downstream checkpoint(s); GAEP will preserve prior revisions until the user accepts a realignment.`
-        : "This is the final pre-design checkpoint; no downstream Product Journey checkpoint is recorded after it.",
+        : contract.terminal
+          ? "This is the final current-runtime checkpoint; later Product-to-Operate nodes remain target-only and non-executable."
+          : "No downstream current-runtime checkpoint is declared by the canonical journey contract.",
     }
   }
   const review = (id: ProductJourneyCheckpoint["id"]): StudioActionControl =>
@@ -3353,13 +3323,13 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
   let open = true
   const checkpoint = (
     id: ProductJourneyCheckpoint["id"],
-    label: string,
     complete: boolean,
     summary: string,
     attention = false,
     action?: StudioActionControl,
     metadata: Pick<ProductJourneyCheckpoint, "revision" | "details" | "impact" | "reviewAction" | "reviseAction"> = {},
   ): ProductJourneyCheckpoint => {
+    const label = currentProductJourneyCheckpoint(id).label
     if (complete) {
       if (attention) {
         if (!action?.enabled) {
@@ -3408,10 +3378,9 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     return { id, label, phase: phaseForCheckpoint(id), state: "not-started", summary, ...metadata }
   }
 
-  const checkpoints: ProductJourneyCheckpoint[] = [
+  const checkpointCandidates: ProductJourneyCheckpoint[] = [
     checkpoint(
       "product-definition",
-      "Product definition",
       Boolean(state.product),
       state.product ? `Recorded at revision ${state.product.revision ?? 1}.` : "Define the Product and its durable boundary.",
       false,
@@ -3447,7 +3416,6 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     ),
     checkpoint(
       "initiative-definition",
-      "Initiative definition",
       Boolean(initiative),
       initiative ? `${initiative.title} · revision ${initiative.revision ?? 1}.` : "Create the bounded change being evaluated.",
       false,
@@ -3471,7 +3439,6 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     ),
     checkpoint(
       "initiative-classification",
-      "Initiative classification",
       classificationRecorded,
       classificationRecorded
         ? classificationAttention
@@ -3519,7 +3486,6 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     ),
     checkpoint(
       "initiative-applicability",
-      "Initiative applicability",
       applicabilityRecorded,
       applicabilityRecorded
         ? assessment!.applicability.status === "stale"
@@ -3588,7 +3554,6 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     ),
     checkpoint(
       "source-intake",
-      "Source intake",
       sourceIntakeComplete,
       sourceIntakeComplete
         ? sourceIntakeRecorded
@@ -3632,7 +3597,6 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     ),
     checkpoint(
       "source-baseline",
-      "Source baseline",
       baselineComplete,
       baselineComplete
         ? "A frozen snapshot of the exact source versions you reviewed is on record."
@@ -3660,7 +3624,6 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     ),
     checkpoint(
       "source-provenance",
-      "Source provenance",
       provenanceComplete,
       provenanceComplete
         ? "Each accepted fact is linked to the exact source version it came from."
@@ -3688,7 +3651,6 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     ),
     checkpoint(
       "product-discovery",
-      "Product discovery",
       productDiscoveryComplete,
       productDiscoveryComplete
         ? "Business understanding, stakeholders, and outcome measures are recorded."
@@ -3708,7 +3670,6 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     ),
     checkpoint(
       "business-architecture",
-      "Business architecture",
       businessArchitectureComplete,
       businessArchitectureComplete
         ? "Capability, value stream, operating model, rules, and the candidate business baseline are recorded."
@@ -3730,7 +3691,6 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     ),
     checkpoint(
       "solution-security-architecture",
-      "Solution and security architecture",
       solutionSecurityComplete,
       solutionSecurityComplete
         ? "Solution architecture, bounded contexts, and the security/privacy assessment are recorded."
@@ -3750,7 +3710,6 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     ),
     checkpoint(
       "detailed-design-assurance",
-      "Detailed design and assurance",
       detailedDesignComplete,
       detailedDesignComplete
         ? "Detailed models, challenges, decisions, risks, evidence, and end-to-end traceability are recorded."
@@ -3777,7 +3736,6 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
     ),
     checkpoint(
       "p0-p4-readiness",
-      "Pre-Figma readiness and handoff",
       p0P4ReadinessComplete,
       p0P4ReadinessComplete
         ? "A governed readiness assessment and editable pre-Figma handoff package are recorded."
@@ -3795,6 +3753,13 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
       } : {},
     ),
   ]
+  const checkpointById = new Map(checkpointCandidates.map((candidate) => [candidate.id, candidate]))
+  const checkpoints = currentProductJourneyCheckpointIds.map((id) => {
+    const candidate = checkpointById.get(id)
+    if (!candidate) throw new Error(`Product Journey data source does not implement canonical checkpoint ${id}`)
+    return candidate
+  })
+  if (checkpointById.size !== checkpoints.length) throw new Error("Product Journey data source contains a checkpoint absent from the canonical contract")
   const nextCheckpoint = checkpoints.find((candidate) => ["next", "candidate-ready", "needs-decisions", "blocked-by-prerequisite"].includes(candidate.state))
   const attentionCount = checkpoints.filter((candidate) => candidate.state === "attention-required").length
   const candidateCount = checkpoints.filter((candidate) => candidate.state === "candidate-ready").length

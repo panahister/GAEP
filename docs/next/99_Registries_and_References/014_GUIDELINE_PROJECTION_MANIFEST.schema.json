@@ -5,9 +5,9 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schemaId", "schemaVersion", "registryId", "version", "status", "ownerRole", "approval", "generation",
+    "schemaId", "schemaVersion", "registryId", "version", "status", "projectionStewardRoleId", "approval", "generation",
     "canonicalSources", "audienceLayers", "requiredSections", "requiredVisuals", "lifecycleSegments", "lifecycleNodes",
-    "transitionRoadmap", "productOwnerRequirements", "proposedCanonicalGaps", "sourceLifecycle", "statePolicy", "commandSurface"
+    "transitionRoadmap", "stakeholderRequirements", "proposedCanonicalGaps", "sourceLifecycle", "statePolicy", "commandSurface"
   ],
   "properties": {
     "schemaId": { "const": "https://gaep.example/schemas/guideline-projection-manifest-1.1.0.json" },
@@ -15,7 +15,7 @@
     "registryId": { "const": "GAEP-REG-014" },
     "version": { "$ref": "#/$defs/version" },
     "status": { "const": "proposed" },
-    "ownerRole": { "const": "GAEP Product Owner" },
+    "projectionStewardRoleId": { "const": "product-leadership" },
     "approval": {
       "type": "object", "additionalProperties": false,
       "required": ["state", "approvedBy", "approvedAt", "publicationState"],
@@ -37,14 +37,14 @@
         "timestampPolicy": { "const": "none-deterministic" }
       }
     },
-    "canonicalSources": { "type": "array", "minItems": 5, "uniqueItems": true, "items": { "$ref": "#/$defs/sourceBinding" } },
+    "canonicalSources": { "type": "array", "minItems": 8, "uniqueItems": true, "items": { "$ref": "#/$defs/sourceBinding" } },
     "audienceLayers": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "$ref": "#/$defs/audienceLayer" } },
     "requiredSections": { "type": "array", "minItems": 15, "uniqueItems": true, "items": { "$ref": "#/$defs/section" } },
     "requiredVisuals": { "type": "array", "minItems": 10, "uniqueItems": true, "items": { "$ref": "#/$defs/visual" } },
     "lifecycleSegments": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/lifecycleSegment" } },
     "lifecycleNodes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/lifecycleNode" } },
     "transitionRoadmap": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/transition" } },
-    "productOwnerRequirements": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/productOwnerRequirement" } },
+    "stakeholderRequirements": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/stakeholderRequirement" } },
     "proposedCanonicalGaps": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/proposedGap" } },
     "sourceLifecycle": {
       "type": "object", "additionalProperties": false,
@@ -68,7 +68,7 @@
             "planned-deferred-coming-soon": { "const": "[PD] Planned / deferred" },
             "candidate-proposed": { "const": "[CP] Candidate / proposed" },
             "partial": { "const": "[PT] Partial" },
-            "implemented-awaiting-product-owner-acceptance": { "const": "[IA] Implemented; awaiting Product Owner acceptance" },
+            "implemented-awaiting-product-owner-acceptance": { "const": "[IA] Implemented; awaiting independent P03 review" },
             "implemented-and-automated-tested": { "const": "[IT] Implemented and automated-tested" }
           }
         },
@@ -98,7 +98,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["kind", "path", "identity", "version", "schemaVersion", "sha256"],
       "properties": {
-        "kind": { "enum": ["methodology-catalog", "market-registry", "terminology-index", "runtime-presentation-contract", "extension-package"] },
+        "kind": { "enum": ["methodology-catalog", "market-registry", "terminology-index", "runtime-presentation-contract", "runtime-contract-schema", "responsibility-competency-registry", "enterprise-assurance-registry", "extension-package"] },
         "path": { "$ref": "#/$defs/repositoryPath" },
         "identity": { "type": "string", "minLength": 1 },
         "version": { "type": ["string", "null"] },
@@ -166,7 +166,7 @@
     },
     "transition": {
       "type": "object", "additionalProperties": false,
-      "required": ["currentCheckpointId", "targetNodeIds", "transitionType", "currentMaturity", "targetIntent", "dependency", "implementationStatus", "productOwnerAcceptanceStatus", "migrationState"],
+      "required": ["currentCheckpointId", "targetNodeIds", "transitionType", "currentMaturity", "targetIntent", "dependency", "implementationStatus", "acceptanceDecision", "migrationState"],
       "properties": {
         "currentCheckpointId": { "$ref": "#/$defs/checkpointId" },
         "targetNodeIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/nodeId" } },
@@ -175,11 +175,11 @@
         "targetIntent": { "type": "string", "minLength": 15 },
         "dependency": { "type": "string", "minLength": 3 },
         "implementationStatus": { "enum": ["current-runtime-implemented-target-partial", "current-runtime-implemented-target-planned", "target-only-planned", "unresolved"] },
-        "productOwnerAcceptanceStatus": { "enum": ["accepted", "unresolved", "rejected"] },
+        "acceptanceDecision": { "enum": ["accepted", "unresolved", "rejected"] },
         "migrationState": { "enum": ["implemented", "planned", "unresolved"] }
       }
     },
-    "productOwnerRequirement": {
+    "stakeholderRequirement": {
       "type": "object", "additionalProperties": false,
       "required": ["requirementId", "title", "targetNodeIds", "currentCheckpointIds", "canonicalSourceIds", "currentMaturity", "futureDisposition", "gapOrDecision"],
       "properties": {
@@ -195,13 +195,24 @@
     },
     "proposedGap": {
       "type": "object", "additionalProperties": false,
-      "required": ["gapId", "title", "status", "requiredCanonicalCorrection", "blocksAcceptance"],
+      "required": ["gapId", "title", "status", "requiredCanonicalCorrection", "scopedImpacts"],
       "properties": {
         "gapId": { "$ref": "#/$defs/gapId" },
         "title": { "type": "string", "minLength": 3 },
         "status": { "const": "proposed-unaccepted" },
         "requiredCanonicalCorrection": { "type": "string", "minLength": 20 },
-        "blocksAcceptance": { "type": "boolean" }
+        "scopedImpacts": {
+          "type": "object", "additionalProperties": false,
+          "required": ["p03ProjectionAcceptance", "targetCapabilityActivation", "currentRuntimeAvailability", "responsibleRoadmapItems", "prerequisite", "executableState"],
+          "properties": {
+            "p03ProjectionAcceptance": { "const": "non-blocking-when-honestly-projected" },
+            "targetCapabilityActivation": { "type": "string", "minLength": 10 },
+            "currentRuntimeAvailability": { "type": "string", "minLength": 10 },
+            "responsibleRoadmapItems": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 2 } },
+            "prerequisite": { "type": "string", "minLength": 10 },
+            "executableState": { "const": "proposed-non-executable" }
+          }
+        }
       }
     },
     "sourceConcept": {

@@ -115,7 +115,7 @@ describe("Existing Product adoption review", () => {
     expect(existingProductAdoptionFollowThrough("design-implementation-handoff")).toMatchObject({
       command: "adopt",
       prompt: "create:design-implementation-handoff",
-      title: "Generate Pre-Figma readiness and handoff Proposal",
+      title: "Generate P0–P4 readiness and handoff Proposal",
     })
   })
 })

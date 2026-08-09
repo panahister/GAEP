@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gaep.example/schemas/enterprise-responsibility-competency/1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "registryId", "version", "schemaVersion", "status", "updatedAt", "authorityBoundary", "raciLegend", "raciRules", "authorityTypes", "roleArchetypes", "participationLevels", "competencyDimensions", "gatewayOutcomes", "gatewayRules"],
+  "properties": {
+    "$schema": { "type": "string" }, "registryId": { "const": "GAEP-REG-016" }, "version": { "type": "string" }, "schemaVersion": { "type": "string" }, "status": { "const": "candidate-unaccepted" }, "updatedAt": { "type": "string", "format": "date" }, "authorityBoundary": { "type": "string", "minLength": 1 },
+    "raciLegend": { "type": "object", "additionalProperties": false, "required": ["R", "A", "C", "I"], "properties": { "R": { "type": "string" }, "A": { "type": "string" }, "C": { "type": "string" }, "I": { "type": "string" } } },
+    "raciRules": { "$ref": "#/$defs/nonEmptyArray" }, "gatewayRules": { "$ref": "#/$defs/nonEmptyArray" },
+    "authorityTypes": { "type": "array", "minItems": 9, "items": { "type": "object", "additionalProperties": false, "required": ["authorityId", "label", "decisionRoleIds"], "properties": { "authorityId": { "type": "string" }, "label": { "type": "string" }, "decisionRoleIds": { "$ref": "#/$defs/nonEmptyArray" } } } },
+    "roleArchetypes": { "type": "array", "minItems": 29, "items": { "type": "object", "additionalProperties": false, "required": ["roleId", "label", "scope", "incompatibleWithForIndependentAssurance"], "properties": { "roleId": { "type": "string" }, "label": { "type": "string" }, "scope": { "type": "string" }, "incompatibleWithForIndependentAssurance": { "type": "array", "items": { "type": "string" } } } } },
+    "participationLevels": { "type": "array", "minItems": 5, "items": { "type": "object", "additionalProperties": false, "required": ["levelId", "label", "evidenceRequirement"], "properties": { "levelId": { "type": "string" }, "label": { "type": "string" }, "evidenceRequirement": { "type": "string" } } } },
+    "competencyDimensions": { "type": "array", "minItems": 20, "items": { "type": "object", "additionalProperties": false, "required": ["competencyId", "label", "scenarioEvidence"], "properties": { "competencyId": { "type": "string" }, "label": { "type": "string" }, "scenarioEvidence": { "type": "string" } } } },
+    "gatewayOutcomes": { "type": "array", "minItems": 6, "items": { "type": "object", "additionalProperties": false, "required": ["outcomeId", "label", "executable"], "properties": { "outcomeId": { "type": "string" }, "label": { "type": "string" }, "executable": { "type": "boolean" } } } }
+  },
+  "$defs": { "nonEmptyArray": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } } }
+}
