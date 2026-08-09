@@ -17,6 +17,7 @@ import {
 } from "@gaep/contracts"
 
 import { canonicalStudioDigest } from "./studio-digest.js"
+import type { ProductJourneyCheckpointId, ProductJourneyRuntimeState } from "./product-journey-presentation.js"
 
 export const studioProtocolVersion = 1 as const
 
@@ -178,29 +179,8 @@ export interface OverviewSectionStatus {
   gapCount: number
 }
 
-export type ProductJourneyCheckpointState =
-  | "complete"
-  | "attention-required"
-  | "candidate-ready"
-  | "needs-decisions"
-  | "blocked-by-prerequisite"
-  | "current"
-  | "next"
-  | "not-started"
-
-export type ProductJourneyCheckpointId =
-  | "product-definition"
-  | "initiative-definition"
-  | "initiative-classification"
-  | "initiative-applicability"
-  | "source-intake"
-  | "source-baseline"
-  | "source-provenance"
-  | "product-discovery"
-  | "business-architecture"
-  | "solution-security-architecture"
-  | "detailed-design-assurance"
-  | "p0-p4-readiness"
+export type ProductJourneyCheckpointState = ProductJourneyRuntimeState
+export type { ProductJourneyCheckpointId } from "./product-journey-presentation.js"
 
 /**
  * The twelve Product Journey checkpoints group into a small number of ordered

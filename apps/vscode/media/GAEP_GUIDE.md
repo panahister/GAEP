@@ -2,20 +2,24 @@
 
 # GAEP Product-to-Operations Guideline
 
+### Why use this Guide
+
+Use this Guide to start a governed Product workspace, understand what GAEP needs from you now, and compare current evidence with the intended Product-to-Operations operating model without confusing candidates, plans, or market claims with approved truth.
+
+It is for first-time users, Product leaders, practitioners, reviewers, and maintainers. **[Start here with the approximately three-minute route](#2-start-here)**; continue only when you need checkpoint, roadmap, market, methodology, or projection detail.
+
 <!-- BEGIN GENERATED:PROJECTION_HEADER -->
-> **Generated surface.** Edit the narrative template or owning canonical sources—not this file. `npm run check:guideline-projection` detects drift.
->
-> **Bound truth:** GAEP-REG-011 v0.4.0 (6859769b56eeae9025dfff5407113dbc7b22ec7809e518d69a399effb156b209); GAEP-REG-013 v0.2.1 (3dcfe5531a1bb4630dc3afdb2990389728e2d39cac2ac915986badb9fe9e5c17).
+> **Evidence boundary:** This Guide is generated from GAEP-REG-011 v0.4.0, GAEP-REG-013 v0.2.1, and the installed runtime presentation contract. Exact digests remain in the collapsed maintainer appendix.
 >
 > **Authority:** Proposed, not approved, and not published. This Guide does not accept GAEP, authorize rollout, or convert evidence into organizational authority.
 <!-- END GENERATED:PROJECTION_HEADER -->
 
-This is the maintained, human-facing GAEP Product surface bundled with the VS Code extension. It uses four progressive layers: stop after the layer that answers your question, or continue for the evidence and methodology details.
+This is the maintained, human-facing GAEP Product surface bundled with the VS Code extension. It uses four progressive layers: stop after the layer that answers your question, or continue for evidence and maintenance detail.
 
 ## Contents
 
 - [1. Executive orientation](#1-executive-orientation)
-- [2. Quick start](#2-quick-start)
+- [2. Start here](#2-start-here)
 - [3. Practitioner guide](#3-practitioner-guide)
 - [4. Methodology and maintainer appendix](#4-methodology-and-maintainer-appendix)
 
@@ -88,11 +92,11 @@ flowchart TD
 
 AI and tools may propose, challenge, summarize, compare, and prepare evidence. A human remains accountable for acceptance, commit, approval, publication, rollout, and organizational authority. “Implemented and automated-tested” is repository evidence—not Product Owner acceptance, enterprise readiness, security certification, compliance, production authorization, or outcome proof.
 
-## 2. Quick start
+## 2. Start here
 
-_For a first GAEP session · about 10 minutes_
+_For a first GAEP session · approximately 3 minutes_
 
-### Your first governed session
+### Your approximately three-minute first session
 
 Open **GAEP: Open Guide** from the Command Palette at any time. In Chat, address `@gaep`; commands below are verified against the extension package during generation.
 
@@ -124,150 +128,274 @@ Practical first steps:
 
 Adding a useful link records the link; it does not fetch, read, or approve the linked content. Attach or ingest exact material when its content must become evidence.
 
-### Where you are and what happens next
+### Previous, Current, and Next
 
-<!-- BEGIN GENERATED:CURRENT_RUNTIME -->
-<!-- GAEP-VISUAL:where-you-are -->
+<!-- BEGIN GENERATED:CHECKPOINT_POSITION_EXAMPLE -->
+<!-- GAEP-VISUAL:checkpoint-position-example -->
 
-**Current runtime checkpoint path**
+**Previous, Current, and Next example — not live workspace state**
 
 ```mermaid
-%% Current runtime checkpoint path
+%% Previous, Current, and Next example — not live workspace state
 flowchart TD
-  r01["1. Product definition"]
-  r02["2. Initiative definition"]
-  r03["3. Initiative classification"]
-  r04["4. Initiative applicability"]
-  r05["5. Source intake"]
-  r06["6. Source baseline"]
-  r07["7. Source provenance"]
-  r08["8. Product discovery"]
-  r09["9. Business architecture"]
-  r10["10. Solution and security architecture"]
-  r11["11. Detailed design and assurance"]
-  r12["12. Design and implementation handoff (legacy wording below)"]
-  r01 --> r02 --> r03 --> r04 --> r05 --> r06 --> r07 --> r08 --> r09 --> r10 --> r11 --> r12
+  previous["Previous · ✓ Recorded<br/>Initiative definition · governed"]
+  current["Current · ● Current<br/>Initiative classification · candidate<br/>! 1 blocker · ? 2 open questions"]
+  next["Next · → Next<br/>Initiative applicability<br/>CTA: @gaep /continue"]
+  previous --> current --> next
 ```
 
-<details>
-<summary><strong>Exact current checkpoint IDs</strong></summary>
+> **Static example, not live state.** Open Product Studio or run `@gaep /status` for the actual workspace position, candidate/governed status, blockers, attention count, open questions, and next valid CTA.
+<!-- END GENERATED:CHECKPOINT_POSITION_EXAMPLE -->
 
-- `product-definition` — Product definition
-- `initiative-definition` — Initiative definition
-- `initiative-classification` — Initiative classification
-- `initiative-applicability` — Initiative applicability
-- `source-intake` — Source intake
-- `source-baseline` — Source baseline
-- `source-provenance` — Source provenance
-- `product-discovery` — Product discovery
-- `business-architecture` — Business architecture
-- `solution-security-architecture` — Solution and security architecture
-- `detailed-design-assurance` — Detailed design and assurance
-- `design-implementation-handoff` — Design and implementation handoff (legacy wording; see compatibility note)
+### Checkpoint states and attention indicators
+
+<!-- BEGIN GENERATED:STATE_LEGEND -->
+Primary progression state and attention indicators are separate. For example, a governed **Recorded** checkpoint may also carry **Needs attention**; a candidate may carry **2 open questions** without becoming governed.
+
+#### Primary progression states
+
+<details><summary><strong>✓ Recorded</strong> · `complete`</summary>
+
+- **Meaning:** A governed checkpoint revision is recorded for the current Product context.
+- **Content:** governed.
+- **Your action:** Review the recorded values and revise them when evidence or context changes.
+- **Progression:** possible-subject-to-downstream-prerequisites.
+- **Persists:** The governed revision, evidence bindings, and audit history persist.
+- **Does not authorize:** Recording does not grant approval, publication, readiness, rollout, release, or production authority.
 
 </details>
 
-> **Compatibility note — current runtime only:** the existing final checkpoint label is “Pre-Figma readiness and handoff.” The target lifecycle and all new guidance use the tool-neutral canonical stage “Product Design preparation and evidence.”
-<!-- END GENERATED:CURRENT_RUNTIME -->
+<details><summary><strong>◆ Candidate ready for review</strong> · `candidate-ready`</summary>
 
-The target lifecycle in Layer 3 is broader than today’s runtime checkpoint vocabulary. Treat the target as an honest map of current, partial, and planned coverage—not as a claim that every node is already automated.
+- **Meaning:** A bounded proposal exists, but it has not become governed state.
+- **Content:** candidate.
+- **Your action:** Inspect the exact candidate, challenge it, and either revise, reject, or explicitly accept it.
+- **Progression:** review-required.
+- **Persists:** Only candidate metadata and evidence bindings persist until an explicit governed commit.
+- **Does not authorize:** A candidate does not approve itself and does not authorize downstream execution.
 
-### Visual language for every checkpoint
+</details>
 
-Use these compact callouts in GAEP conversations and future Product surfaces. They make the state actionable without pretending that an unanswered question is resolved.
+<details><summary><strong>! Needs decisions</strong> · `needs-decisions`</summary>
 
-> **Why this matters** — explains the downstream decision, risk, or evidence consequence.
+- **Meaning:** A candidate is incomplete because one or more accountable human decisions remain open.
+- **Content:** candidate.
+- **Your action:** Resolve the named decisions or record them explicitly as unresolved with an owner.
+- **Progression:** bounded-work-may-continue-when-runtime-allows.
+- **Persists:** The candidate, missing-decision list, and evidence digests persist.
+- **Does not authorize:** An unresolved decision is not an implied approval or waiver.
 
-> **What GAEP needs from you** — names the bounded human input or authority required now.
+</details>
 
-> **Previous step** — points to the exact governed predecessor or says that none exists.
+<details><summary><strong>⏸ Waiting for prerequisite</strong> · `blocked-by-prerequisite`</summary>
 
-> **Current step** — identifies the active checkpoint and whether its content is candidate or governed.
+- **Meaning:** The checkpoint cannot validly progress until a named governed prerequisite is satisfied.
+- **Content:** candidate-or-empty.
+- **Your action:** Open the prerequisite checkpoint and complete or explicitly resolve its required work.
+- **Progression:** not-possible.
+- **Persists:** Any bounded candidate and the exact prerequisite reason persist.
+- **Does not authorize:** A blocked checkpoint cannot be treated as complete, approved, or ready.
 
-> **Next step** — names the next valid action; it is not a delivery promise.
+</details>
 
-> **Open question** — visually separates unresolved information from explanatory prose.
+<details><summary><strong>● Current</strong> · `current`</summary>
 
-> **Blocking decision** — identifies the accountable human decision that prevents valid progression.
+- **Meaning:** This is the first currently actionable checkpoint in the live runtime projection.
+- **Content:** not-yet-governed.
+- **Your action:** Use the displayed next valid action to start or resume the checkpoint.
+- **Progression:** possible.
+- **Persists:** No governed checkpoint content persists until its workflow is explicitly committed.
+- **Does not authorize:** Being current is navigation state, not approval or readiness.
 
-> **What will be persisted** — lists the exact candidate or governed fields that the action records.
+</details>
 
-> **What will not be authorized** — states which approval, publication, rollout, security, compliance, or production authorities remain outside the action.
+<details><summary><strong>→ Next</strong> · `next`</summary>
+
+- **Meaning:** This is the next valid checkpoint selected by the live Product Journey projection.
+- **Content:** not-yet-governed.
+- **Your action:** Use the displayed CTA when you are ready to continue.
+- **Progression:** possible.
+- **Persists:** The navigation projection is recomputed from governed and candidate state.
+- **Does not authorize:** Next does not mean approved, ready, or mandatory.
+
+</details>
+
+<details><summary><strong>○ Not started</strong> · `not-started`</summary>
+
+- **Meaning:** No governed revision or reviewable candidate exists for this checkpoint in the current context.
+- **Content:** none.
+- **Your action:** Complete earlier prerequisites, then start the checkpoint when it becomes the next valid action.
+- **Progression:** not-currently-actionable.
+- **Persists:** No checkpoint content is created merely by displaying this state.
+- **Does not authorize:** Absence of work is not a negative finding, rejection, or waiver.
+
+</details>
+
+#### Attention indicators
+
+<details><summary><strong>! Needs attention</strong> · overlay `needs-attention`</summary>
+
+- **Meaning:** Recorded or candidate content has a stale, incomplete, conflicting, or otherwise reviewable condition.
+- **Your action:** Use the enabled resolution action and preserve the prior revision until a replacement is committed.
+- **Progression:** depends-on-the-named-condition.
+- **Persists:** The prior state and the attention reason persist.
+- **Does not authorize:** Attention is not approval, rejection, or automatic invalidation.
+
+</details>
+
+<details><summary><strong>⛔ Blocked</strong> · overlay `blocked`</summary>
+
+- **Meaning:** A blocker prevents the named progression even if a candidate or earlier governed revision exists.
+- **Your action:** Resolve the explicit blocker or record a scoped human decision; do not bypass it by relabeling state.
+- **Progression:** not-possible.
+- **Persists:** The blocker, affected checkpoint identity, and any prior revision persist.
+- **Does not authorize:** Blocked work cannot be represented as ready, released, or complete.
+
+</details>
+
+<details><summary><strong>? Unresolved / Open questions</strong> · overlay `open-questions`</summary>
+
+- **Meaning:** One or more questions lack a reviewed answer or accountable disposition.
+- **Your action:** Answer, defer with an owner and trigger, or explicitly exclude each question within scope.
+- **Progression:** depends-on-question-materiality.
+- **Persists:** Question text, owner, evidence basis, and disposition persist when recorded.
+- **Does not authorize:** Silence, missing evidence, or an unresolved question never becomes consent or approval.
+
+</details>
+
+#### Exact runtime-to-presentation mapping
+
+| Runtime machine state | Primary visible state | Attention overlay(s) |
+|---|---|---|
+| `complete` | ✓ Recorded | None |
+| `attention-required` | ✓ Recorded | ! Needs attention |
+| `candidate-ready` | ◆ Candidate ready for review | None |
+| `needs-decisions` | ! Needs decisions | ? Unresolved / Open questions |
+| `blocked-by-prerequisite` | ⏸ Waiting for prerequisite | ⛔ Blocked |
+| `current` | ● Current | None |
+| `next` | → Next | None |
+| `not-started` | ○ Not started | None |
+
+**Unknown rule:** Unknown means not assessed or not established; it never means No.
+
+**Accessibility rule:** Every state uses text and an accessible marker; color is supplementary only.
+<!-- END GENERATED:STATE_LEGEND -->
+
+These labels are generated from the same presentation contract used by Product Studio. State is always text plus a marker; color is optional and never carries meaning alone.
 
 ## 3. Practitioner guide
 
 _For Product, architecture, design, engineering, assurance, and operations practitioners · about 20 minutes_
 
-### Target Product-to-Operations lifecycle
+### A. Current Runtime
 
-<!-- BEGIN GENERATED:STATE_LEGEND -->
-| Visible state | Canonical machine value |
-|---|---|
-| [UN] Unknown / not assessed | unknown-not-assessed |
-| [PD] Planned / deferred | planned-deferred-coming-soon |
-| [CP] Candidate / proposed | candidate-proposed |
-| [PT] Partial | partial |
-| [IA] Implemented; awaiting Product Owner acceptance | implemented-awaiting-product-owner-acceptance |
-| [IT] Implemented and automated-tested | implemented-and-automated-tested |
+This view contains only behavior and terminology that exist in the current repository/runtime. Its count and order are a versioned snapshot, not permanent architecture.
 
-**Unknown rule:** Unknown means not assessed or not established; it never means No.
+<!-- BEGIN GENERATED:CURRENT_RUNTIME -->
+<!-- GAEP-VISUAL:current-runtime -->
 
-**Accessibility rule:** Every state uses text and a two-letter marker; color is supplementary only.
-<!-- END GENERATED:STATE_LEGEND -->
+**Current runtime checkpoint inventory**
+
+```mermaid
+%% Current runtime checkpoint inventory
+flowchart TD
+  product_definition["10. Product definition"]
+  initiative_definition["20. Initiative definition"]
+  initiative_classification["30. Initiative classification"]
+  initiative_applicability["40. Initiative applicability"]
+  source_intake["50. Source intake"]
+  source_baseline["60. Source baseline"]
+  source_provenance["70. Source provenance"]
+  product_discovery["80. Product discovery"]
+  business_architecture["90. Business architecture"]
+  solution_security_architecture["100. Solution and security architecture"]
+  detailed_design_assurance["110. Detailed design and assurance"]
+  p0_p4_readiness["120. Design and implementation handoff"]
+  product_definition --> initiative_definition --> initiative_classification --> initiative_applicability --> source_intake --> source_baseline --> source_provenance --> product_discovery --> business_architecture --> solution_security_architecture --> detailed_design_assurance --> p0_p4_readiness
+```
+
+| Stable checkpoint ID | Order and current label | Current prerequisites | Implemented CTA, maturity, and limitation |
+|---|---|---|---|
+| `product-definition` | 10 · Product definition | None | @gaep /initialize; @gaep /adopt; Edit Product definition<br/>implemented-awaiting-product-owner-acceptance<br/>Records a Product boundary; it does not establish market need or approve investment. |
+| `initiative-definition` | 20 · Initiative definition | product-definition | @gaep /continue; Edit Initiative definition<br/>implemented-awaiting-product-owner-acceptance<br/>Bounds a change; it does not authorize execution or funding. |
+| `initiative-classification` | 30 · Initiative classification | initiative-definition | @gaep /classification; Resolve open questions<br/>implemented-awaiting-product-owner-acceptance<br/>Classification is scoped evidence, not an approval or risk waiver. |
+| `initiative-applicability` | 40 · Initiative applicability | initiative-classification | @gaep /applicability; Resolve pending decisions<br/>implemented-awaiting-product-owner-acceptance<br/>Applicability records scoped decisions; it does not grant approval, readiness, or execution authority. |
+| `source-intake` | 50 · Source intake | initiative-definition | @gaep /intake; @gaep /record; Bind reviewed Sources to Initiative<br/>implemented-awaiting-product-owner-acceptance<br/>Attachment and extraction do not establish Source correctness, authority, or Baseline membership. |
+| `source-baseline` | 60 · Source baseline | source-intake | @gaep /baseline<br/>implemented-awaiting-product-owner-acceptance<br/>A Baseline freezes membership and revisions; it does not approve content or establish precedence. |
+| `source-provenance` | 70 · Source provenance | source-intake | @gaep /provenance<br/>implemented-awaiting-product-owner-acceptance<br/>Provenance records lineage and limitations; it does not establish correctness, authority, or Baseline membership. |
+| `product-discovery` | 80 · Product discovery | initiative-applicability, source-intake | @gaep /author; Review Product discovery<br/>implemented-awaiting-product-owner-acceptance<br/>Projects bounded discovery records; it does not prove user demand or business viability. |
+| `business-architecture` | 90 · Business architecture | product-discovery | @gaep /author; Review Business architecture<br/>implemented-awaiting-product-owner-acceptance<br/>Recorded models remain bounded by evidence and do not certify organizational design. |
+| `solution-security-architecture` | 100 · Solution and security architecture | business-architecture | @gaep /author; Review Solution and security architecture<br/>implemented-awaiting-product-owner-acceptance<br/>Architecture records do not create security, compliance, or deployment approval. |
+| `detailed-design-assurance` | 110 · Detailed design and assurance | solution-security-architecture | @gaep /author; Review Detailed design and assurance<br/>implemented-awaiting-product-owner-acceptance<br/>Models and assurance evidence do not establish release, production, security, or compliance readiness. |
+| `p0-p4-readiness` | 120 · P0–P4 readiness and P5 handoff | detailed-design-assurance | @gaep /author; Review P0–P4 readiness and P5 handoff<br/>implemented-awaiting-product-owner-acceptance<br/>Legacy runtime wording remains implemented. Product Design is the target tool-neutral abstraction; migration is not implemented. |
+
+> **Compatibility — `p0-p4-readiness`:** Current runtime compatibility only: the legacy Pre-Figma/P0–P4 wording has not yet migrated to the target Product Design abstraction.
+<!-- END GENERATED:CURRENT_RUNTIME -->
+
+### B. Target Product-to-Operations Operating Model
 
 The lifecycle is split into three linked vertical views so it remains readable in narrow and wide VS Code panes. Every status is derived conservatively from the exact capability maturity records in the bound P02 registry.
 
 <!-- BEGIN GENERATED:TARGET_LIFECYCLE -->
+**Conservative target maturity vocabulary:**
+
+- [UN] Unknown / not assessed · `unknown-not-assessed`
+- [PD] Planned / deferred · `planned-deferred-coming-soon`
+- [CP] Candidate / proposed · `candidate-proposed`
+- [PT] Partial · `partial`
+- [IA] Implemented; awaiting Product Owner acceptance · `implemented-awaiting-product-owner-acceptance`
+- [IT] Implemented and automated-tested · `implemented-and-automated-tested`
+
 <!-- GAEP-VISUAL:lifecycle-discover-define -->
 
-**Lifecycle 1–6: discover and define**
+**Target lifecycle: discover and define**
 
 ```mermaid
-%% Lifecycle 1–6: discover and define
+%% Target lifecycle: discover and define
 flowchart TD
-  lifecycle_01["1. [PT] Product intent and problem discovery<br/>GAEP-CAP-101, GAEP-CAP-102"]
-  lifecycle_02["2. [IT] Initial source and reference grounding<br/>GAEP-CAP-103, GAEP-CAP-104, GAEP-CAP-105"]
-  lifecycle_03["3. [IA] Product and Initiative definition<br/>GAEP-CAP-106, GAEP-CAP-107"]
-  lifecycle_04["4. [IT] Initiative classification and applicability<br/>GAEP-CAP-108, GAEP-CAP-109"]
-  lifecycle_05["5. [IA] Product discovery<br/>GAEP-CAP-101"]
-  lifecycle_06["6. [IA] Business architecture and value streams<br/>GAEP-CAP-110"]
+  lifecycle_01["10. [PT] Product intent and problem discovery<br/>GAEP-CAP-101, GAEP-CAP-102"]
+  lifecycle_02["20. [IT] Source-first workspace initialization and change governance<br/>GAEP-CAP-103, GAEP-CAP-104, GAEP-CAP-105"]
+  lifecycle_03["30. [IA] Product and Initiative definition<br/>GAEP-CAP-106, GAEP-CAP-107"]
+  lifecycle_04["40. [IT] Initiative classification and applicability<br/>GAEP-CAP-108, GAEP-CAP-109"]
+  lifecycle_05["50. [IA] Product discovery<br/>GAEP-CAP-101"]
+  lifecycle_06["60. [IA] Business architecture and value streams<br/>GAEP-CAP-110"]
   lifecycle_01 --> lifecycle_02 --> lifecycle_03 --> lifecycle_04 --> lifecycle_05 --> lifecycle_06
 ```
 
-↓ Continue to architecture and planning
+↓ Continue to the next target segment
 
 <!-- GAEP-VISUAL:lifecycle-architecture-plan -->
 
-**Lifecycle 7–13: architecture and planning**
+**Target lifecycle: architecture and planning**
 
 ```mermaid
-%% Lifecycle 7–13: architecture and planning
+%% Target lifecycle: architecture and planning
 flowchart TD
-  lifecycle_07["7. [IA] Domain discovery and EventStorming<br/>GAEP-CAP-111"]
-  lifecycle_08["8. [IA] DDD strategic design<br/>GAEP-CAP-112"]
-  lifecycle_09["9. [PT] Solution, data, integration, security, privacy, and quality architecture<br/>GAEP-CAP-113, GAEP-CAP-121, GAEP-CAP-122, GAEP-CAP-129, GAEP-CAP-130"]
-  lifecycle_10["10. [PT] Architecture decisions and quality scenarios<br/>GAEP-CAP-113, GAEP-CAP-114"]
-  lifecycle_11["11. [PT] Phase, wave, and vertical-slice planning<br/>GAEP-CAP-115"]
-  lifecycle_12["12. [PT] Product Design preparation and evidence<br/>GAEP-CAP-116"]
-  lifecycle_13["13. [PT] Architecture-bound backlog<br/>GAEP-CAP-117, GAEP-CAP-118"]
+  lifecycle_07["70. [IA] Domain discovery and Event Storming<br/>GAEP-CAP-111"]
+  lifecycle_08["80. [IA] DDD strategic design and context mapping<br/>GAEP-CAP-112"]
+  lifecycle_09["90. [PT] Solution, data, integration, security, privacy, and deployment architecture<br/>GAEP-CAP-113, GAEP-CAP-121, GAEP-CAP-122, GAEP-CAP-129, GAEP-CAP-130"]
+  lifecycle_10["100. [PT] Architecture decisions and quality scenarios<br/>GAEP-CAP-113, GAEP-CAP-114"]
+  lifecycle_11["110. [PT] Phase, wave, Product, and vertical-slice planning<br/>GAEP-CAP-115"]
+  lifecycle_12["120. [PT] Product Design preparation and iterative evidence<br/>GAEP-CAP-116"]
+  lifecycle_13["130. [PT] Architecture-bound backlog, readiness, done, and test design<br/>GAEP-CAP-117, GAEP-CAP-118, GAEP-CAP-119"]
   lifecycle_07 --> lifecycle_08 --> lifecycle_09 --> lifecycle_10 --> lifecycle_11 --> lifecycle_12 --> lifecycle_13
 ```
 
-↓ Continue to delivery and operations
+↓ Continue to the next target segment
 
 <!-- GAEP-VISUAL:lifecycle-deliver-operate -->
 
-**Lifecycle 14–19: delivery and operations**
+**Target lifecycle: delivery and operations**
 
 ```mermaid
-%% Lifecycle 14–19: delivery and operations
+%% Target lifecycle: delivery and operations
 flowchart TD
-  lifecycle_14["14. [PT] Repository and implementation topology<br/>GAEP-CAP-123"]
-  lifecycle_15["15. [PD] Cross-repository slice distribution and traceability<br/>GAEP-CAP-120, GAEP-CAP-124"]
-  lifecycle_16["16. [IA] Governed implementation<br/>GAEP-CAP-125"]
-  lifecycle_17["17. [IA] QA and Product acceptance<br/>GAEP-CAP-119"]
-  lifecycle_18["18. [PT] CI/CD, release, and deployment governance<br/>GAEP-CAP-126"]
-  lifecycle_19["19. [PD] Runtime operations, recovery, and feedback<br/>GAEP-CAP-127, GAEP-CAP-128"]
+  lifecycle_14["140. [PT] Repository and implementation-target topology<br/>GAEP-CAP-123"]
+  lifecycle_15["150. [PD] Cross-repository slice distribution, synchronization, and drift<br/>GAEP-CAP-120, GAEP-CAP-124"]
+  lifecycle_16["160. [IA] Governed implementation agents and code generation<br/>GAEP-CAP-125"]
+  lifecycle_17["170. [IA] Product QA and Product Owner acceptance<br/>GAEP-CAP-119"]
+  lifecycle_18["180. [PT] CI/CD, release, deployment, and environment governance<br/>GAEP-CAP-126"]
+  lifecycle_19["190. [PD] Operations, observability, incident/recovery evidence, and feedback<br/>GAEP-CAP-127, GAEP-CAP-128"]
   lifecycle_14 --> lifecycle_15 --> lifecycle_16 --> lifecycle_17 --> lifecycle_18 --> lifecycle_19
 ```
 
@@ -276,40 +404,141 @@ flowchart TD
 
 | # | Target node | Conservative node state | Source capability states |
 |---:|---|---|---|
-| 1 | Product intent and problem discovery | [PT] Partial | GAEP-CAP-101 implemented-awaiting-product-owner-acceptance; GAEP-CAP-102 partial |
-| 2 | Initial source and reference grounding | [IT] Implemented and automated-tested | GAEP-CAP-103 implemented-and-automated-tested; GAEP-CAP-104 implemented-and-automated-tested; GAEP-CAP-105 implemented-and-automated-tested |
-| 3 | Product and Initiative definition | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-106 implemented-awaiting-product-owner-acceptance; GAEP-CAP-107 implemented-and-automated-tested |
-| 4 | Initiative classification and applicability | [IT] Implemented and automated-tested | GAEP-CAP-108 implemented-and-automated-tested; GAEP-CAP-109 implemented-and-automated-tested |
-| 5 | Product discovery | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-101 implemented-awaiting-product-owner-acceptance |
-| 6 | Business architecture and value streams | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-110 implemented-awaiting-product-owner-acceptance |
-| 7 | Domain discovery and EventStorming | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-111 implemented-awaiting-product-owner-acceptance |
-| 8 | DDD strategic design | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-112 implemented-awaiting-product-owner-acceptance |
-| 9 | Solution, data, integration, security, privacy, and quality architecture | [PT] Partial | GAEP-CAP-113 implemented-awaiting-product-owner-acceptance; GAEP-CAP-121 partial; GAEP-CAP-122 partial; GAEP-CAP-129 implemented-awaiting-product-owner-acceptance; GAEP-CAP-130 partial |
-| 10 | Architecture decisions and quality scenarios | [PT] Partial | GAEP-CAP-113 implemented-awaiting-product-owner-acceptance; GAEP-CAP-114 partial |
-| 11 | Phase, wave, and vertical-slice planning | [PT] Partial | GAEP-CAP-115 partial |
-| 12 | Product Design preparation and evidence | [PT] Partial | GAEP-CAP-116 partial |
-| 13 | Architecture-bound backlog | [PT] Partial | GAEP-CAP-117 partial; GAEP-CAP-118 partial |
-| 14 | Repository and implementation topology | [PT] Partial | GAEP-CAP-123 partial |
-| 15 | Cross-repository slice distribution and traceability | [PD] Planned / deferred | GAEP-CAP-120 implemented-awaiting-product-owner-acceptance; GAEP-CAP-124 planned-deferred-coming-soon |
-| 16 | Governed implementation | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-125 implemented-awaiting-product-owner-acceptance |
-| 17 | QA and Product acceptance | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-119 implemented-awaiting-product-owner-acceptance |
-| 18 | CI/CD, release, and deployment governance | [PT] Partial | GAEP-CAP-126 partial |
-| 19 | Runtime operations, recovery, and feedback | [PD] Planned / deferred | GAEP-CAP-127 planned-deferred-coming-soon; GAEP-CAP-128 implemented-awaiting-product-owner-acceptance |
+| 10 | Product intent and problem discovery | [PT] Partial | GAEP-CAP-101 implemented-awaiting-product-owner-acceptance; GAEP-CAP-102 partial |
+| 20 | Source-first workspace initialization and change governance | [IT] Implemented and automated-tested | GAEP-CAP-103 implemented-and-automated-tested; GAEP-CAP-104 implemented-and-automated-tested; GAEP-CAP-105 implemented-and-automated-tested |
+| 30 | Product and Initiative definition | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-106 implemented-awaiting-product-owner-acceptance; GAEP-CAP-107 implemented-and-automated-tested |
+| 40 | Initiative classification and applicability | [IT] Implemented and automated-tested | GAEP-CAP-108 implemented-and-automated-tested; GAEP-CAP-109 implemented-and-automated-tested |
+| 50 | Product discovery | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-101 implemented-awaiting-product-owner-acceptance |
+| 60 | Business architecture and value streams | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-110 implemented-awaiting-product-owner-acceptance |
+| 70 | Domain discovery and Event Storming | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-111 implemented-awaiting-product-owner-acceptance |
+| 80 | DDD strategic design and context mapping | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-112 implemented-awaiting-product-owner-acceptance |
+| 90 | Solution, data, integration, security, privacy, and deployment architecture | [PT] Partial | GAEP-CAP-113 implemented-awaiting-product-owner-acceptance; GAEP-CAP-121 partial; GAEP-CAP-122 partial; GAEP-CAP-129 implemented-awaiting-product-owner-acceptance; GAEP-CAP-130 partial |
+| 100 | Architecture decisions and quality scenarios | [PT] Partial | GAEP-CAP-113 implemented-awaiting-product-owner-acceptance; GAEP-CAP-114 partial |
+| 110 | Phase, wave, Product, and vertical-slice planning | [PT] Partial | GAEP-CAP-115 partial |
+| 120 | Product Design preparation and iterative evidence | [PT] Partial | GAEP-CAP-116 partial |
+| 130 | Architecture-bound backlog, readiness, done, and test design | [PT] Partial | GAEP-CAP-117 partial; GAEP-CAP-118 partial; GAEP-CAP-119 implemented-awaiting-product-owner-acceptance |
+| 140 | Repository and implementation-target topology | [PT] Partial | GAEP-CAP-123 partial |
+| 150 | Cross-repository slice distribution, synchronization, and drift | [PD] Planned / deferred | GAEP-CAP-120 implemented-awaiting-product-owner-acceptance; GAEP-CAP-124 planned-deferred-coming-soon |
+| 160 | Governed implementation agents and code generation | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-125 implemented-awaiting-product-owner-acceptance |
+| 170 | Product QA and Product Owner acceptance | [IA] Implemented; awaiting Product Owner acceptance | GAEP-CAP-119 implemented-awaiting-product-owner-acceptance |
+| 180 | CI/CD, release, deployment, and environment governance | [PT] Partial | GAEP-CAP-126 partial |
+| 190 | Operations, observability, incident/recovery evidence, and feedback | [PD] Planned / deferred | GAEP-CAP-127 planned-deferred-coming-soon; GAEP-CAP-128 implemented-awaiting-product-owner-acceptance |
 
 </details>
 <!-- END GENERATED:TARGET_LIFECYCLE -->
 
 Architecture and DDD precede architecture-bound backlog. Product Design is the canonical tool-neutral target stage. Repository distribution, CI/CD governance, and runtime feedback remain visibly partial or planned where the evidence says so.
 
-### Source grounding and provenance
+### C. Transition Roadmap
 
-<!-- BEGIN GENERATED:SOURCE_LINEAGE -->
-<!-- GAEP-VISUAL:source-lineage -->
+<!-- BEGIN GENERATED:TRANSITION_ROADMAP -->
+<!-- GAEP-VISUAL:transition-roadmap -->
 
-**Source-to-decision lineage**
+**Current-to-target transition**
 
 ```mermaid
-%% Source-to-decision lineage
+%% Current-to-target transition
+flowchart TD
+  current["A. Current Runtime<br/>implemented behavior only"] --> mapping["C. Explicit transition records<br/>retained, expanded, split, merged, or replaced"]
+  mapping --> target["B. Target Operating Model<br/>intent and conservative maturity"]
+  target -. "later authorized prompts" .-> future["Future runtime implementation"]
+```
+
+| Current stable ID | Transition and target | Current evidence | Target intent, dependency, and status |
+|---|---|---|---|
+| `product-definition` | expanded<br/>`lifecycle-01`, `lifecycle-03` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Expand Product definition into evidence-bound intent, discovery, and durable Product context.<br/>Dependency: Product Owner acceptance and future runtime authorization<br/>Migration: planned; PO acceptance: unresolved |
+| `initiative-definition` | retained<br/>`lifecycle-03` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Retain stable Initiative identity while expanding context and migration metadata.<br/>Dependency: Product Owner acceptance<br/>Migration: planned; PO acceptance: unresolved |
+| `initiative-classification` | retained<br/>`lifecycle-04` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Retain classification and integrate it with target applicability governance.<br/>Dependency: Product Owner acceptance<br/>Migration: planned; PO acceptance: unresolved |
+| `initiative-applicability` | expanded<br/>`lifecycle-04` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Expand applicability into the complete target operating-model crosswalk.<br/>Dependency: Canonical coverage and Product Owner decisions<br/>Migration: planned; PO acceptance: unresolved |
+| `source-intake` | expanded<br/>`lifecycle-02` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Add explicit source-change lifecycle and downstream revalidation without inferring truth or supersession.<br/>Dependency: Source change/removal contract gap<br/>Migration: planned; PO acceptance: unresolved |
+| `source-baseline` | merged<br/>`lifecycle-02` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Remain a distinct governed record inside a unified target source-governance node.<br/>Dependency: Source lifecycle UX<br/>Migration: planned; PO acceptance: unresolved |
+| `source-provenance` | merged<br/>`lifecycle-02` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Remain a distinct governed record inside a unified target source-governance node.<br/>Dependency: Source lifecycle UX<br/>Migration: planned; PO acceptance: unresolved |
+| `product-discovery` | expanded<br/>`lifecycle-05` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Expand governed discovery records and iterative evidence review.<br/>Dependency: Product Owner acceptance<br/>Migration: planned; PO acceptance: unresolved |
+| `business-architecture` | split<br/>`lifecycle-06`, `lifecycle-07`, `lifecycle-08` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Separate business architecture, Event Storming/domain discovery, and DDD strategic design.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; PO acceptance: unresolved |
+| `solution-security-architecture` | split<br/>`lifecycle-09`, `lifecycle-10` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Separate architecture domains from architecture decisions and quality scenarios.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; PO acceptance: unresolved |
+| `detailed-design-assurance` | split<br/>`lifecycle-10`, `lifecycle-11`, `lifecycle-12`, `lifecycle-13` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Split planning, Product Design, backlog, readiness, done, test, and assurance concerns.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; PO acceptance: unresolved |
+| `p0-p4-readiness` | replaced-by-tool-neutral-abstraction<br/>`lifecycle-12`, `lifecycle-13`, `lifecycle-14`, `lifecycle-15`, `lifecycle-16`, `lifecycle-17`, `lifecycle-18`, `lifecycle-19` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-planned | Replace legacy handoff wording with tool-neutral Product Design and explicit delivery/operations nodes.<br/>Dependency: Compatibility migration and later authorized implementation prompts<br/>Migration: planned; PO acceptance: unresolved |
+<!-- END GENERATED:TRANSITION_ROADMAP -->
+
+The roadmap is not implementation evidence. “Planned” means later authorized work is required; it does not rename or replace current runtime terminology.
+
+### Canonical roadmap coverage audit
+
+<!-- BEGIN GENERATED:ROADMAP_COVERAGE -->
+Every current canonical capability maps to at least one target node. Proposed Product Owner detail that exceeds accepted P01/P02 granularity remains an explicit, unaccepted gap.
+
+<details>
+<summary><strong>Show all canonical capability mappings</strong></summary>
+
+| Capability | Target node(s) | Current checkpoint(s), if any | Current maturity and source |
+|---|---|---|---|
+| GAEP-CAP-101<br/>Product intent and problem discovery | `lifecycle-01`, `lifecycle-05` | `product-definition`, `product-discovery` | [IA] Implemented; awaiting Product Owner acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-102<br/>Guided lifecycle navigation and user onboarding | `lifecycle-01` | `product-definition` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-103<br/>Source intake and reference grounding | `lifecycle-02` | `source-intake`, `source-baseline`, `source-provenance` | [IT] Implemented and automated-tested<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-104<br/>Source baseline and version control | `lifecycle-02` | `source-intake`, `source-baseline`, `source-provenance` | [IT] Implemented and automated-tested<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-105<br/>Source provenance and lineage | `lifecycle-02` | `source-intake`, `source-baseline`, `source-provenance` | [IT] Implemented and automated-tested<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-106<br/>Human authority and propose/review/accept/commit separation | `lifecycle-03` | `product-definition`, `initiative-definition` | [IA] Implemented; awaiting Product Owner acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-107<br/>Initiative definition and change boundary | `lifecycle-03` | `product-definition`, `initiative-definition` | [IT] Implemented and automated-tested<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-108<br/>Initiative classification, risk and exposure | `lifecycle-04` | `initiative-classification`, `initiative-applicability` | [IT] Implemented and automated-tested<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-109<br/>Initiative applicability and lifecycle tailoring | `lifecycle-04` | `initiative-classification`, `initiative-applicability` | [IT] Implemented and automated-tested<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-110<br/>Business architecture, capabilities and value streams | `lifecycle-06` | `business-architecture` | [IA] Implemented; awaiting Product Owner acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-111<br/>Domain discovery and EventStorming | `lifecycle-07` | `business-architecture` | [IA] Implemented; awaiting Product Owner acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-112<br/>DDD strategic design, bounded contexts and context mapping | `lifecycle-08` | `business-architecture` | [IA] Implemented; awaiting Product Owner acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-113<br/>Architecture views, quality attributes and ADRs | `lifecycle-09`, `lifecycle-10` | `solution-security-architecture`, `detailed-design-assurance` | [IA] Implemented; awaiting Product Owner acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-114<br/>Architecture-before-slice implementation sequencing | `lifecycle-10` | `solution-security-architecture`, `detailed-design-assurance` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-115<br/>Phase, wave and vertical-slice planning | `lifecycle-11` | `detailed-design-assurance` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-116<br/>Tool-neutral Product Design preparation and handoff | `lifecycle-12` | `detailed-design-assurance`, `p0-p4-readiness` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-117<br/>Architecture-bound backlog generation | `lifecycle-13` | `detailed-design-assurance`, `p0-p4-readiness` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-118<br/>Acceptance criteria, Definition of Ready and Definition of Done | `lifecycle-13` | `detailed-design-assurance`, `p0-p4-readiness` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-119<br/>Test design, test cases and quality assurance | `lifecycle-13`, `lifecycle-17` | `detailed-design-assurance`, `p0-p4-readiness` | [IA] Implemented; awaiting Product Owner acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-120<br/>Requirements-to-design-to-code-to-test traceability | `lifecycle-15` | `p0-p4-readiness` | [IA] Implemented; awaiting Product Owner acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-121<br/>Security, privacy, policy and compliance governance | `lifecycle-09` | `solution-security-architecture` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-122<br/>Data, API, event and integration contract governance | `lifecycle-09` | `solution-security-architecture` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-123<br/>Repository linking and implementation topology | `lifecycle-14` | `p0-p4-readiness` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-124<br/>Cross-repository slice distribution, synchronization and drift detection | `lifecycle-15` | `p0-p4-readiness` | [PD] Planned / deferred<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-125<br/>Implementation agents and governed code generation | `lifecycle-16` | `p0-p4-readiness` | [IA] Implemented; awaiting Product Owner acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-126<br/>CI/CD, release and deployment governance | `lifecycle-18` | `p0-p4-readiness` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-127<br/>Runtime operations, observability, recovery and reliability | `lifecycle-19` | `p0-p4-readiness` | [PD] Planned / deferred<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-128<br/>Audit trail, evidence records and decision history | `lifecycle-19` | `p0-p4-readiness` | [IA] Implemented; awaiting Product Owner acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-129<br/>Provider/tool neutrality, adapters and extensibility | `lifecycle-09` | `solution-security-architecture` | [IA] Implemented; awaiting Product Owner acceptance<br/>Canonical source: GAEP-REG-013 |
+| GAEP-CAP-130<br/>Enterprise administration, deployment control, data residency and portability | `lifecycle-09` | `solution-security-architecture` | [PT] Partial<br/>Canonical source: GAEP-REG-013 |
+
+</details>
+
+<details>
+<summary><strong>Show Product Owner requirement crosswalk</strong></summary>
+
+| Requirement | Target node(s) | Current checkpoint(s) | Disposition and unresolved decision |
+|---|---|---|---|
+| GAEP-P03-REQ-001<br/>Source-first optional onboarding | `lifecycle-01`, `lifecycle-02`, `lifecycle-03` | `product-definition`, `source-intake` | partial<br/>expanded<br/>No-source onboarding is supported; complete source-change UX remains a target gap. |
+| GAEP-P03-REQ-002<br/>Source Intake, Baseline, Provenance, and change governance | `lifecycle-02` | `source-intake`, `source-baseline`, `source-provenance` | partial<br/>expanded<br/>Explicit removal, exclusion, and supersession runtime workflows are not implemented. |
+| GAEP-P03-REQ-003<br/>Product discovery through DDD and context mapping | `lifecycle-05`, `lifecycle-06`, `lifecycle-07`, `lifecycle-08` | `product-discovery`, `business-architecture` | partial<br/>split<br/>Target nodes are modeled; runtime split is planned. |
+| GAEP-P03-REQ-004<br/>Architecture before Product Design and backlog | `lifecycle-09`, `lifecycle-10`, `lifecycle-11`, `lifecycle-12`, `lifecycle-13` | `solution-security-architecture`, `detailed-design-assurance`, `p0-p4-readiness` | partial<br/>split<br/>Legacy runtime naming remains until a separately authorized migration. |
+| GAEP-P03-REQ-005<br/>Architecture-bound backlog, readiness, done, tests, and traceability | `lifecycle-13`, `lifecycle-15`, `lifecycle-17` | `detailed-design-assurance`, `p0-p4-readiness` | partial<br/>expanded<br/>Target mappings exist; end-to-end runtime orchestration remains later work. |
+| GAEP-P03-REQ-006<br/>Repository topology and multiple implementation targets | `lifecycle-14`, `lifecycle-15` | `p0-p4-readiness` | planned-deferred-coming-soon<br/>newly-planned<br/>Detailed target-form taxonomy needs a future P02 canonical correction. |
+| GAEP-P03-REQ-007<br/>Governed implementation, source scanning, and evidence | `lifecycle-16`, `lifecycle-17` | `p0-p4-readiness` | partial<br/>expanded<br/>Future implementation prompts must preserve agent and human authority boundaries. |
+| GAEP-P03-REQ-008<br/>CI/CD, release, deployment, environments, and operations feedback | `lifecycle-18`, `lifecycle-19` | None | planned-deferred-coming-soon<br/>newly-planned<br/>No current runtime checkpoint implements the complete target behavior. |
+| GAEP-P03-REQ-009<br/>ERP is illustrative, never a universal Product assumption | `lifecycle-06`, `lifecycle-14` | None | planned-deferred-coming-soon<br/>retained-boundary<br/>All generated target wording must remain Product-neutral. |
+| GAEP-P03-REQ-010<br/>Figma remains an optional Product Design adapter | `lifecycle-12` | `p0-p4-readiness` | partial<br/>replaced-by-tool-neutral-abstraction<br/>Runtime compatibility wording remains; canonical target wording is Product Design. |
+| GAEP-P03-REQ-011<br/>Initiative classification, applicability, and unresolved decision governance | `lifecycle-04` | `initiative-classification`, `initiative-applicability` | implemented-awaiting-product-owner-acceptance<br/>expanded<br/>Current runtime behavior remains awaiting Product Owner acceptance. |
+
+</details>
+
+#### Proposed canonical gaps — not accepted truth
+
+- **GAEP-P03-GAP-001 · Implementation-target form taxonomy** — proposed-unaccepted; blocks acceptance: true. GAEP-REG-013 capability taxonomy or a Product Owner-approved successor must explicitly model web, mobile, PWA, dashboard, admin, API, event, worker, integration, and multi-project topology breadth.
+- **GAEP-P03-GAP-002 · Source removal, exclusion, supersession, and temporary-unavailability workflow** — proposed-unaccepted; blocks acceptance: true. A future accepted Source-governance contract and runtime prompt must define human-scoped transitions, preserved revisions, and revalidation effects.
+<!-- END GENERATED:ROADMAP_COVERAGE -->
+
+### Source lifecycle
+
+<!-- BEGIN GENERATED:SOURCE_LINEAGE -->
+<!-- GAEP-VISUAL:source-lifecycle -->
+
+**Source Intake, Baseline, Provenance, and change review**
+
+```mermaid
+%% Source Intake, Baseline, Provenance, and change review
 flowchart TD
   material["Exact attached or ingested material"] --> source["Candidate Source record"]
   source --> baseline["Explicit Baseline membership and revision"]
@@ -698,27 +927,27 @@ These sources calibrate exact GAEP concerns. Catalog presence does not mean whol
 
 The ledger is not marketing copy. It retains dispositions, qualifiers, limitations, and authority states so internal fact use cannot silently become an approved or public claim.
 
-### Deterministic maintenance contract
+### Maintainer and projection details
 
 <!-- BEGIN GENERATED:MAINTENANCE_CONTRACT -->
-**Projection contract:** GAEP-REG-014 v0.2.0 · schema 1.0.0 · not-approved · not-published.
+**Projection contract:** GAEP-REG-014 v0.3.0 · schema 1.1.0 · not-approved · not-published.
 
 | Source role | Exact identity | Repository path | SHA-256 |
 |---|---|---|---|
 | methodology-catalog | `GAEP-REG-011` v0.4.0 | `docs/next/99_Registries_and_References/011_METHODOLOGY_REFERENCE_CATALOG.json` | `6859769b56eeae9025dfff5407113dbc7b22ec7809e518d69a399effb156b209` |
 | market-registry | `GAEP-REG-013` v0.2.1 | `docs/next/99_Registries_and_References/013_MARKET_EVIDENCE_AND_BENCHMARK_REGISTRY.json` | `3dcfe5531a1bb4630dc3afdb2990389728e2d39cac2ac915986badb9fe9e5c17` |
 | terminology-index | `GAEP-REG-005` v0.3.0 | `docs/next/99_Registries_and_References/005_CANONICAL_TERMINOLOGY_INDEX.md` | `9e5765683133d3904742bd9a05be7a3323d83848b7015d06a864f5e37af6aca5` |
-| runtime-checkpoints | `runtime-product-journey-checkpoints` | `apps/vscode/src/existing-product-journey-coverage.ts` | `9665f13fe3c5cf2411c8b7d9404938eee06035b818e46d3df815f62916549d3a` |
+| runtime-presentation-contract | `runtime-product-journey-presentation` v1.0.0 | `apps/vscode/src/product-journey-presentation.ts` | `445797601923593b842041c02b630bbebdb4d9a16d9ccbf9540800ad6d192c54` |
 | extension-package | `gaep-vscode-package` v0.1.0 | `apps/vscode/package.json` | `82d4235bea19ec54a4fd649261c37e8cb3a13f6c7823c169a88d66fc899a1e8b` |
 
 **Required progressive layers:**
 
 - **Executive orientation** — Executives, Product leaders, and evaluation sponsors; 5-minute route
-- **Quick start** — First-time GAEP users; 10-minute route
+- **Start here** — First-time GAEP users; 3-minute route
 - **Practitioner guide** — Product, architecture, design, engineering, assurance, and operations practitioners; 20-minute route
 - **Methodology and maintainer appendix** — Methodology stewards, reviewers, and maintainers; 25-minute route
 
-**Required visual inventory:** executive-operating-model, authority-loop, quick-start-flow, where-you-are, lifecycle-discover-define, lifecycle-architecture-plan, lifecycle-deliver-operate, source-lineage, scenario-choice. All are vertical (TD/TB), use text labels, and rely on host light/dark Mermaid theming.
+**Required visual inventory:** executive-operating-model, authority-loop, quick-start-flow, checkpoint-position-example, current-runtime, lifecycle-discover-define, lifecycle-architecture-plan, lifecycle-deliver-operate, transition-roadmap, source-lifecycle, scenario-choice. All are vertical (TD/TB), use text labels, and rely on host light/dark Mermaid theming.
 
 **Deterministic commands:**
 

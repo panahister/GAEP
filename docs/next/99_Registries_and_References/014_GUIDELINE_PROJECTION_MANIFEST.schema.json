@@ -1,36 +1,23 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gaep.example/schemas/guideline-projection-manifest-1.0.0.json",
+  "$id": "https://gaep.example/schemas/guideline-projection-manifest-1.1.0.json",
   "title": "GAEP Guideline Projection Manifest",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schemaId",
-    "schemaVersion",
-    "registryId",
-    "version",
-    "status",
-    "ownerRole",
-    "approval",
-    "generation",
-    "canonicalSources",
-    "audienceLayers",
-    "requiredSections",
-    "requiredVisuals",
-    "lifecycleNodes",
-    "statePolicy",
-    "commandSurface"
+    "schemaId", "schemaVersion", "registryId", "version", "status", "ownerRole", "approval", "generation",
+    "canonicalSources", "audienceLayers", "requiredSections", "requiredVisuals", "lifecycleSegments", "lifecycleNodes",
+    "transitionRoadmap", "productOwnerRequirements", "proposedCanonicalGaps", "statePolicy", "commandSurface"
   ],
   "properties": {
-    "schemaId": { "const": "https://gaep.example/schemas/guideline-projection-manifest-1.0.0.json" },
-    "schemaVersion": { "const": "1.0.0" },
+    "schemaId": { "const": "https://gaep.example/schemas/guideline-projection-manifest-1.1.0.json" },
+    "schemaVersion": { "const": "1.1.0" },
     "registryId": { "const": "GAEP-REG-014" },
-    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "version": { "$ref": "#/$defs/version" },
     "status": { "const": "proposed" },
     "ownerRole": { "const": "GAEP Product Owner" },
     "approval": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["state", "approvedBy", "approvedAt", "publicationState"],
       "properties": {
         "state": { "const": "not-approved" },
@@ -40,72 +27,33 @@
       }
     },
     "generation": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["templatePath", "outputPath", "rendererPath", "timestampPolicy"],
+      "type": "object", "additionalProperties": false,
+      "required": ["templatePath", "outputPath", "decisionSupportOutputPath", "rendererPath", "timestampPolicy"],
       "properties": {
         "templatePath": { "$ref": "#/$defs/repositoryPath" },
         "outputPath": { "const": "apps/vscode/media/GAEP_GUIDE.md" },
+        "decisionSupportOutputPath": { "const": "apps/vscode/media/GAEP_MARKET_DECISION_GUIDE.md" },
         "rendererPath": { "const": "scripts/render_guideline.mjs" },
         "timestampPolicy": { "const": "none-deterministic" }
       }
     },
-    "canonicalSources": {
-      "type": "array",
-      "minItems": 5,
-      "uniqueItems": true,
-      "items": { "$ref": "#/$defs/sourceBinding" }
-    },
-    "audienceLayers": {
-      "type": "array",
-      "minItems": 4,
-      "maxItems": 4,
-      "items": { "$ref": "#/$defs/audienceLayer" }
-    },
-    "requiredSections": {
-      "type": "array",
-      "minItems": 12,
-      "uniqueItems": true,
-      "items": { "$ref": "#/$defs/section" }
-    },
-    "requiredVisuals": {
-      "type": "array",
-      "minItems": 8,
-      "uniqueItems": true,
-      "items": { "$ref": "#/$defs/visual" }
-    },
-    "lifecycleNodes": {
-      "type": "array",
-      "minItems": 19,
-      "maxItems": 19,
-      "items": { "$ref": "#/$defs/lifecycleNode" }
-    },
+    "canonicalSources": { "type": "array", "minItems": 5, "uniqueItems": true, "items": { "$ref": "#/$defs/sourceBinding" } },
+    "audienceLayers": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "$ref": "#/$defs/audienceLayer" } },
+    "requiredSections": { "type": "array", "minItems": 15, "uniqueItems": true, "items": { "$ref": "#/$defs/section" } },
+    "requiredVisuals": { "type": "array", "minItems": 10, "uniqueItems": true, "items": { "$ref": "#/$defs/visual" } },
+    "lifecycleSegments": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/lifecycleSegment" } },
+    "lifecycleNodes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/lifecycleNode" } },
+    "transitionRoadmap": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/transition" } },
+    "productOwnerRequirements": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/productOwnerRequirement" } },
+    "proposedCanonicalGaps": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/proposedGap" } },
     "statePolicy": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["displayPriority", "labels", "unknownRule", "colorRule"],
       "properties": {
-        "displayPriority": {
-          "const": [
-            "unknown-not-assessed",
-            "planned-deferred-coming-soon",
-            "candidate-proposed",
-            "partial",
-            "implemented-awaiting-product-owner-acceptance",
-            "implemented-and-automated-tested"
-          ]
-        },
+        "displayPriority": { "const": ["unknown-not-assessed", "planned-deferred-coming-soon", "candidate-proposed", "partial", "implemented-awaiting-product-owner-acceptance", "implemented-and-automated-tested"] },
         "labels": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "unknown-not-assessed",
-            "planned-deferred-coming-soon",
-            "candidate-proposed",
-            "partial",
-            "implemented-awaiting-product-owner-acceptance",
-            "implemented-and-automated-tested"
-          ],
+          "type": "object", "additionalProperties": false,
+          "required": ["unknown-not-assessed", "planned-deferred-coming-soon", "candidate-proposed", "partial", "implemented-awaiting-product-owner-acceptance", "implemented-and-automated-tested"],
           "properties": {
             "unknown-not-assessed": { "const": "[UN] Unknown / not assessed" },
             "planned-deferred-coming-soon": { "const": "[PD] Planned / deferred" },
@@ -116,39 +64,32 @@
           }
         },
         "unknownRule": { "const": "Unknown means not assessed or not established; it never means No." },
-        "colorRule": { "const": "Every state uses text and a two-letter marker; color is supplementary only." }
+        "colorRule": { "const": "Every state uses text and an accessible marker; color is supplementary only." }
       }
     },
     "commandSurface": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["extensionCommandIds", "chatCommands"],
       "properties": {
-        "extensionCommandIds": {
-          "const": ["gaep.openGuide"]
-        },
-        "chatCommands": {
-          "type": "array",
-          "minItems": 8,
-          "uniqueItems": true,
-          "items": { "type": "string", "pattern": "^[a-z]+$" }
-        }
+        "extensionCommandIds": { "type": "array", "minItems": 5, "uniqueItems": true, "items": { "type": "string", "pattern": "^gaep\\.[A-Za-z][A-Za-z0-9.]+$" } },
+        "chatCommands": { "type": "array", "minItems": 10, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z]+$" } }
       }
     }
   },
   "$defs": {
-    "repositoryPath": {
-      "type": "string",
-      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[A-Za-z0-9._/-]+$"
-    },
-    "id": { "type": "string", "pattern": "^GAEP-[A-Z]+-[0-9]{3}$" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "repositoryPath": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[A-Za-z0-9._/-]+$" },
     "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "checkpointId": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+    "nodeId": { "type": "string", "pattern": "^lifecycle-[a-z0-9-]+$" },
+    "capabilityId": { "type": "string", "pattern": "^GAEP-CAP-[0-9]{3}$" },
+    "gapId": { "type": "string", "pattern": "^GAEP-P03-GAP-[0-9]{3}$" },
+    "maturityState": { "enum": ["unknown-not-assessed", "planned-deferred-coming-soon", "candidate-proposed", "partial", "implemented-awaiting-product-owner-acceptance", "implemented-and-automated-tested"] },
     "sourceBinding": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["kind", "path", "identity", "version", "schemaVersion", "sha256"],
       "properties": {
-        "kind": { "enum": ["methodology-catalog", "market-registry", "terminology-index", "runtime-checkpoints", "extension-package"] },
+        "kind": { "enum": ["methodology-catalog", "market-registry", "terminology-index", "runtime-presentation-contract", "extension-package"] },
         "path": { "$ref": "#/$defs/repositoryPath" },
         "identity": { "type": "string", "minLength": 1 },
         "version": { "type": ["string", "null"] },
@@ -157,8 +98,7 @@
       }
     },
     "audienceLayer": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["layerId", "title", "primaryAudience", "readingTimeMinutes"],
       "properties": {
         "layerId": { "enum": ["executive-orientation", "quick-start", "practitioner-guide", "methodology-appendix"] },
@@ -168,8 +108,7 @@
       }
     },
     "section": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["sectionId", "heading", "layerId", "contentMode"],
       "properties": {
         "sectionId": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
@@ -179,8 +118,7 @@
       }
     },
     "visual": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["visualId", "title", "sectionId", "direction", "purpose"],
       "properties": {
         "visualId": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
@@ -190,20 +128,71 @@
         "purpose": { "type": "string", "minLength": 10 }
       }
     },
-    "lifecycleNode": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["nodeId", "sequence", "title", "capabilityIds"],
+    "lifecycleSegment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["segmentId", "order", "visualId", "title"],
       "properties": {
-        "nodeId": { "type": "string", "pattern": "^lifecycle-[0-9]{2}$" },
-        "sequence": { "type": "integer", "minimum": 1, "maximum": 19 },
+        "segmentId": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+        "order": { "type": "integer", "minimum": 1 },
+        "visualId": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+        "title": { "type": "string", "minLength": 3 }
+      }
+    },
+    "lifecycleNode": {
+      "type": "object", "additionalProperties": false,
+      "required": ["nodeId", "order", "segmentId", "title", "targetIntent", "capabilityIds", "proposedGapIds"],
+      "properties": {
+        "nodeId": { "$ref": "#/$defs/nodeId" },
+        "order": { "type": "integer", "minimum": 1 },
+        "segmentId": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
         "title": { "type": "string", "minLength": 3 },
-        "capabilityIds": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "pattern": "^GAEP-CAP-1[0-3][0-9]$" }
-        }
+        "targetIntent": { "type": "string", "minLength": 20 },
+        "capabilityIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/capabilityId" } },
+        "proposedGapIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/gapId" } }
+      },
+      "anyOf": [
+        { "properties": { "capabilityIds": { "type": "array", "minItems": 1 } } },
+        { "properties": { "proposedGapIds": { "type": "array", "minItems": 1 } } }
+      ]
+    },
+    "transition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["currentCheckpointId", "targetNodeIds", "transitionType", "currentMaturity", "targetIntent", "dependency", "implementationStatus", "productOwnerAcceptanceStatus", "migrationState"],
+      "properties": {
+        "currentCheckpointId": { "$ref": "#/$defs/checkpointId" },
+        "targetNodeIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/nodeId" } },
+        "transitionType": { "enum": ["retained", "renamed", "expanded", "split", "merged", "deprecated", "newly-planned", "replaced-by-tool-neutral-abstraction"] },
+        "currentMaturity": { "$ref": "#/$defs/maturityState" },
+        "targetIntent": { "type": "string", "minLength": 15 },
+        "dependency": { "type": "string", "minLength": 3 },
+        "implementationStatus": { "enum": ["current-runtime-implemented-target-partial", "current-runtime-implemented-target-planned", "target-only-planned", "unresolved"] },
+        "productOwnerAcceptanceStatus": { "enum": ["accepted", "unresolved", "rejected"] },
+        "migrationState": { "enum": ["implemented", "planned", "unresolved"] }
+      }
+    },
+    "productOwnerRequirement": {
+      "type": "object", "additionalProperties": false,
+      "required": ["requirementId", "title", "targetNodeIds", "currentCheckpointIds", "canonicalSourceIds", "currentMaturity", "futureDisposition", "gapOrDecision"],
+      "properties": {
+        "requirementId": { "type": "string", "pattern": "^GAEP-P03-REQ-[0-9]{3}$" },
+        "title": { "type": "string", "minLength": 3 },
+        "targetNodeIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/nodeId" } },
+        "currentCheckpointIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/checkpointId" } },
+        "canonicalSourceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^GAEP-(?:CAP|CONCERN|REG)-[0-9]{3}$" } },
+        "currentMaturity": { "$ref": "#/$defs/maturityState" },
+        "futureDisposition": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+        "gapOrDecision": { "type": "string", "minLength": 10 }
+      }
+    },
+    "proposedGap": {
+      "type": "object", "additionalProperties": false,
+      "required": ["gapId", "title", "status", "requiredCanonicalCorrection", "blocksAcceptance"],
+      "properties": {
+        "gapId": { "$ref": "#/$defs/gapId" },
+        "title": { "type": "string", "minLength": 3 },
+        "status": { "const": "proposed-unaccepted" },
+        "requiredCanonicalCorrection": { "type": "string", "minLength": 20 },
+        "blocksAcceptance": { "type": "boolean" }
       }
     }
   }

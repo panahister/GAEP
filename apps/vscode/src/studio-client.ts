@@ -44,6 +44,11 @@ import {
   type StudioToHostMessage,
   type TracePageSnapshot,
 } from "./studio-protocol.js"
+import {
+  productJourneyAttentionIndicatorPresentation,
+  productJourneyPrimaryStatePresentation,
+  productJourneyRuntimeStatePresentation,
+} from "./product-journey-presentation.js"
 
 interface VsCodeWebviewApi<State> {
   postMessage(message: unknown): void
@@ -400,15 +405,14 @@ class StudioShell {
         journeyList.append(phaseHeader)
       }
       const row = element("li", `journey-row ${checkpoint.state}`)
-      const recorded = checkpoint.state === "complete" || checkpoint.state === "attention-required"
-      const candidateReady = checkpoint.state === "candidate-ready"
-      const needsDecisions = checkpoint.state === "needs-decisions"
-      const stateLabel = checkpoint.state === "attention-required" ? "Recorded; needs attention"
-        : candidateReady ? "Candidate ready for review"
-          : needsDecisions ? "Needs decisions"
-            : checkpoint.state === "blocked-by-prerequisite" ? "Waiting for prerequisite"
-              : checkpoint.state
-      const marker = element("span", "journey-marker", recorded ? "✓" : candidateReady ? "◆" : needsDecisions ? "!" : checkpoint.state === "next" ? "→" : "○")
+      const runtimePresentation = productJourneyRuntimeStatePresentation[checkpoint.state]
+      const primaryPresentation = productJourneyPrimaryStatePresentation[runtimePresentation.primaryState]
+      const recorded = runtimePresentation.primaryState === "complete"
+      const stateLabel = [
+        primaryPresentation.label,
+        ...runtimePresentation.indicatorIds.map((id) => productJourneyAttentionIndicatorPresentation[id].label),
+      ].join("; ")
+      const marker = element("span", "journey-marker", primaryPresentation.marker)
       marker.setAttribute("aria-label", stateLabel)
       marker.title = stateLabel
       const detail = element("div")
@@ -416,9 +420,9 @@ class StudioShell {
       label.append(element("strong", undefined, checkpoint.label))
       if (checkpoint.state === "attention-required") {
         label.append(element("span", "journey-attention-badge", "Needs attention"))
-      } else if (candidateReady) {
+      } else if (checkpoint.state === "candidate-ready") {
         label.append(element("span", "journey-candidate-badge", "Candidate ready for review"))
-      } else if (needsDecisions) {
+      } else if (checkpoint.state === "needs-decisions") {
         label.append(element("span", "journey-decisions-badge", "Needs decisions"))
       } else if (checkpoint.state === "blocked-by-prerequisite") {
         label.append(element("span", "journey-prerequisite-badge", "Waiting for prerequisite"))

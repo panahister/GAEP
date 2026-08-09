@@ -1,11 +1,13 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { runInNewContext } from "node:vm";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import ts from "typescript";
 
 const require = createRequire(import.meta.url);
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -17,7 +19,7 @@ export const AJV_VERSION = require("ajv/package.json").version;
 export const AJV_FORMATS_VERSION = require("ajv-formats/package.json").version;
 
 export const EXPECTED_LAYERS = ["executive-orientation", "quick-start", "practitioner-guide", "methodology-appendix"];
-export const EXPECTED_SOURCE_KINDS = ["methodology-catalog", "market-registry", "terminology-index", "runtime-checkpoints", "extension-package"];
+export const EXPECTED_SOURCE_KINDS = ["methodology-catalog", "market-registry", "terminology-index", "runtime-presentation-contract", "extension-package"];
 export const EXPECTED_STATES = [
   "unknown-not-assessed",
   "planned-deferred-coming-soon",
@@ -78,16 +80,25 @@ function parseFrontmatterIdentity(rawText) {
   return { identity: value("id"), version: value("version"), schemaVersion: value("schema_version") };
 }
 
-export function parseRuntimeCheckpoints(rawText) {
-  const idsBlock = rawText.match(/existingProductJourneyCheckpointIds\s*=\s*\[([\s\S]*?)\]\s*as const/);
-  const labelsBlock = rawText.match(/journeyCheckpointLabels[^=]*=\s*\{([\s\S]*?)\n\}/);
-  if (!idsBlock || !labelsBlock) throw new Error("runtime checkpoint source does not expose the expected canonical arrays");
-  const ids = [...idsBlock[1].matchAll(/"([a-z0-9-]+)"/g)].map(match => match[1]);
-  const labels = new Map([...labelsBlock[1].matchAll(/"([a-z0-9-]+)":\s*"([^"]+)"/g)].map(match => [match[1], match[2]]));
-  if (ids.length === 0 || labels.size !== ids.length || ids.some(id => !labels.has(id))) {
-    throw new Error("runtime checkpoint IDs and labels are incomplete or inconsistent");
+export function parseRuntimePresentationContract(rawText) {
+  const compiled = ts.transpileModule(rawText, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2023 },
+    reportDiagnostics: true,
+  });
+  if (compiled.diagnostics?.some(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error)) {
+    throw new Error("runtime presentation contract does not transpile");
   }
-  return ids.map((checkpointId, index) => ({ checkpointId, sequence: index + 1, label: labels.get(checkpointId) }));
+  const module = { exports: {} };
+  runInNewContext(compiled.outputText, { module, exports: module.exports }, { timeout: 1_000 });
+  const value = module.exports;
+  const checkpoints = value.currentProductJourneyCheckpointPresentation;
+  const primaryStates = value.productJourneyPrimaryStatePresentation;
+  const attentionIndicators = value.productJourneyAttentionIndicatorPresentation;
+  const runtimeStates = value.productJourneyRuntimeStatePresentation;
+  if (!Array.isArray(checkpoints) || checkpoints.length === 0 || !primaryStates || !attentionIndicators || !runtimeStates) {
+    throw new Error("runtime presentation contract does not expose checkpoints, primary states, indicators, and runtime mappings");
+  }
+  return { checkpoints: structuredClone(checkpoints), primaryStates: structuredClone(primaryStates), attentionIndicators: structuredClone(attentionIndicators), runtimeStates: structuredClone(runtimeStates) };
 }
 
 export function loadProjectionContext({ root = ROOT, manifestPath = MANIFEST_PATH, schemaPath = SCHEMA_PATH } = {}) {
@@ -99,8 +110,9 @@ export function loadProjectionContext({ root = ROOT, manifestPath = MANIFEST_PAT
   const catalog = JSON.parse(rawSources.get("methodology-catalog").toString("utf8"));
   const market = JSON.parse(rawSources.get("market-registry").toString("utf8"));
   const extensionPackage = JSON.parse(rawSources.get("extension-package").toString("utf8"));
-  const runtimeCheckpoints = parseRuntimeCheckpoints(rawSources.get("runtime-checkpoints").toString("utf8"));
-  return { root, manifest, schema, rawSources, template, catalog, market, extensionPackage, runtimeCheckpoints };
+  const runtimePresentation = parseRuntimePresentationContract(rawSources.get("runtime-presentation-contract").toString("utf8"));
+  const runtimeCheckpoints = runtimePresentation.checkpoints.slice().sort((left, right) => left.order - right.order);
+  return { root, manifest, schema, rawSources, template, catalog, market, extensionPackage, runtimePresentation, runtimeCheckpoints };
 }
 
 export function sourceBindingErrors(manifest, { rawSources }) {
@@ -174,7 +186,37 @@ function repositoryMaturityErrors(market) {
   return errors;
 }
 
-export function manifestSemanticErrors(manifest, { catalog, market, extensionPackage, runtimeCheckpoints }) {
+function runtimePresentationErrors(runtimePresentation) {
+  const errors = [];
+  const checkpointIds = runtimePresentation.checkpoints.map(entry => entry.checkpointId);
+  const checkpointOrders = runtimePresentation.checkpoints.map(entry => entry.order);
+  for (const [label, values] of [["runtime checkpoint IDs", checkpointIds], ["runtime checkpoint orders", checkpointOrders]]) {
+    const duplicates = duplicateValues(values);
+    if (duplicates.length > 0) errors.push(`${label} contain duplicates: ${duplicates.join(", ")}`);
+  }
+  if (runtimePresentation.checkpoints.some(entry => !entry.checkpointId || !entry.label || !Number.isSafeInteger(entry.order) || entry.order < 1)) {
+    errors.push("runtime checkpoints require stable IDs, labels, and positive explicit order metadata");
+  }
+  if (JSON.stringify(checkpointOrders) !== JSON.stringify(checkpointOrders.slice().sort((left, right) => left - right))) {
+    errors.push("runtime checkpoint presentation must be ordered by explicit order metadata");
+  }
+  for (const [state, mapping] of Object.entries(runtimePresentation.runtimeStates)) {
+    if (!runtimePresentation.primaryStates[mapping.primaryState]) errors.push(`${state}: unknown primary state ${mapping.primaryState}`);
+    for (const indicatorId of mapping.indicatorIds ?? []) {
+      if (!runtimePresentation.attentionIndicators[indicatorId]) errors.push(`${state}: unknown attention indicator ${indicatorId}`);
+    }
+  }
+  for (const [kind, entries] of [["primary state", runtimePresentation.primaryStates], ["attention indicator", runtimePresentation.attentionIndicators]]) {
+    for (const [id, entry] of Object.entries(entries)) {
+      for (const field of ["label", "marker", "meaning", "userAction", "progression", "persists", "doesNotAuthorize"]) {
+        if (typeof entry[field] !== "string" || entry[field].trim().length === 0) errors.push(`${kind} ${id} lacks ${field}`);
+      }
+    }
+  }
+  return errors;
+}
+
+export function manifestSemanticErrors(manifest, { catalog, market, extensionPackage, runtimePresentation, runtimeCheckpoints }) {
   const errors = [];
   const layerIds = manifest.audienceLayers.map(entry => entry.layerId);
   if (JSON.stringify(layerIds) !== JSON.stringify(EXPECTED_LAYERS)) errors.push("audience layers must be the exact four progressive layers in canonical order");
@@ -184,7 +226,11 @@ export function manifestSemanticErrors(manifest, { catalog, market, extensionPac
     ["source kinds", manifest.canonicalSources.map(entry => entry.kind)],
     ["section IDs", manifest.requiredSections.map(entry => entry.sectionId)],
     ["visual IDs", manifest.requiredVisuals.map(entry => entry.visualId)],
+    ["lifecycle segment IDs", manifest.lifecycleSegments.map(entry => entry.segmentId)],
     ["lifecycle IDs", manifest.lifecycleNodes.map(entry => entry.nodeId)],
+    ["transition checkpoint IDs", manifest.transitionRoadmap.map(entry => entry.currentCheckpointId)],
+    ["Product Owner requirement IDs", manifest.productOwnerRequirements.map(entry => entry.requirementId)],
+    ["proposed gap IDs", manifest.proposedCanonicalGaps.map(entry => entry.gapId)],
   ]) {
     const duplicates = duplicateValues(values);
     if (duplicates.length > 0) errors.push(`${label} contain duplicates: ${duplicates.join(", ")}`);
@@ -194,8 +240,14 @@ export function manifestSemanticErrors(manifest, { catalog, market, extensionPac
     if (!sectionIds.has(visualEntry.sectionId)) errors.push(`${visualEntry.visualId}: unknown section ${visualEntry.sectionId}`);
     if (!["TD", "TB"].includes(visualEntry.direction)) errors.push(`${visualEntry.visualId}: visual must be vertical`);
   }
-  const sequences = manifest.lifecycleNodes.map(entry => entry.sequence);
-  if (JSON.stringify(sequences) !== JSON.stringify(Array.from({ length: 19 }, (_, index) => index + 1))) errors.push("lifecycle nodes must have exact sequence 1 through 19");
+  const segmentIds = new Set(manifest.lifecycleSegments.map(entry => entry.segmentId));
+  const visualIds = new Set(manifest.requiredVisuals.map(entry => entry.visualId));
+  for (const segment of manifest.lifecycleSegments) if (!visualIds.has(segment.visualId)) errors.push(`${segment.segmentId}: unknown lifecycle visual ${segment.visualId}`);
+  const orders = manifest.lifecycleNodes.map(entry => entry.order);
+  const duplicateOrders = duplicateValues(orders);
+  if (duplicateOrders.length > 0) errors.push(`lifecycle order values contain duplicates: ${duplicateOrders.join(", ")}`);
+  if (JSON.stringify(orders) !== JSON.stringify(orders.slice().sort((left, right) => left - right))) errors.push("lifecycle nodes must be sorted by explicit order metadata");
+  for (const node of manifest.lifecycleNodes) if (!segmentIds.has(node.segmentId)) errors.push(`${node.nodeId}: unknown lifecycle segment ${node.segmentId}`);
   const knownCapabilities = new Set(market.capabilities.map(entry => entry.capabilityId));
   const maturityByCapability = new Map(market.gaepMaturity.map(entry => [entry.capabilityId, entry]));
   const projectedCapabilities = new Set();
@@ -209,16 +261,45 @@ export function manifestSemanticErrors(manifest, { catalog, market, extensionPac
   for (const capabilityId of knownCapabilities) {
     if (!projectedCapabilities.has(capabilityId)) errors.push(`lifecycle omits current capability ${capabilityId}`);
   }
-  const sequenceFor = fragment => manifest.lifecycleNodes.find(entry => entry.title.toLowerCase().includes(fragment))?.sequence ?? Number.POSITIVE_INFINITY;
-  if (sequenceFor("ddd strategic") >= sequenceFor("architecture-bound backlog")) errors.push("DDD strategic design must precede architecture-bound backlog");
-  if (sequenceFor("architecture decisions") >= sequenceFor("architecture-bound backlog")) errors.push("architecture decisions must precede architecture-bound backlog");
-  if (sequenceFor("product design") >= sequenceFor("architecture-bound backlog")) errors.push("Product Design must precede architecture-bound backlog");
+  const orderFor = fragment => manifest.lifecycleNodes.find(entry => entry.title.toLowerCase().includes(fragment))?.order ?? Number.POSITIVE_INFINITY;
+  if (orderFor("ddd strategic") >= orderFor("architecture-bound backlog")) errors.push("DDD strategic design must precede architecture-bound backlog");
+  if (orderFor("architecture decisions") >= orderFor("architecture-bound backlog")) errors.push("architecture decisions must precede architecture-bound backlog");
+  if (orderFor("product design") >= orderFor("architecture-bound backlog")) errors.push("Product Design must precede architecture-bound backlog");
   if (manifest.lifecycleNodes.some(entry => /figma/i.test(entry.title))) errors.push("Figma cannot be the canonical target lifecycle stage");
   if (manifest.lifecycleNodes.some(entry => /pre-figma/i.test(entry.title))) errors.push("legacy Pre-Figma wording cannot define a target lifecycle node");
+  if (manifest.lifecycleNodes.some(entry => /(?:every|all)\s+(?:enterprise\s+)?products?\s+(?:is|are)\s+(?:an?\s+)?erp/i.test(`${entry.title} ${entry.targetIntent}`))) errors.push("ERP cannot be a universal Product assumption");
   if (JSON.stringify(manifest.statePolicy.displayPriority) !== JSON.stringify(EXPECTED_STATES)) errors.push("state display priority is not the exact conservative policy");
   if (catalog.catalogId !== "GAEP-REG-011") errors.push("methodology input is not GAEP-REG-011");
   if (market.registryId !== "GAEP-REG-013") errors.push("market input is not GAEP-REG-013");
-  if (runtimeCheckpoints.length !== 12) errors.push("current runtime checkpoint projection must contain exactly 12 checkpoints");
+  const runtimeIds = new Set(runtimeCheckpoints.map(entry => entry.checkpointId));
+  const targetIds = new Set(manifest.lifecycleNodes.map(entry => entry.nodeId));
+  const gapIds = new Set(manifest.proposedCanonicalGaps.map(entry => entry.gapId));
+  for (const transition of manifest.transitionRoadmap) {
+    if (!runtimeIds.has(transition.currentCheckpointId)) errors.push(`${transition.currentCheckpointId}: transition references unknown current checkpoint`);
+    for (const nodeId of transition.targetNodeIds) if (!targetIds.has(nodeId)) errors.push(`${transition.currentCheckpointId}: transition references unknown target ${nodeId}`);
+    const checkpoint = runtimeCheckpoints.find(entry => entry.checkpointId === transition.currentCheckpointId);
+    if (["renamed", "replaced-by-tool-neutral-abstraction"].includes(transition.transitionType) && (checkpoint?.compatibilityAliases?.length ?? 0) === 0) {
+      errors.push(`${transition.currentCheckpointId}: renamed or replaced transition requires compatibility alias metadata`);
+    }
+  }
+  for (const checkpoint of runtimeCheckpoints) {
+    if (!manifest.transitionRoadmap.some(entry => entry.currentCheckpointId === checkpoint.checkpointId)) errors.push(`${checkpoint.checkpointId}: current checkpoint lacks transition metadata`);
+    for (const cta of checkpoint.implementedCtas ?? []) {
+      const chatCommand = cta.match(/^@gaep \/([a-z]+)/)?.[1];
+      if (chatCommand && !manifest.commandSurface.chatCommands.includes(chatCommand)) errors.push(`${checkpoint.checkpointId}: CTA uses undeclared chat command /${chatCommand}`);
+    }
+  }
+  for (const node of manifest.lifecycleNodes) for (const gapId of node.proposedGapIds) if (!gapIds.has(gapId)) errors.push(`${node.nodeId}: unknown proposed gap ${gapId}`);
+  for (const requirement of manifest.productOwnerRequirements) {
+    for (const nodeId of requirement.targetNodeIds) if (!targetIds.has(nodeId)) errors.push(`${requirement.requirementId}: unknown target node ${nodeId}`);
+    for (const checkpointId of requirement.currentCheckpointIds) if (!runtimeIds.has(checkpointId)) errors.push(`${requirement.requirementId}: unknown current checkpoint ${checkpointId}`);
+    for (const sourceId of requirement.canonicalSourceIds.filter(id => id.startsWith("GAEP-CAP-"))) if (!knownCapabilities.has(sourceId)) errors.push(`${requirement.requirementId}: unknown canonical capability ${sourceId}`);
+  }
+  for (const node of manifest.lifecycleNodes) {
+    const mappedByRequirement = manifest.productOwnerRequirements.some(requirement => requirement.targetNodeIds.includes(node.nodeId));
+    if (!mappedByRequirement) errors.push(`${node.nodeId}: target node lacks Product Owner requirement coverage`);
+  }
+  errors.push(...runtimePresentationErrors(runtimePresentation));
   errors.push(...commandErrors(manifest, extensionPackage));
   errors.push(...repositoryMaturityErrors(market));
   return errors;
@@ -250,9 +331,7 @@ function renderProjectionHeader(manifest) {
   const catalog = manifest.canonicalSources.find(entry => entry.kind === "methodology-catalog");
   const market = manifest.canonicalSources.find(entry => entry.kind === "market-registry");
   return generatedBlock("PROJECTION_HEADER", [
-    "> **Generated surface.** Edit the narrative template or owning canonical sources—not this file. `npm run check:guideline-projection` detects drift.",
-    ">",
-    `> **Bound truth:** ${catalog.identity} v${catalog.version} (${catalog.sha256}); ${market.identity} v${market.version} (${market.sha256}).`,
+    `> **Evidence boundary:** This Guide is generated from ${catalog.identity} v${catalog.version}, ${market.identity} v${market.version}, and the installed runtime presentation contract. Exact digests remain in the collapsed maintainer appendix.`,
     ">",
     "> **Authority:** Proposed, not approved, and not published. This Guide does not accept GAEP, authorize rollout, or convert evidence into organizational authority.",
   ].join("\n"));
@@ -321,32 +400,78 @@ function renderQuickStart(manifest) {
 }
 
 function renderCurrentRuntime(checkpoints) {
-  const nodes = checkpoints.map((entry, index) => {
-    const label = index === checkpoints.length - 1 ? "Design and implementation handoff (legacy wording below)" : entry.label;
-    return `  r${String(index + 1).padStart(2, "0")}["${entry.sequence}. ${mermaidSafe(label)}"]`;
+  const nodes = checkpoints.map(entry => {
+    const label = entry.guideLabel ?? entry.label;
+    return `  ${entry.checkpointId.replaceAll("-", "_")}["${entry.order}. ${mermaidSafe(label)}"]`;
   });
-  nodes.push(`  ${checkpoints.map((_, index) => `r${String(index + 1).padStart(2, "0")}`).join(" --> ")}`);
-  const list = checkpoints.map((entry, index) => `- \`${entry.checkpointId}\` — ${index === checkpoints.length - 1 ? "Design and implementation handoff (legacy wording; see compatibility note)" : entry.label}`).join("\n");
+  nodes.push(`  ${checkpoints.map(entry => entry.checkpointId.replaceAll("-", "_")).join(" --> ")}`);
+  const rows = checkpoints.map(entry => [
+    `| \`${entry.checkpointId}\``,
+    `${entry.order} · ${markdownSafe(entry.label)}`,
+    markdownSafe(entry.prerequisites.length > 0 ? entry.prerequisites.join(", ") : "None"),
+    `${markdownSafe(entry.implementedCtas.join("; "))}<br/>${markdownSafe(entry.implementationMaturity)}<br/>${markdownSafe(entry.limitations)} |`,
+  ].join(" | ")).join("\n");
+  const compatibilityNotes = checkpoints.filter(entry => entry.compatibilityNote).map(entry => `> **Compatibility — \`${entry.checkpointId}\`:** ${entry.compatibilityNote}`).join("\n\n");
   return generatedBlock("CURRENT_RUNTIME", [
-    visual("where-you-are", "Current runtime checkpoint path", "TD", nodes.join("\n")),
+    visual("current-runtime", "Current runtime checkpoint inventory", "TD", nodes.join("\n")),
     "",
-    "<details>",
-    "<summary><strong>Exact current checkpoint IDs</strong></summary>",
+    "| Stable checkpoint ID | Order and current label | Current prerequisites | Implemented CTA, maturity, and limitation |",
+    "|---|---|---|---|",
+    rows,
     "",
-    list,
-    "",
-    "</details>",
-    "",
-    `> **Compatibility note — current runtime only:** the existing final checkpoint label is “${checkpoints.at(-1).label}.” The target lifecycle and all new guidance use the tool-neutral canonical stage “Product Design preparation and evidence.”`,
+    compatibilityNotes,
   ].join("\n"));
 }
 
-function renderStateLegend(manifest) {
-  const rows = manifest.statePolicy.displayPriority.map(state => `| ${manifest.statePolicy.labels[state]} | ${state} |`).join("\n");
+function renderCheckpointPositionExample(runtimePresentation) {
+  const complete = runtimePresentation.primaryStates.complete;
+  const current = runtimePresentation.primaryStates.current;
+  const next = runtimePresentation.primaryStates.next;
+  return generatedBlock("CHECKPOINT_POSITION_EXAMPLE", [
+    visual("checkpoint-position-example", "Previous, Current, and Next example — not live workspace state", "TD", [
+      `  previous["Previous · ${complete.marker} ${complete.label}<br/>Initiative definition · governed"]`,
+      `  current["Current · ${current.marker} ${current.label}<br/>Initiative classification · candidate<br/>! 1 blocker · ? 2 open questions"]`,
+      `  next["Next · ${next.marker} ${next.label}<br/>Initiative applicability<br/>CTA: @gaep /continue"]`,
+      "  previous --> current --> next",
+    ].join("\n")),
+    "",
+    "> **Static example, not live state.** Open Product Studio or run `@gaep /status` for the actual workspace position, candidate/governed status, blockers, attention count, open questions, and next valid CTA.",
+  ].join("\n"));
+}
+
+function renderStateLegend(manifest, runtimePresentation) {
+  const primary = Object.entries(runtimePresentation.primaryStates).map(([state, entry]) => [
+    `<details><summary><strong>${entry.marker} ${entry.label}</strong> · \`${state}\`</summary>`,
+    "",
+    `- **Meaning:** ${entry.meaning}`,
+    `- **Content:** ${entry.contentAuthority}.`,
+    `- **Your action:** ${entry.userAction}`,
+    `- **Progression:** ${entry.progression}.`,
+    `- **Persists:** ${entry.persists}`,
+    `- **Does not authorize:** ${entry.doesNotAuthorize}`,
+    "",
+    "</details>",
+  ].join("\n")).join("\n\n");
+  const indicators = Object.entries(runtimePresentation.attentionIndicators).map(([indicator, entry]) => [
+    `<details><summary><strong>${entry.marker} ${entry.label}</strong> · overlay \`${indicator}\`</summary>`,
+    "",
+    `- **Meaning:** ${entry.meaning}`,
+    `- **Your action:** ${entry.userAction}`,
+    `- **Progression:** ${entry.progression}.`,
+    `- **Persists:** ${entry.persists}`,
+    `- **Does not authorize:** ${entry.doesNotAuthorize}`,
+    "",
+    "</details>",
+  ].join("\n")).join("\n\n");
+  const mappings = Object.entries(runtimePresentation.runtimeStates).map(([runtimeState, mapping]) => `| \`${runtimeState}\` | ${runtimePresentation.primaryStates[mapping.primaryState].marker} ${runtimePresentation.primaryStates[mapping.primaryState].label} | ${mapping.indicatorIds.map(id => `${runtimePresentation.attentionIndicators[id].marker} ${runtimePresentation.attentionIndicators[id].label}`).join(", ") || "None"} |`).join("\n");
   return generatedBlock("STATE_LEGEND", [
-    "| Visible state | Canonical machine value |",
-    "|---|---|",
-    rows,
+    "Primary progression state and attention indicators are separate. For example, a governed **Recorded** checkpoint may also carry **Needs attention**; a candidate may carry **2 open questions** without becoming governed.",
+    "",
+    "#### Primary progression states", "", primary,
+    "", "#### Attention indicators", "", indicators,
+    "", "#### Exact runtime-to-presentation mapping", "",
+    "| Runtime machine state | Primary visible state | Attention overlay(s) |",
+    "|---|---|---|", mappings,
     "",
     `**Unknown rule:** ${manifest.statePolicy.unknownRule}`,
     "",
@@ -359,30 +484,30 @@ function renderLifecycleSegment(id, title, nodes, market, manifest) {
   for (const node of nodes) {
     const state = deriveLifecycleState(node, market, manifest);
     const capabilities = node.capabilityIds.join(", ");
-    lines.push(`  ${node.nodeId.replaceAll("-", "_")}["${node.sequence}. ${stateMarker(state, manifest)} ${mermaidSafe(node.title)}<br/>${capabilities}"]`);
+    lines.push(`  ${node.nodeId.replaceAll("-", "_")}["${node.order}. ${stateMarker(state, manifest)} ${mermaidSafe(node.title)}<br/>${capabilities}"]`);
   }
   lines.push(`  ${nodes.map(node => node.nodeId.replaceAll("-", "_")).join(" --> ")}`);
   return visual(id, title, "TD", lines.join("\n"));
 }
 
 function renderTargetLifecycle(manifest, market) {
-  const nodes = manifest.lifecycleNodes;
+  const nodes = manifest.lifecycleNodes.slice().sort((left, right) => left.order - right.order);
   const nodeDetails = nodes.map(node => {
     const state = deriveLifecycleState(node, market, manifest);
     const maturity = new Map(market.gaepMaturity.map(entry => [entry.capabilityId, entry]));
     const details = node.capabilityIds.map(id => `${id} ${maturity.get(id).maturityState}`).join("; ");
-    return `| ${node.sequence} | ${markdownSafe(node.title)} | ${manifest.statePolicy.labels[state]} | ${details} |`;
+    return `| ${node.order} | ${markdownSafe(node.title)} | ${manifest.statePolicy.labels[state]} | ${details} |`;
   }).join("\n");
+  const segments = manifest.lifecycleSegments.slice().sort((left, right) => left.order - right.order).map((segment, index, all) => [
+    renderLifecycleSegment(segment.visualId, segment.title, nodes.filter(node => node.segmentId === segment.segmentId), market, manifest),
+    index < all.length - 1 ? "\n\n↓ Continue to the next target segment" : "",
+  ].join("")).join("\n\n");
   return generatedBlock("TARGET_LIFECYCLE", [
-    renderLifecycleSegment("lifecycle-discover-define", "Lifecycle 1–6: discover and define", nodes.slice(0, 6), market, manifest),
+    "**Conservative target maturity vocabulary:**",
     "",
-    "↓ Continue to architecture and planning",
+    ...manifest.statePolicy.displayPriority.map(state => `- ${manifest.statePolicy.labels[state]} · \`${state}\``),
     "",
-    renderLifecycleSegment("lifecycle-architecture-plan", "Lifecycle 7–13: architecture and planning", nodes.slice(6, 13), market, manifest),
-    "",
-    "↓ Continue to delivery and operations",
-    "",
-    renderLifecycleSegment("lifecycle-deliver-operate", "Lifecycle 14–19: delivery and operations", nodes.slice(13), market, manifest),
+    segments,
     "",
     "<details>",
     "<summary><strong>Exact capability-to-node derivation</strong></summary>",
@@ -395,8 +520,46 @@ function renderTargetLifecycle(manifest, market) {
   ].join("\n"));
 }
 
+function renderTransitionRoadmap(manifest) {
+  const rows = manifest.transitionRoadmap.map(entry => `| \`${entry.currentCheckpointId}\` | ${entry.transitionType}<br/>${entry.targetNodeIds.map(id => `\`${id}\``).join(", ")} | ${markdownSafe(entry.currentMaturity)}<br/>${markdownSafe(entry.implementationStatus)} | ${markdownSafe(entry.targetIntent)}<br/>Dependency: ${markdownSafe(entry.dependency)}<br/>Migration: ${entry.migrationState}; PO acceptance: ${entry.productOwnerAcceptanceStatus} |`).join("\n");
+  const visualBody = [
+    '  current["A. Current Runtime<br/>implemented behavior only"] --> mapping["C. Explicit transition records<br/>retained, expanded, split, merged, or replaced"]',
+    '  mapping --> target["B. Target Operating Model<br/>intent and conservative maturity"]',
+    '  target -. "later authorized prompts" .-> future["Future runtime implementation"]',
+  ].join("\n");
+  return generatedBlock("TRANSITION_ROADMAP", [
+    visual("transition-roadmap", "Current-to-target transition", "TD", visualBody),
+    "",
+    "| Current stable ID | Transition and target | Current evidence | Target intent, dependency, and status |",
+    "|---|---|---|---|",
+    rows,
+  ].join("\n"));
+}
+
+function renderRoadmapCoverage(manifest, market) {
+  const maturity = new Map(market.gaepMaturity.map(entry => [entry.capabilityId, entry.maturityState]));
+  const capabilityRows = market.capabilities.map(capability => {
+    const targets = manifest.lifecycleNodes.filter(node => node.capabilityIds.includes(capability.capabilityId));
+    const current = manifest.transitionRoadmap.filter(transition => transition.targetNodeIds.some(id => targets.some(node => node.nodeId === id))).map(entry => entry.currentCheckpointId);
+    return `| ${capability.capabilityId}<br/>${markdownSafe(capability.name)} | ${targets.map(node => `\`${node.nodeId}\``).join(", ")} | ${[...new Set(current)].map(id => `\`${id}\``).join(", ") || "None"} | ${manifest.statePolicy.labels[maturity.get(capability.capabilityId) ?? "unknown-not-assessed"]}<br/>Canonical source: ${market.registryId} |`;
+  }).join("\n");
+  const requirementRows = manifest.productOwnerRequirements.map(entry => `| ${entry.requirementId}<br/>${markdownSafe(entry.title)} | ${entry.targetNodeIds.map(id => `\`${id}\``).join(", ")} | ${entry.currentCheckpointIds.map(id => `\`${id}\``).join(", ") || "None"} | ${markdownSafe(entry.currentMaturity)}<br/>${markdownSafe(entry.futureDisposition)}<br/>${markdownSafe(entry.gapOrDecision)} |`).join("\n");
+  const gaps = manifest.proposedCanonicalGaps.map(gap => `- **${gap.gapId} · ${gap.title}** — ${gap.status}; blocks acceptance: ${gap.blocksAcceptance}. ${gap.requiredCanonicalCorrection}`).join("\n");
+  return generatedBlock("ROADMAP_COVERAGE", [
+    "Every current canonical capability maps to at least one target node. Proposed Product Owner detail that exceeds accepted P01/P02 granularity remains an explicit, unaccepted gap.",
+    "",
+    "<details>", "<summary><strong>Show all canonical capability mappings</strong></summary>", "",
+    "| Capability | Target node(s) | Current checkpoint(s), if any | Current maturity and source |", "|---|---|---|---|", capabilityRows, "", "</details>",
+    "",
+    "<details>", "<summary><strong>Show Product Owner requirement crosswalk</strong></summary>", "",
+    "| Requirement | Target node(s) | Current checkpoint(s) | Disposition and unresolved decision |", "|---|---|---|---|", requirementRows, "", "</details>",
+    "",
+    "#### Proposed canonical gaps — not accepted truth", "", gaps,
+  ].join("\n"));
+}
+
 function renderSourceLineage() {
-  return generatedBlock("SOURCE_LINEAGE", visual("source-lineage", "Source-to-decision lineage", "TD", [
+  return generatedBlock("SOURCE_LINEAGE", visual("source-lifecycle", "Source Intake, Baseline, Provenance, and change review", "TD", [
     '  material["Exact attached or ingested material"] --> source["Candidate Source record"]',
     '  source --> baseline["Explicit Baseline membership and revision"]',
     '  baseline --> provenance["Provenance, locator, limitations, and lineage"]',
@@ -540,16 +703,19 @@ function renderMaintenanceContract(manifest) {
 }
 
 export function renderGuideline(context) {
-  const { manifest, template, catalog, market, runtimeCheckpoints } = context;
+  const { manifest, template, catalog, market, runtimePresentation, runtimeCheckpoints } = context;
   const replacements = {
     PROJECTION_HEADER: renderProjectionHeader(manifest),
     EXECUTIVE_FACTS: renderExecutiveFacts(catalog, market, manifest),
     EXECUTIVE_OPERATING_MODEL: renderExecutiveOperatingModel(),
     AUTHORITY_LOOP: renderAuthorityLoop(),
     QUICK_START_FLOW: renderQuickStart(manifest),
+    CHECKPOINT_POSITION_EXAMPLE: renderCheckpointPositionExample(runtimePresentation),
     CURRENT_RUNTIME: renderCurrentRuntime(runtimeCheckpoints),
-    STATE_LEGEND: renderStateLegend(manifest),
+    STATE_LEGEND: renderStateLegend(manifest, runtimePresentation),
     TARGET_LIFECYCLE: renderTargetLifecycle(manifest, market),
+    TRANSITION_ROADMAP: renderTransitionRoadmap(manifest),
+    ROADMAP_COVERAGE: renderRoadmapCoverage(manifest, market),
     SOURCE_LINEAGE: renderSourceLineage(),
     MARKET_GUIDE: renderMarketGuide(market, manifest),
     SCENARIO_GUIDE: renderScenarioGuide(market),
@@ -573,7 +739,7 @@ export function renderedGuidelineErrors(rendered, context) {
   const errors = [];
   if (!rendered.startsWith("<!-- GENERATED FILE:")) errors.push("Guide lacks generated-file warning");
   if ((rendered.match(/^# /gm) ?? []).length !== 1) errors.push("Guide must contain exactly one H1");
-  for (const heading of ["## 1. Executive orientation", "## 2. Quick start", "## 3. Practitioner guide", "## 4. Methodology and maintainer appendix"]) {
+  for (const heading of ["## 1. Executive orientation", "## 2. Start here", "## 3. Practitioner guide", "## 4. Methodology and maintainer appendix"]) {
     if (!rendered.includes(heading)) errors.push(`Guide missing progressive layer ${heading}`);
   }
   if (!rendered.includes("## Contents") || !rendered.includes("[4. Methodology and maintainer appendix](#4-methodology-and-maintainer-appendix)")) errors.push("Guide missing progressive table of contents");
@@ -593,13 +759,13 @@ export function renderedGuidelineErrors(rendered, context) {
   if (!rendered.includes(manifest.statePolicy.unknownRule)) errors.push("Guide does not preserve the Unknown-not-No rule");
   if (/Unknown\s*(?:=|means|→)\s*(?:No\b|unsupported\b)/i.test(rendered)) errors.push("Guide converts Unknown into No");
   const compatibilityOccurrences = rendered.match(/Pre-Figma/g) ?? [];
-  if (compatibilityOccurrences.length !== 1 || !rendered.includes("Compatibility note — current runtime only")) errors.push("legacy Pre-Figma wording must appear exactly once inside the bounded compatibility note");
+  if (compatibilityOccurrences.length !== 1 || !rendered.includes("Current runtime compatibility only")) errors.push("legacy Pre-Figma wording must appear exactly once inside the bounded compatibility note");
   const lifecycleBlock = extractGenerated(rendered, "TARGET_LIFECYCLE");
   if (/Figma/i.test(lifecycleBlock)) errors.push("target lifecycle names Figma instead of tool-neutral Product Design");
   for (const node of manifest.lifecycleNodes) {
     const state = deriveLifecycleState(node, market, manifest);
-    const expectedDiagramLabel = `${node.nodeId.replaceAll("-", "_")}["${node.sequence}. ${stateMarker(state, manifest)} ${node.title}`;
-    const expectedTableLabel = `| ${node.sequence} | ${node.title} | ${manifest.statePolicy.labels[state]} |`;
+    const expectedDiagramLabel = `${node.nodeId.replaceAll("-", "_")}["${node.order}. ${stateMarker(state, manifest)} ${node.title}`;
+    const expectedTableLabel = `| ${node.order} | ${node.title} | ${manifest.statePolicy.labels[state]} |`;
     if (!lifecycleBlock.includes(expectedDiagramLabel) || !lifecycleBlock.includes(expectedTableLabel)) errors.push(`target lifecycle node ${node.nodeId} is stale or missing`);
   }
   const architectureIndex = lifecycleBlock.indexOf("Architecture decisions and quality scenarios");

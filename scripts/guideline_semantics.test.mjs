@@ -21,6 +21,7 @@ function semanticContext(overrides = {}) {
     catalog: overrides.catalog ?? clone(base.catalog),
     market: overrides.market ?? clone(base.market),
     extensionPackage: overrides.extensionPackage ?? clone(base.extensionPackage),
+    runtimePresentation: overrides.runtimePresentation ?? clone(base.runtimePresentation),
     runtimeCheckpoints: overrides.runtimeCheckpoints ?? clone(base.runtimeCheckpoints),
   };
 }
@@ -54,10 +55,10 @@ test("hostile P02 digest drift is rejected", () => {
   assert.ok(sourceBindingErrors(base.manifest, { rawSources }).some(error => error.includes("market-registry: digest drift")));
 });
 
-test("hostile runtime checkpoint digest drift is rejected", () => {
+test("hostile runtime presentation contract digest drift is rejected", () => {
   const rawSources = new Map(base.rawSources);
-  rawSources.set("runtime-checkpoints", Buffer.from(rawSources.get("runtime-checkpoints").toString("utf8").replace("Product definition", "Product discovery")));
-  assert.ok(sourceBindingErrors(base.manifest, { rawSources }).some(error => error.includes("runtime-checkpoints: digest drift")));
+  rawSources.set("runtime-presentation-contract", Buffer.from(rawSources.get("runtime-presentation-contract").toString("utf8").replace("Product definition", "Product discovery")));
+  assert.ok(sourceBindingErrors(base.manifest, { rawSources }).some(error => error.includes("runtime-presentation-contract: digest drift")));
 });
 
 test("hostile registry version change with old binding is rejected", () => {
@@ -105,17 +106,17 @@ test("hostile duplicate visual identity is rejected", () => {
   assertManifestError(manifest, "visual IDs contain duplicates");
 });
 
-test("hostile lifecycle sequence gap is rejected", () => {
+test("hostile duplicate lifecycle order is rejected", () => {
   const manifest = clone(base.manifest);
-  manifest.lifecycleNodes[5].sequence = 19;
-  assertManifestError(manifest, "exact sequence 1 through 19");
+  manifest.lifecycleNodes[5].order = manifest.lifecycleNodes[4].order;
+  assertManifestError(manifest, "lifecycle order values contain duplicates");
 });
 
 test("hostile backlog before DDD is rejected", () => {
   const manifest = clone(base.manifest);
-  manifest.lifecycleNodes.find(node => node.title.includes("DDD strategic")).sequence = 14;
-  manifest.lifecycleNodes.find(node => node.title.includes("Architecture-bound backlog")).sequence = 8;
-  manifest.lifecycleNodes.sort((left, right) => left.sequence - right.sequence);
+  manifest.lifecycleNodes.find(node => node.title.includes("DDD strategic")).order = 140;
+  manifest.lifecycleNodes.find(node => node.title.includes("Architecture-bound backlog")).order = 75;
+  manifest.lifecycleNodes.sort((left, right) => left.order - right.order);
   assertManifestError(manifest, "DDD strategic design must precede architecture-bound backlog");
 });
 
@@ -162,7 +163,7 @@ test("hostile Unknown rendered as No is rejected", () => {
 });
 
 test("hostile planned lifecycle node rendered as implemented is rejected", () => {
-  const rendered = renderGuideline(base).replace('lifecycle_15["15. [PD]', 'lifecycle_15["15. [IT]');
+  const rendered = renderGuideline(base).replace('lifecycle_15["150. [PD]', 'lifecycle_15["150. [IT]');
   assertRenderedError(rendered, "target lifecycle node lifecycle-15 is stale or missing");
 });
 
@@ -205,8 +206,8 @@ test("hostile stale methodology official link is rejected", () => {
 });
 
 test("hostile removed visual marker is rejected", () => {
-  const rendered = renderGuideline(base).replace("<!-- GAEP-VISUAL:source-lineage -->", "");
-  assertRenderedError(rendered, "Guide missing visual source-lineage");
+  const rendered = renderGuideline(base).replace("<!-- GAEP-VISUAL:source-lifecycle -->", "");
+  assertRenderedError(rendered, "Guide missing visual source-lifecycle");
 });
 
 test("hostile long horizontal Mermaid flow is rejected", () => {

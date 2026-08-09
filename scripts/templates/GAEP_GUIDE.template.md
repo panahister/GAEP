@@ -2,14 +2,20 @@
 
 # GAEP Product-to-Operations Guideline
 
+### Why use this Guide
+
+Use this Guide to start a governed Product workspace, understand what GAEP needs from you now, and compare current evidence with the intended Product-to-Operations operating model without confusing candidates, plans, or market claims with approved truth.
+
+It is for first-time users, Product leaders, practitioners, reviewers, and maintainers. **[Start here with the approximately three-minute route](#2-start-here)**; continue only when you need checkpoint, roadmap, market, methodology, or projection detail.
+
 {{PROJECTION_HEADER}}
 
-This is the maintained, human-facing GAEP Product surface bundled with the VS Code extension. It uses four progressive layers: stop after the layer that answers your question, or continue for the evidence and methodology details.
+This is the maintained, human-facing GAEP Product surface bundled with the VS Code extension. It uses four progressive layers: stop after the layer that answers your question, or continue for evidence and maintenance detail.
 
 ## Contents
 
 - [1. Executive orientation](#1-executive-orientation)
-- [2. Quick start](#2-quick-start)
+- [2. Start here](#2-start-here)
 - [3. Practitioner guide](#3-practitioner-guide)
 - [4. Methodology and maintainer appendix](#4-methodology-and-maintainer-appendix)
 
@@ -39,11 +45,11 @@ The thread is intentionally vertical: evidence grounds a candidate; a human revi
 
 AI and tools may propose, challenge, summarize, compare, and prepare evidence. A human remains accountable for acceptance, commit, approval, publication, rollout, and organizational authority. “Implemented and automated-tested” is repository evidence—not Product Owner acceptance, enterprise readiness, security certification, compliance, production authorization, or outcome proof.
 
-## 2. Quick start
+## 2. Start here
 
-_For a first GAEP session · about 10 minutes_
+_For a first GAEP session · approximately 3 minutes_
 
-### Your first governed session
+### Your approximately three-minute first session
 
 Open **GAEP: Open Guide** from the Command Palette at any time. In Chat, address `@gaep`; commands below are verified against the extension package during generation.
 
@@ -58,41 +64,27 @@ Practical first steps:
 
 Adding a useful link records the link; it does not fetch, read, or approve the linked content. Attach or ingest exact material when its content must become evidence.
 
-### Where you are and what happens next
+### Previous, Current, and Next
 
-{{CURRENT_RUNTIME}}
+{{CHECKPOINT_POSITION_EXAMPLE}}
 
-The target lifecycle in Layer 3 is broader than today’s runtime checkpoint vocabulary. Treat the target as an honest map of current, partial, and planned coverage—not as a claim that every node is already automated.
+### Checkpoint states and attention indicators
 
-### Visual language for every checkpoint
+{{STATE_LEGEND}}
 
-Use these compact callouts in GAEP conversations and future Product surfaces. They make the state actionable without pretending that an unanswered question is resolved.
-
-> **Why this matters** — explains the downstream decision, risk, or evidence consequence.
-
-> **What GAEP needs from you** — names the bounded human input or authority required now.
-
-> **Previous step** — points to the exact governed predecessor or says that none exists.
-
-> **Current step** — identifies the active checkpoint and whether its content is candidate or governed.
-
-> **Next step** — names the next valid action; it is not a delivery promise.
-
-> **Open question** — visually separates unresolved information from explanatory prose.
-
-> **Blocking decision** — identifies the accountable human decision that prevents valid progression.
-
-> **What will be persisted** — lists the exact candidate or governed fields that the action records.
-
-> **What will not be authorized** — states which approval, publication, rollout, security, compliance, or production authorities remain outside the action.
+These labels are generated from the same presentation contract used by Product Studio. State is always text plus a marker; color is optional and never carries meaning alone.
 
 ## 3. Practitioner guide
 
 _For Product, architecture, design, engineering, assurance, and operations practitioners · about 20 minutes_
 
-### Target Product-to-Operations lifecycle
+### A. Current Runtime
 
-{{STATE_LEGEND}}
+This view contains only behavior and terminology that exist in the current repository/runtime. Its count and order are a versioned snapshot, not permanent architecture.
+
+{{CURRENT_RUNTIME}}
+
+### B. Target Product-to-Operations Operating Model
 
 The lifecycle is split into three linked vertical views so it remains readable in narrow and wide VS Code panes. Every status is derived conservatively from the exact capability maturity records in the bound P02 registry.
 
@@ -100,7 +92,17 @@ The lifecycle is split into three linked vertical views so it remains readable i
 
 Architecture and DDD precede architecture-bound backlog. Product Design is the canonical tool-neutral target stage. Repository distribution, CI/CD governance, and runtime feedback remain visibly partial or planned where the evidence says so.
 
-### Source grounding and provenance
+### C. Transition Roadmap
+
+{{TRANSITION_ROADMAP}}
+
+The roadmap is not implementation evidence. “Planned” means later authorized work is required; it does not rename or replace current runtime terminology.
+
+### Canonical roadmap coverage audit
+
+{{ROADMAP_COVERAGE}}
+
+### Source lifecycle
 
 {{SOURCE_LINEAGE}}
 
@@ -136,7 +138,7 @@ These sources calibrate exact GAEP concerns. Catalog presence does not mean whol
 
 The ledger is not marketing copy. It retains dispositions, qualifiers, limitations, and authority states so internal fact use cannot silently become an approved or public claim.
 
-### Deterministic maintenance contract
+### Maintainer and projection details
 
 {{MAINTENANCE_CONTRACT}}
 

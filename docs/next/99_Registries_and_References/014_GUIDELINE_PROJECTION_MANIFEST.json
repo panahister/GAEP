@@ -1,8 +1,8 @@
 {
-  "schemaId": "https://gaep.example/schemas/guideline-projection-manifest-1.0.0.json",
-  "schemaVersion": "1.0.0",
+  "schemaId": "https://gaep.example/schemas/guideline-projection-manifest-1.1.0.json",
+  "schemaVersion": "1.1.0",
   "registryId": "GAEP-REG-014",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "status": "proposed",
   "ownerRole": "GAEP Product Owner",
   "approval": {
@@ -14,6 +14,7 @@
   "generation": {
     "templatePath": "scripts/templates/GAEP_GUIDE.template.md",
     "outputPath": "apps/vscode/media/GAEP_GUIDE.md",
+    "decisionSupportOutputPath": "apps/vscode/media/GAEP_MARKET_DECISION_GUIDE.md",
     "rendererPath": "scripts/render_guideline.mjs",
     "timestampPolicy": "none-deterministic"
   },
@@ -43,12 +44,12 @@
       "sha256": "9e5765683133d3904742bd9a05be7a3323d83848b7015d06a864f5e37af6aca5"
     },
     {
-      "kind": "runtime-checkpoints",
-      "path": "apps/vscode/src/existing-product-journey-coverage.ts",
-      "identity": "runtime-product-journey-checkpoints",
-      "version": null,
+      "kind": "runtime-presentation-contract",
+      "path": "apps/vscode/src/product-journey-presentation.ts",
+      "identity": "runtime-product-journey-presentation",
+      "version": "1.0.0",
       "schemaVersion": null,
-      "sha256": "9665f13fe3c5cf2411c8b7d9404938eee06035b818e46d3df815f62916549d3a"
+      "sha256": "445797601923593b842041c02b630bbebdb4d9a16d9ccbf9540800ad6d192c54"
     },
     {
       "kind": "extension-package",
@@ -60,87 +61,102 @@
     }
   ],
   "audienceLayers": [
-    {
-      "layerId": "executive-orientation",
-      "title": "Executive orientation",
-      "primaryAudience": "Executives, Product leaders, and evaluation sponsors",
-      "readingTimeMinutes": 5
-    },
-    {
-      "layerId": "quick-start",
-      "title": "Quick start",
-      "primaryAudience": "First-time GAEP users",
-      "readingTimeMinutes": 10
-    },
-    {
-      "layerId": "practitioner-guide",
-      "title": "Practitioner guide",
-      "primaryAudience": "Product, architecture, design, engineering, assurance, and operations practitioners",
-      "readingTimeMinutes": 20
-    },
-    {
-      "layerId": "methodology-appendix",
-      "title": "Methodology and maintainer appendix",
-      "primaryAudience": "Methodology stewards, reviewers, and maintainers",
-      "readingTimeMinutes": 25
-    }
+    { "layerId": "executive-orientation", "title": "Executive orientation", "primaryAudience": "Executives, Product leaders, and evaluation sponsors", "readingTimeMinutes": 5 },
+    { "layerId": "quick-start", "title": "Start here", "primaryAudience": "First-time GAEP users", "readingTimeMinutes": 3 },
+    { "layerId": "practitioner-guide", "title": "Practitioner guide", "primaryAudience": "Product, architecture, design, engineering, assurance, and operations practitioners", "readingTimeMinutes": 20 },
+    { "layerId": "methodology-appendix", "title": "Methodology and maintainer appendix", "primaryAudience": "Methodology stewards, reviewers, and maintainers", "readingTimeMinutes": 25 }
   ],
   "requiredSections": [
+    { "sectionId": "start-value", "heading": "Why use this Guide", "layerId": "executive-orientation", "contentMode": "hand-authored-narrative" },
     { "sectionId": "executive-purpose", "heading": "What GAEP is — and is not", "layerId": "executive-orientation", "contentMode": "hybrid" },
     { "sectionId": "executive-operating-model", "heading": "The operating model in one view", "layerId": "executive-orientation", "contentMode": "generated-canonical-facts" },
     { "sectionId": "executive-authority", "heading": "Authority and evidence boundary", "layerId": "executive-orientation", "contentMode": "hybrid" },
-    { "sectionId": "quick-first-session", "heading": "Your first governed session", "layerId": "quick-start", "contentMode": "hybrid" },
-    { "sectionId": "quick-navigation", "heading": "Where you are and what happens next", "layerId": "quick-start", "contentMode": "generated-canonical-facts" },
-    { "sectionId": "quick-visual-language", "heading": "Visual language for every checkpoint", "layerId": "quick-start", "contentMode": "hand-authored-narrative" },
-    { "sectionId": "practitioner-lifecycle", "heading": "Target Product-to-Operations lifecycle", "layerId": "practitioner-guide", "contentMode": "generated-canonical-facts" },
-    { "sectionId": "practitioner-sources", "heading": "Source grounding and provenance", "layerId": "practitioner-guide", "contentMode": "hybrid" },
+    { "sectionId": "quick-first-session", "heading": "Your approximately three-minute first session", "layerId": "quick-start", "contentMode": "hybrid" },
+    { "sectionId": "quick-navigation", "heading": "Previous, Current, and Next", "layerId": "quick-start", "contentMode": "generated-canonical-facts" },
+    { "sectionId": "quick-checkpoint-states", "heading": "Checkpoint states and attention indicators", "layerId": "quick-start", "contentMode": "generated-canonical-facts" },
+    { "sectionId": "practitioner-current", "heading": "A. Current Runtime", "layerId": "practitioner-guide", "contentMode": "generated-canonical-facts" },
+    { "sectionId": "practitioner-lifecycle", "heading": "B. Target Product-to-Operations Operating Model", "layerId": "practitioner-guide", "contentMode": "generated-canonical-facts" },
+    { "sectionId": "practitioner-transition", "heading": "C. Transition Roadmap", "layerId": "practitioner-guide", "contentMode": "generated-canonical-facts" },
+    { "sectionId": "practitioner-coverage", "heading": "Canonical roadmap coverage audit", "layerId": "practitioner-guide", "contentMode": "generated-canonical-facts" },
+    { "sectionId": "practitioner-sources", "heading": "Source lifecycle", "layerId": "practitioner-guide", "contentMode": "hybrid" },
     { "sectionId": "practitioner-market", "heading": "Market and capability decision support", "layerId": "practitioner-guide", "contentMode": "generated-canonical-facts" },
     { "sectionId": "practitioner-scenarios", "heading": "Choose by scenario, never by a winner score", "layerId": "practitioner-guide", "contentMode": "generated-canonical-facts" },
     { "sectionId": "appendix-methodology", "heading": "Methodology and reference cards", "layerId": "methodology-appendix", "contentMode": "generated-canonical-facts" },
     { "sectionId": "appendix-claims", "heading": "Claim-control ledger", "layerId": "methodology-appendix", "contentMode": "generated-canonical-facts" },
-    { "sectionId": "appendix-maintenance", "heading": "Deterministic maintenance contract", "layerId": "methodology-appendix", "contentMode": "hybrid" }
+    { "sectionId": "appendix-maintenance", "heading": "Maintainer and projection details", "layerId": "methodology-appendix", "contentMode": "hybrid" }
   ],
   "requiredVisuals": [
     { "visualId": "executive-operating-model", "title": "Evidence-governed operating model", "sectionId": "executive-operating-model", "direction": "TD", "purpose": "Show how intent becomes governed decisions, delivery evidence, and feedback." },
     { "visualId": "authority-loop", "title": "Human authority loop", "sectionId": "executive-authority", "direction": "TD", "purpose": "Separate candidate generation, review, acceptance, and commit authority." },
-    { "visualId": "quick-start-flow", "title": "First-session path", "sectionId": "quick-first-session", "direction": "TD", "purpose": "Give a bounded first-session route using commands that actually exist." },
-    { "visualId": "where-you-are", "title": "Current runtime checkpoint path", "sectionId": "quick-navigation", "direction": "TD", "purpose": "Project the current runtime checkpoints without presenting them as target completeness." },
-    { "visualId": "lifecycle-discover-define", "title": "Lifecycle 1–6: discover and define", "sectionId": "practitioner-lifecycle", "direction": "TD", "purpose": "Render the first vertical target lifecycle segment and current maturity." },
-    { "visualId": "lifecycle-architecture-plan", "title": "Lifecycle 7–13: architecture and planning", "sectionId": "practitioner-lifecycle", "direction": "TD", "purpose": "Render architecture and Product Design before architecture-bound backlog." },
-    { "visualId": "lifecycle-deliver-operate", "title": "Lifecycle 14–19: delivery and operations", "sectionId": "practitioner-lifecycle", "direction": "TD", "purpose": "Render repository topology through operations and feedback without overstating maturity." },
-    { "visualId": "source-lineage", "title": "Source-to-decision lineage", "sectionId": "practitioner-sources", "direction": "TD", "purpose": "Show conservative Source, Baseline, Provenance, and decision lineage." },
+    { "visualId": "quick-start-flow", "title": "First-session source-first path", "sectionId": "quick-first-session", "direction": "TD", "purpose": "Give a bounded first-session route using actions that actually exist." },
+    { "visualId": "checkpoint-position-example", "title": "Previous, Current, and Next example", "sectionId": "quick-navigation", "direction": "TD", "purpose": "Show an explicitly static navigation pattern without claiming live workspace state." },
+    { "visualId": "current-runtime", "title": "Current runtime checkpoint inventory", "sectionId": "practitioner-current", "direction": "TD", "purpose": "Project the ordered runtime inventory from stable canonical checkpoint IDs." },
+    { "visualId": "lifecycle-discover-define", "title": "Target lifecycle: discover and define", "sectionId": "practitioner-lifecycle", "direction": "TD", "purpose": "Render the target discover-and-define segment and conservative maturity." },
+    { "visualId": "lifecycle-architecture-plan", "title": "Target lifecycle: architecture and planning", "sectionId": "practitioner-lifecycle", "direction": "TD", "purpose": "Render architecture and Product Design before architecture-bound backlog." },
+    { "visualId": "lifecycle-deliver-operate", "title": "Target lifecycle: delivery and operations", "sectionId": "practitioner-lifecycle", "direction": "TD", "purpose": "Render repository topology through operations and feedback without overstating maturity." },
+    { "visualId": "transition-roadmap", "title": "Current-to-target transition", "sectionId": "practitioner-transition", "direction": "TD", "purpose": "Keep current implementation, target intent, and migration status visibly separate." },
+    { "visualId": "source-lifecycle", "title": "Source Intake, Baseline, Provenance, and change review", "sectionId": "practitioner-sources", "direction": "TD", "purpose": "Show conservative source governance and downstream revalidation." },
     { "visualId": "scenario-choice", "title": "Scenario-led adoption choice", "sectionId": "practitioner-scenarios", "direction": "TD", "purpose": "Route evaluation through fit, non-fit, tradeoffs, and measured proof of value." }
   ],
+  "lifecycleSegments": [
+    { "segmentId": "discover-define", "order": 10, "visualId": "lifecycle-discover-define", "title": "Target lifecycle: discover and define" },
+    { "segmentId": "architecture-plan", "order": 20, "visualId": "lifecycle-architecture-plan", "title": "Target lifecycle: architecture and planning" },
+    { "segmentId": "deliver-operate", "order": 30, "visualId": "lifecycle-deliver-operate", "title": "Target lifecycle: delivery and operations" }
+  ],
   "lifecycleNodes": [
-    { "nodeId": "lifecycle-01", "sequence": 1, "title": "Product intent and problem discovery", "capabilityIds": ["GAEP-CAP-101", "GAEP-CAP-102"] },
-    { "nodeId": "lifecycle-02", "sequence": 2, "title": "Initial source and reference grounding", "capabilityIds": ["GAEP-CAP-103", "GAEP-CAP-104", "GAEP-CAP-105"] },
-    { "nodeId": "lifecycle-03", "sequence": 3, "title": "Product and Initiative definition", "capabilityIds": ["GAEP-CAP-106", "GAEP-CAP-107"] },
-    { "nodeId": "lifecycle-04", "sequence": 4, "title": "Initiative classification and applicability", "capabilityIds": ["GAEP-CAP-108", "GAEP-CAP-109"] },
-    { "nodeId": "lifecycle-05", "sequence": 5, "title": "Product discovery", "capabilityIds": ["GAEP-CAP-101"] },
-    { "nodeId": "lifecycle-06", "sequence": 6, "title": "Business architecture and value streams", "capabilityIds": ["GAEP-CAP-110"] },
-    { "nodeId": "lifecycle-07", "sequence": 7, "title": "Domain discovery and EventStorming", "capabilityIds": ["GAEP-CAP-111"] },
-    { "nodeId": "lifecycle-08", "sequence": 8, "title": "DDD strategic design", "capabilityIds": ["GAEP-CAP-112"] },
-    { "nodeId": "lifecycle-09", "sequence": 9, "title": "Solution, data, integration, security, privacy, and quality architecture", "capabilityIds": ["GAEP-CAP-113", "GAEP-CAP-121", "GAEP-CAP-122", "GAEP-CAP-129", "GAEP-CAP-130"] },
-    { "nodeId": "lifecycle-10", "sequence": 10, "title": "Architecture decisions and quality scenarios", "capabilityIds": ["GAEP-CAP-113", "GAEP-CAP-114"] },
-    { "nodeId": "lifecycle-11", "sequence": 11, "title": "Phase, wave, and vertical-slice planning", "capabilityIds": ["GAEP-CAP-115"] },
-    { "nodeId": "lifecycle-12", "sequence": 12, "title": "Product Design preparation and evidence", "capabilityIds": ["GAEP-CAP-116"] },
-    { "nodeId": "lifecycle-13", "sequence": 13, "title": "Architecture-bound backlog", "capabilityIds": ["GAEP-CAP-117", "GAEP-CAP-118"] },
-    { "nodeId": "lifecycle-14", "sequence": 14, "title": "Repository and implementation topology", "capabilityIds": ["GAEP-CAP-123"] },
-    { "nodeId": "lifecycle-15", "sequence": 15, "title": "Cross-repository slice distribution and traceability", "capabilityIds": ["GAEP-CAP-120", "GAEP-CAP-124"] },
-    { "nodeId": "lifecycle-16", "sequence": 16, "title": "Governed implementation", "capabilityIds": ["GAEP-CAP-125"] },
-    { "nodeId": "lifecycle-17", "sequence": 17, "title": "QA and Product acceptance", "capabilityIds": ["GAEP-CAP-119"] },
-    { "nodeId": "lifecycle-18", "sequence": 18, "title": "CI/CD, release, and deployment governance", "capabilityIds": ["GAEP-CAP-126"] },
-    { "nodeId": "lifecycle-19", "sequence": 19, "title": "Runtime operations, recovery, and feedback", "capabilityIds": ["GAEP-CAP-127", "GAEP-CAP-128"] }
+    { "nodeId": "lifecycle-01", "order": 10, "segmentId": "discover-define", "title": "Product intent and problem discovery", "targetIntent": "Bound Product intent, problem evidence, affected users, outcomes, and success hypotheses.", "capabilityIds": ["GAEP-CAP-101", "GAEP-CAP-102"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-02", "order": 20, "segmentId": "discover-define", "title": "Source-first workspace initialization and change governance", "targetIntent": "Support optional source setup, Intake, Baseline, Provenance, explicit change review, and visible missing evidence.", "capabilityIds": ["GAEP-CAP-103", "GAEP-CAP-104", "GAEP-CAP-105"], "proposedGapIds": ["GAEP-P03-GAP-002"] },
+    { "nodeId": "lifecycle-03", "order": 30, "segmentId": "discover-define", "title": "Product and Initiative definition", "targetIntent": "Define the durable Product boundary and a bounded Initiative/context.", "capabilityIds": ["GAEP-CAP-106", "GAEP-CAP-107"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-04", "order": 40, "segmentId": "discover-define", "title": "Initiative classification and applicability", "targetIntent": "Record classification, applicability, accountable decisions, and unresolved subjects.", "capabilityIds": ["GAEP-CAP-108", "GAEP-CAP-109"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-05", "order": 50, "segmentId": "discover-define", "title": "Product discovery", "targetIntent": "Develop evidence-bound business understanding, stakeholder, outcome, and discovery records.", "capabilityIds": ["GAEP-CAP-101"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-06", "order": 60, "segmentId": "discover-define", "title": "Business architecture and value streams", "targetIntent": "Model capabilities, value streams, operating context, and business rules without assuming an ERP Product.", "capabilityIds": ["GAEP-CAP-110"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-07", "order": 70, "segmentId": "architecture-plan", "title": "Domain discovery and Event Storming", "targetIntent": "Capture domain events and collaborative domain discovery evidence.", "capabilityIds": ["GAEP-CAP-111"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-08", "order": 80, "segmentId": "architecture-plan", "title": "DDD strategic design and context mapping", "targetIntent": "Define bounded contexts, relationships, ownership, and context maps.", "capabilityIds": ["GAEP-CAP-112"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-09", "order": 90, "segmentId": "architecture-plan", "title": "Solution, data, integration, security, privacy, and deployment architecture", "targetIntent": "Bind solution, data, API/event/integration, security, privacy, quality, and deployment concerns.", "capabilityIds": ["GAEP-CAP-113", "GAEP-CAP-121", "GAEP-CAP-122", "GAEP-CAP-129", "GAEP-CAP-130"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-10", "order": 100, "segmentId": "architecture-plan", "title": "Architecture decisions and quality scenarios", "targetIntent": "Record decisions, alternatives, constraints, quality scenarios, assurance needs, and review triggers.", "capabilityIds": ["GAEP-CAP-113", "GAEP-CAP-114"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-11", "order": 110, "segmentId": "architecture-plan", "title": "Phase, wave, Product, and vertical-slice planning", "targetIntent": "Plan phases, waves, Products, dependencies, and demonstrable vertical slices.", "capabilityIds": ["GAEP-CAP-115"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-12", "order": 120, "segmentId": "architecture-plan", "title": "Product Design preparation and iterative evidence", "targetIntent": "Prepare tool-neutral Product Design work, ingest iterative evidence, and support replaceable adapters such as optional Figma.", "capabilityIds": ["GAEP-CAP-116"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-13", "order": 130, "segmentId": "architecture-plan", "title": "Architecture-bound backlog, readiness, done, and test design", "targetIntent": "Generate Epics, Features, User Stories, acceptance criteria, dependencies, Definition of Ready, Definition of Done, test cases, assurance, and traceability.", "capabilityIds": ["GAEP-CAP-117", "GAEP-CAP-118", "GAEP-CAP-119"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-14", "order": 140, "segmentId": "deliver-operate", "title": "Repository and implementation-target topology", "targetIntent": "Define monorepo or polyrepo topology and backend, frontend, web, mobile, PWA, dashboard, admin, API, event, worker, and integration targets.", "capabilityIds": ["GAEP-CAP-123"], "proposedGapIds": ["GAEP-P03-GAP-001"] },
+    { "nodeId": "lifecycle-15", "order": 150, "segmentId": "deliver-operate", "title": "Cross-repository slice distribution, synchronization, and drift", "targetIntent": "Map each backlog slice to implementation targets and repositories, synchronize governed references, and detect drift.", "capabilityIds": ["GAEP-CAP-120", "GAEP-CAP-124"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-16", "order": 160, "segmentId": "deliver-operate", "title": "Governed implementation agents and code generation", "targetIntent": "Run bounded implementation agents, code generation, source scanning, and evidence capture under explicit authority.", "capabilityIds": ["GAEP-CAP-125"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-17", "order": 170, "segmentId": "deliver-operate", "title": "Product QA and Product Owner acceptance", "targetIntent": "Bind test evidence, Product QA, traceability, and a separate Product Owner acceptance decision.", "capabilityIds": ["GAEP-CAP-119"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-18", "order": 180, "segmentId": "deliver-operate", "title": "CI/CD, release, deployment, and environment governance", "targetIntent": "Govern pipelines, releases, deployments, environment evidence, and explicit production authority boundaries.", "capabilityIds": ["GAEP-CAP-126"], "proposedGapIds": [] },
+    { "nodeId": "lifecycle-19", "order": 190, "segmentId": "deliver-operate", "title": "Operations, observability, incident/recovery evidence, and feedback", "targetIntent": "Capture runtime observations, incidents, recovery evidence, and feedback into Product governance.", "capabilityIds": ["GAEP-CAP-127", "GAEP-CAP-128"], "proposedGapIds": [] }
+  ],
+  "transitionRoadmap": [
+    { "currentCheckpointId": "product-definition", "targetNodeIds": ["lifecycle-01", "lifecycle-03"], "transitionType": "expanded", "currentMaturity": "implemented-awaiting-product-owner-acceptance", "targetIntent": "Expand Product definition into evidence-bound intent, discovery, and durable Product context.", "dependency": "Product Owner acceptance and future runtime authorization", "implementationStatus": "current-runtime-implemented-target-partial", "productOwnerAcceptanceStatus": "unresolved", "migrationState": "planned" },
+    { "currentCheckpointId": "initiative-definition", "targetNodeIds": ["lifecycle-03"], "transitionType": "retained", "currentMaturity": "implemented-awaiting-product-owner-acceptance", "targetIntent": "Retain stable Initiative identity while expanding context and migration metadata.", "dependency": "Product Owner acceptance", "implementationStatus": "current-runtime-implemented-target-partial", "productOwnerAcceptanceStatus": "unresolved", "migrationState": "planned" },
+    { "currentCheckpointId": "initiative-classification", "targetNodeIds": ["lifecycle-04"], "transitionType": "retained", "currentMaturity": "implemented-awaiting-product-owner-acceptance", "targetIntent": "Retain classification and integrate it with target applicability governance.", "dependency": "Product Owner acceptance", "implementationStatus": "current-runtime-implemented-target-partial", "productOwnerAcceptanceStatus": "unresolved", "migrationState": "planned" },
+    { "currentCheckpointId": "initiative-applicability", "targetNodeIds": ["lifecycle-04"], "transitionType": "expanded", "currentMaturity": "implemented-awaiting-product-owner-acceptance", "targetIntent": "Expand applicability into the complete target operating-model crosswalk.", "dependency": "Canonical coverage and Product Owner decisions", "implementationStatus": "current-runtime-implemented-target-partial", "productOwnerAcceptanceStatus": "unresolved", "migrationState": "planned" },
+    { "currentCheckpointId": "source-intake", "targetNodeIds": ["lifecycle-02"], "transitionType": "expanded", "currentMaturity": "implemented-awaiting-product-owner-acceptance", "targetIntent": "Add explicit source-change lifecycle and downstream revalidation without inferring truth or supersession.", "dependency": "Source change/removal contract gap", "implementationStatus": "current-runtime-implemented-target-partial", "productOwnerAcceptanceStatus": "unresolved", "migrationState": "planned" },
+    { "currentCheckpointId": "source-baseline", "targetNodeIds": ["lifecycle-02"], "transitionType": "merged", "currentMaturity": "implemented-awaiting-product-owner-acceptance", "targetIntent": "Remain a distinct governed record inside a unified target source-governance node.", "dependency": "Source lifecycle UX", "implementationStatus": "current-runtime-implemented-target-partial", "productOwnerAcceptanceStatus": "unresolved", "migrationState": "planned" },
+    { "currentCheckpointId": "source-provenance", "targetNodeIds": ["lifecycle-02"], "transitionType": "merged", "currentMaturity": "implemented-awaiting-product-owner-acceptance", "targetIntent": "Remain a distinct governed record inside a unified target source-governance node.", "dependency": "Source lifecycle UX", "implementationStatus": "current-runtime-implemented-target-partial", "productOwnerAcceptanceStatus": "unresolved", "migrationState": "planned" },
+    { "currentCheckpointId": "product-discovery", "targetNodeIds": ["lifecycle-05"], "transitionType": "expanded", "currentMaturity": "implemented-awaiting-product-owner-acceptance", "targetIntent": "Expand governed discovery records and iterative evidence review.", "dependency": "Product Owner acceptance", "implementationStatus": "current-runtime-implemented-target-partial", "productOwnerAcceptanceStatus": "unresolved", "migrationState": "planned" },
+    { "currentCheckpointId": "business-architecture", "targetNodeIds": ["lifecycle-06", "lifecycle-07", "lifecycle-08"], "transitionType": "split", "currentMaturity": "implemented-awaiting-product-owner-acceptance", "targetIntent": "Separate business architecture, Event Storming/domain discovery, and DDD strategic design.", "dependency": "Target checkpoint implementation", "implementationStatus": "current-runtime-implemented-target-partial", "productOwnerAcceptanceStatus": "unresolved", "migrationState": "planned" },
+    { "currentCheckpointId": "solution-security-architecture", "targetNodeIds": ["lifecycle-09", "lifecycle-10"], "transitionType": "split", "currentMaturity": "implemented-awaiting-product-owner-acceptance", "targetIntent": "Separate architecture domains from architecture decisions and quality scenarios.", "dependency": "Target checkpoint implementation", "implementationStatus": "current-runtime-implemented-target-partial", "productOwnerAcceptanceStatus": "unresolved", "migrationState": "planned" },
+    { "currentCheckpointId": "detailed-design-assurance", "targetNodeIds": ["lifecycle-10", "lifecycle-11", "lifecycle-12", "lifecycle-13"], "transitionType": "split", "currentMaturity": "implemented-awaiting-product-owner-acceptance", "targetIntent": "Split planning, Product Design, backlog, readiness, done, test, and assurance concerns.", "dependency": "Target checkpoint implementation", "implementationStatus": "current-runtime-implemented-target-partial", "productOwnerAcceptanceStatus": "unresolved", "migrationState": "planned" },
+    { "currentCheckpointId": "p0-p4-readiness", "targetNodeIds": ["lifecycle-12", "lifecycle-13", "lifecycle-14", "lifecycle-15", "lifecycle-16", "lifecycle-17", "lifecycle-18", "lifecycle-19"], "transitionType": "replaced-by-tool-neutral-abstraction", "currentMaturity": "implemented-awaiting-product-owner-acceptance", "targetIntent": "Replace legacy handoff wording with tool-neutral Product Design and explicit delivery/operations nodes.", "dependency": "Compatibility migration and later authorized implementation prompts", "implementationStatus": "current-runtime-implemented-target-planned", "productOwnerAcceptanceStatus": "unresolved", "migrationState": "planned" }
+  ],
+  "productOwnerRequirements": [
+    { "requirementId": "GAEP-P03-REQ-001", "title": "Source-first optional onboarding", "targetNodeIds": ["lifecycle-01", "lifecycle-02", "lifecycle-03"], "currentCheckpointIds": ["product-definition", "source-intake"], "canonicalSourceIds": ["GAEP-CAP-102", "GAEP-CAP-103", "GAEP-CAP-104"], "currentMaturity": "partial", "futureDisposition": "expanded", "gapOrDecision": "No-source onboarding is supported; complete source-change UX remains a target gap." },
+    { "requirementId": "GAEP-P03-REQ-002", "title": "Source Intake, Baseline, Provenance, and change governance", "targetNodeIds": ["lifecycle-02"], "currentCheckpointIds": ["source-intake", "source-baseline", "source-provenance"], "canonicalSourceIds": ["GAEP-CAP-103", "GAEP-CAP-104", "GAEP-CAP-105"], "currentMaturity": "partial", "futureDisposition": "expanded", "gapOrDecision": "Explicit removal, exclusion, and supersession runtime workflows are not implemented." },
+    { "requirementId": "GAEP-P03-REQ-003", "title": "Product discovery through DDD and context mapping", "targetNodeIds": ["lifecycle-05", "lifecycle-06", "lifecycle-07", "lifecycle-08"], "currentCheckpointIds": ["product-discovery", "business-architecture"], "canonicalSourceIds": ["GAEP-CAP-101", "GAEP-CAP-110", "GAEP-CAP-111", "GAEP-CAP-112"], "currentMaturity": "partial", "futureDisposition": "split", "gapOrDecision": "Target nodes are modeled; runtime split is planned." },
+    { "requirementId": "GAEP-P03-REQ-004", "title": "Architecture before Product Design and backlog", "targetNodeIds": ["lifecycle-09", "lifecycle-10", "lifecycle-11", "lifecycle-12", "lifecycle-13"], "currentCheckpointIds": ["solution-security-architecture", "detailed-design-assurance", "p0-p4-readiness"], "canonicalSourceIds": ["GAEP-CAP-113", "GAEP-CAP-114", "GAEP-CAP-115", "GAEP-CAP-116", "GAEP-CAP-117", "GAEP-CAP-118"], "currentMaturity": "partial", "futureDisposition": "split", "gapOrDecision": "Legacy runtime naming remains until a separately authorized migration." },
+    { "requirementId": "GAEP-P03-REQ-005", "title": "Architecture-bound backlog, readiness, done, tests, and traceability", "targetNodeIds": ["lifecycle-13", "lifecycle-15", "lifecycle-17"], "currentCheckpointIds": ["detailed-design-assurance", "p0-p4-readiness"], "canonicalSourceIds": ["GAEP-CAP-117", "GAEP-CAP-118", "GAEP-CAP-119", "GAEP-CAP-120"], "currentMaturity": "partial", "futureDisposition": "expanded", "gapOrDecision": "Target mappings exist; end-to-end runtime orchestration remains later work." },
+    { "requirementId": "GAEP-P03-REQ-006", "title": "Repository topology and multiple implementation targets", "targetNodeIds": ["lifecycle-14", "lifecycle-15"], "currentCheckpointIds": ["p0-p4-readiness"], "canonicalSourceIds": ["GAEP-CAP-120", "GAEP-CAP-123", "GAEP-CAP-124"], "currentMaturity": "planned-deferred-coming-soon", "futureDisposition": "newly-planned", "gapOrDecision": "Detailed target-form taxonomy needs a future P02 canonical correction." },
+    { "requirementId": "GAEP-P03-REQ-007", "title": "Governed implementation, source scanning, and evidence", "targetNodeIds": ["lifecycle-16", "lifecycle-17"], "currentCheckpointIds": ["p0-p4-readiness"], "canonicalSourceIds": ["GAEP-CAP-119", "GAEP-CAP-120", "GAEP-CAP-125"], "currentMaturity": "partial", "futureDisposition": "expanded", "gapOrDecision": "Future implementation prompts must preserve agent and human authority boundaries." },
+    { "requirementId": "GAEP-P03-REQ-008", "title": "CI/CD, release, deployment, environments, and operations feedback", "targetNodeIds": ["lifecycle-18", "lifecycle-19"], "currentCheckpointIds": [], "canonicalSourceIds": ["GAEP-CAP-126", "GAEP-CAP-127", "GAEP-CAP-128"], "currentMaturity": "planned-deferred-coming-soon", "futureDisposition": "newly-planned", "gapOrDecision": "No current runtime checkpoint implements the complete target behavior." },
+    { "requirementId": "GAEP-P03-REQ-009", "title": "ERP is illustrative, never a universal Product assumption", "targetNodeIds": ["lifecycle-06", "lifecycle-14"], "currentCheckpointIds": [], "canonicalSourceIds": ["GAEP-CAP-110", "GAEP-CAP-123"], "currentMaturity": "planned-deferred-coming-soon", "futureDisposition": "retained-boundary", "gapOrDecision": "All generated target wording must remain Product-neutral." },
+    { "requirementId": "GAEP-P03-REQ-010", "title": "Figma remains an optional Product Design adapter", "targetNodeIds": ["lifecycle-12"], "currentCheckpointIds": ["p0-p4-readiness"], "canonicalSourceIds": ["GAEP-CAP-116"], "currentMaturity": "partial", "futureDisposition": "replaced-by-tool-neutral-abstraction", "gapOrDecision": "Runtime compatibility wording remains; canonical target wording is Product Design." }
+    ,{ "requirementId": "GAEP-P03-REQ-011", "title": "Initiative classification, applicability, and unresolved decision governance", "targetNodeIds": ["lifecycle-04"], "currentCheckpointIds": ["initiative-classification", "initiative-applicability"], "canonicalSourceIds": ["GAEP-CAP-108", "GAEP-CAP-109"], "currentMaturity": "implemented-awaiting-product-owner-acceptance", "futureDisposition": "expanded", "gapOrDecision": "Current runtime behavior remains awaiting Product Owner acceptance." }
+  ],
+  "proposedCanonicalGaps": [
+    { "gapId": "GAEP-P03-GAP-001", "title": "Implementation-target form taxonomy", "status": "proposed-unaccepted", "requiredCanonicalCorrection": "GAEP-REG-013 capability taxonomy or a Product Owner-approved successor must explicitly model web, mobile, PWA, dashboard, admin, API, event, worker, integration, and multi-project topology breadth.", "blocksAcceptance": true },
+    { "gapId": "GAEP-P03-GAP-002", "title": "Source removal, exclusion, supersession, and temporary-unavailability workflow", "status": "proposed-unaccepted", "requiredCanonicalCorrection": "A future accepted Source-governance contract and runtime prompt must define human-scoped transitions, preserved revisions, and revalidation effects.", "blocksAcceptance": true }
   ],
   "statePolicy": {
-    "displayPriority": [
-      "unknown-not-assessed",
-      "planned-deferred-coming-soon",
-      "candidate-proposed",
-      "partial",
-      "implemented-awaiting-product-owner-acceptance",
-      "implemented-and-automated-tested"
-    ],
+    "displayPriority": ["unknown-not-assessed", "planned-deferred-coming-soon", "candidate-proposed", "partial", "implemented-awaiting-product-owner-acceptance", "implemented-and-automated-tested"],
     "labels": {
       "unknown-not-assessed": "[UN] Unknown / not assessed",
       "planned-deferred-coming-soon": "[PD] Planned / deferred",
@@ -150,10 +166,10 @@
       "implemented-and-automated-tested": "[IT] Implemented and automated-tested"
     },
     "unknownRule": "Unknown means not assessed or not established; it never means No.",
-    "colorRule": "Every state uses text and a two-letter marker; color is supplementary only."
+    "colorRule": "Every state uses text and an accessible marker; color is supplementary only."
   },
   "commandSurface": {
-    "extensionCommandIds": ["gaep.openGuide"],
-    "chatCommands": ["status", "adopt", "continue", "intake", "author", "accept", "commit", "inspect", "help"]
+    "extensionCommandIds": ["gaep.openGuide", "gaep.openProductStudio", "gaep.chooseFile", "gaep.chooseFolder", "gaep.addReferenceLink"],
+    "chatCommands": ["initialize", "adopt", "continue", "classification", "applicability", "intake", "record", "baseline", "provenance", "author", "inspect", "accept", "status", "commit", "help"]
   }
 }

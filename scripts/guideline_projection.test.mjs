@@ -31,7 +31,7 @@ test("projection binds exact manifest and canonical source digests", () => {
 test("Guide has the exact progressive four-layer structure", () => {
   assert.deepEqual([...rendered.matchAll(/^## (\d\. .+)$/gm)].map(match => match[1]), [
     "1. Executive orientation",
-    "2. Quick start",
+    "2. Start here",
     "3. Practitioner guide",
     "4. Methodology and maintainer appendix",
   ]);
