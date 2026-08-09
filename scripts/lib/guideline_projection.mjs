@@ -65,6 +65,10 @@ function mermaidSafe(value) {
     .trim();
 }
 
+function maturityLabel(manifest, state) {
+  return manifest.statePolicy.labels[state] ?? String(state).replaceAll("-", " ");
+}
+
 function generatedBlock(id, content) {
   return `<!-- BEGIN GENERATED:${id} -->\n${content.trim()}\n<!-- END GENERATED:${id} -->`;
 }
@@ -563,7 +567,7 @@ function renderQuickStart(manifest, extensionPackage) {
   ].join("\n"));
 }
 
-function renderCurrentRuntime(checkpoints) {
+function renderCurrentRuntime(checkpoints, manifest) {
   const nodes = checkpoints.map(entry => {
     const label = entry.guideLabel ?? entry.label;
     return `  ${entry.checkpointId.replaceAll("-", "_")}["${entry.order}. ${mermaidSafe(label)}"]`;
@@ -573,7 +577,7 @@ function renderCurrentRuntime(checkpoints) {
     `| \`${entry.checkpointId}\``,
     `${entry.order} · ${markdownSafe(entry.label)}`,
     markdownSafe(entry.prerequisites.length > 0 ? entry.prerequisites.join(", ") : "None"),
-    `${markdownSafe(entry.implementedCtas.join("; "))}<br/>${markdownSafe(entry.implementationMaturity)}<br/>${markdownSafe(entry.limitations)} |`,
+    `${markdownSafe(entry.implementedCtas.join("; "))}<br/>${markdownSafe(maturityLabel(manifest, entry.implementationMaturity))}<br/>${markdownSafe(entry.limitations)} |`,
   ].join(" | ")).join("\n");
   const compatibilityNotes = checkpoints.filter(entry => entry.compatibilityNote).map(entry => `> **Compatibility — \`${entry.checkpointId}\`:** ${entry.compatibilityNote}`).join("\n\n");
   return generatedBlock("CURRENT_RUNTIME", [
@@ -685,7 +689,7 @@ function renderTargetLifecycle(manifest, market) {
 }
 
 function renderTransitionRoadmap(manifest) {
-  const rows = manifest.transitionRoadmap.map(entry => `| \`${entry.currentCheckpointId}\` | ${entry.transitionType}<br/>${entry.targetNodeIds.map(id => `\`${id}\``).join(", ")} | ${markdownSafe(entry.currentMaturity)}<br/>${markdownSafe(entry.implementationStatus)} | ${markdownSafe(entry.targetIntent)}<br/>Dependency: ${markdownSafe(entry.dependency)}<br/>Migration: ${entry.migrationState}; independent acceptance decision: ${entry.acceptanceDecision} |`).join("\n");
+  const rows = manifest.transitionRoadmap.map(entry => `| \`${entry.currentCheckpointId}\` | ${entry.transitionType}<br/>${entry.targetNodeIds.map(id => `\`${id}\``).join(", ")} | ${markdownSafe(maturityLabel(manifest, entry.currentMaturity))}<br/>${markdownSafe(entry.implementationStatus)} | ${markdownSafe(entry.targetIntent)}<br/>Dependency: ${markdownSafe(entry.dependency)}<br/>Migration: ${entry.migrationState}; independent acceptance decision: ${entry.acceptanceDecision} |`).join("\n");
   const visualBody = [
     '  current["A. Current Runtime<br/>implemented behavior only"] --> mapping["C. Explicit transition records<br/>retained, expanded, split, merged, or replaced"]',
     '  mapping --> target["B. Target Operating Model<br/>intent and conservative maturity"]',
@@ -707,7 +711,7 @@ function renderRoadmapCoverage(manifest, market) {
     const current = manifest.transitionRoadmap.filter(transition => transition.targetNodeIds.some(id => targets.some(node => node.nodeId === id))).map(entry => entry.currentCheckpointId);
     return `| ${capability.capabilityId}<br/>${markdownSafe(capability.name)} | ${targets.map(node => `\`${node.nodeId}\``).join(", ")} | ${[...new Set(current)].map(id => `\`${id}\``).join(", ") || "None"} | ${manifest.statePolicy.labels[maturity.get(capability.capabilityId) ?? "unknown-not-assessed"]}<br/>Canonical source: ${market.registryId} |`;
   }).join("\n");
-  const requirementRows = manifest.stakeholderRequirements.map(entry => `| ${entry.requirementId}<br/>${markdownSafe(entry.title)} | ${entry.targetNodeIds.map(id => `\`${id}\``).join(", ")} | ${entry.currentCheckpointIds.map(id => `\`${id}\``).join(", ") || "None"} | ${markdownSafe(entry.currentMaturity)}<br/>${markdownSafe(entry.futureDisposition)}<br/>${markdownSafe(entry.gapOrDecision)} |`).join("\n");
+  const requirementRows = manifest.stakeholderRequirements.map(entry => `| ${entry.requirementId}<br/>${markdownSafe(entry.title)} | ${entry.targetNodeIds.map(id => `\`${id}\``).join(", ")} | ${entry.currentCheckpointIds.map(id => `\`${id}\``).join(", ") || "None"} | ${markdownSafe(maturityLabel(manifest, entry.currentMaturity))}<br/>${markdownSafe(entry.futureDisposition)}<br/>${markdownSafe(entry.gapOrDecision)} |`).join("\n");
   const gaps = manifest.proposedCanonicalGaps.map(gap => `- **${gap.gapId} · ${gap.title}** — ${gap.status}; P03 projection: ${gap.scopedImpacts.p03ProjectionAcceptance}; capability impact: ${gap.scopedImpacts.targetCapabilityActivation}; current runtime: ${gap.scopedImpacts.currentRuntimeAvailability}; roadmap: ${gap.scopedImpacts.responsibleRoadmapItems.join(", ")}; executable state: ${gap.scopedImpacts.executableState}. ${gap.requiredCanonicalCorrection}`).join("\n");
   return generatedBlock("ROADMAP_COVERAGE", [
     "Every current canonical capability maps to at least one target node. Proposed stakeholder detail that exceeds accepted P01/P02 granularity remains an explicit, unaccepted gap.",
@@ -732,9 +736,9 @@ function renderSourceLineage(manifest) {
     `- **Does not authorize:** ${concept.doesNotAuthorize}`,
     "", "</details>",
   ].join("\n")).join("\n\n");
-  const summaryRows = manifest.sourceLifecycle.events.map(event => `| ${event.label} | ${event.runtimeClassification} | ${markdownSafe(event.userAction)} | ${markdownSafe(event.recordEffect)} |`).join("\n");
+  const summaryRows = manifest.sourceLifecycle.events.map(event => `| ${event.label} | ${maturityLabel(manifest, event.runtimeClassification)}<br/>compatibility machine state: \`${event.runtimeClassification}\` | ${markdownSafe(event.userAction)} | ${markdownSafe(event.recordEffect)} |`).join("\n");
   const eventDetails = manifest.sourceLifecycle.events.map(event => [
-    `<details><summary><strong>${event.label}</strong> · ${event.runtimeClassification}</summary>`, "",
+    `<details><summary><strong>${event.label}</strong> · ${maturityLabel(manifest, event.runtimeClassification)} · compatibility machine state: <code>${event.runtimeClassification}</code></summary>`, "",
     `- **What you see:** ${event.userSees}`,
     `- **What GAEP needs from you:** ${event.userAction}`,
     `- **Record/revision effect:** ${event.recordEffect}`,
@@ -1148,7 +1152,7 @@ function renderCompetencyAndAuthority(responsibility, runtimePresentation, manif
   return generatedBlock("COMPETENCY_AUTHORITY", [gateway, "", sequence, "", `> **Authority boundary:** ${responsibility.authorityBoundary}`, "", "#### Participation levels", "", "| Level | Required scenario evidence |", "|---|---|", levels, "", "<details>", "<summary><strong>Show all competency dimensions and scenario evidence</strong></summary>", "", "| Competency | Demonstration evidence |", "|---|---|", competencyRows, "", "</details>", "", "#### Current-checkpoint RACI overview", "", "R = Responsible · A = Accountable · C = Consulted · I = Informed · IA = independent assurance. Exactly one A is required for each governed decision; this overview may show several A roles because a checkpoint contains several substeps.", "", "| Checkpoint | R | A | C / I / independent assurance |", "|---|---|---|---|", checkpointRaci, "", "<details>", "<summary><strong>Role-to-lifecycle participation — current and target</strong></summary>", "", "Target participation is proposed and non-executable. A role mapping does not appoint a person or grant authority.", "", "| Role archetype | Current checkpoint participation | Target lifecycle participation |", "|---|---|---|", participationRows, "", "</details>", "", "#### Authority and assurance — separate from RACI", "", "| Authority | Candidate decision-role archetypes | Boundary |", "|---|---|---|", authority].join("\n"));
 }
 
-function renderCheckpointExecution(runtimePresentation) {
+function renderCheckpointExecution(runtimePresentation, manifest) {
   const phaseRows = [...new Map(runtimePresentation.checkpoints.map(checkpoint => [checkpoint.phase.id, checkpoint.phase])).values()].map(phase => {
     const checkpoints = runtimePresentation.checkpoints.filter(entry => entry.phase.id === phase.id);
     const roles = selector => [...new Set(checkpoints.flatMap(entry => entry.executionSubsteps.flatMap(selector)))].join(", ") || "—";
@@ -1180,7 +1184,7 @@ function renderCheckpointExecution(runtimePresentation) {
     const aiSteps = steps.filter(step => step.interactionType === "ai-assisted-candidate").map(step => step.purpose).join(" ") || "No AI activity is claimed.";
     const humanSteps = steps.filter(step => step.interactionType !== "ai-assisted-candidate").map(step => step.purpose).join(" ");
     return [
-      "<details>", `<summary><strong>${checkpoint.order} · ${checkpoint.label}</strong> · ${checkpoint.implementationMaturity}</summary>`, "",
+      "<details>", `<summary><strong>${checkpoint.order} · ${checkpoint.label}</strong> · ${maturityLabel(manifest, checkpoint.implementationMaturity)}</summary>`, "",
       `**Purpose:** ${checkpoint.purpose}`, "", `**Why it exists:** ${checkpoint.whyItExists}`, "",
       `**When it starts / prerequisites:** ${checkpoint.entryConditions.join(" ")} Prerequisites: ${checkpoint.prerequisites.join(", ") || "none"}.`, "",
       `**Roles and competency:** roles ${checkpoint.requiredRoleArchetypeIds.map(id => `\`${id}\``).join(", ")}; competencies ${checkpoint.requiredCompetencyProfileIds.map(id => `\`${id}\``).join(", ")}.`, "",
@@ -1261,7 +1265,7 @@ export function renderGuideline(context) {
     ENTERPRISE_OPENING: renderEnterpriseOpening(),
     ENTRY_PATHS: renderEntryPaths(),
     COMPETENCY_AUTHORITY: renderCompetencyAndAuthority(responsibility, runtimePresentation, manifest, targetExecution),
-    CHECKPOINT_EXECUTION: renderCheckpointExecution(runtimePresentation),
+    CHECKPOINT_EXECUTION: renderCheckpointExecution(runtimePresentation, manifest),
     TARGET_EXECUTION: renderTargetExecution(manifest, targetExecution),
     EXCEPTION_SEQUENCES: renderExceptionSequences(),
     ENTERPRISE_ASSURANCE: renderEnterpriseAssurance(catalog, assurance),
@@ -1272,7 +1276,7 @@ export function renderGuideline(context) {
     AUTHORITY_LOOP: renderAuthorityLoop(),
     QUICK_START_FLOW: renderQuickStart(manifest, extensionPackage),
     CHECKPOINT_POSITION_EXAMPLE: renderCheckpointPositionExample(runtimePresentation),
-    CURRENT_RUNTIME: renderCurrentRuntime(runtimeCheckpoints),
+    CURRENT_RUNTIME: renderCurrentRuntime(runtimeCheckpoints, manifest),
     STATE_LEGEND: renderStateLegend(manifest, runtimePresentation),
     TARGET_LIFECYCLE: renderTargetLifecycle(manifest, market),
     TRANSITION_ROADMAP: renderTransitionRoadmap(manifest),

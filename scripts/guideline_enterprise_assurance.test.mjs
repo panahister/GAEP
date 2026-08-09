@@ -43,6 +43,13 @@ test("every governed decision has exactly one accountable role and Product Owner
   assert.ok(decisions.every(step => step.accountableRoleId !== "product-owner"));
 });
 
+test("user-facing journey maturity uses independent-review language, not the legacy Product Owner state slug", () => {
+  assert.match(guide, /Implemented; awaiting independent P03 review/);
+  assert.doesNotMatch(guide, /<summary><strong>\d+ · [^<]+<\/strong> · implemented-awaiting-product-owner-acceptance/);
+  assert.doesNotMatch(guide, /<summary><strong>Source added<\/strong> · implemented-awaiting-product-owner-acceptance/);
+  assert.match(guide, /Implemented; awaiting independent P03 review · `implemented-awaiting-product-owner-acceptance`/);
+});
+
 test("missing accountability and incompatible independent assurance block validation", () => {
   const runtimePresentation = clone(base.runtimePresentation);
   runtimePresentation.checkpoints[0].executionSubsteps.at(-1).accountableRoleId = null;

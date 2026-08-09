@@ -568,18 +568,18 @@ flowchart TD
 
 | Stable checkpoint ID | Order and current label | Current prerequisites | Implemented CTA, maturity, and limitation |
 |---|---|---|---|
-| `product-definition` | 10 · Product definition | None | @gaep /initialize; @gaep /adopt; Edit Product definition<br/>implemented-awaiting-product-owner-acceptance<br/>Records a Product boundary; it does not establish market need, funding, or investment approval. |
-| `initiative-definition` | 20 · Initiative definition | product-definition | @gaep /continue; Edit Initiative definition<br/>implemented-awaiting-product-owner-acceptance<br/>Bounds a change; it does not authorize execution or funding. |
-| `initiative-classification` | 30 · Initiative classification | initiative-definition | @gaep /classification; Resolve open questions<br/>implemented-awaiting-product-owner-acceptance<br/>Classification is scoped evidence, not an approval, risk acceptance, or waiver. |
-| `initiative-applicability` | 40 · Initiative applicability | initiative-classification | @gaep /applicability; Resolve pending decisions<br/>implemented-awaiting-product-owner-acceptance<br/>Applicability records scoped decisions; it does not grant approval, readiness, or execution authority. |
-| `source-intake` | 50 · Source intake | initiative-definition | @gaep /intake; @gaep /record; Bind reviewed Sources to Initiative<br/>implemented-awaiting-product-owner-acceptance<br/>Attachment and extraction do not establish Source correctness, authority, rights, or Baseline membership. |
-| `source-baseline` | 60 · Source baseline | source-intake | @gaep /baseline; Review details<br/>implemented-awaiting-product-owner-acceptance<br/>A Baseline freezes membership; it does not approve content, establish precedence, or make evidence complete. |
-| `source-provenance` | 70 · Source provenance | source-intake | @gaep /provenance; Revise Source provenance<br/>implemented-awaiting-product-owner-acceptance<br/>Provenance records lineage; it does not establish correctness, authenticity, authority, or approval. |
-| `product-discovery` | 80 · Product discovery | initiative-applicability, source-intake | @gaep /author; Review details; Edit Product discovery<br/>implemented-awaiting-product-owner-acceptance<br/>Discovery records remain evidence-bounded; they do not prove demand, viability, desirability, or investment approval. |
-| `business-architecture` | 90 · Business architecture | product-discovery | @gaep /author; Review details; Edit Business architecture<br/>implemented-awaiting-product-owner-acceptance<br/>Recorded models do not certify organizational design or force microservices; DDD is a reasoning policy, not a deployment prescription. |
-| `solution-security-architecture` | 100 · Solution and security architecture | business-architecture | @gaep /author; Review details; Edit solution and security architecture<br/>implemented-awaiting-product-owner-acceptance<br/>Architecture records do not create security, privacy, compliance, risk-acceptance, deployment, or implementation authority. |
-| `detailed-design-assurance` | 110 · Detailed design and assurance | solution-security-architecture | @gaep /author; Review details; Edit detailed design and assurance<br/>implemented-awaiting-product-owner-acceptance<br/>Models and assurance evidence do not establish release, production, security, privacy, compliance, or operational readiness. |
-| `p0-p4-readiness` | 120 · P0–P4 readiness and handoff | detailed-design-assurance | @gaep /author; Review details; Edit handoff inputs<br/>implemented-awaiting-product-owner-acceptance<br/>This is the final current-runtime checkpoint. Product Design, backlog, implementation, CI/CD, release, deployment, and operations execution remain target-only. |
+| `product-definition` | 10 · Product definition | None | @gaep /initialize; @gaep /adopt; Edit Product definition<br/>[IA] Implemented; awaiting independent P03 review<br/>Records a Product boundary; it does not establish market need, funding, or investment approval. |
+| `initiative-definition` | 20 · Initiative definition | product-definition | @gaep /continue; Edit Initiative definition<br/>[IA] Implemented; awaiting independent P03 review<br/>Bounds a change; it does not authorize execution or funding. |
+| `initiative-classification` | 30 · Initiative classification | initiative-definition | @gaep /classification; Resolve open questions<br/>[IA] Implemented; awaiting independent P03 review<br/>Classification is scoped evidence, not an approval, risk acceptance, or waiver. |
+| `initiative-applicability` | 40 · Initiative applicability | initiative-classification | @gaep /applicability; Resolve pending decisions<br/>[IA] Implemented; awaiting independent P03 review<br/>Applicability records scoped decisions; it does not grant approval, readiness, or execution authority. |
+| `source-intake` | 50 · Source intake | initiative-definition | @gaep /intake; @gaep /record; Bind reviewed Sources to Initiative<br/>[IA] Implemented; awaiting independent P03 review<br/>Attachment and extraction do not establish Source correctness, authority, rights, or Baseline membership. |
+| `source-baseline` | 60 · Source baseline | source-intake | @gaep /baseline; Review details<br/>[IA] Implemented; awaiting independent P03 review<br/>A Baseline freezes membership; it does not approve content, establish precedence, or make evidence complete. |
+| `source-provenance` | 70 · Source provenance | source-intake | @gaep /provenance; Revise Source provenance<br/>[IA] Implemented; awaiting independent P03 review<br/>Provenance records lineage; it does not establish correctness, authenticity, authority, or approval. |
+| `product-discovery` | 80 · Product discovery | initiative-applicability, source-intake | @gaep /author; Review details; Edit Product discovery<br/>[IA] Implemented; awaiting independent P03 review<br/>Discovery records remain evidence-bounded; they do not prove demand, viability, desirability, or investment approval. |
+| `business-architecture` | 90 · Business architecture | product-discovery | @gaep /author; Review details; Edit Business architecture<br/>[IA] Implemented; awaiting independent P03 review<br/>Recorded models do not certify organizational design or force microservices; DDD is a reasoning policy, not a deployment prescription. |
+| `solution-security-architecture` | 100 · Solution and security architecture | business-architecture | @gaep /author; Review details; Edit solution and security architecture<br/>[IA] Implemented; awaiting independent P03 review<br/>Architecture records do not create security, privacy, compliance, risk-acceptance, deployment, or implementation authority. |
+| `detailed-design-assurance` | 110 · Detailed design and assurance | solution-security-architecture | @gaep /author; Review details; Edit detailed design and assurance<br/>[IA] Implemented; awaiting independent P03 review<br/>Models and assurance evidence do not establish release, production, security, privacy, compliance, or operational readiness. |
+| `p0-p4-readiness` | 120 · P0–P4 readiness and handoff | detailed-design-assurance | @gaep /author; Review details; Edit handoff inputs<br/>[IA] Implemented; awaiting independent P03 review<br/>This is the final current-runtime checkpoint. Product Design, backlog, implementation, CI/CD, release, deployment, and operations execution remain target-only. |
 
 > **Compatibility — `p0-p4-readiness`:** The adoption alias remains accepted for historical plans; all current-runtime surfaces display one canonical P0–P4 readiness and handoff label.
 <!-- END GENERATED:CURRENT_RUNTIME -->
@@ -600,7 +600,7 @@ flowchart TD
 #### Every current checkpoint — canonical substeps, RACI, sequence, and authority
 
 <details>
-<summary><strong>10 · Product definition</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<summary><strong>10 · Product definition</strong> · [IA] Implemented; awaiting independent P03 review</summary>
 
 **Purpose:** Establish the bounded Product, problem, affected users, outcomes, success signals, and exclusions.
 
@@ -682,7 +682,7 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 </details>
 
 <details>
-<summary><strong>20 · Initiative definition</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<summary><strong>20 · Initiative definition</strong> · [IA] Implemented; awaiting independent P03 review</summary>
 
 **Purpose:** Bound the proposed change, outcome, scope, constraints, and relationship to the governed Product.
 
@@ -765,7 +765,7 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 </details>
 
 <details>
-<summary><strong>30 · Initiative classification</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<summary><strong>30 · Initiative classification</strong> · [IA] Implemented; awaiting independent P03 review</summary>
 
 **Purpose:** Classify change, risk, data/AI, regulatory, delivery, and assurance characteristics without silently resolving them.
 
@@ -849,7 +849,7 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 </details>
 
 <details>
-<summary><strong>40 · Initiative applicability</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<summary><strong>40 · Initiative applicability</strong> · [IA] Implemented; awaiting independent P03 review</summary>
 
 **Purpose:** Decide which governed concerns, methods, controls, and assurance obligations apply to the Initiative.
 
@@ -933,7 +933,7 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 </details>
 
 <details>
-<summary><strong>50 · Source intake</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<summary><strong>50 · Source intake</strong> · [IA] Implemented; awaiting independent P03 review</summary>
 
 **Purpose:** Review exact candidate material and record bounded Source identities without treating attachments as truth.
 
@@ -1016,7 +1016,7 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 </details>
 
 <details>
-<summary><strong>60 · Source baseline</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<summary><strong>60 · Source baseline</strong> · [IA] Implemented; awaiting independent P03 review</summary>
 
 **Purpose:** Freeze exact Source identities and revisions for a bounded Initiative context.
 
@@ -1098,7 +1098,7 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 </details>
 
 <details>
-<summary><strong>70 · Source provenance</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<summary><strong>70 · Source provenance</strong> · [IA] Implemented; awaiting independent P03 review</summary>
 
 **Purpose:** Record exact lineage, locators, transformations, derivations, uncertainty, and limitations.
 
@@ -1182,7 +1182,7 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 </details>
 
 <details>
-<summary><strong>80 · Product discovery</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<summary><strong>80 · Product discovery</strong> · [IA] Implemented; awaiting independent P03 review</summary>
 
 **Purpose:** Challenge and record business understanding, stakeholders, outcomes, needs, assumptions, and success measures.
 
@@ -1265,7 +1265,7 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 </details>
 
 <details>
-<summary><strong>90 · Business architecture</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<summary><strong>90 · Business architecture</strong> · [IA] Implemented; awaiting independent P03 review</summary>
 
 **Purpose:** Model capabilities, value streams, operating model, business rules, events, domains, and candidate boundaries.
 
@@ -1349,7 +1349,7 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 </details>
 
 <details>
-<summary><strong>100 · Solution and security architecture</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<summary><strong>100 · Solution and security architecture</strong> · [IA] Implemented; awaiting independent P03 review</summary>
 
 **Purpose:** Select and challenge solution, data, AI, integration, security, privacy, and deployment architecture for the affected slice.
 
@@ -1434,7 +1434,7 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 </details>
 
 <details>
-<summary><strong>110 · Detailed design and assurance</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<summary><strong>110 · Detailed design and assurance</strong> · [IA] Implemented; awaiting independent P03 review</summary>
 
 **Purpose:** Complete process, data, authorization, integration, recovery, decisions, risks, evidence, and traceability for the affected slice.
 
@@ -1519,7 +1519,7 @@ gaep-->>role0: recorded-or-needs-decisions; authority remains bounded
 </details>
 
 <details>
-<summary><strong>120 · P0–P4 readiness and handoff</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<summary><strong>120 · P0–P4 readiness and handoff</strong> · [IA] Implemented; awaiting independent P03 review</summary>
 
 **Purpose:** Evaluate the exact current records and prepare a bounded handoff without claiming Product Design, implementation, release, or operational execution.
 
@@ -3035,18 +3035,18 @@ flowchart TD
 
 | Current stable ID | Transition and target | Current evidence | Target intent, dependency, and status |
 |---|---|---|---|
-| `product-definition` | expanded<br/>`lifecycle-01`, `lifecycle-03` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Expand Product definition into evidence-bound intent, discovery, and durable Product context.<br/>Dependency: independent P03 review and future runtime authorization<br/>Migration: planned; independent acceptance decision: unresolved |
-| `initiative-definition` | retained<br/>`lifecycle-03` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Retain stable Initiative identity while expanding context and migration metadata.<br/>Dependency: independent P03 review<br/>Migration: planned; independent acceptance decision: unresolved |
-| `initiative-classification` | retained<br/>`lifecycle-04` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Retain classification and integrate it with target applicability governance.<br/>Dependency: independent P03 review<br/>Migration: planned; independent acceptance decision: unresolved |
-| `initiative-applicability` | expanded<br/>`lifecycle-04` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Expand applicability into the complete target operating-model crosswalk.<br/>Dependency: Canonical coverage and accountable stakeholder decisions<br/>Migration: planned; independent acceptance decision: unresolved |
-| `source-intake` | expanded<br/>`lifecycle-02` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Add explicit source-change lifecycle and downstream revalidation without inferring truth or supersession.<br/>Dependency: Source change/removal contract gap<br/>Migration: planned; independent acceptance decision: unresolved |
-| `source-baseline` | merged<br/>`lifecycle-02` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Remain a distinct governed record inside a unified target source-governance node.<br/>Dependency: Source lifecycle UX<br/>Migration: planned; independent acceptance decision: unresolved |
-| `source-provenance` | merged<br/>`lifecycle-02` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Remain a distinct governed record inside a unified target source-governance node.<br/>Dependency: Source lifecycle UX<br/>Migration: planned; independent acceptance decision: unresolved |
-| `product-discovery` | expanded<br/>`lifecycle-05` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Expand governed discovery records and iterative evidence review.<br/>Dependency: independent P03 review<br/>Migration: planned; independent acceptance decision: unresolved |
-| `business-architecture` | split<br/>`lifecycle-06`, `lifecycle-07`, `lifecycle-08` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Separate business architecture, Event Storming/domain discovery, and DDD strategic design.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; independent acceptance decision: unresolved |
-| `solution-security-architecture` | split<br/>`lifecycle-09`, `lifecycle-10` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Separate architecture domains from architecture decisions and quality scenarios.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; independent acceptance decision: unresolved |
-| `detailed-design-assurance` | split<br/>`lifecycle-10`, `lifecycle-11`, `lifecycle-12`, `lifecycle-13` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-partial | Split planning, Product Design, backlog, readiness, done, test, and assurance concerns.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; independent acceptance decision: unresolved |
-| `p0-p4-readiness` | replaced-by-tool-neutral-abstraction<br/>`lifecycle-12`, `lifecycle-13`, `lifecycle-14`, `lifecycle-15`, `lifecycle-16`, `lifecycle-17`, `lifecycle-18`, `lifecycle-19` | implemented-awaiting-product-owner-acceptance<br/>current-runtime-implemented-target-planned | Replace legacy handoff wording with tool-neutral Product Design and explicit delivery/operations nodes.<br/>Dependency: Compatibility migration and later authorized implementation prompts<br/>Migration: planned; independent acceptance decision: unresolved |
+| `product-definition` | expanded<br/>`lifecycle-01`, `lifecycle-03` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Expand Product definition into evidence-bound intent, discovery, and durable Product context.<br/>Dependency: independent P03 review and future runtime authorization<br/>Migration: planned; independent acceptance decision: unresolved |
+| `initiative-definition` | retained<br/>`lifecycle-03` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Retain stable Initiative identity while expanding context and migration metadata.<br/>Dependency: independent P03 review<br/>Migration: planned; independent acceptance decision: unresolved |
+| `initiative-classification` | retained<br/>`lifecycle-04` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Retain classification and integrate it with target applicability governance.<br/>Dependency: independent P03 review<br/>Migration: planned; independent acceptance decision: unresolved |
+| `initiative-applicability` | expanded<br/>`lifecycle-04` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Expand applicability into the complete target operating-model crosswalk.<br/>Dependency: Canonical coverage and accountable stakeholder decisions<br/>Migration: planned; independent acceptance decision: unresolved |
+| `source-intake` | expanded<br/>`lifecycle-02` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Add explicit source-change lifecycle and downstream revalidation without inferring truth or supersession.<br/>Dependency: Source change/removal contract gap<br/>Migration: planned; independent acceptance decision: unresolved |
+| `source-baseline` | merged<br/>`lifecycle-02` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Remain a distinct governed record inside a unified target source-governance node.<br/>Dependency: Source lifecycle UX<br/>Migration: planned; independent acceptance decision: unresolved |
+| `source-provenance` | merged<br/>`lifecycle-02` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Remain a distinct governed record inside a unified target source-governance node.<br/>Dependency: Source lifecycle UX<br/>Migration: planned; independent acceptance decision: unresolved |
+| `product-discovery` | expanded<br/>`lifecycle-05` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Expand governed discovery records and iterative evidence review.<br/>Dependency: independent P03 review<br/>Migration: planned; independent acceptance decision: unresolved |
+| `business-architecture` | split<br/>`lifecycle-06`, `lifecycle-07`, `lifecycle-08` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Separate business architecture, Event Storming/domain discovery, and DDD strategic design.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; independent acceptance decision: unresolved |
+| `solution-security-architecture` | split<br/>`lifecycle-09`, `lifecycle-10` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Separate architecture domains from architecture decisions and quality scenarios.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; independent acceptance decision: unresolved |
+| `detailed-design-assurance` | split<br/>`lifecycle-10`, `lifecycle-11`, `lifecycle-12`, `lifecycle-13` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-partial | Split planning, Product Design, backlog, readiness, done, test, and assurance concerns.<br/>Dependency: Target checkpoint implementation<br/>Migration: planned; independent acceptance decision: unresolved |
+| `p0-p4-readiness` | replaced-by-tool-neutral-abstraction<br/>`lifecycle-12`, `lifecycle-13`, `lifecycle-14`, `lifecycle-15`, `lifecycle-16`, `lifecycle-17`, `lifecycle-18`, `lifecycle-19` | [IA] Implemented; awaiting independent P03 review<br/>current-runtime-implemented-target-planned | Replace legacy handoff wording with tool-neutral Product Design and explicit delivery/operations nodes.<br/>Dependency: Compatibility migration and later authorized implementation prompts<br/>Migration: planned; independent acceptance decision: unresolved |
 <!-- END GENERATED:TRANSITION_ROADMAP -->
 
 The roadmap is not implementation evidence. “Planned” means later authorized work is required; it does not rename or replace current runtime terminology.
@@ -3099,17 +3099,17 @@ Every current canonical capability maps to at least one target node. Proposed st
 
 | Requirement | Target node(s) | Current checkpoint(s) | Disposition and unresolved decision |
 |---|---|---|---|
-| GAEP-P03-REQ-001<br/>Source-first optional onboarding | `lifecycle-01`, `lifecycle-02`, `lifecycle-03` | `product-definition`, `source-intake` | partial<br/>expanded<br/>No-source onboarding is supported; complete source-change UX remains a target gap. |
-| GAEP-P03-REQ-002<br/>Source Intake, Baseline, Provenance, and change governance | `lifecycle-02` | `source-intake`, `source-baseline`, `source-provenance` | partial<br/>expanded<br/>Explicit removal, exclusion, and supersession runtime workflows are not implemented. |
-| GAEP-P03-REQ-003<br/>Product discovery through DDD and context mapping | `lifecycle-05`, `lifecycle-06`, `lifecycle-07`, `lifecycle-08` | `product-discovery`, `business-architecture` | partial<br/>split<br/>Target nodes are modeled; runtime split is planned. |
-| GAEP-P03-REQ-004<br/>Architecture before Product Design and backlog | `lifecycle-09`, `lifecycle-10`, `lifecycle-11`, `lifecycle-12`, `lifecycle-13` | `solution-security-architecture`, `detailed-design-assurance`, `p0-p4-readiness` | partial<br/>split<br/>Legacy runtime naming remains until a separately authorized migration. |
-| GAEP-P03-REQ-005<br/>Architecture-bound backlog, readiness, done, tests, and traceability | `lifecycle-13`, `lifecycle-15`, `lifecycle-17` | `detailed-design-assurance`, `p0-p4-readiness` | partial<br/>expanded<br/>Target mappings exist; end-to-end runtime orchestration remains later work. |
-| GAEP-P03-REQ-006<br/>Repository topology and multiple implementation targets | `lifecycle-14`, `lifecycle-15` | `p0-p4-readiness` | planned-deferred-coming-soon<br/>newly-planned<br/>Detailed target-form taxonomy needs a future P02 canonical correction. |
-| GAEP-P03-REQ-007<br/>Governed implementation, source scanning, and evidence | `lifecycle-16`, `lifecycle-17` | `p0-p4-readiness` | partial<br/>expanded<br/>Future implementation prompts must preserve agent and human authority boundaries. |
-| GAEP-P03-REQ-008<br/>CI/CD, release, deployment, environments, and operations feedback | `lifecycle-18`, `lifecycle-19` | None | planned-deferred-coming-soon<br/>newly-planned<br/>No current runtime checkpoint implements the complete target behavior. |
-| GAEP-P03-REQ-009<br/>ERP is illustrative, never a universal Product assumption | `lifecycle-06`, `lifecycle-14` | None | planned-deferred-coming-soon<br/>retained-boundary<br/>All generated target wording must remain Product-neutral. |
-| GAEP-P03-REQ-010<br/>Figma remains an optional Product Design adapter | `lifecycle-12` | `p0-p4-readiness` | partial<br/>replaced-by-tool-neutral-abstraction<br/>Runtime compatibility wording remains; canonical target wording is Product Design. |
-| GAEP-P03-REQ-011<br/>Initiative classification, applicability, and unresolved decision governance | `lifecycle-04` | `initiative-classification`, `initiative-applicability` | implemented-awaiting-product-owner-acceptance<br/>expanded<br/>Current runtime behavior remains awaiting independent P03 review. |
+| GAEP-P03-REQ-001<br/>Source-first optional onboarding | `lifecycle-01`, `lifecycle-02`, `lifecycle-03` | `product-definition`, `source-intake` | [PT] Partial<br/>expanded<br/>No-source onboarding is supported; complete source-change UX remains a target gap. |
+| GAEP-P03-REQ-002<br/>Source Intake, Baseline, Provenance, and change governance | `lifecycle-02` | `source-intake`, `source-baseline`, `source-provenance` | [PT] Partial<br/>expanded<br/>Explicit removal, exclusion, and supersession runtime workflows are not implemented. |
+| GAEP-P03-REQ-003<br/>Product discovery through DDD and context mapping | `lifecycle-05`, `lifecycle-06`, `lifecycle-07`, `lifecycle-08` | `product-discovery`, `business-architecture` | [PT] Partial<br/>split<br/>Target nodes are modeled; runtime split is planned. |
+| GAEP-P03-REQ-004<br/>Architecture before Product Design and backlog | `lifecycle-09`, `lifecycle-10`, `lifecycle-11`, `lifecycle-12`, `lifecycle-13` | `solution-security-architecture`, `detailed-design-assurance`, `p0-p4-readiness` | [PT] Partial<br/>split<br/>Legacy runtime naming remains until a separately authorized migration. |
+| GAEP-P03-REQ-005<br/>Architecture-bound backlog, readiness, done, tests, and traceability | `lifecycle-13`, `lifecycle-15`, `lifecycle-17` | `detailed-design-assurance`, `p0-p4-readiness` | [PT] Partial<br/>expanded<br/>Target mappings exist; end-to-end runtime orchestration remains later work. |
+| GAEP-P03-REQ-006<br/>Repository topology and multiple implementation targets | `lifecycle-14`, `lifecycle-15` | `p0-p4-readiness` | [PD] Planned / deferred<br/>newly-planned<br/>Detailed target-form taxonomy needs a future P02 canonical correction. |
+| GAEP-P03-REQ-007<br/>Governed implementation, source scanning, and evidence | `lifecycle-16`, `lifecycle-17` | `p0-p4-readiness` | [PT] Partial<br/>expanded<br/>Future implementation prompts must preserve agent and human authority boundaries. |
+| GAEP-P03-REQ-008<br/>CI/CD, release, deployment, environments, and operations feedback | `lifecycle-18`, `lifecycle-19` | None | [PD] Planned / deferred<br/>newly-planned<br/>No current runtime checkpoint implements the complete target behavior. |
+| GAEP-P03-REQ-009<br/>ERP is illustrative, never a universal Product assumption | `lifecycle-06`, `lifecycle-14` | None | [PD] Planned / deferred<br/>retained-boundary<br/>All generated target wording must remain Product-neutral. |
+| GAEP-P03-REQ-010<br/>Figma remains an optional Product Design adapter | `lifecycle-12` | `p0-p4-readiness` | [PT] Partial<br/>replaced-by-tool-neutral-abstraction<br/>Runtime compatibility wording remains; canonical target wording is Product Design. |
+| GAEP-P03-REQ-011<br/>Initiative classification, applicability, and unresolved decision governance | `lifecycle-04` | `initiative-classification`, `initiative-applicability` | [IA] Implemented; awaiting independent P03 review<br/>expanded<br/>Current runtime behavior remains awaiting independent P03 review. |
 
 </details>
 
@@ -3175,13 +3175,13 @@ flowchart TD
 
 | Event | Current runtime classification | Required user action | Record/revision consequence |
 |---|---|---|---|
-| Source added | implemented-awaiting-product-owner-acceptance | Choose File or Choose Folder during the valid Adopt/Intake route, review exact content with /adopt or /intake, then explicitly use /record or the reviewed Adopt binding action. | A new non-authoritative Source revision-one record is created, or an exact existing content digest is reused; prior Source records remain preserved. |
-| Source content changed | partial | Reattach and review the changed bytes. Record them as a new candidate, keep the prior Source visible, and make the identity/revision relationship an explicit unresolved human decision. | The current Chat path creates a distinct Source candidate when the content digest is new; it does not silently revise or replace the prior Source identity. |
-| Source removed or intentionally excluded | unsupported-unavailable | Keep the governed Source and history intact, record the intended exclusion and reason as an unresolved scoped decision, and pause affected progression until an authorized workflow exists. | No governed Source deletion or exclusion record is created by the installed Guide/Chat workflow; prior Source and Baseline revisions remain preserved. |
-| Source superseded | unsupported-unavailable | Review and record the proposed replacement as a separate candidate, retain both Sources, and record supersession as an unresolved scoped human decision. | The proposed replacement may be recorded as a separate Source candidate; the prior Source is preserved and no supersession fact is created. |
-| Source temporarily unavailable or inaccessible | partial | Keep the last reviewed revision, record the access problem as an open question/limitation, identify an owner and retry trigger, and avoid claims about unread content. | Unreadable candidate material is not recorded by Intake. Existing governed Source history remains unchanged unless a separately supported Source revision is committed. |
+| Source added | [IA] Implemented; awaiting independent P03 review<br/>compatibility machine state: `implemented-awaiting-product-owner-acceptance` | Choose File or Choose Folder during the valid Adopt/Intake route, review exact content with /adopt or /intake, then explicitly use /record or the reviewed Adopt binding action. | A new non-authoritative Source revision-one record is created, or an exact existing content digest is reused; prior Source records remain preserved. |
+| Source content changed | [PT] Partial<br/>compatibility machine state: `partial` | Reattach and review the changed bytes. Record them as a new candidate, keep the prior Source visible, and make the identity/revision relationship an explicit unresolved human decision. | The current Chat path creates a distinct Source candidate when the content digest is new; it does not silently revise or replace the prior Source identity. |
+| Source removed or intentionally excluded | unsupported unavailable<br/>compatibility machine state: `unsupported-unavailable` | Keep the governed Source and history intact, record the intended exclusion and reason as an unresolved scoped decision, and pause affected progression until an authorized workflow exists. | No governed Source deletion or exclusion record is created by the installed Guide/Chat workflow; prior Source and Baseline revisions remain preserved. |
+| Source superseded | unsupported unavailable<br/>compatibility machine state: `unsupported-unavailable` | Review and record the proposed replacement as a separate candidate, retain both Sources, and record supersession as an unresolved scoped human decision. | The proposed replacement may be recorded as a separate Source candidate; the prior Source is preserved and no supersession fact is created. |
+| Source temporarily unavailable or inaccessible | [PT] Partial<br/>compatibility machine state: `partial` | Keep the last reviewed revision, record the access problem as an open question/limitation, identify an owner and retry trigger, and avoid claims about unread content. | Unreadable candidate material is not recorded by Intake. Existing governed Source history remains unchanged unless a separately supported Source revision is committed. |
 
-<details><summary><strong>Source added</strong> · implemented-awaiting-product-owner-acceptance</summary>
+<details><summary><strong>Source added</strong> · [IA] Implemented; awaiting independent P03 review · compatibility machine state: <code>implemented-awaiting-product-owner-acceptance</code></summary>
 
 - **What you see:** An attachment review manifest, exact content digest and extraction limitations, followed by recorded/reused Source counts after explicit recording.
 - **What GAEP needs from you:** Choose File or Choose Folder during the valid Adopt/Intake route, review exact content with /adopt or /intake, then explicitly use /record or the reviewed Adopt binding action.
@@ -3194,7 +3194,7 @@ flowchart TD
 
 </details>
 
-<details><summary><strong>Source content changed</strong> · partial</summary>
+<details><summary><strong>Source content changed</strong> · [PT] Partial · compatibility machine state: <code>partial</code></summary>
 
 - **What you see:** A changed attachment produces a different content digest and can be recorded as another candidate; the engine can preserve Source revisions and detect stale Baselines, but Chat does not expose a complete identity-preserving Source revision chooser.
 - **What GAEP needs from you:** Reattach and review the changed bytes. Record them as a new candidate, keep the prior Source visible, and make the identity/revision relationship an explicit unresolved human decision.
@@ -3207,7 +3207,7 @@ flowchart TD
 
 </details>
 
-<details><summary><strong>Source removed or intentionally excluded</strong> · unsupported-unavailable</summary>
+<details><summary><strong>Source removed or intentionally excluded</strong> · unsupported unavailable · compatibility machine state: <code>unsupported-unavailable</code></summary>
 
 - **What you see:** No installed governed-Source removal/exclusion workflow. Removing a Useful Link affects candidate link metadata only and is not Source removal.
 - **What GAEP needs from you:** Keep the governed Source and history intact, record the intended exclusion and reason as an unresolved scoped decision, and pause affected progression until an authorized workflow exists.
@@ -3220,7 +3220,7 @@ flowchart TD
 
 </details>
 
-<details><summary><strong>Source superseded</strong> · unsupported-unavailable</summary>
+<details><summary><strong>Source superseded</strong> · unsupported unavailable · compatibility machine state: <code>unsupported-unavailable</code></summary>
 
 - **What you see:** No installed governed Source-supersession action or explicit Source supersedes relationship.
 - **What GAEP needs from you:** Review and record the proposed replacement as a separate candidate, retain both Sources, and record supersession as an unresolved scoped human decision.
@@ -3233,7 +3233,7 @@ flowchart TD
 
 </details>
 
-<details><summary><strong>Source temporarily unavailable or inaccessible</strong> · partial</summary>
+<details><summary><strong>Source temporarily unavailable or inaccessible</strong> · [PT] Partial · compatibility machine state: <code>partial</code></summary>
 
 - **What you see:** The Source contract and engine can represent availability and preserve revisions, while the installed Intake flow reports unreadable attachments; Chat does not expose a complete guided revision that marks an existing Source unavailable.
 - **What GAEP needs from you:** Keep the last reviewed revision, record the access problem as an open question/limitation, identify an owner and retry trigger, and avoid claims about unread content.
