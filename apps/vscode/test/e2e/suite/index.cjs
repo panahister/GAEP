@@ -128,7 +128,7 @@ async function assertCommandsAndViews(extension) {
 async function assertGuideSurface(extension) {
   const guideUri = vscode.Uri.joinPath(extension.extensionUri, "media", "GAEP_GUIDE.md")
   const guide = new TextDecoder().decode(await vscode.workspace.fs.readFile(guideUri))
-  assert.match(guide, /^# GAEP Product-to-Operations Guideline$/m)
+  assert.match(guide, /^# GAEP Product-to-Operate Enterprise Guideline$/m)
   assert.match(guide, /GAEP-REG-013 v0\.2\.1/)
   assert.match(guide, /3dcfe5531a1bb4630dc3afdb2990389728e2d39cac2ac915986badb9fe9e5c17/)
   assert.match(guide, /^## 1\. Executive orientation$/m)
@@ -159,7 +159,7 @@ async function assertGuideSurface(extension) {
 
   await vscode.commands.executeCommand("gaep.openGuide")
   const preview = await waitFor(
-    () => vscode.window.tabGroups.all.flatMap((group) => group.tabs).find((tab) => /GAEP_GUIDE|GAEP Product-to-Operations/i.test(tab.label)),
+    () => vscode.window.tabGroups.all.flatMap((group) => group.tabs).find((tab) => /GAEP_GUIDE|GAEP Product-to-Operate/i.test(tab.label)),
     "GAEP visual Guideline preview did not open",
   )
   assert.equal(preview.isDirty, false, "generated Guide preview must not be dirty")
