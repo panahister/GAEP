@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gaep.example/schemas/guideline-projection-manifest-1.0.0.json",
+  "title": "GAEP Guideline Projection Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "schemaVersion",
+    "registryId",
+    "version",
+    "status",
+    "ownerRole",
+    "approval",
+    "generation",
+    "canonicalSources",
+    "audienceLayers",
+    "requiredSections",
+    "requiredVisuals",
+    "lifecycleNodes",
+    "statePolicy",
+    "commandSurface"
+  ],
+  "properties": {
+    "schemaId": { "const": "https://gaep.example/schemas/guideline-projection-manifest-1.0.0.json" },
+    "schemaVersion": { "const": "1.0.0" },
+    "registryId": { "const": "GAEP-REG-014" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "status": { "const": "proposed" },
+    "ownerRole": { "const": "GAEP Product Owner" },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "approvedBy", "approvedAt", "publicationState"],
+      "properties": {
+        "state": { "const": "not-approved" },
+        "approvedBy": { "type": "array", "maxItems": 0 },
+        "approvedAt": { "type": "null" },
+        "publicationState": { "const": "not-published" }
+      }
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["templatePath", "outputPath", "rendererPath", "timestampPolicy"],
+      "properties": {
+        "templatePath": { "$ref": "#/$defs/repositoryPath" },
+        "outputPath": { "const": "apps/vscode/media/GAEP_GUIDE.md" },
+        "rendererPath": { "const": "scripts/render_guideline.mjs" },
+        "timestampPolicy": { "const": "none-deterministic" }
+      }
+    },
+    "canonicalSources": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/sourceBinding" }
+    },
+    "audienceLayers": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/audienceLayer" }
+    },
+    "requiredSections": {
+      "type": "array",
+      "minItems": 12,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/section" }
+    },
+    "requiredVisuals": {
+      "type": "array",
+      "minItems": 8,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/visual" }
+    },
+    "lifecycleNodes": {
+      "type": "array",
+      "minItems": 19,
+      "maxItems": 19,
+      "items": { "$ref": "#/$defs/lifecycleNode" }
+    },
+    "statePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["displayPriority", "labels", "unknownRule", "colorRule"],
+      "properties": {
+        "displayPriority": {
+          "const": [
+            "unknown-not-assessed",
+            "planned-deferred-coming-soon",
+            "candidate-proposed",
+            "partial",
+            "implemented-awaiting-product-owner-acceptance",
+            "implemented-and-automated-tested"
+          ]
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "unknown-not-assessed",
+            "planned-deferred-coming-soon",
+            "candidate-proposed",
+            "partial",
+            "implemented-awaiting-product-owner-acceptance",
+            "implemented-and-automated-tested"
+          ],
+          "properties": {
+            "unknown-not-assessed": { "const": "[UN] Unknown / not assessed" },
+            "planned-deferred-coming-soon": { "const": "[PD] Planned / deferred" },
+            "candidate-proposed": { "const": "[CP] Candidate / proposed" },
+            "partial": { "const": "[PT] Partial" },
+            "implemented-awaiting-product-owner-acceptance": { "const": "[IA] Implemented; awaiting Product Owner acceptance" },
+            "implemented-and-automated-tested": { "const": "[IT] Implemented and automated-tested" }
+          }
+        },
+        "unknownRule": { "const": "Unknown means not assessed or not established; it never means No." },
+        "colorRule": { "const": "Every state uses text and a two-letter marker; color is supplementary only." }
+      }
+    },
+    "commandSurface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["extensionCommandIds", "chatCommands"],
+      "properties": {
+        "extensionCommandIds": {
+          "const": ["gaep.openGuide"]
+        },
+        "chatCommands": {
+          "type": "array",
+          "minItems": 8,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z]+$" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "repositoryPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[A-Za-z0-9._/-]+$"
+    },
+    "id": { "type": "string", "pattern": "^GAEP-[A-Z]+-[0-9]{3}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "identity", "version", "schemaVersion", "sha256"],
+      "properties": {
+        "kind": { "enum": ["methodology-catalog", "market-registry", "terminology-index", "runtime-checkpoints", "extension-package"] },
+        "path": { "$ref": "#/$defs/repositoryPath" },
+        "identity": { "type": "string", "minLength": 1 },
+        "version": { "type": ["string", "null"] },
+        "schemaVersion": { "type": ["string", "null"] },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "audienceLayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layerId", "title", "primaryAudience", "readingTimeMinutes"],
+      "properties": {
+        "layerId": { "enum": ["executive-orientation", "quick-start", "practitioner-guide", "methodology-appendix"] },
+        "title": { "type": "string", "minLength": 1 },
+        "primaryAudience": { "type": "string", "minLength": 1 },
+        "readingTimeMinutes": { "type": "integer", "minimum": 2, "maximum": 30 }
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sectionId", "heading", "layerId", "contentMode"],
+      "properties": {
+        "sectionId": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+        "heading": { "type": "string", "minLength": 3 },
+        "layerId": { "enum": ["executive-orientation", "quick-start", "practitioner-guide", "methodology-appendix"] },
+        "contentMode": { "enum": ["hand-authored-narrative", "generated-canonical-facts", "hybrid"] }
+      }
+    },
+    "visual": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["visualId", "title", "sectionId", "direction", "purpose"],
+      "properties": {
+        "visualId": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+        "title": { "type": "string", "minLength": 3 },
+        "sectionId": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+        "direction": { "enum": ["TD", "TB"] },
+        "purpose": { "type": "string", "minLength": 10 }
+      }
+    },
+    "lifecycleNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeId", "sequence", "title", "capabilityIds"],
+      "properties": {
+        "nodeId": { "type": "string", "pattern": "^lifecycle-[0-9]{2}$" },
+        "sequence": { "type": "integer", "minimum": 1, "maximum": 19 },
+        "title": { "type": "string", "minLength": 3 },
+        "capabilityIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^GAEP-CAP-1[0-3][0-9]$" }
+        }
+      }
+    }
+  }
+}
