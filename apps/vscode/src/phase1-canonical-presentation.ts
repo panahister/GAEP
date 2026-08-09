@@ -613,12 +613,12 @@ function readinessPresentation(draft: RecordValue): string[] {
     "```mermaid",
     "flowchart LR",
     "  R[\"Governed P0-P4 records\"] --> E[\"Evidence and traceability review\"]",
-    "  E --> G{\"Pre-Figma readiness assessment\"}",
+    "  E --> G{\"P0–P4 readiness assessment\"}",
   ]
   ;[...stateCounts.entries()].sort(([left], [right]) => left.localeCompare(right)).forEach(([state], index) => {
     diagram.push(`  G --> S${index}[\"${mermaidLabel(state, "state")}: ${stateCounts.get(state) ?? 0}\"]`)
   })
-  diagram.push("  G -. human review required .-> H[\"Pre-Figma handoff candidate\"]", "```")
+  diagram.push("  G -. human review required .-> H[\"P0–P4 handoff candidate\"]", "```")
   return [
     "## Readiness output assessment",
     "",
@@ -645,8 +645,8 @@ function handoffPresentation(draft: RecordValue): string[] {
   const diagram = [
     "```mermaid",
     "flowchart LR",
-    "  J[\"Reviewed Product Journey\"] --> R[\"Pre-Figma readiness assessment\"]",
-    "  R --> P[\"Pre-Figma handoff package\"]",
+    "  J[\"Reviewed Product Journey\"] --> R[\"P0–P4 readiness assessment\"]",
+    "  R --> P[\"P0–P4 handoff package\"]",
     "  P --> Q[\"Human review of questions and constraints\"]",
     "  Q -. future scope .-> F[\"Figma MCP roundtrip\"]",
     "  F -. excluded from this package .-> B[\"Implementation backlog\"]",
@@ -664,7 +664,7 @@ function handoffPresentation(draft: RecordValue): string[] {
       compact([...(Array.isArray(item.materialOmissions) ? item.materialOmissions : []), ...(Array.isArray(item.uncertainties) ? item.uncertainties : [])]),
     ])),
     "",
-    "## Pre-Figma transfer boundary",
+    "## P0–P4 transfer boundary",
     "",
     ...diagram,
     "",

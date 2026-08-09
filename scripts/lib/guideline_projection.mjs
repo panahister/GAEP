@@ -19,7 +19,7 @@ export const AJV_VERSION = require("ajv/package.json").version;
 export const AJV_FORMATS_VERSION = require("ajv-formats/package.json").version;
 
 export const EXPECTED_LAYERS = ["executive-orientation", "quick-start", "practitioner-guide", "methodology-appendix"];
-export const EXPECTED_SOURCE_KINDS = ["methodology-catalog", "market-registry", "terminology-index", "runtime-presentation-contract", "runtime-contract-schema", "responsibility-competency-registry", "enterprise-assurance-registry", "extension-package"];
+export const EXPECTED_SOURCE_KINDS = ["methodology-catalog", "market-registry", "terminology-index", "runtime-presentation-contract", "runtime-contract-schema", "responsibility-competency-registry", "enterprise-assurance-registry", "target-execution-registry", "extension-package"];
 export const EXPECTED_STATES = [
   "unknown-not-assessed",
   "planned-deferred-coming-soon",
@@ -116,11 +116,13 @@ export function loadProjectionContext({ root = ROOT, manifestPath = MANIFEST_PAT
   const runtimeContractSchema = JSON.parse(rawSources.get("runtime-contract-schema").toString("utf8"));
   const responsibility = JSON.parse(rawSources.get("responsibility-competency-registry").toString("utf8"));
   const assurance = JSON.parse(rawSources.get("enterprise-assurance-registry").toString("utf8"));
+  const targetExecution = JSON.parse(rawSources.get("target-execution-registry").toString("utf8"));
   const responsibilitySchema = readJson(path.join(root, "docs/next/99_Registries_and_References/016_ENTERPRISE_RESPONSIBILITY_COMPETENCY_REGISTRY.schema.json"));
   const assuranceSchema = readJson(path.join(root, "docs/next/99_Registries_and_References/017_ENTERPRISE_ASSURANCE_DECISION_REGISTRY.schema.json"));
+  const targetExecutionSchema = readJson(path.join(root, "docs/next/99_Registries_and_References/018_TARGET_LIFECYCLE_EXECUTION_REGISTRY.schema.json"));
   const runtimePresentation = parseRuntimePresentationContract(rawSources.get("runtime-presentation-contract").toString("utf8"));
   const runtimeCheckpoints = runtimePresentation.checkpoints.slice().sort((left, right) => left.order - right.order);
-  return { root, manifest, schema, rawSources, template, catalog, market, extensionPackage, runtimeContractSchema, responsibility, responsibilitySchema, assurance, assuranceSchema, runtimePresentation, runtimeCheckpoints };
+  return { root, manifest, schema, rawSources, template, catalog, market, extensionPackage, runtimeContractSchema, responsibility, responsibilitySchema, assurance, assuranceSchema, targetExecution, targetExecutionSchema, runtimePresentation, runtimeCheckpoints };
 }
 
 export function sourceBindingErrors(manifest, { rawSources }) {
@@ -149,6 +151,7 @@ export function sourceBindingErrors(manifest, { rawSources }) {
   jsonIdentity("market-registry", "registryId");
   jsonIdentity("responsibility-competency-registry", "registryId");
   jsonIdentity("enterprise-assurance-registry", "registryId");
+  jsonIdentity("target-execution-registry", "registryId");
 
   const terminology = bindings.get("terminology-index");
   if (terminology && rawSources.get("terminology-index")) {
@@ -264,7 +267,7 @@ function runtimePresentationErrors(runtimePresentation) {
   return errors;
 }
 
-function enterpriseContractErrors(runtimePresentation, responsibility, assurance, catalog, extensionPackage, manifest) {
+function enterpriseContractErrors(runtimePresentation, responsibility, assurance, targetExecution, catalog, extensionPackage, manifest) {
   const errors = [];
   const roleIds = new Set(responsibility.roleArchetypes.map(entry => entry.roleId));
   const competencyIds = new Set(responsibility.competencyDimensions.map(entry => entry.competencyId));
@@ -311,10 +314,19 @@ function enterpriseContractErrors(runtimePresentation, responsibility, assurance
   for (const gap of manifest.proposedCanonicalGaps) {
     if (gap.scopedImpacts.p03ProjectionAcceptance !== "non-blocking-when-honestly-projected" || gap.scopedImpacts.executableState !== "proposed-non-executable") errors.push(`${gap.gapId}: gap impact is circular or executable`);
   }
+  const targetNodeIds = manifest.lifecycleNodes.map(entry => entry.nodeId);
+  if (JSON.stringify(targetExecution.nodeProfiles.map(entry => entry.nodeId)) !== JSON.stringify(targetNodeIds)) errors.push("target execution profiles must cover every target node in canonical order");
+  const patterns = new Map(targetExecution.executionPatterns.map(entry => [entry.patternId, entry]));
+  for (const profile of targetExecution.nodeProfiles) {
+    const pattern = patterns.get(profile.patternId);
+    if (!pattern) { errors.push(`${profile.nodeId}: unknown target execution pattern ${profile.patternId}`); continue; }
+    for (const roleId of [...pattern.requiredRoleIds, ...pattern.responsibleRoleIds, pattern.accountableRoleId, ...pattern.assuranceRoleIds]) if (!roleIds.has(roleId)) errors.push(`${profile.nodeId}: unknown target role ${roleId}`);
+    for (const competencyId of pattern.competencyIds) if (!competencyIds.has(competencyId)) errors.push(`${profile.nodeId}: unknown target competency ${competencyId}`);
+  }
   return errors;
 }
 
-export function manifestSemanticErrors(manifest, { catalog, market, extensionPackage, runtimePresentation, runtimeCheckpoints, responsibility, assurance }) {
+export function manifestSemanticErrors(manifest, { catalog, market, extensionPackage, runtimePresentation, runtimeCheckpoints, responsibility, assurance, targetExecution }) {
   const errors = [];
   const layerIds = manifest.audienceLayers.map(entry => entry.layerId);
   if (JSON.stringify(layerIds) !== JSON.stringify(EXPECTED_LAYERS)) errors.push("audience layers must be the exact four progressive layers in canonical order");
@@ -409,7 +421,7 @@ export function manifestSemanticErrors(manifest, { catalog, market, extensionPac
     if (!mappedByRequirement) errors.push(`${node.nodeId}: target node lacks stakeholder requirement coverage`);
   }
   errors.push(...runtimePresentationErrors(runtimePresentation));
-  errors.push(...enterpriseContractErrors(runtimePresentation, responsibility, assurance, catalog, extensionPackage, manifest));
+  errors.push(...enterpriseContractErrors(runtimePresentation, responsibility, assurance, targetExecution, catalog, extensionPackage, manifest));
   errors.push(...commandErrors(manifest, extensionPackage));
   errors.push(...repositoryMaturityErrors(market));
   errors.push(...marketDecisionSupportSemanticErrors(market));
@@ -421,6 +433,7 @@ export function validateProjectionContext(context) {
   const validateRuntime = compileSchema(context.runtimeContractSchema);
   const validateResponsibility = compileSchema(context.responsibilitySchema);
   const validateAssurance = compileSchema(context.assuranceSchema);
+  const validateTargetExecution = compileSchema(context.targetExecutionSchema);
   const errors = [];
   if (!validate(context.manifest)) {
     errors.push(...validate.errors.map(error => `manifest schema ${error.instancePath || "/"}: ${error.message}`));
@@ -429,6 +442,7 @@ export function validateProjectionContext(context) {
   if (!validateRuntime(context.runtimePresentation)) errors.push(...validateRuntime.errors.map(error => `runtime contract schema ${error.instancePath || "/"}: ${error.message}`));
   if (!validateResponsibility(context.responsibility)) errors.push(...validateResponsibility.errors.map(error => `responsibility schema ${error.instancePath || "/"}: ${error.message}`));
   if (!validateAssurance(context.assurance)) errors.push(...validateAssurance.errors.map(error => `assurance schema ${error.instancePath || "/"}: ${error.message}`));
+  if (!validateTargetExecution(context.targetExecution)) errors.push(...validateTargetExecution.errors.map(error => `target execution schema ${error.instancePath || "/"}: ${error.message}`));
   errors.push(...sourceBindingErrors(context.manifest, context));
   errors.push(...manifestSemanticErrors(context.manifest, context));
   return errors;
@@ -787,10 +801,14 @@ function deliveryDisplay(value) {
   return `${labels[value] ?? value} · ${value}`;
 }
 
-function assertionEvidenceLine(role, assertion, evidence) {
+function assertionEvidenceLine(role, assertion, evidence, product) {
   const limitations = [...new Set([...(assertion.limitations ?? []), ...(evidence.limitations ?? [])])].join(" ");
+  const overviewOnly = evidence.officialUri === product.officialUri;
+  const evidenceIdentity = overviewOnly
+    ? `${assertion.assertionId} → ${evidence.evidenceId} (Product overview URI; not treated as a cell-level evidence link)`
+    : `[${assertion.assertionId} → ${evidence.evidenceId}](${evidence.officialUri})`;
   return [
-    `**${role}:** [${assertion.assertionId} → ${evidence.evidenceId}](${evidence.officialUri}) — ${markdownSafe(assertion.proposition)}`,
+    `**${role}:** ${evidenceIdentity} — ${markdownSafe(assertion.proposition)}`,
     `Locator: ${markdownSafe(assertion.locator)} · assertion reviewed ${assertion.reviewedAt}, as-of ${assertion.asOfDate}`,
     `Evidence: ${markdownSafe(evidence.publisher)} · ${evidence.contentReviewState} / ${evidence.reviewDepth} · accessed ${evidence.accessedAt}, as-of ${evidence.asOfDate}`,
     `Evidence limitations: ${markdownSafe(limitations)}`,
@@ -808,7 +826,7 @@ function renderDecisionCellEvidence(cell, product, assertionsById, evidenceById)
       const assertion = assertionsById.get(assertionId);
       const evidence = assertion ? evidenceById.get(assertion.evidenceId) : undefined;
       if (!assertion || !evidence) throw new Error(`${product.productId}/${cell.capabilityId}: unresolved ${role.toLowerCase()} ${assertionId}`);
-      lines.push(assertionEvidenceLine(role, assertion, evidence));
+      lines.push(assertionEvidenceLine(role, assertion, evidence, product));
     }
   }
   lines.push(`**Cell review:** as-of ${cell.asOfDate}. ${markdownSafe(cell.rationale)}`);
@@ -964,12 +982,16 @@ function renderClaimLedger(market) {
     `> ${claim.wording}`,
     "",
     `- **Disposition:** ${claim.disposition}`,
-    `- **Authority:** ${claim.approvalState}; ${claim.publicationState}; owner role ${claim.ownerRole}`,
+    `- **Authority (accepted P02 compatibility metadata):** ${claim.approvalState}; ${claim.publicationState}; owner role ${claim.ownerRole}`,
     `- **Limitations:** ${claim.limitations.join(" ")}`,
     `- **Required qualifiers:** ${claim.requiredQualifiers.join(" ")}`,
     `- **Freshness trigger:** ${claim.freshnessTrigger}`,
   ].join("\n")).join("\n\n");
-  return generatedBlock("CLAIM_LEDGER", claims);
+  return generatedBlock("CLAIM_LEDGER", [
+    "> Accepted P02 compatibility boundary: `ownerRole` and Product Owner wording below are historical canonical claim metadata. They do not assign universal journey accountability; the P03-C2 RACI contract governs the projected enterprise role view.",
+    "",
+    claims,
+  ].join("\n"));
 }
 
 function renderMaintenanceContract(manifest) {
@@ -997,9 +1019,221 @@ function renderMaintenanceContract(manifest) {
   ].join("\n"));
 }
 
+function sequenceVisual(id, title, lines) {
+  return `<!-- GAEP-SEQUENCE:${id} -->\n\n**${title}**\n\n\`\`\`mermaid\n%% ${title}\nsequenceDiagram\n${lines.join("\n")}\n\`\`\``;
+}
+
+function roleLabel(roleId, responsibility) {
+  return responsibility.roleArchetypes.find(entry => entry.roleId === roleId)?.label ?? roleId;
+}
+
+function renderEnterpriseOpening() {
+  return generatedBlock("ENTERPRISE_OPENING", [
+    "**GAEP is an evidence-governed Product-to-Operate decision system.** It exists because unmanaged AI-assisted Product and software work can turn stale context, plausible inference, missing accountability, and tool output into irreversible architecture, code, risk, release, or operational decisions.",
+    "",
+    "GAEP is not an autonomous executive, a universal software-delivery platform, a standards-conformance claim, or a replacement for Product, architecture, engineering, security, privacy, risk, legal, quality, release, service, operations, assurance, or audit authority.",
+    "",
+    "The mental model is: **exact evidence → bounded AI-assisted candidate → human challenge → accountable acceptance → explicit governed commit → separately authorized downstream work → operating evidence and feedback**. AI can inspect, propose, compare, and challenge. Humans decide scope, evidence sufficiency, exceptions, acceptance, risk, implementation, release, and operations within their actual organizational authority.",
+    "",
+    "The installed runtime currently governs Product/Initiative definition through P0–P4 readiness and handoff. Product Design execution, architecture-bound backlog, repository allocation, implementation agents, CI/CD, release, deployment, and operations are target capabilities: planned or partial, non-executable here, and subject to later authorization.",
+  ].join("\n"));
+}
+
+function renderEntryPaths() {
+  const flow = visual("enterprise-entry-paths", "Newcomer and mid-journey entry routes", "TD", [
+    '  context["Describe the real starting context"] --> route{"Which entry path applies?"}',
+    '  route --> newProduct["New Product"]',
+    '  route --> existing["Existing Product / active Initiative"]',
+    '  route --> midway["Discovery / architecture / backlog already exists"]',
+    '  route --> repository["Existing implementation repository"]',
+    '  route --> highRisk["Regulated, high-risk, AI/data Product"]',
+    '  route --> operational["Operational change or incident-driven evolution"]',
+    '  newProduct --> assess["Bounded current-state assessment"]',
+    '  existing --> assess', '  midway --> assess', '  repository --> assess', '  highRisk --> assess', '  operational --> assess',
+    '  assess --> evidence{"Artifacts, source quality, architecture, decisions, assumptions, freshness, repositories, operations, governance gaps sufficient?"}',
+    '  evidence -- "No" --> gap["Record gaps, owners, blockers, and guided work"] --> assess',
+    '  evidence -- "Yes" --> position["Select earliest checkpoint needing governed evidence — do not restart by default"]',
+    '  position --> authority["Apply competency, accountability, assurance, and authority gates"]',
+  ].join("\n"));
+  const firstSession = sequenceVisual("entry-selection", "First session and entry-path selection", [
+    "actor participant as Initiative lead",
+    "participant gaep as GAEP runtime",
+    "participant accountable as Accountable business owner",
+    "participant assurer as Independent assurance",
+    "participant->>gaep: Describe Product, Initiative, repository, risk, and operating context",
+    "gaep-->>participant: Request exact artifacts, source quality, decisions, freshness, and governance gaps",
+    "participant->>gaep: Supply available evidence or continue with named gaps",
+    "gaep-->>accountable: Candidate current-state assessment and proposed entry checkpoint",
+    "accountable->>assurer: Request independent review when risk/applicability requires it",
+    "assurer-->>accountable: Findings, limitations, or unresolved assurance requirement",
+    "accountable-->>gaep: Accept bounded entry decision or return for revision",
+    "gaep-->>participant: Current checkpoint, blockers, next valid action; no automatic restart",
+  ]);
+  const rows = [
+    ["New Product", "Problem/user/outcome evidence; optional Sources", "Product definition via `@gaep /initialize`"],
+    ["Existing Product", "Existing Product artifacts and readable evidence", "Adopt/current-state assessment; `@gaep /adopt` where supported"],
+    ["Existing Product + active Initiative", "Initiative identity, scope, decisions, Source state", "Resume earliest stale/missing governed checkpoint"],
+    ["Already in discovery", "Discovery evidence, assumptions, outcomes, Source lineage", "Assess Product/Initiative/Source foundation; continue at discovery if sufficient"],
+    ["Already in architecture", "Business/domain/solution decisions, alternatives, risks", "Assess earlier evidence and enter at earliest ungoverned architecture dependency"],
+    ["Existing backlog", "Backlog, criteria, dependencies, architecture and repository mappings", "Current runtime can assess through handoff; backlog execution remains target-only"],
+    ["Existing repository", "Topology, code, tests, pipelines, decisions, operational evidence", "Current-state assessment; repository execution remains target-only"],
+    ["Regulated/high-risk or AI/data", "Risk class, jurisdiction, data/model/provider, assurance and authority", "Classification/applicability plus competency and independent-assurance gates"],
+    ["Operational change/incident", "Service observations, incident/recovery evidence, prior decisions", "Bound a new Initiative; operations execution remains target-only"],
+  ].map(row => `| ${row.join(" | ")} |`).join("\n");
+  return generatedBlock("ENTRY_PATHS", [flow, "", firstSession, "", "| Entry path | Required assessment evidence | Honest route |", "|---|---|---|", rows, "", "**Every mid-journey assessment covers:** available artifacts; Source quality and freshness; architectural knowledge; prior decisions; unresolved assumptions; repository state; operational evidence; and missing governance records. Missing evidence stays visible and does not force a fictitious restart or approval."].join("\n"));
+}
+
+function renderCompetencyAndAuthority(responsibility, runtimePresentation) {
+  const gateway = visual("competency-gateway", "Role- and risk-based competency gateway", "TD", [
+    '  activity["Select bounded checkpoint / substep"] --> roles["Resolve required role archetypes"]',
+    '  roles --> risk["Apply Initiative risk, data, AI, security, privacy, release, and operations profile"]',
+    '  risk --> scenario["Evaluate scenario evidence — not title or confidence"]',
+    '  scenario --> decision{"Competence, accountability, and assurance sufficient?"}',
+    '  decision -- "Yes" --> ready["Ready for bounded activity"]',
+    '  decision -- "Guidance needed" --> guided["Ready with guidance"]',
+    '  decision -- "Skill gap" --> develop["Competency development required"]',
+    '  decision -- "No accountable authority" --> accountable["Accountable role required"]',
+    '  decision -- "Independence required" --> assurance["Independent assurance required"]',
+    '  ready --> boundary["Competence does not grant authority"]', '  guided --> boundary',
+  ].join("\n"));
+  const sequence = sequenceVisual("competency-assessment", "Competency assessment and guided-participation decision", [
+    "actor participant as Candidate participant",
+    "participant gaep as GAEP competency projection",
+    "participant practitioner as Qualified practitioner",
+    "participant accountable as Accountable decision role",
+    "participant assurer as Independent assurance",
+    "participant->>gaep: Select bounded activity and declared role",
+    "gaep-->>participant: Required competencies and risk-based scenario evidence",
+    "participant->>practitioner: Demonstrate scenario handling, failure response, and evidence",
+    "practitioner-->>gaep: Observed evidence and guidance requirement",
+    "gaep-->>accountable: Gateway outcome; competence and authority shown separately",
+    "accountable->>assurer: Request independent review when required",
+    "assurer-->>accountable: Assurance disposition",
+    "accountable-->>participant: Authorized participation decision outside GAEP",
+  ]);
+  const competencyRows = responsibility.competencyDimensions.map(entry => `| \`${entry.competencyId}\` · ${entry.label} | ${markdownSafe(entry.scenarioEvidence)} |`).join("\n");
+  const levels = responsibility.participationLevels.map(entry => `| ${entry.label} | ${markdownSafe(entry.evidenceRequirement)} |`).join("\n");
+  const authority = responsibility.authorityTypes.map(entry => `| ${entry.label} | ${entry.decisionRoleIds.map(id => `\`${id}\``).join(", ")} | Separate from RACI and competence; actual appointment remains organizational. |`).join("\n");
+  const checkpointRaci = runtimePresentation.checkpoints.map(checkpoint => {
+    const steps = checkpoint.executionSubsteps;
+    const unique = values => [...new Set(values)].join(", ") || "—";
+    return `| \`${checkpoint.checkpointId}\` · ${checkpoint.label} | ${unique(steps.flatMap(step => step.responsibleRoleIds))} | ${unique(steps.flatMap(step => step.accountableRoleId ? [step.accountableRoleId] : []))} | ${unique(steps.flatMap(step => [...step.consultedRoleIds, ...step.informedRoleIds, ...step.independentAssuranceRoleIds]))} |`;
+  }).join("\n");
+  return generatedBlock("COMPETENCY_AUTHORITY", [gateway, "", sequence, "", `> **Authority boundary:** ${responsibility.authorityBoundary}`, "", "#### Participation levels", "", "| Level | Required scenario evidence |", "|---|---|", levels, "", "<details>", "<summary><strong>Show all competency dimensions and scenario evidence</strong></summary>", "", "| Competency | Demonstration evidence |", "|---|---|", competencyRows, "", "</details>", "", "#### Current-checkpoint RACI overview", "", "R = Responsible · A = Accountable · C = Consulted · I = Informed. Exactly one A is required for each governed decision; this overview may show several A roles because a checkpoint contains several substeps.", "", "| Checkpoint | R | A | C / I / independent assurance |", "|---|---|---|---|", checkpointRaci, "", "#### Authority and assurance — separate from RACI", "", "| Authority | Candidate decision-role archetypes | Boundary |", "|---|---|---|", authority].join("\n"));
+}
+
+function renderCheckpointExecution(runtimePresentation) {
+  const phaseRows = [...new Map(runtimePresentation.checkpoints.map(checkpoint => [checkpoint.phase.id, checkpoint.phase])).values()].map(phase => {
+    const checkpoints = runtimePresentation.checkpoints.filter(entry => entry.phase.id === phase.id);
+    const roles = selector => [...new Set(checkpoints.flatMap(entry => entry.executionSubsteps.flatMap(selector)))].join(", ") || "—";
+    return `| ${phase.order} · ${phase.label} | ${roles(step => step.responsibleRoleIds)} | ${roles(step => step.accountableRoleId ? [step.accountableRoleId] : [])} | ${roles(step => step.independentAssuranceRoleIds)} |`;
+  }).join("\n");
+  const details = runtimePresentation.checkpoints.map(checkpoint => {
+    const id = checkpoint.checkpointId.replaceAll("-", "_");
+    const steps = checkpoint.executionSubsteps.slice().sort((a, b) => a.order - b.order);
+    const flowLines = steps.flatMap((step, index) => [
+      `  ${id}_${index}["${step.order}. ${mermaidSafe(step.purpose)}<br/>${step.maturity} · ${step.recordEffect}"]`,
+      ...(index > 0 ? [`  ${id}_${index - 1} --> ${id}_${index}`] : []),
+    ]);
+    flowLines.push(`  ${id}_${steps.length - 1} -. "failure / blocker" .-> ${id}_revise["Preserve evidence · revise · retry or escalate"]`);
+    flowLines.push(`  ${id}_revise --> ${id}_0`);
+    const participants = [...new Set(steps.flatMap(step => [...step.responsibleRoleIds, ...(step.accountableRoleId ? [step.accountableRoleId] : []), ...step.independentAssuranceRoleIds]))];
+    const participantLines = participants.map((role, index) => `participant role${index} as ${role}`);
+    const sequenceLines = steps.flatMap(step => {
+      const responsible = `role${participants.indexOf(step.responsibleRoleIds[0])}`;
+      const accountable = step.accountableRoleId ? `role${participants.indexOf(step.accountableRoleId)}` : responsible;
+      const message = mermaidSafe(`${step.order}. ${step.purpose}${step.currentAction ? ` Action: ${step.currentAction.value}` : ""}`);
+      return step.interactionType === "ai-assisted-candidate"
+        ? [`${responsible}->>gaep: ${message}`, `gaep-->>${responsible}: Candidate only · ${step.stateAfter}`]
+        : step.interactionType === "governed-commit"
+          ? [`${responsible}->>${accountable}: ${message}`, `${accountable}->>gaep: Exact acceptance / explicit commit or reject`, `gaep-->>${responsible}: ${step.stateAfter}; authority remains bounded`]
+          : [`${responsible}->>gaep: ${message}`, `gaep-->>${responsible}: ${step.stateAfter}; no authority created`];
+    });
+    const raciRows = steps.map(step => `| \`${step.stepId}\` | ${step.responsibleRoleIds.join(", ")} | ${step.accountableRoleId ?? "— (no decision)"} | C: ${step.consultedRoleIds.join(", ") || "—"}<br/>I: ${step.informedRoleIds.join(", ") || "—"}<br/>Assurance: ${step.independentAssuranceRoleIds.join(", ") || "—"} |`).join("\n");
+    const stepDetails = steps.map(step => `- **${step.order} · \`${step.stepId}\`** — ${step.purpose} **Before/after:** ${step.stateBefore} → ${step.stateAfter}. **Action:** ${step.currentAction ? `\`${step.currentAction.value}\` (${step.currentAction.kind})` : "none; inspect only"}. **Evidence:** consumes ${step.evidenceConsumed.join("; ")}; produces ${step.evidenceProduced.join("; ")}. **Criteria:** ${step.reviewCriteria.join("; ")}. **Failure/blocker:** ${step.failureConditions.join("; ")} ${step.blockerBehavior} **Retry:** ${step.retryRevisionPath} **Audit:** ${step.auditEventEffect} **Authority:** ${step.authorityEffect}`).join("\n");
+    const aiSteps = steps.filter(step => step.interactionType === "ai-assisted-candidate").map(step => step.purpose).join(" ") || "No AI activity is claimed.";
+    const humanSteps = steps.filter(step => step.interactionType !== "ai-assisted-candidate").map(step => step.purpose).join(" ");
+    return [
+      "<details>", `<summary><strong>${checkpoint.order} · ${checkpoint.label}</strong> · ${checkpoint.implementationMaturity}</summary>`, "",
+      `**Purpose:** ${checkpoint.purpose}`, "", `**Why it exists:** ${checkpoint.whyItExists}`, "",
+      `**When it starts / prerequisites:** ${checkpoint.entryConditions.join(" ")} Prerequisites: ${checkpoint.prerequisites.join(", ") || "none"}.`, "",
+      `**Roles and competency:** roles ${checkpoint.requiredRoleArchetypeIds.map(id => `\`${id}\``).join(", ")}; competencies ${checkpoint.requiredCompetencyProfileIds.map(id => `\`${id}\``).join(", ")}.`, "",
+      `**Inputs:** ${checkpoint.requiredInputContractIds.join(", ")}. **Questions:** ${checkpoint.prominentQuestions.join(" ")}`, "",
+      visual(`checkpoint-${checkpoint.checkpointId}-flow`, `${checkpoint.label} substeps and return path`, "TD", flowLines.join("\n")), "",
+      sequenceVisual(`checkpoint-${checkpoint.checkpointId}`, `${checkpoint.label} — current canonical execution sequence`, [...participantLines, "participant gaep as GAEP runtime", ...sequenceLines]), "",
+      "**Ordered substeps**", "", stepDetails, "",
+      `**AI activity:** ${aiSteps}`, "", `**Human activity:** ${humanSteps}`, "",
+      `**Candidate outputs:** ${checkpoint.candidateOutputContractIds.join(", ")}. **Governed outputs:** ${checkpoint.governedOutputContractIds.join(", ")}. **Decision records:** ${checkpoint.decisionRecordContractIds.join(", ")}.`, "",
+      `**Evidence and Provenance:** ${checkpoint.evidenceRequirements.join(" ")}`, "",
+      "**Substep RACI**", "", "| Step | R | A | C / I / independent assurance |", "|---|---|---|---|", raciRows, "",
+      `**Decision and authority:** ${checkpoint.authorityEffects.join(" ")}`, "",
+      `**Blockers / exception / escalation:** ${checkpoint.blockers.join("; ")}. ${checkpoint.exceptionPath} ${checkpoint.escalationPath}`, "",
+      `**Exit / next:** ${checkpoint.exitCriteria.join(" ")} Next valid transitions: ${checkpoint.nextValidTransitions.join(", ") || "none in current runtime"}.`, "",
+      `**Current limitations:** ${checkpoint.limitations}`, "", `**Target evolution:** ${checkpoint.targetEvolution}`, "", "</details>",
+    ].join("\n");
+  }).join("\n\n");
+  return generatedBlock("CHECKPOINT_EXECUTION", ["#### Executive phase-level RACI", "", "| Phase | R | A | Independent assurance |", "|---|---|---|---|", phaseRows, "", "#### Every current checkpoint — canonical substeps, RACI, sequence, and authority", "", details].join("\n"));
+}
+
+function renderTargetExecution(manifest, targetExecution) {
+  const patterns = new Map(targetExecution.executionPatterns.map(entry => [entry.patternId, entry]));
+  const nodes = new Map(manifest.lifecycleNodes.map(entry => [entry.nodeId, entry]));
+  const details = targetExecution.nodeProfiles.map(profile => {
+    const node = nodes.get(profile.nodeId);
+    const pattern = patterns.get(profile.patternId);
+    const participants = [...new Set([...pattern.responsibleRoleIds, pattern.accountableRoleId, ...pattern.assuranceRoleIds])];
+    const messages = pattern.plannedSubsteps.flatMap((step, index) => {
+      const from = `role${index % Math.max(pattern.responsibleRoleIds.length, 1)}`;
+      return index === pattern.plannedSubsteps.length - 1
+        ? [`${from}->>accountable: ${mermaidSafe(step)}`, `accountable-->>${from}: Planned decision or return for revision; no executable action`]
+        : [`${from}->>gaep: ${mermaidSafe(step)}`, `gaep-->>${from}: Planned candidate/evidence projection only`];
+    });
+    const flowLines = pattern.plannedSubsteps.flatMap((step, index) => [`  ${profile.nodeId.replaceAll("-", "_")}_${index}["${index + 1}. ${mermaidSafe(step)}<br/>Target — planned, not executable"]`, ...(index ? [`  ${profile.nodeId.replaceAll("-", "_")}_${index - 1} --> ${profile.nodeId.replaceAll("-", "_")}_${index}`] : [])]);
+    return ["<details>", `<summary><strong>${node.order} · ${node.title}</strong> · Target — planned, not executable</summary>`, "", `**Purpose / why:** ${node.targetIntent}`, "", `**When/prerequisites:** Current/target transition and mapped capabilities ${node.capabilityIds.join(", ")} must be sufficient; later authorized implementation is required.`, "", `**Roles / competency:** ${pattern.requiredRoleIds.map(id => `\`${id}\``).join(", ")}; ${pattern.competencyIds.map(id => `\`${id}\``).join(", ")}.`, "", `**Inputs:** ${profile.inputs.join("; ")}. **Questions:** ${profile.questions.join(" ")}`, "", visual(`target-${profile.nodeId}-flow`, `${node.title} planned substeps`, "TD", flowLines.join("\n")), "", sequenceVisual(`target-${profile.nodeId}`, `${node.title} — Target — planned, not executable`, [...participants.map((role, index) => `participant role${index} as ${role}`), `participant accountable as ${pattern.accountableRoleId}`, "participant gaep as GAEP target projection", ...messages]), "", `**Planned substeps:** ${pattern.plannedSubsteps.map((step, index) => `${index + 1}. ${step}`).join(" ")}`, "", `**AI / human boundary:** a future GAEP implementation may prepare candidates; ${pattern.responsibleRoleIds.join(", ")} perform work, ${pattern.accountableRoleId} owns the bounded decision, and ${pattern.assuranceRoleIds.join(", ") || "no default independent role"} provides assurance when applicable. No command exists here.`, "", `**Candidate / governed outputs:** ${profile.outputs.join("; ")}; no current governed output exists.`, "", `**RACI:** R ${pattern.responsibleRoleIds.join(", ")} · A ${pattern.accountableRoleId} · C ${pattern.requiredRoleIds.filter(id => !pattern.responsibleRoleIds.includes(id) && id !== pattern.accountableRoleId).join(", ") || "—"} · I Initiative lead · independent assurance ${pattern.assuranceRoleIds.join(", ") || "context-dependent"}.`, "", `**Blockers / exception:** ${profile.blockers.join("; ")}. No planned node may bypass current prerequisites or organizational authority.`, "", `**Exit / next:** ${profile.exitCriteria.join(" ")} The next transition remains planned and non-executable.`, "", `**Authority / limitation:** ${targetExecution.authorityBoundary}`, "", "</details>"].join("\n");
+  }).join("\n\n");
+  return generatedBlock("TARGET_EXECUTION", details);
+}
+
+function renderExceptionSequences() {
+  const sequences = [
+    sequenceVisual("source-review-commit", "Source selection, review, candidate recording, acceptance, and commit", ["actor contributor as Domain expert", "participant gaep as GAEP runtime", "participant accountable as Business owner", "contributor->>gaep: Select exact File/Folder; link remains metadata only", "gaep-->>contributor: Extraction limits, digest, reviewed content, Unknowns", "contributor->>gaep: @gaep /intake then @gaep /record", "gaep-->>accountable: Candidate Source records; not truth/Baseline/Provenance", "accountable->>gaep: Review/challenge; @gaep /accept exact digest", "accountable->>gaep: @gaep /commit CONFIRM", "gaep-->>contributor: Governed Source revision and audit event; broader authority unchanged"]),
+    sequenceVisual("generic-checkpoint-loop", "Generic checkpoint execution loop", ["actor responsible as Responsible role", "participant gaep as GAEP runtime", "participant accountable as Accountable role", "participant assurer as Independent assurance", "responsible->>gaep: Inspect exact prerequisites and evidence", "gaep-->>responsible: Blockers, Unknowns, and valid current action", "responsible->>gaep: Execute current action and prepare candidate", "gaep-->>accountable: Exact candidate, digest, limitations, decisions", "accountable->>assurer: Request required independent review", "assurer-->>accountable: Findings", "accountable->>gaep: Accept exact candidate or reject/revise", "gaep-->>responsible: Explicit commit creates bounded governed state"]),
+    sequenceVisual("evidence-conflict", "Evidence conflict, revision, challenge, and resolution", ["actor expert as Domain expert", "participant gaep as GAEP runtime", "participant accountable as Accountable role", "expert->>gaep: Supply conflicting exact Sources", "gaep-->>expert: Preserve both identities, provenance, conflict, and Unknown conclusion", "expert->>accountable: Challenge candidate against named criteria", "accountable-->>gaep: Reject, request revision, or record scoped unresolved decision", "gaep-->>expert: New candidate digest; prior evidence and decision history retained"]),
+    sequenceVisual("missing-prerequisite", "Missing prerequisite and blocked progression", ["actor participant as Initiative lead", "participant gaep as GAEP runtime", "participant accountable as Accountable role", "participant->>gaep: Request downstream action", "gaep-->>participant: Waiting for prerequisite; named blocker and persisted prior state", "participant->>accountable: Resolve evidence/decision or assign owner", "accountable-->>gaep: Bounded disposition", "gaep-->>participant: Recompute next valid action; never bypass prerequisite silently"]),
+    sequenceVisual("scoped-exception", "Decision escalation and scoped exception", ["actor responsible as Responsible role", "participant accountable as Accountable role", "participant risk as Risk/compliance specialist", "participant assurance as Independent assurance", "responsible->>accountable: Escalate material blocker with exact evidence", "accountable->>risk: Request applicability and residual-risk analysis", "risk->>assurance: Request independent challenge when required", "assurance-->>accountable: Findings and limitations", "accountable-->>responsible: Reject, defer, or authorize only the bounded exception outside GAEP", "responsible->>gaep: Record decision/evidence; no broader waiver inferred"]),
+  ];
+  return generatedBlock("EXCEPTION_SEQUENCES", sequences.join("\n\n"));
+}
+
+function renderEnterpriseAssurance(catalog, assurance) {
+  const levels = assurance.evidenceDepthLevels.map(level => `| ${level.depthId} · ${level.label} | ${level.requiredEvidence.join("; ")} | ${level.permittedUses.join("; ")} | ${level.prohibitedUses.join("; ")} |`).join("\n");
+  const referenceById = new Map(catalog.references.map(entry => [entry.referenceId, entry]));
+  const references = assurance.referenceDepthAssessments.map(entry => {
+    const reference = referenceById.get(entry.referenceId);
+    return `| ${entry.referenceId} · ${markdownSafe(reference.canonicalName)}<br/>${markdownSafe(reference.versionOrEdition)} · ${reference.status} | ${entry.evidenceDepth}<br/>${markdownSafe(entry.reviewedCoverage)} | ${markdownSafe(entry.currentGaepMapping)}<br/>Implementation: ${markdownSafe(entry.implementationEvidence)} | ${markdownSafe(entry.assuranceState)}<br/>Gap: ${markdownSafe(entry.residualGap)}<br/>Adoption: ${markdownSafe(entry.adoptionConsequence)} |`;
+  }).join("\n");
+  const concerns = assurance.enterpriseConcernAssessments.map(entry => `| ${entry.concernId}<br/>${markdownSafe(entry.requiredDecision)} | ${entry.referenceFamily.join(", ")}<br/>minimum ${entry.minimumEvidenceDepth} | ${markdownSafe(entry.currentMapping)}<br/>${markdownSafe(entry.implementationEvidence)} | ${markdownSafe(entry.assuranceState)}<br/>${markdownSafe(entry.residualGap)}<br/>${markdownSafe(entry.adoptionConsequence)} |`).join("\n");
+  return generatedBlock("ENTERPRISE_ASSURANCE", ["| Depth | Required evidence | Permitted use | Prohibited use |", "|---|---|---|---|", levels, "", "> **Abstract-only rejection rule:** ED1 can identify scope, edition, status, and revision watch. It cannot support normative mappings, conformance assessment, detailed implementation claims, or an enterprise selection conclusion.", "", "<details>", "<summary><strong>Show evidence-depth and control-assurance assessment for every P01 reference</strong></summary>", "", "| Reference / edition | Evidence depth / reviewed coverage | GAEP mapping / implementation evidence | Assurance, gap, and adoption consequence |", "|---|---|---|---|", references, "", "</details>", "", "#### Enterprise concern sufficiency", "", "| Concern / required decision | Reference family / minimum depth | Current mapping / implementation evidence | Assurance, residual gap, adoption consequence |", "|---|---|---|---|", concerns].join("\n"));
+}
+
+function renderClaimAssuranceAndDecision(assurance) {
+  const claims = assurance.claimAssurance.map(claim => `| \`${claim.claimId}\`<br/>${markdownSafe(claim.claim)} | ${claim.claimType}<br/>${claim.scope}<br/>**${claim.status}** | Contracts: ${claim.supportingContractIds.join(", ") || "none"}<br/>Repository: ${claim.repositoryEvidence.join("<br/>") || "none"}<br/>Tests: ${claim.tests.join("<br/>") || "none"}<br/>Runtime: ${claim.runtimeEvidence.join("<br/>") || "none"} | Independent: ${claim.independentReviewState}<br/>Limitations: ${claim.limitations.join(" ")}<br/>Counter-evidence: ${claim.counterEvidence.join(" ") || "none"}<br/>Prohibited: ${claim.prohibitedInterpretation} |`).join("\n");
+  const profile = assurance.decisionProfileTemplate;
+  const dossier = assurance.pilotDecisionDossier;
+  return generatedBlock("CLAIM_ASSURANCE_DECISION", ["#### GAEP enterprise claim assurance", "", "| Claim | Type, scope, state | Inspectable evidence | Independent state, limits, and prohibited interpretation |", "|---|---|---|---|", claims, "", "#### Organization-specific decision profile", "", `**State:** ${profile.profileState}. The evaluator must supply: ${profile.requiredInputs.join("; ")}.`, "", `**Mandatory gates stay separate:** ${profile.mandatoryGates.join("; ")}.`, "", `**Equivalent comparison criteria for GAEP and alternatives:** ${profile.comparisonCriteria.join("; ")}.`, "", `**Weighting/sensitivity rules:** ${profile.weightingRules.join("; ")}.`, "", "#### Enterprise pilot decision dossier", "", `**Current recommendation:** ${dossier.recommendationState}. ${dossier.currentDisposition}`, "", `**Allowed recommendation states:** ${dossier.allowedRecommendationStates.join("; ")}.`, "", `**Required dossier sections:** ${dossier.requiredSections.join("; ")}.`, "", "> No universal winner is produced. GAEP receives no favorable default. Unknown is not scored as No or zero. A weighted analysis is valid only after the enterprise supplies explicit weights, mandatory gates remain separate, evidence strength is visible, and sensitivity analysis is shown."].join("\n"));
+}
+
 export function renderGuideline(context) {
-  const { manifest, template, catalog, market, extensionPackage, runtimePresentation, runtimeCheckpoints } = context;
+  const { manifest, template, catalog, market, extensionPackage, runtimePresentation, runtimeCheckpoints, responsibility, assurance, targetExecution } = context;
   const replacements = {
+    ENTERPRISE_OPENING: renderEnterpriseOpening(),
+    ENTRY_PATHS: renderEntryPaths(),
+    COMPETENCY_AUTHORITY: renderCompetencyAndAuthority(responsibility, runtimePresentation),
+    CHECKPOINT_EXECUTION: renderCheckpointExecution(runtimePresentation),
+    TARGET_EXECUTION: renderTargetExecution(manifest, targetExecution),
+    EXCEPTION_SEQUENCES: renderExceptionSequences(),
+    ENTERPRISE_ASSURANCE: renderEnterpriseAssurance(catalog, assurance),
+    CLAIM_ASSURANCE_DECISION: renderClaimAssuranceAndDecision(assurance),
     PROJECTION_HEADER: renderProjectionHeader(manifest),
     EXECUTIVE_FACTS: renderExecutiveFacts(catalog, market, manifest),
     EXECUTIVE_OPERATING_MODEL: renderExecutiveOperatingModel(),
@@ -1147,7 +1381,9 @@ export function renderedMarketDecisionSupportErrors(rendered, context) {
       const row = start < 0 ? "" : rendered.slice(start, end < 0 ? rendered.length : end);
       const cell = rowByProduct.get(product.productId)?.cells.find(entry => entry.capabilityId === capability.capabilityId);
       if (!cell || !row.includes(product.canonicalName) || !row.includes(supportDisplay(cell.supportLevel)) || !row.includes(deliveryDisplay(cell.deliveryState)) || !row.includes(cell.asOfDate) || !row.includes(cell.limitation)) errors.push(`market decision guide has stale cell ${product.productId}/${capability.capabilityId}`);
-      const expectedEvidenceUris = [...cell.supportAssertionIds, ...cell.availabilityAssertionIds].map(id => evidence.get(assertions.get(id)?.evidenceId)?.officialUri).filter(Boolean);
+      const expectedEvidenceUris = [...cell.supportAssertionIds, ...cell.availabilityAssertionIds]
+        .map(id => evidence.get(assertions.get(id)?.evidenceId)?.officialUri)
+        .filter(uri => Boolean(uri) && uri !== product.officialUri);
       for (const uri of expectedEvidenceUris) if (!row.includes(uri)) errors.push(`${product.productId}/${capability.capabilityId}: exact assertion evidence link is missing`);
       const rowLinks = [...row.matchAll(/\]\((https?:\/\/[^)]+)\)/g)].map(match => match[1]);
       if (rowLinks.some(uri => !expectedEvidenceUris.includes(uri))) errors.push(`${product.productId}/${capability.capabilityId}: Product overview or unrelated URL substituted for cell evidence`);

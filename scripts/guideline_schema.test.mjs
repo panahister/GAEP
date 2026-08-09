@@ -33,7 +33,7 @@ test("canonical P03 manifest and bound projection context validate", () => {
 test("canonical P03 validation CLI uses actual committed inputs", () => {
   const result = spawnSync(process.execPath, [path.join(ROOT, "scripts/validate_guideline_manifest.mjs")], { cwd: ROOT, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /17 sections, 11 vertical visuals, 19 lifecycle nodes, 30 capabilities, 16 assessed references/);
+  assert.ok(result.stdout.includes(`${context.manifest.requiredSections.length} sections, ${context.manifest.requiredVisuals.length} vertical visuals, ${context.manifest.lifecycleNodes.length} lifecycle nodes, ${context.market.capabilities.length} capabilities, ${context.catalog.references.length} assessed references`));
 });
 
 test("Guideline Schema is strict Draft 2020-12 and compiles offline", () => {

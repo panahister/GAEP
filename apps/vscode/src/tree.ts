@@ -294,7 +294,7 @@ export class GaepTreeProvider implements vscode.TreeDataProvider<TreeEntry> {
         {
           label: "Export Product Journey",
           description: "folder",
-          tooltip: "Export the governed Product Journey as a folder: one subfolder per checkpoint, each section a Markdown file with YAML frontmatter, plus record history, sources, architecture, and Pre-Figma readiness.",
+          tooltip: "Export the governed Product Journey as a folder: one subfolder per checkpoint, each section a Markdown file with YAML frontmatter, plus record history, sources, architecture, and P0–P4 readiness.",
           icon: "folder-library",
           command: { command: "gaep.exportProductJourneyMarkdown", title: "Export Product Journey" },
         },

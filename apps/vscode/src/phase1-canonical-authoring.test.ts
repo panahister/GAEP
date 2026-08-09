@@ -142,7 +142,7 @@ describe("Phase 1 canonical authoring", () => {
     expect(markdown).toContain("Event Storming and detailed assurance")
     expect(markdown).toContain("# Product discovery — Business Understanding")
     expect(markdown).toContain("Current revision: **2** · History: **2 revision(s)**")
-    expect(markdown).toContain("## Pre-Figma boundary")
+    expect(markdown).toContain("## P0–P4 boundary")
 
     const files = await buildProductJourneyExportFiles(engine, initiative.id, { generatedAt: "2026-08-05T00:00:00.000Z" })
     const paths = files.map((file) => file.path)

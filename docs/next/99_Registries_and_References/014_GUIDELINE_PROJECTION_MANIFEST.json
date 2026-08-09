@@ -76,6 +76,14 @@
       "sha256": "c6fbb89dacbbf6ea030b113fd040f19396a2e99ee9246a01dfea3dbe9b7f11e0"
     },
     {
+      "kind": "target-execution-registry",
+      "path": "docs/next/99_Registries_and_References/018_TARGET_LIFECYCLE_EXECUTION_REGISTRY.json",
+      "identity": "GAEP-REG-018",
+      "version": "1.0.0",
+      "schemaVersion": "1.0.0",
+      "sha256": "d7c8f2c048d894bbab690b032cb0f0ef1d41e4b28f974a92839445f56cf84cf4"
+    },
+    {
       "kind": "extension-package",
       "path": "apps/vscode/package.json",
       "identity": "gaep-vscode-package",
@@ -96,6 +104,8 @@
     { "sectionId": "executive-operating-model", "heading": "The operating model in one view", "layerId": "executive-orientation", "contentMode": "generated-canonical-facts" },
     { "sectionId": "executive-authority", "heading": "Authority and evidence boundary", "layerId": "executive-orientation", "contentMode": "hybrid" },
     { "sectionId": "quick-first-session", "heading": "Your approximately three-minute first session", "layerId": "quick-start", "contentMode": "hybrid" },
+    { "sectionId": "quick-entry-paths", "heading": "Choose the right entry path — do not restart by default", "layerId": "quick-start", "contentMode": "generated-canonical-facts" },
+    { "sectionId": "quick-competency", "heading": "Competency, RACI, authority, and independent assurance", "layerId": "quick-start", "contentMode": "generated-canonical-facts" },
     { "sectionId": "quick-navigation", "heading": "Previous, Current, and Next", "layerId": "quick-start", "contentMode": "generated-canonical-facts" },
     { "sectionId": "quick-checkpoint-states", "heading": "Checkpoint states and attention indicators", "layerId": "quick-start", "contentMode": "generated-canonical-facts" },
     { "sectionId": "practitioner-current", "heading": "A. Current Runtime", "layerId": "practitioner-guide", "contentMode": "generated-canonical-facts" },
@@ -105,7 +115,7 @@
     { "sectionId": "practitioner-sources", "heading": "Source lifecycle", "layerId": "practitioner-guide", "contentMode": "hybrid" },
     { "sectionId": "practitioner-market", "heading": "Market and capability decision support", "layerId": "practitioner-guide", "contentMode": "generated-canonical-facts" },
     { "sectionId": "practitioner-scenarios", "heading": "Choose by scenario, never by a winner score", "layerId": "practitioner-guide", "contentMode": "generated-canonical-facts" },
-    { "sectionId": "appendix-methodology", "heading": "Methodology and reference cards", "layerId": "methodology-appendix", "contentMode": "generated-canonical-facts" },
+    { "sectionId": "appendix-methodology", "heading": "Enterprise evidence-depth and control-assurance model", "layerId": "methodology-appendix", "contentMode": "generated-canonical-facts" },
     { "sectionId": "appendix-claims", "heading": "Claim-control ledger", "layerId": "methodology-appendix", "contentMode": "generated-canonical-facts" },
     { "sectionId": "appendix-maintenance", "heading": "Maintainer and projection details", "layerId": "methodology-appendix", "contentMode": "hybrid" }
   ],
@@ -113,6 +123,8 @@
     { "visualId": "executive-operating-model", "title": "Evidence-governed operating model", "sectionId": "executive-operating-model", "direction": "TD", "purpose": "Show how intent becomes governed decisions, delivery evidence, and feedback." },
     { "visualId": "authority-loop", "title": "Human authority loop", "sectionId": "executive-authority", "direction": "TD", "purpose": "Separate candidate generation, review, acceptance, and commit authority." },
     { "visualId": "quick-start-flow", "title": "First-session source-first path", "sectionId": "quick-first-session", "direction": "TD", "purpose": "Give a bounded first-session route using actions that actually exist." },
+    { "visualId": "enterprise-entry-paths", "title": "Newcomer and mid-journey entry routes", "sectionId": "quick-entry-paths", "direction": "TD", "purpose": "Route new, existing, mid-journey, repository, high-risk, and operational Products through a bounded current-state assessment." },
+    { "visualId": "competency-gateway", "title": "Role- and risk-based competency gateway", "sectionId": "quick-competency", "direction": "TD", "purpose": "Separate scenario-demonstrated competence, accountable authority, guidance, and independent assurance." },
     { "visualId": "checkpoint-position-example", "title": "Previous, Current, and Next example", "sectionId": "quick-navigation", "direction": "TD", "purpose": "Show an explicitly static navigation pattern without claiming live workspace state." },
     { "visualId": "current-runtime", "title": "Current runtime checkpoint inventory", "sectionId": "practitioner-current", "direction": "TD", "purpose": "Project the ordered runtime inventory from stable canonical checkpoint IDs." },
     { "visualId": "lifecycle-discover-define", "title": "Target lifecycle: discover and define", "sectionId": "practitioner-lifecycle", "direction": "TD", "purpose": "Render the target discover-and-define segment and conservative maturity." },

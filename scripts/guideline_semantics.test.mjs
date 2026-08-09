@@ -27,6 +27,7 @@ function semanticContext(overrides = {}) {
     runtimeCheckpoints: overrides.runtimeCheckpoints ?? clone(base.runtimeCheckpoints),
     responsibility: overrides.responsibility ?? clone(base.responsibility),
     assurance: overrides.assurance ?? clone(base.assurance),
+    targetExecution: overrides.targetExecution ?? clone(base.targetExecution),
   };
 }
 

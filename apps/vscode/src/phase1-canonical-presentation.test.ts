@@ -185,12 +185,12 @@ describe("Phase 1 canonical presentation", () => {
     expect(markdown).toContain("exact contract-valid candidate remains sealed")
   })
 
-  it("renders the Pre-Figma readiness assessment as an output table and dependency view", () => {
+  it("renders the P0–P4 readiness assessment as an output table and dependency view", () => {
     const markdown = phase1CanonicalPresentation({
       kind: "p0-p4-readiness-gate",
-      label: "Pre-Figma Readiness Assessment",
+      label: "P0–P4 Readiness Assessment",
       draft: {
-        title: "Pre-Figma readiness",
+        title: "P0–P4 readiness",
         scope: "Evaluate the reviewed Product Journey before design handoff.",
         outputs: [{
           outputKind: "business-understanding",
@@ -211,14 +211,14 @@ describe("Phase 1 canonical presentation", () => {
     expect(markdown).toContain("## Readiness output assessment")
     expect(markdown).toContain("| Output | Applicability | Assessment | Freshness | Evidence | Blockers / conditions |")
     expect(markdown).toContain("business-understanding")
-    expect(markdown).toContain("Pre-Figma readiness assessment")
+    expect(markdown).toContain("P0–P4 readiness assessment")
     expect(markdown).toContain("human review required")
   })
 
   it("renders the handoff inventory and leaves the Figma MCP roundtrip outside the package", () => {
     const markdown = phase1CanonicalPresentation({
       kind: "p5-handoff-package",
-      label: "Pre-Figma Handoff Package",
+      label: "P0–P4 Handoff Package",
       draft: {
         title: "Product Design handoff candidate",
         objective: "Transfer reviewed context without granting design or implementation authority.",

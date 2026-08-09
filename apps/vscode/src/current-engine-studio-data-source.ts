@@ -3738,14 +3738,14 @@ function productJourney(state: ObservedStudioState): ProductJourneySnapshot {
       "p0-p4-readiness",
       p0P4ReadinessComplete,
       p0P4ReadinessComplete
-        ? "A governed readiness assessment and editable pre-Figma handoff package are recorded."
-        : "Assess the exact Product Journey records and package complete pre-Figma inputs without claiming Figma MCP execution or implementation authority.",
+        ? "A governed readiness assessment and editable P0–P4 handoff package are recorded."
+        : "Assess the exact Product Journey records and package complete P0–P4 inputs without claiming Figma MCP execution or implementation authority.",
       false,
       undefined,
       initiative ? {
         details: componentDetails([
-          ["Pre-Figma readiness assessment", state.p0P4ReadinessGateProjections.get(initiative.id)?.gate, "p0-p4-readiness-gate"],
-          ["Pre-Figma handoff package", state.p5HandoffPackageProjections.get(initiative.id)?.handoff, "p5-handoff-package"],
+          ["P0–P4 readiness assessment", state.p0P4ReadinessGateProjections.get(initiative.id)?.gate, "p0-p4-readiness-gate"],
+          ["P0–P4 handoff package", state.p5HandoffPackageProjections.get(initiative.id)?.handoff, "p5-handoff-package"],
         ]),
         impact: downstreamImpact("p0-p4-readiness"),
         reviewAction: review("p0-p4-readiness"),

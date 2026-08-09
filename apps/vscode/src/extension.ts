@@ -1263,7 +1263,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           Boolean(recovery.model), Boolean(challenge.model), Boolean(decisions.register), Boolean(risks.register),
           Boolean(evidence.registry), Boolean(traceability.traceability),
         ], "risks-decisions"),
-        group("p0-p4-readiness", "Pre-Figma readiness and handoff", [
+        group("p0-p4-readiness", "P0–P4 readiness and handoff", [
           Boolean(readiness.gate), Boolean(handoff.handoff),
         ], "readiness"),
       ] }

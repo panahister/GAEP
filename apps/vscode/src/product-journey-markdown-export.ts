@@ -125,7 +125,7 @@ export async function buildProductJourneyMarkdown(
     "  D --> B[\"Business architecture\"]",
     "  B --> A[\"Solution and security architecture\"]",
     "  A --> E[\"Event Storming and detailed assurance\"]",
-    "  E --> H[\"Pre-Figma readiness and handoff\"]",
+    "  E --> H[\"P0–P4 readiness and handoff\"]",
     "```",
     "",
     "## Product definition",
@@ -199,7 +199,7 @@ export async function buildProductJourneyMarkdown(
     "",
     "---",
     "",
-    "## Pre-Figma boundary",
+    "## P0–P4 boundary",
     "",
     "This export may package reviewed inputs for Product Design. It does not perform the Figma MCP roundtrip, create or approve a Figma artifact, synchronize Figma back to GAEP, or grant implementation authority.",
     "",
@@ -225,7 +225,7 @@ const reviewCheckpoints = currentProductJourneyCheckpointPresentation
   .map((checkpoint) => ({
     id: checkpoint.checkpointId,
     title: checkpoint.label,
-    group: checkpoint.checkpointId === "p0-p4-readiness" ? "Pre-Figma readiness and handoff"
+    group: checkpoint.checkpointId === "p0-p4-readiness" ? "P0–P4 readiness and handoff"
       : checkpoint.order >= 80 ? checkpoint.phase.label : undefined,
     responsible: checkpoint.executionSubsteps.flatMap((step) => step.responsibleRoleIds).filter((role, index, all) => all.indexOf(role) === index),
     accountable: checkpoint.executionSubsteps.find((step) => step.accountableRoleId)?.accountableRoleId,

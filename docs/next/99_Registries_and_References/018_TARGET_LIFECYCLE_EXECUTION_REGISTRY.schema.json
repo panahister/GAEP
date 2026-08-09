@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://gaep.example/schemas/target-lifecycle-execution/1.0.0", "type": "object", "additionalProperties": false,
+  "required": ["$schema", "registryId", "version", "schemaVersion", "status", "authorityBoundary", "executionPatterns", "nodeProfiles"],
+  "properties": {
+    "$schema": { "type": "string" }, "registryId": { "const": "GAEP-REG-018" }, "version": { "type": "string" }, "schemaVersion": { "type": "string" }, "status": { "const": "target-proposed-unaccepted" }, "authorityBoundary": { "type": "string" },
+    "executionPatterns": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/pattern" } },
+    "nodeProfiles": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/profile" } }
+  },
+  "$defs": {
+    "strings": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "pattern": { "type": "object", "additionalProperties": false, "required": ["patternId", "requiredRoleIds", "competencyIds", "plannedSubsteps", "responsibleRoleIds", "accountableRoleId", "assuranceRoleIds"], "properties": { "patternId": { "type": "string" }, "requiredRoleIds": { "$ref": "#/$defs/strings" }, "competencyIds": { "$ref": "#/$defs/strings" }, "plannedSubsteps": { "type": "array", "minItems": 2, "items": { "type": "string" } }, "responsibleRoleIds": { "$ref": "#/$defs/strings" }, "accountableRoleId": { "type": "string" }, "assuranceRoleIds": { "type": "array", "items": { "type": "string" } } } },
+    "profile": { "type": "object", "additionalProperties": false, "required": ["nodeId", "patternId", "inputs", "questions", "outputs", "blockers", "exitCriteria"], "properties": { "nodeId": { "pattern": "^lifecycle-[a-z0-9-]+$", "type": "string" }, "patternId": { "type": "string" }, "inputs": { "$ref": "#/$defs/strings" }, "questions": { "$ref": "#/$defs/strings" }, "outputs": { "$ref": "#/$defs/strings" }, "blockers": { "$ref": "#/$defs/strings" }, "exitCriteria": { "$ref": "#/$defs/strings" } } }
+  }
+}

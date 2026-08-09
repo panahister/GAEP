@@ -56,7 +56,7 @@ describe("Product Chat launcher", () => {
     expect(roadmapSource).toContain('"flowchart TD"')
     expect(roadmapSource).toContain("classDef current")
     expect(participantSource).toContain('title: "Open Conversation Outline"')
-    expect(participantSource).toContain("Pre-Figma readiness and handoff")
+    expect(participantSource).toContain("P0–P4 readiness and handoff")
     expect(participantSource).not.toContain("new Proxy(response")
   })
 

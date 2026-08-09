@@ -59,7 +59,7 @@ interface Definition {
   kind: Phase1CanonicalRecordKind
   label: string
   group: "Product discovery" | "Business architecture" | "Solution and security architecture" |
-    "Detailed design and assurance" | "Pre-Figma readiness and handoff"
+    "Detailed design and assurance" | "P0–P4 readiness and handoff"
   schema: ZodType
 }
 
@@ -85,8 +85,8 @@ const definitions: readonly Definition[] = [
   { kind: "risk-register", label: "Risk Register", group: "Detailed design and assurance", schema: riskRegisterInputSchema },
   { kind: "evidence-registry", label: "Evidence Registry", group: "Detailed design and assurance", schema: evidenceRegistryInputSchema },
   { kind: "end-to-end-traceability", label: "End-to-End Traceability", group: "Detailed design and assurance", schema: endToEndTraceabilityInputSchema },
-  { kind: "p0-p4-readiness-gate", label: "Pre-Figma Readiness Assessment", group: "Pre-Figma readiness and handoff", schema: p0P4ReadinessGateInputSchema },
-  { kind: "p5-handoff-package", label: "Pre-Figma Handoff Package", group: "Pre-Figma readiness and handoff", schema: p5HandoffPackageInputSchema },
+  { kind: "p0-p4-readiness-gate", label: "P0–P4 Readiness Assessment", group: "P0–P4 readiness and handoff", schema: p0P4ReadinessGateInputSchema },
+  { kind: "p5-handoff-package", label: "P0–P4 Handoff Package", group: "P0–P4 readiness and handoff", schema: p5HandoffPackageInputSchema },
 ]
 
 export const phase1CanonicalRecordCatalog = definitions.map(({ kind, label, group }) => ({
@@ -100,7 +100,7 @@ export const phase1CanonicalGroupByCheckpoint = {
   "business-architecture": "Business architecture",
   "solution-security-architecture": "Solution and security architecture",
   "detailed-design-assurance": "Detailed design and assurance",
-  "p0-p4-readiness": "Pre-Figma readiness and handoff",
+  "p0-p4-readiness": "P0–P4 readiness and handoff",
 } as const
 
 export type Phase1CanonicalGroupCheckpointId = keyof typeof phase1CanonicalGroupByCheckpoint
@@ -556,11 +556,11 @@ export async function nextPhase1AuthoringTarget(
           "Treat the Process Model as the canonical Event Storming record: identify domain events, commands and triggers, actors, policies and guards, bounded contexts or aggregates, state transitions, and hotspots explicitly.",
         ] : []),
         ...(next.kind === "p0-p4-readiness-gate" ? [
-          "Assess the exact governed Product Journey record set for pre-Figma readiness. Identify incomplete, stale, contradictory, or attention-required inputs explicitly; never infer readiness from record presence alone.",
+          "Assess the exact governed Product Journey record set for P0–P4 readiness. Identify incomplete, stale, contradictory, or attention-required inputs explicitly; never infer readiness from record presence alone.",
           "This assessment prepares a human decision and grants no design, Figma, implementation, or release authority.",
         ] : []),
         ...(next.kind === "p5-handoff-package" ? [
-          "Build an editable pre-Figma handoff from the exact governed Product, Initiative, classification, applicability, Sources, discovery, business architecture, Event Storming, solution and security architecture, data, authorization, integration, recovery, decisions, risks, evidence, and traceability records.",
+          "Build an editable P0–P4 handoff from the exact governed Product, Initiative, classification, applicability, Sources, discovery, business architecture, Event Storming, solution and security architecture, data, authorization, integration, recovery, decisions, risks, evidence, and traceability records.",
           "Describe the design questions, constraints, acceptance boundaries, and exact source references a Product Designer needs before creating or updating Figma artifacts.",
           "Do not claim that a Figma file, Figma MCP roundtrip, design approval, implementation, or release has occurred.",
         ] : []),

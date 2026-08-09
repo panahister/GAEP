@@ -6153,7 +6153,7 @@ describe("current-engine Product Studio data source", () => {
     })
     expect(withHandoff.page.journey.checkpoints.at(-1)).toMatchObject({
       state: "complete",
-      summary: "A governed readiness assessment and editable pre-Figma handoff package are recorded.",
+      summary: "A governed readiness assessment and editable P0–P4 handoff package are recorded.",
     })
 
     // Hierarchical phases: every checkpoint carries an ordered phase grouping.

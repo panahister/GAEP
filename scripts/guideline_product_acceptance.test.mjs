@@ -32,6 +32,7 @@ function semanticInputs(overrides = {}) {
     runtimeCheckpoints: overrides.runtimeCheckpoints ?? clone(base.runtimeCheckpoints),
     responsibility: overrides.responsibility ?? clone(base.responsibility),
     assurance: overrides.assurance ?? clone(base.assurance),
+    targetExecution: overrides.targetExecution ?? clone(base.targetExecution),
   };
 }
 
@@ -183,7 +184,10 @@ test("cell evidence links resolve only through exact assertion/evidence relation
     for (const assertionId of [...cell.supportAssertionIds, ...cell.availabilityAssertionIds]) {
       const assertion = assertions.get(assertionId);
       assert.ok(line.includes(assertionId));
-      assert.ok(line.includes(evidence.get(assertion.evidenceId).officialUri));
+      const source = evidence.get(assertion.evidenceId);
+      const product = base.market.products.find(entry => entry.productId === row.productId);
+      if (source.officialUri === product.officialUri) assert.match(line, /Product overview URI; not treated as a cell-level evidence link/);
+      else assert.ok(line.includes(source.officialUri));
     }
   }
 });
@@ -241,17 +245,15 @@ test("dense methodology, claims, market cells, and maintainer details are progre
 
 test("a synthetic additional runtime checkpoint is projected without renderer changes", () => {
   const runtimePresentation = clone(base.runtimePresentation);
-  const extra = {
-    checkpointId: "operations-feedback",
-    order: 130,
-    label: "Operations feedback",
-    phase: { id: "operations", label: "Operations", order: 80 },
-    prerequisites: ["p0-p4-readiness"],
-    implementedCtas: ["@gaep /continue"],
-    limitations: "Synthetic evolution fixture only; no production behavior is asserted.",
-    implementationMaturity: "planned-deferred-coming-soon",
-    compatibilityAliases: [],
-  };
+  runtimePresentation.checkpoints.at(-1).terminal = false;
+  const extra = clone(runtimePresentation.checkpoints.at(-1));
+  Object.assign(extra, {
+    checkpointId: "operations-feedback", stableTitle: "Operations feedback", label: "Operations feedback", order: 130, terminal: true,
+    phase: { id: "operations", label: "Operations", order: 8 }, prerequisites: ["p0-p4-readiness"], nextValidTransitions: [],
+    implementedCtas: ["@gaep /continue"], limitations: "Synthetic evolution fixture only; no production behavior is asserted.",
+    implementationMaturity: "planned-deferred-coming-soon", compatibilityAliases: [], transitionType: "expanded",
+  });
+  extra.executionSubsteps = extra.executionSubsteps.map((step, index) => ({ ...step, stepId: `operations-feedback-${index}`, currentAction: index === 1 ? { kind: "chat-command", value: "@gaep /continue", label: "@gaep /continue" } : step.currentAction }));
   runtimePresentation.checkpoints.push(extra);
   const runtimeCheckpoints = runtimePresentation.checkpoints.slice().sort((left, right) => left.order - right.order);
   const manifest = clone(base.manifest);
@@ -282,10 +284,12 @@ test("adding a checkpoint without Guide transition metadata fails visibly", () =
 
 test("a synthetic additional target node is projected without renderer changes", () => {
   const manifest = clone(base.manifest);
+  const targetExecution = clone(base.targetExecution);
   manifest.lifecycleNodes.push({ nodeId: "lifecycle-20", order: 200, segmentId: "deliver-operate", title: "Governed learning loop", targetIntent: "Test evolvable target-node projection without claiming current implementation.", capabilityIds: ["GAEP-CAP-128"], proposedGapIds: [] });
   manifest.stakeholderRequirements[7].targetNodeIds.push("lifecycle-20");
-  assert.deepEqual(semanticErrors(manifest), []);
-  const rendered = renderGuideline({ ...base, manifest });
+  targetExecution.nodeProfiles.push({ ...clone(targetExecution.nodeProfiles.at(-1)), nodeId: "lifecycle-20" });
+  assert.deepEqual(semanticErrors(manifest, { targetExecution }), []);
+  const rendered = renderGuideline({ ...base, manifest, targetExecution });
   assert.match(rendered, /lifecycle_20\["200\. \[IA\] Governed learning loop/);
 });
 
@@ -328,10 +332,12 @@ test("a new planned capability appears automatically when canonically mapped", (
   market.gaepMaturity.push({ capabilityId: "GAEP-CAP-999", maturityState: "planned-deferred-coming-soon", repositoryAssertionIds: [], rationale: "Synthetic planned fixture." });
   for (const row of market.benchmarkRows) row.cells.push({ capabilityId: "GAEP-CAP-999", supportLevel: "unknown", supportAssertionIds: [], availabilityAssertionIds: [], asOfDate: market.researchAsOf, rationale: "Not assessed.", limitation: "Synthetic test only.", deliveryState: "not-assessed", applicabilityRationale: null });
   const manifest = clone(base.manifest);
+  const targetExecution = clone(base.targetExecution);
   manifest.lifecycleNodes.push({ nodeId: "lifecycle-planned", order: 200, segmentId: "deliver-operate", title: "Synthetic planned target", targetIntent: "Project a new planned capability without renderer code or an implemented claim.", capabilityIds: ["GAEP-CAP-999"], proposedGapIds: [] });
   manifest.stakeholderRequirements.push({ requirementId: "GAEP-P03-REQ-999", title: "Synthetic planned coverage", targetNodeIds: ["lifecycle-planned"], currentCheckpointIds: [], canonicalSourceIds: ["GAEP-CAP-999"], currentMaturity: "planned-deferred-coming-soon", futureDisposition: "newly-planned", gapOrDecision: "Synthetic fixture remains unimplemented and unaccepted." });
-  assert.deepEqual(semanticErrors(manifest, { market }), []);
-  const rendered = renderGuideline({ ...base, manifest, market });
+  targetExecution.nodeProfiles.push({ ...clone(targetExecution.nodeProfiles.at(-1)), nodeId: "lifecycle-planned" });
+  assert.deepEqual(semanticErrors(manifest, { market, targetExecution }), []);
+  const rendered = renderGuideline({ ...base, manifest, market, targetExecution });
   assert.match(rendered, /GAEP-CAP-999/);
   assert.match(rendered, /\[PD\] Planned \/ deferred/);
   assert.doesNotMatch(rendered.match(/lifecycle_planned\[[^\n]+/)?.[0] ?? "", /\[IT\]/);

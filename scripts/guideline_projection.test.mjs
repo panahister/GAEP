@@ -41,12 +41,18 @@ test("Guide has the exact progressive four-layer structure", () => {
 });
 
 test("every required visual is vertical and host-theme compatible", () => {
-  assert.equal((rendered.match(/<!-- GAEP-VISUAL:/g) ?? []).length, context.manifest.requiredVisuals.length);
+  const visualIds = [...rendered.matchAll(/<!-- GAEP-VISUAL:([^ ]+) -->/g)].map(match => match[1]);
+  assert.equal(new Set(visualIds).size, visualIds.length, "generated visual identities must be unique");
+  for (const visual of context.manifest.requiredVisuals) {
+    assert.ok(visualIds.includes(visual.visualId), `missing required visual ${visual.visualId}`);
+  }
   assert.doesNotMatch(rendered, /flowchart\s+(?:LR|RL)\b/);
   assert.doesNotMatch(rendered, /(?:fill|stroke|color):#[a-f0-9]{3,8}/i);
   assert.doesNotMatch(rendered, /%%\{init:/);
-  assert.equal((rendered.match(/```mermaid\n/g) ?? []).length, context.manifest.requiredVisuals.length);
-  assert.equal((rendered.match(/\n```\n/g) ?? []).length >= context.manifest.requiredVisuals.length, true);
+  const mermaidCount = (rendered.match(/```mermaid\n/g) ?? []).length;
+  assert.equal((rendered.match(/flowchart TD\n/g) ?? []).length, visualIds.length);
+  assert.ok(mermaidCount >= visualIds.length, "sequence diagrams may supplement declared vertical flow visuals");
+  assert.equal((rendered.match(/\n```\n/g) ?? []).length >= mermaidCount, true);
 });
 
 test("narrow-pane structure avoids oversized Markdown tables", () => {

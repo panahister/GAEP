@@ -1871,7 +1871,7 @@ export function registerGaepProductChat(
         : target.group === "Business architecture" ? "business-architecture"
           : target.group === "Solution and security architecture" ? "solution-security-architecture"
             : target.group === "Detailed design and assurance" ? "detailed-design-assurance"
-              : target.group === "Pre-Figma readiness and handoff" ? "design-implementation-handoff"
+              : target.group === "P0–P4 readiness and handoff" ? "design-implementation-handoff"
                 : undefined
       const adoptionCandidate = checkpoint
         ? persistedAdoption?.checkpoints.find((row) => row.checkpoint === checkpoint)

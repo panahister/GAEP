@@ -37,7 +37,7 @@
         "timestampPolicy": { "const": "none-deterministic" }
       }
     },
-    "canonicalSources": { "type": "array", "minItems": 8, "uniqueItems": true, "items": { "$ref": "#/$defs/sourceBinding" } },
+    "canonicalSources": { "type": "array", "minItems": 9, "uniqueItems": true, "items": { "$ref": "#/$defs/sourceBinding" } },
     "audienceLayers": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "$ref": "#/$defs/audienceLayer" } },
     "requiredSections": { "type": "array", "minItems": 15, "uniqueItems": true, "items": { "$ref": "#/$defs/section" } },
     "requiredVisuals": { "type": "array", "minItems": 10, "uniqueItems": true, "items": { "$ref": "#/$defs/visual" } },
@@ -98,7 +98,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["kind", "path", "identity", "version", "schemaVersion", "sha256"],
       "properties": {
-        "kind": { "enum": ["methodology-catalog", "market-registry", "terminology-index", "runtime-presentation-contract", "runtime-contract-schema", "responsibility-competency-registry", "enterprise-assurance-registry", "extension-package"] },
+        "kind": { "enum": ["methodology-catalog", "market-registry", "terminology-index", "runtime-presentation-contract", "runtime-contract-schema", "responsibility-competency-registry", "enterprise-assurance-registry", "target-execution-registry", "extension-package"] },
         "path": { "$ref": "#/$defs/repositoryPath" },
         "identity": { "type": "string", "minLength": 1 },
         "version": { "type": ["string", "null"] },

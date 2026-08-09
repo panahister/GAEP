@@ -118,7 +118,7 @@ export function existingProductAdoptionOverviewMarkdown(
     "  PD[\"Product definition\"] --> ID[\"Initiative definition\"] --> IC[\"Initiative classification\"] --> IA[\"Initiative applicability\"]",
     "  IA --> SI[\"Source intake\"] --> SB[\"Source baseline\"] --> SP[\"Source provenance\"]",
     "  SP --> DISC[\"Product discovery\"] --> BA[\"Business architecture\"] --> SA[\"Solution and security architecture\"]",
-    "  SA --> DD[\"Detailed design and assurance, including Event Storming\"] --> DH[\"Pre-Figma readiness and handoff\"]",
+    "  SA --> DD[\"Detailed design and assurance, including Event Storming\"] --> DH[\"P0–P4 readiness and handoff\"]",
     "```",
     "",
     `**Journey assessment:** ${markdownValue(state.journeyAssessment)}`,
