@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict")
 const { createHash } = require("node:crypto")
-const { access } = require("node:fs/promises")
+const { access, readFile } = require("node:fs/promises")
 const path = require("node:path")
 
 const vscode = require("vscode")
@@ -128,6 +128,21 @@ async function assertCommandsAndViews(extension) {
 async function assertGuideSurface(extension) {
   const guideUri = vscode.Uri.joinPath(extension.extensionUri, "media", "GAEP_GUIDE.md")
   const guide = new TextDecoder().decode(await vscode.workspace.fs.readFile(guideUri))
+  let visual = {}
+  if (process.env.GAEP_E2E_PHASE === "open") {
+    try {
+      const visualConfigPath = path.resolve(extension.extensionPath, "../..", ".gaep-visual-inspection.json")
+      visual = JSON.parse(await readFile(visualConfigPath, "utf8"))
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error
+    }
+  }
+  const visualHold = Number(visual.holdMs || 0)
+  if (visualHold > 0 && visual.theme) {
+    await vscode.workspace
+      .getConfiguration("workbench")
+      .update("colorTheme", visual.theme, vscode.ConfigurationTarget.Global)
+  }
   assert.match(guide, /^# GAEP Product-to-Operate Enterprise Guideline$/m)
   assert.match(guide, /GAEP-REG-013 v0\.2\.1/)
   assert.match(guide, /3dcfe5531a1bb4630dc3afdb2990389728e2d39cac2ac915986badb9fe9e5c17/)
@@ -157,12 +172,30 @@ async function assertGuideSurface(extension) {
     assert.equal(actualHash, expectedHashes[relativePath], `${relativePath} source/package/installed parity`)
   }
 
-  await vscode.commands.executeCommand("gaep.openGuide")
+  const visualArtifact = visual.artifact === "market" ? "market" : "guide"
+  const visualText = visualArtifact === "market" ? marketGuide : guide
+  const visualUri = visualArtifact === "market" ? marketGuideUri : guideUri
+  if (visualHold > 0 && visual.target) {
+    const targetIndex = visualText.indexOf(visual.target)
+    assert.ok(targetIndex >= 0, `visual target not found: ${visual.target}`)
+    const document = await vscode.workspace.openTextDocument(visualUri)
+    const editor = await vscode.window.showTextDocument(document, { preview: false })
+    const position = document.positionAt(targetIndex)
+    editor.selection = new vscode.Selection(position, position)
+    editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.AtTop)
+  }
+  const visualPreviewUri = visual.fragment
+    ? visualUri.with({ fragment: visual.fragment })
+    : visualUri
+  if (visualHold > 0 && visual.narrow) await vscode.commands.executeCommand("markdown.showPreviewToSide", visualPreviewUri)
+  else if (visualArtifact === "market" && visualHold > 0) await vscode.commands.executeCommand("markdown.showPreview", visualPreviewUri)
+  else await vscode.commands.executeCommand("gaep.openGuide")
   const preview = await waitFor(
-    () => vscode.window.tabGroups.all.flatMap((group) => group.tabs).find((tab) => /GAEP_GUIDE|GAEP Product-to-Operate/i.test(tab.label)),
+    () => vscode.window.tabGroups.all.flatMap((group) => group.tabs).find((tab) => /GAEP_(?:MARKET_DECISION_)?GUIDE|GAEP Product-to-Operate/i.test(tab.label)),
     "GAEP visual Guideline preview did not open",
   )
   assert.equal(preview.isDirty, false, "generated Guide preview must not be dirty")
+  if (visualHold > 0) await new Promise((resolve) => setTimeout(resolve, visualHold))
   await vscode.window.tabGroups.close(preview)
 }
 
